@@ -232,7 +232,7 @@ def markdown_to_telegram_html(text: str) -> str:
         code_content = match.group(2)
         idx = len(code_blocks)
         code_blocks.append((lang, code_content))
-        return f"___CODE_BLOCK_{idx}___"
+        return f"QQQBLOCKCODE{idx}ZZZ"
 
     text = re.sub(r'```([a-zA-Z0-9_-]*)\n?(.*?)```', _save_code_block, text, flags=re.DOTALL)
 
@@ -242,7 +242,7 @@ def markdown_to_telegram_html(text: str) -> str:
         inline_content = match.group(1)
         idx = len(inline_codes)
         inline_codes.append(inline_content)
-        return f"___INLINE_CODE_{idx}___"
+        return f"QQQINLINECODE{idx}ZZZ"
 
     text = re.sub(r'`([^`\n]+)`', _save_inline_code, text)
 
@@ -254,26 +254,26 @@ def markdown_to_telegram_html(text: str) -> str:
 
     # 5. Negrita (**texto** o __texto__)
     text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
-    text = re.sub(r'__(.+?)__', r'<b>\1</b>', text, flags=re.DOTALL)
+    text = re.sub(r'(?<![a-zA-Z0-9])__(.+?)__(?![a-zA-Z0-9])', r'<b>\1</b>', text, flags=re.DOTALL)
 
     # 6. Cursiva (*texto* o _texto_)
     text = re.sub(r'(?<!\*)\*([^\*\n]+)\*(?!\*)', r'<i>\1</i>', text)
-    text = re.sub(r'(?<!_)_([^_\n]+)_(?!_)', r'<i>\1</i>', text)
+    text = re.sub(r'(?<![a-zA-Z0-9_])_([^_\n]+)_(?![a-zA-Z0-9_])', r'<i>\1</i>', text)
 
     # 7. Restaurar bloques de código multilínea <pre><code>...</code></pre>
     for idx, (lang, code_content) in enumerate(code_blocks):
-        escaped_code = html.escape(code_content)
+        escaped_code = html.escape(code_content.strip('\r\n'))
         if lang:
             replacement = f'<pre><code class="language-{html.escape(lang)}">{escaped_code}</code></pre>'
         else:
-            replacement = f'<pre>{escaped_code}</pre>'
-        text = text.replace(f"___CODE_BLOCK_{idx}___", replacement)
+            replacement = f'<pre><code>{escaped_code}</code></pre>'
+        text = text.replace(f"QQQBLOCKCODE{idx}ZZZ", replacement)
 
     # 8. Restaurar código inline <code>...</code>
     for idx, inline_content in enumerate(inline_codes):
         escaped_inline = html.escape(inline_content)
         replacement = f'<code>{escaped_inline}</code>'
-        text = text.replace(f"___INLINE_CODE_{idx}___", replacement)
+        text = text.replace(f"QQQINLINECODE{idx}ZZZ", replacement)
 
     return text
 
