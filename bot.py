@@ -480,6 +480,33 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+async def _animate_waiting_message(bot, chat_id: int, message_obj, stop_event: asyncio.Event) -> None:
+    """Anima el mensaje de espera con reloj giratorio e indicador de 'escribiendo...'"""
+    clocks = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"]
+    base_text = "<i>Estoy haciendo un análisis de lo que indicas, espere por favor puedo tardar unos segundos...</i>"
+    idx = 0
+
+    while not stop_event.is_set():
+        try:
+            await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        except Exception:
+            pass
+
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=2.5)
+            break
+        except asyncio.TimeoutError:
+            pass
+
+        idx = (idx + 1) % len(clocks)
+        clock_emoji = clocks[idx]
+
+        try:
+            await message_obj.edit_text(f"{clock_emoji} {base_text}", parse_mode='HTML')
+        except Exception:
+            pass
+
+
 async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Maneja mensajes de texto normales y los envía a Ollama.
@@ -502,14 +529,21 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not user_text:
         return
 
-    # Mostrar indicador de "escribiendo..."
+    # Mensaje temporal de espera y animación de reloj giratorio
+    waiting_msg = None
+    stop_event = asyncio.Event()
+    anim_task = None
+
     try:
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=ChatAction.TYPING
+        waiting_msg = await update.message.reply_text(
+            "⏳ <i>Estoy haciendo un análisis de lo que indicas, espere por favor puedo tardar unos segundos...</i>",
+            parse_mode='HTML'
         )
-    except Exception:
-        pass
+        anim_task = asyncio.create_task(
+            _animate_waiting_message(context.bot, update.effective_chat.id, waiting_msg, stop_event)
+        )
+    except Exception as e:
+        logger.warning(f"No se pudo enviar el mensaje inicial de espera: {e}")
 
     history = context.chat_data.get("history", [])
     success = False
@@ -543,6 +577,22 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "⚠️ Ocurrió un error inesperado consultando al asistente.\n"
             "Intenta nuevamente."
         )
+
+    finally:
+        # Detener la animación y borrar el mensaje temporal de espera
+        stop_event.set()
+        if anim_task:
+            anim_task.cancel()
+            try:
+                await anim_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+        if waiting_msg:
+            try:
+                await waiting_msg.delete()
+            except Exception:
+                pass
 
     if success:
         append_to_history(context, "user", user_text)

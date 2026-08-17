@@ -122,7 +122,21 @@ Configuración aplicada en `commands.json`:
      `Wants=network-online.target` y `After=network-online.target`.
 
 --------------------------------------------------------------------------------
-7. ESTADO FINAL DE VERIFICACIÓN
+7. SEXTA INTERVENCIÓN (2026-08-17): MODELO DEFINITIVO Y MENSAJE DE ESPERA ANIMADO
+--------------------------------------------------------------------------------
+1) Selección definitiva del modelo:
+   - Se estableció `qwen-empresa` como modelo activo en `config.json`.
+2) Experiencia de usuario interactiva (Feedback de espera):
+   - Se implementó en `bot.py` la corrutina `_animate_waiting_message`:
+     a) Envía un mensaje temporal al usuario:
+        "⏳ Estoy haciendo un análisis de lo que indicas, espere por favor puedo tardar unos segundos..."
+     b) Hace rotar dinámicamente emojis de reloj (`🕐` -> `🕑` -> `🕒` -> ...) cada 2.5 segundos.
+     c) Mantiene activo el estado `ChatAction.TYPING` ("escribiendo...").
+     d) Al terminar la inferencia de Ollama, el mensaje temporal se elimina
+        automáticamente y se entrega la respuesta limpia.
+
+--------------------------------------------------------------------------------
+8. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
