@@ -89,7 +89,24 @@ Configuración aplicada en `commands.json`:
   Al ejecutarse, el bot muestra su encabezado de inicio (`reply_header`), ejecuta la tarea en la shell en segundo plano sin imprimir el cuadro de texto `<pre>`, y finaliza enviando la confirmación (`reply_footer`).
 
 --------------------------------------------------------------------------------
-5. ESTADO FINAL DE VERIFICACIÓN
+5. CUARTA INTERVENCIÓN (2026-08-17): INICIALIZACIÓN Y SINCRONIZACIÓN CON GIT
+--------------------------------------------------------------------------------
+1) Inicialización del repositorio y seguridad:
+   - Se inicializó el repositorio Git en `/scripts/telegram-admin-bot`.
+   - Se configuró `.gitignore` para salvaguardar `config.json` y `OLD-config.json`
+     (evitando subir tokens de Telegram reales al repositorio público).
+   - Se creó la plantilla `config.example.json` para distribución pública.
+2) Configuración de usuario y credenciales:
+   - Autor: `Jose A. Brito H. <britojq@gmail.com>`
+   - Gestor de credenciales: `credential.helper = store` en `~/.gitconfig`.
+3) Vinculación remota y sincronización:
+   - Remoto: `https://github.com/britojq/tgbot-pyt-bashfull.git`
+   - Rama principal: `master`
+   - Se integró el archivo `LICENSE` del repositorio remoto y se sincronizaron
+     todos los cambios locales (`git push` completado exitosamente).
+
+--------------------------------------------------------------------------------
+6. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
