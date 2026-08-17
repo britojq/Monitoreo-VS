@@ -136,7 +136,21 @@ Configuración aplicada en `commands.json`:
         automáticamente y se entrega la respuesta limpia.
 
 --------------------------------------------------------------------------------
-8. ESTADO FINAL DE VERIFICACIÓN
+8. SÉPTIMA INTERVENCIÓN (2026-08-17): FORMATO DE CÓDIGO Y NEGRILLAS EN RESPUESTAS
+--------------------------------------------------------------------------------
+1) Actualización del System Prompt en Modelfile:
+   - Se ajustó `Modelfile.txt` para instruir a `qwen-empresa` a envolver siempre
+     comandos y scripts de terminal en bloques de código (```bash ... ``` o `cmd`)
+     y destacar títulos y subtítulos en negrita (**Título:**).
+   - Se recompiló el modelo en Ollama (`ollama create qwen-empresa`).
+2) Conversor Markdown a HTML en `bot.py`:
+   - Se implementó `markdown_to_telegram_html()` que convierte automáticamente
+     títulos `#`, negritas `**`, código en línea `<code>` y bloques multilínea
+     `<pre><code>` compatibles con Telegram para que el usuario pueda copiar
+     los comandos de terminal con un solo toque.
+
+--------------------------------------------------------------------------------
+9. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
