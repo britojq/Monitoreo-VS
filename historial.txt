@@ -106,7 +106,23 @@ Configuración aplicada en `commands.json`:
      todos los cambios locales (`git push` completado exitosamente).
 
 --------------------------------------------------------------------------------
-6. ESTADO FINAL DE VERIFICACIÓN
+6. QUINTA INTERVENCIÓN (2026-08-17): AUDITORÍA, LIMPIEZA Y OPTIMIZACIÓN
+--------------------------------------------------------------------------------
+1) Limpieza de archivos redundantes:
+   - Se eliminaron scripts antiguos e intermedios (`NOOObot.py`, `OLD-bot.py`, `OLD-config.json`).
+   - Se removieron los archivos de texto raíz `skill-bash.md` y `skill-python.md`
+     (quedando organizados exclusivamente en `.agents/skills/`).
+2) Creación de dependencias:
+   - Se creó `requirements.txt` (`python-telegram-bot>=22.0`, `requests>=2.31.0`).
+3) Actualización de documentación:
+   - Se reestructuró `README.md` documentando la arquitectura actual, soporte
+     Ollama, comandos desacoplados, control de salida y comandos `systemctl`.
+4) Robustecimiento del servicio Systemd:
+   - Se actualizó `/etc/systemd/system/tg-admin-bot.service` con
+     `Wants=network-online.target` y `After=network-online.target`.
+
+--------------------------------------------------------------------------------
+7. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

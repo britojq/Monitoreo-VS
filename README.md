@@ -1,60 +1,98 @@
-# Telegram Admin Bot
+# 🤖 Telegram Admin Bot + Asistente Ollama
 
-Bot de administración de sistemas para Debian / Linux desacoplado, seguro y fácil de configurar.
-
-## 📂 Archivos de Configuración Extensión
-
-### 1. `config.json` (Parámetros del Bot)
-Contiene las credenciales y permisos de acceso:
-- `bot_token`: Token suministrado por @BotFather.
-- `owner_id`: Tu ID de usuario en Telegram (numérico).
-- `allowed_user_ids`: Lista de IDs de usuarios adicionales con permiso.
-- `allowed_group_ids`: Lista de IDs numéricos de grupos autorizados (números negativos como `-100xxxxxxxxxx`).
+Bot de administración de servidores Linux/Debian y asistente conversacional potenciado por inteligencia artificial local (**Ollama**). Diseñado con arquitectura modular, control de acceso granular y ejecución desacoplada de comandos.
 
 ---
 
-### 2. `commands.json` (Definición de Comandos, Mensajes Informatorios y Ayuda)
-Permite agregar, editar o eliminar comandos y mensajes informativos **sin modificar el código fuente `bot.py`**.
+## 🌟 Características Principales
 
-Estructura:
-- **`messages`**: Mensajes globales del bot (`start_header`, `unknown_command`, `help_general`).
-- **`commands`**: Definición de comandos individuales:
-  - `description`: Descripción corta para la lista `/start`.
-  - `help_text`: Mensaje detallado que se muestra al solicitar ayuda (`/comando help` o `/help comando`).
-  - `reply_header`: Mensaje informativo enviado **antes** de ejecutar la tarea.
-  - `reply_footer`: Mensaje informativo enviado **después** de ejecutar la tarea.
-  - `steps`: Pasos a ejecutar con título y comando del sistema.
+- 🛡️ **Control de Acceso y Seguridad**: Validación estricta por `owner_id`, lista blanca de `allowed_user_ids` y grupos autorizados (`allowed_group_ids`).
+- ⚡ **Comandos Dinámicos Desacoplados**: Define, modifica o añade comandos en `commands.json` sin tocar el código fuente.
+- 👁️ **Control de Salida de Terminal**: Opción para ejecutar scripts en segundo plano de forma silenciosa (`"show_output": false`) o mostrando la salida en bloque monoespaciado.
+- 🧠 **Asistente IA Local (Ollama)**: Consultas conversacionales en lenguaje natural con soporte para modelos locales (ej. `qwen-empresa`), memoria contextual e historial reiniciable (`/reset_ia`).
+- 🔄 **Servicio Systemd Resistente**: Servicio automatizado con recuperación ante fallos y arranque coordinado con la red.
 
-Ejemplo:
+---
+
+## 📂 Archivos de Configuración
+
+### 1. `config.json` (Credenciales y Parámetros)
+Contiene las claves de conexión y configuración general *(usa `config.example.json` como plantilla)*:
 ```json
 {
-  "messages": {
-    "start_header": "🤖 <b>Bot de Administración</b>\n\nComandos disponibles:",
-    "unknown_command": "⚠️ Comando no reconocido. Usa /start para ver opciones."
-  },
-  "commands": {
-    "status": {
-      "description": "Estado de servicios críticos del sistema",
-      "help_text": "ℹ️ <b>Ayuda de /status:</b> Muestra el estado operativo de los servicios SSH.",
-      "reply_header": "🔍 <b>Consultando estado de servicios...</b>",
-      "reply_footer": "✅ Consulta finalizada.",
-      "steps": [
-        {
-          "title": "Estado SSH:",
-          "command": ["systemctl", "status", "ssh", "--no-pager"]
-        }
-      ]
-    }
-  }
+  "bot_token": "TU_TOKEN_DE_TELEGRAM",
+  "owner_id": 123456789,
+  "allowed_user_ids": [123456789],
+  "allowed_group_ids": [],
+
+  "ollama_enabled": true,
+  "ollama_allow_all": false,
+  "ollama_base_url": "http://localhost:11434",
+  "ollama_model": "qwen-empresa",
+  "ollama_timeout": 180,
+  "ollama_temperature": 0.3,
+  "ollama_num_ctx": 4096,
+  "ollama_max_history": 12
 }
 ```
 
+### 2. `commands.json` (Definición de Comandos del Sistema)
+Permite estructurar los comandos disponibles:
+- **`messages`**: Cabeceras y textos globales (`start_header`, `unknown_command`, `help_general`).
+- **`commands`**:
+  - `description`: Descripción corta para la lista `/start`.
+  - `help_text`: Ayuda específica al consultar `/comando help` o `/help comando`.
+  - `reply_header`: Mensaje previo enviado antes de ejecutar la tarea.
+  - `reply_footer`: Mensaje posterior de confirmación.
+  - `show_output`: `true` para mostrar la salida en bloque `<pre>`, o `false` para omitirla (ideal para scripts que envían sus propios reportes).
+  - `steps`: Lista de subcomandos con su lista de argumentos `command` y `timeout` en segundos.
+
 ---
 
-## 🚀 Reinicio del Bot
+## 🛠️ Instalación y Puesta en Marcha
 
+### 1. Preparar Entorno Virtual
 ```bash
-# Para aplicar cambios tras modificar config.json o commands.json
-pkill -f "python.*bot.py"
+cd /scripts/telegram-admin-bot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
-`systemd` reiniciará el bot automáticamente en 10 segundos.
+
+### 2. Configurar Servicio en Systemd
+Crea el archivo `/etc/systemd/system/tg-admin-bot.service`:
+```ini
+[Unit]
+Description=Telegram Admin Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=britojab
+Group=britojab
+WorkingDirectory=/scripts/telegram-admin-bot
+ExecStart=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Habilita e inicia el servicio:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable tg-admin-bot
+sudo systemctl start tg-admin-bot
+```
+
+---
+
+## 📋 Comandos de Administración Diaria
+
+| Acción | Comando |
+| :--- | :--- |
+| **Ver estado en tiempo real** | `sudo systemctl status tg-admin-bot` |
+| **Ver logs del bot (stream)** | `sudo journalctl -u tg-admin-bot -f` |
+| **Reiniciar servicio** | `sudo systemctl restart tg-admin-bot` |
+| **Detener servicio** | `sudo systemctl stop tg-admin-bot` |
