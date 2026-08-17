@@ -24,6 +24,7 @@ Contiene las claves de conexión y configuración general *(usa `config.example.
   "owner_id": 123456789,
   "allowed_user_ids": [123456789],
   "allowed_group_ids": [],
+  "commands_enabled": true,
 
   "ollama_enabled": true,
   "ollama_allow_all": false,

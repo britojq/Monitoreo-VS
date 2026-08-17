@@ -5,6 +5,7 @@
     123456789
   ],
   "allowed_group_ids": [],
+  "commands_enabled": true,
 
   "ollama_enabled": true,
   "ollama_allow_all": false,

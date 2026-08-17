@@ -150,7 +150,20 @@ Configuración aplicada en `commands.json`:
      los comandos de terminal con un solo toque.
 
 --------------------------------------------------------------------------------
-9. ESTADO FINAL DE VERIFICACIÓN
+9. OCTAVA INTERVENCIÓN (2026-08-17): SOPORTE PARA MODO INTERACTIVO (COMANDOS TOGGLE)
+--------------------------------------------------------------------------------
+1) Parámetro de configuración:
+   - Se añadió `"commands_enabled": true/false` en `config.json` y `config.example.json`.
+   - Se configuró `"commands_enabled": false` para dejar el bot operando en
+     modo 100% interactivo.
+2) Comportamiento adaptativo del bot:
+   - Al estar los comandos desactivados, el bot no expone los comandos del sistema.
+   - `/start` y `/help` muestran el mensaje de bienvenida interactiva al asistente IA.
+   - `/reset_ia` se mantiene activo para reiniciar el contexto conversacional.
+   - Cualquier mensaje de texto normal es procesado directamente por Ollama.
+
+--------------------------------------------------------------------------------
+10. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

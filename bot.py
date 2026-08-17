@@ -59,6 +59,7 @@ def load_config() -> dict:
         "owner_id": env_int("OWNER_ID", 0),
         "allowed_user_ids": [],
         "allowed_group_ids": [],
+        "commands_enabled": True,
 
         # Ollama
         "ollama_enabled": True,
@@ -91,6 +92,9 @@ def load_config() -> dict:
 
     if os.getenv("OLLAMA_MODEL"):
         default_config["ollama_model"] = os.getenv("OLLAMA_MODEL")
+
+    if os.getenv("COMMANDS_ENABLED"):
+        default_config["commands_enabled"] = os.getenv("COMMANDS_ENABLED").strip().lower() in ("true", "1", "yes")
 
     return default_config
 
@@ -401,8 +405,20 @@ async def ask_ollama_async(user_text: str, history: list) -> str:
 
 # --- HANDLERS DE COMANDOS Y AYUDA ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Muestra el mensaje inicial y la lista de comandos disponibles."""
+    """Muestra el mensaje inicial y la lista de comandos disponibles (o bienvenida interactiva)."""
     if not is_authorized(update):
+        return
+
+    commands_enabled = bool(CONFIG.get("commands_enabled", True))
+
+    if not commands_enabled:
+        interactive_msg = (
+            "🤖 <b>Monitor Valle Seco (Modo Interactivo)</b>\n\n"
+            "¡Hola! Los comandos del sistema se encuentran desactivados.\n\n"
+            "💬 <i>Escríbeme directamente cualquier consulta técnica o administrativa para interactuar con el asistente IA.</i>\n\n"
+            "🧹 <code>/reset_ia</code> - Reinicia el contexto de la conversación."
+        )
+        await safe_reply_html(update.message, interactive_msg)
         return
 
     if context.args:
@@ -431,6 +447,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_dynamic_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja comandos dinámicos y soporta timeouts personalizados para tareas extensas."""
     if not is_authorized(update):
+        return
+
+    if not CONFIG.get("commands_enabled", True):
+        await safe_reply_html(
+            update.message,
+            "⚠️ Los comandos del sistema están desactivados. El bot se encuentra en <b>modo interactivo</b>.\n"
+            "Escríbeme directamente en texto para interactuar con la IA."
+        )
         return
 
     full_text = update.message.text or ""
@@ -671,10 +695,18 @@ async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not is_authorized(update):
         return
 
-    unk_msg = MESSAGES.get(
-        "unknown_command",
-        "Comando no reconocido. Usa /start para ver las opciones."
-    )
+    commands_enabled = bool(CONFIG.get("commands_enabled", True))
+
+    if not commands_enabled:
+        unk_msg = (
+            "⚠️ Los comandos del sistema están desactivados. El bot se encuentra en <b>modo interactivo</b>.\n"
+            "Escribe directamente tu mensaje o usa <code>/reset_ia</code>."
+        )
+    else:
+        unk_msg = MESSAGES.get(
+            "unknown_command",
+            "Comando no reconocido. Usa /start para ver las opciones."
+        )
 
     await safe_reply_html(update.message, unk_msg)
 
@@ -703,10 +735,16 @@ def main() -> None:
     # Comando para reiniciar conversación IA
     application.add_handler(CommandHandler(["reset_ia", "reset_chat", "borrar_chat"], reset_chat))
 
-    # Comandos dinámicos existentes desde commands.json
-    for cmd_name in COMMANDS.keys():
-        if cmd_name.lower() not in reserved_commands:
-            application.add_handler(CommandHandler(cmd_name, handle_dynamic_command))
+    commands_enabled = bool(CONFIG.get("commands_enabled", True))
+
+    # Comandos dinámicos existentes desde commands.json (solo si están habilitados)
+    if commands_enabled:
+        for cmd_name in COMMANDS.keys():
+            if cmd_name.lower() not in reserved_commands:
+                application.add_handler(CommandHandler(cmd_name, handle_dynamic_command))
+        logger.info("Bot iniciado con comandos dinámicos + asistente Ollama.")
+    else:
+        logger.info("Bot iniciado en MODO INTERACTIVO (comandos dinámicos deshabilitados).")
 
     # Texto normal -> Ollama
     application.add_handler(
@@ -716,7 +754,6 @@ def main() -> None:
     # Comandos desconocidos
     application.add_handler(MessageHandler(filters.COMMAND, unknown_cmd))
 
-    logger.info("Bot iniciado con comandos dinámicos + asistente Ollama.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
