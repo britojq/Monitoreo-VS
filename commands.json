@@ -1,0 +1,89 @@
+{
+  "messages": {
+    "start_header": "<b>═════════════════════════════════════</b>\n🤖 <b>BOT DE MONITOREO DE SEDE VALLE SECO</b>\n📍 <i>¡Bienvenido!</i>\n<b>═════════════════════════════════════</b>\n\nUtiliza los comandos listados a continuación para la gestión. Para ver detalles de un comando específico, envía:\n <code>/comando help</code> o <code>/ayuda comando</code>.\n\nEn caso contrario, siéntete libre de preguntarme sobre cualquier tema técnico ejemplo:\n <i>Cómo configurar un servidor web con apache2 en Debian</i>\nTambien puedes hacerme preguntas sobre cualquier tema que necesites información.",
+    "unknown_command": "⚠️ Comando no reconocido. Utiliza <code>/start</code> o <code>/help</code> para ver los comandos disponibles.",
+    "help_general": "ℹ️ <b>Centro de Ayuda</b>\n\nEnvía <code>/start</code> para ver la lista rápida de comandos, o escribe <code>/help [comando]</code> (ejemplo: <code>/help status</code>) para ver información detallada de cada función."
+  },
+  "commands": {
+    "status": {
+      "description": "Estado de servicios críticos del sistema",
+      "help_text": "ℹ️ <b>Ayuda del comando /status:</b>\n\nEste comando verifica en tiempo real el estado operativo de los servicios críticos (como SSH). Te permite saber si el servicio está activo, detenido o fallando.",
+      "reply_header": "🔍 <b>Consultando estado de servicios críticos...</b>",
+      "reply_footer": "✅ Consulta de servicios finalizada.",
+      "steps": [
+        {
+          "title": "Estado del Servicio SSH:",
+          "command": ["systemctl", "status", "ssh", "--no-pager"]
+        }
+      ]
+    },
+    "network": {
+      "description": "Análisis de red, interfaces y puertos escuchando",
+      "help_text": "ℹ️ <b>Ayuda del comando /network:</b>\n\nEste comando ejecuta un diagnóstico de red en dos pasos:\n1. Muestra la lista resumida de interfaces y direcciones IP configuradas (<code>ip -br addr</code>).\n2. Lista los puertos TCP y UDP que se encuentran escuchando en el servidor (<code>ss -tuln</code>).",
+      "reply_header": "🌐 <b>Iniciando diagnóstico de red...</b>",
+      "reply_footer": "✅ Diagnóstico de red completado.",
+      "steps": [
+        {
+          "title": "Interfaces de Red:",
+          "command": ["ip", "-br", "addr"]
+        },
+        {
+          "title": "Puertos Escuchando:",
+          "command": ["ss", "-tuln"]
+        }
+      ]
+    },
+    "disk": {
+      "description": "Uso de almacenamiento y espacio en disco",
+      "help_text": "ℹ️ <b>Ayuda del comando /disk:</b>\n\nEste comando consulta el espacio utilizado y disponible en todas las particiones del sistema (<code>df -h</code>), facilitando la prevención de problemas por disco lleno.",
+      "reply_header": "💾 <b>Consultando uso de disco y almacenamiento...</b>",
+      "reply_footer": "✅ Información de disco obtenida.",
+      "steps": [
+        {
+          "title": "Uso de Almacenamiento:",
+          "command": ["df", "-h"]
+        }
+      ]
+    },
+    "servicios": {
+      "description": "Verificando el estatus de los servicios Corporativos",
+      "help_text": "ℹ️ <b>Ayuda del comando /servicios:</b>\n\nEste comando consulta el estatus de todos los servicios corporativos configurados en el sistema.",
+      "reply_header": "⏳ <b>Ejecutando verificación de servicios... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
+      "reply_footer": "✅ Verificación de servicios finalizada.",
+      "show_output": false,
+      "steps": [
+        {
+          "command": ["estatus", "servicios"],
+          "timeout": 300
+        }
+      ]
+    },
+    "sedes": {
+      "description": "Verificando el estatus de las sedes Corporativas",
+      "help_text": "ℹ️ <b>Ayuda del comando /sedes:</b>\n\nEste comando consulta el estatus de conectividad de las sedes corporativas configuradas.",
+      "reply_header": "⏳ <b>Ejecutando verificación de sedes... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
+      "reply_footer": "✅ Verificación de sedes finalizada.",
+      "show_output": false,
+      "steps": [
+        {
+          "command": ["estatus", "sedes"],
+          "timeout": 300
+        }
+      ]
+    },
+    "analisisred": {
+      "description": "Ejecutando un análisis de la red",
+      "help_text": "ℹ️ <b>Ayuda del comando /red:</b>\n\nEste comando realiza un análisis detallado de la red corporativa configurada.",
+      "reply_header": "⏳ <b>Ejecutando análisis de la red... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
+      "reply_footer": "✅ Análisis de red finalizado.",
+      "show_output": false,
+      "steps": [
+        {
+          "command": ["estatus", "red"],
+          "timeout": 300
+        }
+      ]
+    }
+
+  }
+}

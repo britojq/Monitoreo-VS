@@ -1,0 +1,112 @@
+================================================================================
+HISTORIAL DE REGISTRO Y REPARACIÓN: BOT DE TELEGRAM + OLLAMA
+================================================================================
+Fecha de intervención: 2026-08-12 / 2026-08-13
+Ubicación del proyecto: /scripts/telegram-admin-bot
+
+--------------------------------------------------------------------------------
+1. PROBLEMA INICIAL REPORTADO (2026-08-12)
+--------------------------------------------------------------------------------
+El usuario intentó integrar el modelo de lenguaje Ollama en el bot de Telegram
+`bot.py` (basado en la guía `referencias-bot-telegram.txt`), pero el bot dejó de
+funcionar y no arrancaba como servicio en Debian 13.
+
+--------------------------------------------------------------------------------
+2. DIAGNÓSTICO Y CAUSAS RAÍZ ENCONTRADAS (2026-08-12)
+--------------------------------------------------------------------------------
+1) Token y credenciales en blanco (placeholders):
+   - El archivo `bot.py` contenía la plantilla genérica:
+     BOT_TOKEN = "TU_TOKEN_AQUI"
+     OWNER_ID = 123456789
+   - Al ejecutar `systemctl start tg-admin-bot.service`, Telegram rechazaba
+     la autenticación arrojando en los logs de journalctl:
+     "telegram.error.InvalidToken: The token 'TU_TOKEN_AQUI' was rejected by the server."
+   - El archivo `config.json` también tenía credenciales genéricas:
+     "bot_token": "TU_TOKEN_DE_TELEGRAM"
+
+2) Falta de código Ollama en `bot.py`:
+   - Se había creado un script secundario `NOOObot.py` con la lógica de Ollama,
+     pero el servicio de systemd (`tg-admin-bot.service`) seguía apuntando y
+     ejecutando `bot.py`, el cual carecía de las funciones e integración de IA.
+
+3) Librería de Python faltante (`requests`):
+   - El script con soporte para Ollama utiliza el paquete `requests` para
+     comunicarse con la API local de Ollama (http://localhost:11434/api/chat).
+   - Dicha librería no estaba instalada en el entorno virtual
+     `/scripts/telegram-admin-bot/venv`, produciendo el error:
+     "ModuleNotFoundError: No module named 'requests'"
+
+--------------------------------------------------------------------------------
+3. SEGUNDA INTERVENCIÓN (2026-08-13): USO DE `pkill` Y ETIQUETA HTML NO SOPORTADA
+--------------------------------------------------------------------------------
+El usuario reportó que al usar `pkill -f "python.*bot.py"` y modificar `commands.json`,
+el bot dejó de responder en Telegram.
+
+Causas identificadas:
+1) Efecto de `pkill`:
+   - Al matar el proceso con `pkill`, systemd reinició el servicio automáticamente
+     según la directiva `Restart=always`. Por ende, la razón por la que el bot
+     no respondía NO era que el proceso estuviera muerto, sino un error en tiempo
+     de ejecución.
+2) Etiqueta HTML no permitida (`<center>`):
+   - En `commands.json`, la clave `"start_header"` fue modificada incluyendo
+     etiquetas `<center>...</center>`.
+   - Telegram Bot API solo permite un subconjunto específico de HTML (`<b>`, `<i>`,
+     `<code>`, `<pre>`, `<a>`, etc.) y NO admite `<center>`.
+   - Cada vez que un usuario enviaba `/start`, la API de Telegram rechazaba la
+     respuesta con la excepción:
+     `telegram.error.BadRequest: Can't parse entities: unsupported start tag "center" at byte offset 0`
+   - Esto hacía que la ejecución fallara silenciosamente sin entregar respuesta.
+
+Soluciones aplicadas:
+1) Corrección en `commands.json`:
+   - Se eliminaron las etiquetas `<center>` no soportadas por la API de Telegram.
+2) Robustecimiento en `bot.py`:
+   - Se implementó la función auxiliar `safe_reply_html` que intenta responder
+     usando formato HTML, y en caso de que Telegram devuelva `BadRequest` por
+     marcado inválido, captura la excepción y reintenta el envío como texto plano.
+3) Reinicio de servicio:
+   - Se reinició `tg-admin-bot.service` y se comprobó respuesta limpia 200 OK.
+
+--------------------------------------------------------------------------------
+4. TERCERA INTERVENCIÓN (2026-08-13): CONTROL DE SALIDA DE SHELL (OCULTAR SALIDA)
+--------------------------------------------------------------------------------
+Requerimiento:
+Permitir que un comando o paso ejecute comandos en la shell sin mostrar el
+cuadro de código `<pre>salida del shell</pre>` en Telegram, pero detectando y
+confirmando si el comando se ejecutó satisfactoriamente (o mostrando error si falló).
+
+Implementación realizada en `bot.py`:
+1) Retorno estructurado en `_exec_system_command`:
+   - Devuelve dict con `{"success": bool, "returncode": int, "output": str}`.
+2) Lectura de propiedades en `commands.json`:
+   - Admite cualquiera de las claves: `"show_output": false`, `"hide_output": true`, o `"silent": true`
+     tanto a nivel de comando como a nivel de paso individual.
+3) Lógica de envío:
+   - Cuando `show_output` es `false` (o `hide_output: true` / `silent: true`): Se suprime de forma absoluta la emisión del cuadro de código `<pre>salida del shell</pre>`, incluso si el script devuelve un código de retorno interno diferente de 0 (como en scripts de bash que envían sus reportes directamente a Telegram).
+Configuración aplicada en `commands.json`:
+- Se configuró `"show_output": false` en `/servicios`, `/sedes` y `/red`.
+  Al ejecutarse, el bot muestra su encabezado de inicio (`reply_header`), ejecuta la tarea en la shell en segundo plano sin imprimir el cuadro de texto `<pre>`, y finaliza enviando la confirmación (`reply_footer`).
+
+--------------------------------------------------------------------------------
+5. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+- Servicio systemd: Active: active (running)
+- Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
+- Conexión Ollama: Verificada la respuesta del modelo `qwen-empresa:latest` en http://localhost:11434.
+
+--------------------------------------------------------------------------------
+6. GUÍA DE ADMINISTRACIÓN RÁPIDA
+--------------------------------------------------------------------------------
+Verificar estado del servicio:
+  sudo systemctl status tg-admin-bot
+
+Ver logs del bot en tiempo real:
+  sudo journalctl -u tg-admin-bot -f
+
+Reiniciar el bot tras modificaciones:
+  sudo systemctl restart tg-admin-bot
+
+Detener el bot:
+  sudo systemctl stop tg-admin-bot
+================================================================================

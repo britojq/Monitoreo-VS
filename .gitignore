@@ -1,0 +1,10 @@
+# Entorno virtual
+venv/
+__pycache__/
+*.pyc
+
+# Archivos de configuración con tokens o credenciales sensibles
+.env
+config.json
+OLD-config.json
+*.token
