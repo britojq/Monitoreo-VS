@@ -26,6 +26,11 @@ Contiene las claves de conexión y configuración general *(usa `config.example.
   "allowed_group_ids": [],
   "commands_enabled": true,
 
+  "notify_unauthorized_to_owner": true,
+  "reply_unauthorized_user": true,
+  "log_unauthorized_to_file": true,
+  "audit_log_file": "intentos_acceso.log",
+
   "ollama_enabled": true,
   "ollama_allow_all": false,
   "ollama_base_url": "http://localhost:11434",

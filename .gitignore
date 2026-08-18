@@ -8,3 +8,7 @@ __pycache__/
 config.json
 OLD-config.json
 *.token
+
+# Logs de auditoría y ejecución
+*.log
+intentos_acceso.log

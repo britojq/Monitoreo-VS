@@ -6,6 +6,7 @@ import logging
 import asyncio
 import subprocess
 import requests
+from datetime import datetime
 from pathlib import Path
 
 from telegram import Update
@@ -60,6 +61,12 @@ def load_config() -> dict:
         "allowed_user_ids": [],
         "allowed_group_ids": [],
         "commands_enabled": True,
+
+        # Seguridad y Auditoría
+        "notify_unauthorized_to_owner": True,
+        "reply_unauthorized_user": True,
+        "log_unauthorized_to_file": True,
+        "audit_log_file": "intentos_acceso.log",
 
         # Ollama
         "ollama_enabled": True,
@@ -157,7 +164,7 @@ SYSTEM_PROMPT = load_system_prompt(CONFIG)
 
 # --- SEGURIDAD Y AUTORIZACIÓN ---
 def is_authorized(update: Update) -> bool:
-    """Verifica la autorización del usuario y del chat."""
+    """Verifica si el usuario y el chat están autorizados."""
     if not update.effective_user or not update.effective_chat:
         return False
 
@@ -172,19 +179,98 @@ def is_authorized(update: Update) -> bool:
     user_authorized = (user_id == owner_id) or (user_id in allowed_users)
 
     if not user_authorized:
-        logger.warning(f"Acceso DENEGADO para el usuario: {user_id} en chat: {chat_id}")
         return False
 
     if chat_type in ['group', 'supergroup']:
         if not allowed_groups:
-            logger.warning(f"Acceso DENEGADO en grupo {chat_id}: no hay grupos autorizados configurados.")
             return False
-
         if chat_id not in allowed_groups:
-            logger.warning(f"Acceso DENEGADO en grupo no autorizado: {chat_id}")
             return False
 
     return True
+
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Verifica la autorización del usuario y chat.
+    Si NO está autorizado:
+    1. Registra el evento en el archivo de auditoría (intentos_acceso.log).
+    2. Notifica inmediatamente al administrador (owner_id).
+    3. Responde al usuario informándole que no tiene acceso e indicando su ID.
+    """
+    if is_authorized(update):
+        return True
+
+    user = update.effective_user
+    chat = update.effective_chat
+
+    user_id = user.id if user else 0
+    username = f"@{user.username}" if (user and user.username) else "(sin username)"
+    first_name = user.first_name if user else ""
+    last_name = user.last_name if user else ""
+    full_name = f"{first_name} {last_name}".strip() or "(sin nombre)"
+    lang = user.language_code if user else "desconocido"
+
+    chat_id = chat.id if chat else 0
+    chat_type = chat.type if chat else "desconocido"
+    chat_title = chat.title if (chat and chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+    msg_text = update.message.text if (update.message and update.message.text) else "(sin texto)"
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    logger.warning(
+        f"Acceso DENEGADO | User: {full_name} ({username}, ID: {user_id}) | "
+        f"Chat: {chat_title} (ID: {chat_id}) | Msg: {msg_text}"
+    )
+
+    # 1. Registrar en archivo de auditoría
+    if CONFIG.get("log_unauthorized_to_file", True):
+        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
+        audit_path = BASE_DIR / audit_file_name
+        log_line = (
+            f"[{now_str}] NO AUTORIZADO | ID: {user_id} | Username: {username} | "
+            f"Nombre: {full_name} | Idioma: {lang} | "
+            f"Chat: {chat_title} (ID: {chat_id}, Tipo: {chat_type}) | "
+            f"Mensaje: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+    # 2. Responder al usuario no autorizado
+    if update.message and CONFIG.get("reply_unauthorized_user", True):
+        user_reply = (
+            "⛔ <b>Acceso Restringido</b>\n\n"
+            "No tienes autorización para interactuar con este bot.\n\n"
+            f"Para solicitar acceso al administrador, proporciona tu ID:\n"
+            f"🆔 <code>{user_id}</code>"
+        )
+        await safe_reply_html(update.message, user_reply)
+
+    # 3. Notificar en tiempo real al owner
+    owner_id = CONFIG.get("owner_id", 0)
+    if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+        owner_alert = (
+            "🚨 <b>Alerta: Intento de Acceso No Autorizado</b>\n\n"
+            f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username)})\n"
+            f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+            f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+            f"🌐 <b>Idioma:</b> <code>{html.escape(lang)}</code>\n"
+            f"📝 <b>Mensaje enviado:</b>\n<pre>{html.escape(msg_text)}</pre>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>"
+        )
+        try:
+            await context.bot.send_message(
+                chat_id=owner_id,
+                text=owner_alert,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo enviar notificación de alerta al owner ({owner_id}): {e}")
+
+    return False
 
 
 # --- EJECUCIÓN ASÍNCRONA DE COMANDOS DEL SISTEMA ---
@@ -406,7 +492,7 @@ async def ask_ollama_async(user_text: str, history: list) -> str:
 # --- HANDLERS DE COMANDOS Y AYUDA ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Muestra el mensaje inicial y la lista de comandos disponibles (o bienvenida interactiva)."""
-    if not is_authorized(update):
+    if not await check_authorization(update, context):
         return
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
@@ -446,7 +532,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def handle_dynamic_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja comandos dinámicos y soporta timeouts personalizados para tareas extensas."""
-    if not is_authorized(update):
+    if not await check_authorization(update, context):
         return
 
     if not CONFIG.get("commands_enabled", True):
@@ -552,7 +638,7 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     """Reinicia el historial de conversación con Ollama."""
     allow_all = bool(CONFIG.get("ollama_allow_all", False))
 
-    if not allow_all and not is_authorized(update):
+    if not allow_all and not await check_authorization(update, context):
         return
 
     context.chat_data.pop("history", None)
@@ -603,7 +689,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     allow_all = bool(CONFIG.get("ollama_allow_all", False))
 
-    if not allow_all and not is_authorized(update):
+    if not allow_all and not await check_authorization(update, context):
         return
 
     user_text = update.message.text.strip()
@@ -692,7 +778,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja comandos no registrados."""
-    if not is_authorized(update):
+    if not await check_authorization(update, context):
         return
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))

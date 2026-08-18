@@ -163,7 +163,25 @@ Configuración aplicada en `commands.json`:
    - Cualquier mensaje de texto normal es procesado directamente por Ollama.
 
 --------------------------------------------------------------------------------
-10. ESTADO FINAL DE VERIFICACIÓN
+10. NOVENA INTERVENCIÓN (2026-08-18): AUDITORÍA, RECHAZO Y ALERTAS DE SEGURIDAD
+--------------------------------------------------------------------------------
+1) Alertas en tiempo real al administrador (owner_id):
+   - Cada intento de interacción por parte de un usuario o grupo no autorizado
+     dispara una notificación inmediata al chat del owner con detalles completos:
+     nombre, @username, ID de Telegram, origen del chat, idioma y texto del mensaje.
+2) Registro de auditoría (intentos_acceso.log):
+   - Se implementó el archivo local de log para persistir cronológicamente cada
+     intento con marca de tiempo precisa.
+3) Respuesta de rechazo con ID del usuario:
+   - Se le responde educadamente al usuario no autorizado indicándole que el acceso
+     es restringido y facilitando su ID de Telegram copiable para solicitar acceso.
+4) Configuración y exclusión:
+   - Parámetros añadidos a `config.json` y `config.example.json` (`notify_unauthorized_to_owner`,
+     `reply_unauthorized_user`, `log_unauthorized_to_file`, `audit_log_file`).
+   - `.gitignore` actualizado para ignorar `*.log` y `intentos_acceso.log`.
+
+--------------------------------------------------------------------------------
+11. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
