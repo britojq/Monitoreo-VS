@@ -217,21 +217,35 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     chat = update.effective_chat
 
     user_id = user.id if user else 0
-    username = f"@{user.username}" if (user and user.username) else "(sin username)"
-    first_name = user.first_name if user else ""
-    last_name = user.last_name if user else ""
-    full_name = f"{first_name} {last_name}".strip() or "(sin nombre)"
+    username = f"@{user.username}" if (user and user.username) else ""
+    first_name = (user.first_name or "").strip() if user else ""
+    last_name = (user.last_name or "").strip() if user else ""
+    if last_name.lower() == "none":
+        last_name = ""
+    name_parts = [p for p in [first_name, last_name] if p]
+    full_name = " ".join(name_parts) or "(sin nombre)"
     lang = user.language_code if user else "desconocido"
+
+    # Guardar en caché de usuarios para el comando /permisos
+    if user_id:
+        CONFIG.setdefault("users_cache", {})[str(user_id)] = {
+            "full_name": full_name,
+            "username": username
+        }
 
     chat_id = chat.id if chat else 0
     chat_type = chat.type if chat else "desconocido"
     chat_title = chat.title if (chat and chat.type in ['group', 'supergroup']) else "Chat Privado"
 
+    if chat_id and chat.title:
+        CONFIG.setdefault("groups_cache", {})[str(chat_id)] = chat.title
+
     msg_text = update.message.text if (update.message and update.message.text) else "(sin texto)"
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    user_label = f"{full_name} ({username})" if username else full_name
     logger.warning(
-        f"Acceso DENEGADO | User: {full_name} ({username}, ID: {user_id}) | "
+        f"Acceso DENEGADO | User: {user_label} (ID: {user_id}) | "
         f"Chat: {chat_title} (ID: {chat_id}) | Msg: {msg_text}"
     )
 
@@ -827,16 +841,60 @@ async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await safe_reply_html(update.message, unk_msg)
 
 
-def _build_permissions_panel() -> tuple[str, InlineKeyboardMarkup | None]:
-    """Construye el texto y el teclado interactivo para gestionar la lista de permitidos."""
+async def _resolve_user_info(bot, user_id: int) -> tuple[str, str]:
+    """Obtiene el nombre completo y @username de un usuario vía Telegram API o caché local."""
+    users_cache = CONFIG.get("users_cache", {})
+    cached = users_cache.get(str(user_id), {})
+    cached_name = cached.get("full_name", "")
+    cached_user = cached.get("username", "")
+
+    try:
+        chat = await bot.get_chat(user_id)
+        first_name = (chat.first_name or "").strip()
+        last_name = (chat.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        name_parts = [p for p in [first_name, last_name] if p]
+        full_name = " ".join(name_parts) or chat.title or cached_name or "(sin nombre)"
+        username = f"@{chat.username}" if chat.username else cached_user
+
+        CONFIG.setdefault("users_cache", {})[str(user_id)] = {
+            "full_name": full_name,
+            "username": username
+        }
+        return full_name, username
+    except Exception:
+        return cached_name or "(Nombre no disponible)", cached_user
+
+
+async def _resolve_group_info(bot, group_id: int) -> str:
+    """Obtiene el título de un grupo vía Telegram API o caché local."""
+    groups_cache = CONFIG.get("groups_cache", {})
+    cached_title = groups_cache.get(str(group_id), "")
+
+    try:
+        chat = await bot.get_chat(group_id)
+        title = chat.title or cached_title or "Grupo"
+        CONFIG.setdefault("groups_cache", {})[str(group_id)] = title
+        return title
+    except Exception:
+        return cached_title or "Grupo"
+
+
+async def _build_permissions_panel(bot) -> tuple[str, InlineKeyboardMarkup | None]:
+    """Construye el texto y el teclado interactivo con datos completos de usuarios y grupos."""
     owner_id = CONFIG.get("owner_id", 0)
     allowed_users = CONFIG.get("allowed_user_ids", [])
     allowed_groups = CONFIG.get("allowed_group_ids", [])
 
+    owner_name, owner_username = await _resolve_user_info(bot, owner_id)
+    owner_tag = f" ({owner_username})" if owner_username else ""
+
     text_lines = [
         "🔐 <b>Panel de Control de Acceso y Permisos</b>",
         "",
-        f"👑 <b>Creador / Owner:</b> <code>{owner_id}</code> (Acceso Permanente)",
+        f"👑 <b>Creador / Owner:</b> {html.escape(owner_name)}{html.escape(owner_tag)}",
+        f"🆔 <b>ID de Telegram:</b> <code>{owner_id}</code> <i>(Acceso Permanente)</i>",
         ""
     ]
 
@@ -844,38 +902,47 @@ def _build_permissions_panel() -> tuple[str, InlineKeyboardMarkup | None]:
 
     # Usuarios adicionales
     other_users = [u for u in allowed_users if u != owner_id]
-    text_lines.append("👤 <b>Usuarios Permitidos:</b>")
+    text_lines.append("👥 <b>Usuarios Permitidos:</b>")
     if not other_users:
-        text_lines.append("• <i>(No hay usuarios adicionales en la lista)</i>")
+        text_lines.append("<i>(No hay usuarios adicionales en la lista)</i>")
     else:
-        for uid in other_users:
-            text_lines.append(f"• ID: <code>{uid}</code>")
+        for idx, uid in enumerate(other_users, 1):
+            name, username = await _resolve_user_info(bot, uid)
+            user_tag = f" ({username})" if username else ""
+            text_lines.append(f"{idx}. 👤 <b>Usuario:</b> {html.escape(name)}{html.escape(user_tag)}")
+            text_lines.append(f"   🆔 <b>ID de Telegram:</b> <code>{uid}</code>")
+
+            btn_label = f"❌ Quitar: {name[:15]} ({uid})"
             keyboard.append([
-                InlineKeyboardButton(f"❌ Revocar / Quitar Usuario: {uid}", callback_data=f"auth_revoke_user:{uid}")
+                InlineKeyboardButton(btn_label, callback_data=f"auth_revoke_user:{uid}")
             ])
 
     text_lines.append("")
     # Grupos permitidos
-    text_lines.append("👥 <b>Grupos Permitidos:</b>")
+    text_lines.append("🏢 <b>Grupos Permitidos:</b>")
     if not allowed_groups:
-        text_lines.append("• <i>(No hay grupos en la lista)</i>")
+        text_lines.append("<i>(No hay grupos en la lista)</i>")
     else:
-        for gid in allowed_groups:
-            text_lines.append(f"• ID: <code>{gid}</code>")
+        for idx, gid in enumerate(allowed_groups, 1):
+            gtitle = await _resolve_group_info(bot, gid)
+            text_lines.append(f"{idx}. 👥 <b>Grupo:</b> {html.escape(gtitle)}")
+            text_lines.append(f"   🆔 <b>ID de Chat:</b> <code>{gid}</code>")
+
+            btn_label = f"❌ Quitar Grupo: {gtitle[:15]} ({gid})"
             keyboard.append([
-                InlineKeyboardButton(f"❌ Revocar / Quitar Grupo: {gid}", callback_data=f"auth_revoke_group:{gid}")
+                InlineKeyboardButton(btn_label, callback_data=f"auth_revoke_group:{gid}")
             ])
 
     if keyboard:
         text_lines.append("")
-        text_lines.append("ℹ️ <i>Presiona un botón para retirar a un usuario o grupo y revocar su acceso inmediatamente.</i>")
+        text_lines.append("ℹ️ <i>Presiona un botón para revocar el acceso a un usuario o grupo.</i>")
 
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     return "\n".join(text_lines), reply_markup
 
 
 async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Muestra el panel de gestión de permisos exclusivo para el creador del bot."""
+    """Muestra el panel de gestión de permisos con datos detallados (exclusivo para el owner)."""
     if not update.effective_user:
         return
 
@@ -884,7 +951,7 @@ async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
         return
 
-    panel_text, reply_markup = _build_permissions_panel()
+    panel_text, reply_markup = await _build_permissions_panel(context.bot)
     await safe_reply_html(update.message, panel_text, reply_markup=reply_markup)
 
 
@@ -1001,8 +1068,8 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
         await query.answer(f"✅ Usuario {target_user_id} revocado de la lista.")
 
-        # Re-renderizar panel de permisos actualizado
-        panel_text, reply_markup = _build_permissions_panel()
+        # Re-renderizar panel de permisos actualizado con nombres reales
+        panel_text, reply_markup = await _build_permissions_panel(context.bot)
         try:
             await query.edit_message_text(
                 text=panel_text,
@@ -1034,8 +1101,8 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
         await query.answer(f"✅ Grupo {target_user_id} revocado de la lista.")
 
-        # Re-renderizar panel de permisos actualizado
-        panel_text, reply_markup = _build_permissions_panel()
+        # Re-renderizar panel de permisos actualizado con títulos reales
+        panel_text, reply_markup = await _build_permissions_panel(context.bot)
         try:
             await query.edit_message_text(
                 text=panel_text,

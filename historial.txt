@@ -213,6 +213,11 @@ Configuración aplicada en `commands.json`:
      se persiste inmediatamente en `config.json` y se re-renderiza el panel en vivo.
    - Se envía una notificación al usuario revocado informándole que su acceso
      ha sido denegado.
+3) Datos enriquecidos de usuarios y grupos en el panel:
+   - Se implementó la resolución automática asíncrona (`_resolve_user_info`, `_resolve_group_info`)
+     mediante Telegram Bot API y caché local para mostrar nombre completo, @username
+     e ID de cada usuario, así como el título de cada grupo.
+   - Se eliminó cualquier aparición de textos "None" en nombres y apellidos.
 
 --------------------------------------------------------------------------------
 13. ESTADO FINAL DE VERIFICACIÓN
