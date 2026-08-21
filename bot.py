@@ -6,11 +6,15 @@ import logging
 import asyncio
 import subprocess
 import requests
+import httpx
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
+from telegram.request import HTTPXRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 
@@ -67,6 +71,8 @@ def load_config() -> dict:
         "reply_unauthorized_user": True,
         "log_unauthorized_to_file": True,
         "audit_log_file": "intentos_acceso.log",
+        "auto_proxy_failover": True,
+        "proxies": [],
 
         # Ollama
         "ollama_enabled": True,
@@ -116,6 +122,87 @@ def save_config() -> bool:
     except Exception as e:
         logger.error(f"Error al guardar configuración en {CONFIG_PATH}: {e}")
         return False
+
+
+def load_proxies_list() -> list[dict]:
+    """Carga la lista de proxies desde config.json o desde /scripts/monitor/config/bot.conf."""
+    custom_proxies = CONFIG.get("proxies")
+    if custom_proxies and isinstance(custom_proxies, list) and len(custom_proxies) > 0:
+        return custom_proxies
+
+    bot_conf_path = Path("/scripts/monitor/config/bot.conf")
+    proxies = []
+    if bot_conf_path.exists():
+        try:
+            content = bot_conf_path.read_text(encoding="utf-8")
+            data = {}
+            for line in content.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    data[k.strip()] = v.strip().strip("'\"")
+
+            for letter in ("A", "B", "C", "D"):
+                ip = data.get(f"IPADDRPORTPROXY{letter}")
+                auth = data.get(f"USERPASSWDPROXY{letter}")
+                name = data.get(f"NAMEPROXY{letter}", f"Proxy {letter}")
+                if ip:
+                    if auth and ":" in auth:
+                        user, pwd = auth.split(":", 1)
+                        user_enc = urllib.parse.quote(user)
+                        pwd_enc = urllib.parse.quote(pwd)
+                        url = f"http://{user_enc}:{pwd_enc}@{ip}"
+                    else:
+                        url = f"http://{ip}"
+                    proxies.append({
+                        "name": name,
+                        "url": url,
+                        "enabled": True
+                    })
+        except Exception as e:
+            logger.warning(f"No se pudieron leer proxies de {bot_conf_path}: {e}")
+
+    return proxies
+
+
+def select_working_connection(bot_token: str) -> str | None:
+    """
+    Evalúa la conectividad con Telegram Bot API:
+    1. Prueba conexión directa con timeout corto (3.5s).
+    2. Si falla directa, prueba en orden los proxies configurados en config.json o bot.conf.
+    3. Retorna la URL del proxy funcional (o None si la conexión directa funciona).
+    """
+    url = f"https://api.telegram.org/bot{bot_token}/getMe"
+
+    # 1. Probar conexión directa
+    try:
+        r = httpx.get(url, timeout=3.5)
+        if r.status_code == 200 and r.json().get("ok"):
+            logger.info("🌐 Conexión DIRECTA a Telegram verificada exitosamente.")
+            return None
+    except Exception as e:
+        logger.warning(f"Conexión directa a Telegram no disponible ({e}). Evaluando proxies corporativos...")
+
+    # 2. Probar proxies
+    proxies = load_proxies_list()
+    for p in proxies:
+        if not p.get("enabled", True):
+            continue
+        p_name = p.get("name", "Proxy")
+        p_url = p.get("url")
+        if not p_url:
+            continue
+
+        try:
+            r = httpx.get(url, proxy=p_url, timeout=4.5)
+            if r.status_code == 200 and r.json().get("ok"):
+                logger.info(f"🔄 Conectividad exitosa con Telegram vía [{p_name}]: {p_url}")
+                return p_url
+        except Exception as e:
+            logger.info(f"Proxy [{p_name}] no disponible: {e}")
+
+    logger.warning("⚠️ No se pudo verificar ningún proxy ni conexión directa. Intentando conexión estándar...")
+    return None
 
 
 def load_commands_data() -> tuple[dict, dict]:
@@ -1116,6 +1203,15 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 pass
 
 
+async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Registra y gestiona errores inesperados o fallos de red durante el polling."""
+    err = context.error
+    if isinstance(err, (telegram.error.NetworkError, httpx.NetworkError, httpx.TimeoutException)):
+        logger.warning(f"Aviso de red en polling Telegram: {err}. Reintentando automáticamente...")
+    else:
+        logger.error(f"Excepción en bot handler: {err}", exc_info=err)
+
+
 def main() -> None:
     bot_token = CONFIG.get("bot_token")
 
@@ -1123,7 +1219,25 @@ def main() -> None:
         logger.error("Error: BOT_TOKEN no configurado en config.json o variables de entorno.")
         return
 
-    application = Application.builder().token(bot_token).build()
+    # Selección y conmutación automática de conexión (Directa vs Proxies corporativos)
+    active_proxy = None
+    if CONFIG.get("auto_proxy_failover", True):
+        active_proxy = select_working_connection(bot_token)
+
+    # Configurar cliente HTTP con timeouts optimizados y proxy si corresponde
+    request = HTTPXRequest(
+        connection_pool_size=256,
+        connect_timeout=10.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=5.0,
+        proxy=active_proxy
+    )
+
+    application = Application.builder().token(bot_token).request(request).build()
+
+    # Manejador global de errores de red y aplicación
+    application.add_error_handler(bot_error_handler)
 
     reserved_commands = {
         "start",

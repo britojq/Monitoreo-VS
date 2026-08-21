@@ -220,7 +220,22 @@ Configuración aplicada en `commands.json`:
    - Se eliminó cualquier aparición de textos "None" en nombres y apellidos.
 
 --------------------------------------------------------------------------------
-13. ESTADO FINAL DE VERIFICACIÓN
+13. DUODÉCIMA INTERVENCIÓN (2026-08-21): CONMUTACIÓN AUTOMÁTICA DE PROXIES (FAILOVER)
+--------------------------------------------------------------------------------
+1) Detección de conectividad inteligente en el bot (`bot.py`):
+   - Al iniciar, el bot realiza una comprobación directa a Telegram Bot API con timeout corto.
+   - Si la conexión directa a internet no está disponible o falla, evalúa automáticamente
+     los proxies corporativos configurados (Squid / pfSense A, B, C, D) definidos
+     en `config.json` o en `/scripts/monitor/config/bot.conf`.
+   - Inicializa el cliente HTTP (`HTTPXRequest`) enlazado al proxy operativo (ej. Proxy B / C).
+2) Manejador de errores y alta disponibilidad:
+   - Se integró `bot_error_handler` para capturar incidencias de red en runtime y
+     coordinar con `systemd` (`Restart=always`, `RestartSec=10`) para auto-reconexión.
+3) Configuración:
+   - Añadidos `"auto_proxy_failover": true` y `"proxies": []` en `config.json` y `config.example.json`.
+
+--------------------------------------------------------------------------------
+14. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

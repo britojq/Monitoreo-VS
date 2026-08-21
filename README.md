@@ -30,6 +30,8 @@ Contiene las claves de conexión y configuración general *(usa `config.example.
   "reply_unauthorized_user": true,
   "log_unauthorized_to_file": true,
   "audit_log_file": "intentos_acceso.log",
+  "auto_proxy_failover": true,
+  "proxies": [],
 
   "ollama_enabled": true,
   "ollama_allow_all": false,
