@@ -99,6 +99,7 @@ sudo systemctl start tg-admin-bot
 ## 📋 Comandos de Administración Diaria
 
 ### Gestión desde Telegram (Exclusivo Creador / Owner):
+- `/botstatus` (o `/statusbot`): Diagnóstico en tiempo real de conectividad directa a internet, estado y latencia de cada proxy corporativo, y lista detallada de usuarios permitidos y negados.
 - `/permisos` (o `/autorizados`): Abre el panel interactivo de control de acceso para listar usuarios y grupos autorizados, permitiendo revocar permisos con un solo toque.
 - `/reset_ia`: Reinicia el contexto conversacional del asistente IA.
 

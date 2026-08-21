@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import json
 import html
 import logging
@@ -165,6 +166,10 @@ def load_proxies_list() -> list[dict]:
     return proxies
 
 
+ACTIVE_CONNECTION_LABEL = "Conexión Directa"
+ACTIVE_PROXY_URL = None
+
+
 def select_working_connection(bot_token: str) -> str | None:
     """
     Evalúa la conectividad con Telegram Bot API:
@@ -172,6 +177,7 @@ def select_working_connection(bot_token: str) -> str | None:
     2. Si falla directa, prueba en orden los proxies configurados en config.json o bot.conf.
     3. Retorna la URL del proxy funcional (o None si la conexión directa funciona).
     """
+    global ACTIVE_CONNECTION_LABEL, ACTIVE_PROXY_URL
     url = f"https://api.telegram.org/bot{bot_token}/getMe"
 
     # 1. Probar conexión directa
@@ -179,6 +185,8 @@ def select_working_connection(bot_token: str) -> str | None:
         r = httpx.get(url, timeout=3.5)
         if r.status_code == 200 and r.json().get("ok"):
             logger.info("🌐 Conexión DIRECTA a Telegram verificada exitosamente.")
+            ACTIVE_CONNECTION_LABEL = "Conexión Directa"
+            ACTIVE_PROXY_URL = None
             return None
     except Exception as e:
         logger.warning(f"Conexión directa a Telegram no disponible ({e}). Evaluando proxies corporativos...")
@@ -197,11 +205,15 @@ def select_working_connection(bot_token: str) -> str | None:
             r = httpx.get(url, proxy=p_url, timeout=4.5)
             if r.status_code == 200 and r.json().get("ok"):
                 logger.info(f"🔄 Conectividad exitosa con Telegram vía [{p_name}]: {p_url}")
+                ACTIVE_CONNECTION_LABEL = f"Proxy: {p_name}"
+                ACTIVE_PROXY_URL = p_url
                 return p_url
         except Exception as e:
             logger.info(f"Proxy [{p_name}] no disponible: {e}")
 
     logger.warning("⚠️ No se pudo verificar ningún proxy ni conexión directa. Intentando conexión estándar...")
+    ACTIVE_CONNECTION_LABEL = "Conexión Estándar (Sin verificar)"
+    ACTIVE_PROXY_URL = None
     return None
 
 
@@ -631,6 +643,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         ]
         if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
             lines.append("🔐 <code>/permisos</code> - Administrar usuarios y grupos permitidos.")
+            lines.append("📊 <code>/botstatus</code> - Diagnóstico de red, proxies y estado de accesos.")
 
         await safe_reply_html(update.message, "\n".join(lines))
         return
@@ -657,6 +670,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
         help_lines.append("/permisos - Administrar usuarios y grupos permitidos (Owner)")
+        help_lines.append("/botstatus - Diagnóstico de red, proxies y accesos (Owner)")
 
     await safe_reply_html(update.message, "\n".join(help_lines))
 
@@ -1042,6 +1056,218 @@ async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await safe_reply_html(update.message, panel_text, reply_markup=reply_markup)
 
 
+def get_denied_users_summary() -> list[dict]:
+    """Extrae la lista de usuarios no autorizados registrados en el log de auditoría."""
+    audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
+    audit_path = BASE_DIR / audit_file_name
+    if not audit_path.exists():
+        return []
+
+    denied_map = {}
+    allowed_users = set(CONFIG.get("allowed_user_ids", []))
+    owner_id = CONFIG.get("owner_id", 0)
+    if owner_id:
+        allowed_users.add(owner_id)
+
+    try:
+        lines = audit_path.read_text(encoding="utf-8").splitlines()
+        for line in reversed(lines):
+            line = line.strip()
+            if not line or "NO AUTORIZADO" not in line:
+                continue
+
+            try:
+                date_match = re.search(r"\[(.*?)\]", line)
+                fecha = date_match.group(1) if date_match else "Desconocida"
+
+                id_match = re.search(r"ID:\s*(-?\d+)", line)
+                user_id = int(id_match.group(1)) if id_match else None
+
+                user_match = re.search(r"Username:\s*([^|]+)", line)
+                username = user_match.group(1).strip() if user_match else ""
+
+                name_match = re.search(r"Nombre:\s*([^|]+)", line)
+                nombre = name_match.group(1).strip() if name_match else "(sin nombre)"
+                if nombre.lower() == "none" or nombre == "None":
+                    nombre = "(sin nombre)"
+                nombre = nombre.replace(" None", "").strip()
+
+                if user_id and user_id not in allowed_users:
+                    if user_id not in denied_map:
+                        denied_map[user_id] = {
+                            "user_id": user_id,
+                            "username": username if username != "(sin username)" else "",
+                            "name": nombre,
+                            "last_seen": fecha
+                        }
+            except Exception:
+                continue
+    except Exception as e:
+        logger.warning(f"Error leyendo {audit_path}: {e}")
+
+    return list(denied_map.values())
+
+
+async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None = None, timeout: float = 3.5) -> dict:
+    """Verifica la conectividad y latencia hacia Telegram (directa o vía proxy)."""
+    t0 = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=timeout) as client:
+            r = await client.get(tg_url)
+            elapsed_ms = int((time.perf_counter() - t0) * 1000)
+            if r.status_code == 200 and r.json().get("ok"):
+                return {
+                    "name": name,
+                    "ok": True,
+                    "status_code": r.status_code,
+                    "elapsed_ms": elapsed_ms,
+                    "detail": f"Operativo (HTTP 200, {elapsed_ms} ms)"
+                }
+            return {
+                "name": name,
+                "ok": False,
+                "status_code": r.status_code,
+                "elapsed_ms": elapsed_ms,
+                "detail": f"HTTP {r.status_code} ({elapsed_ms} ms)"
+            }
+    except Exception as e:
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        err_str = "Timeout" if "timed out" in str(e).lower() else "Inaccesible"
+        return {
+            "name": name,
+            "ok": False,
+            "status_code": 0,
+            "elapsed_ms": elapsed_ms,
+            "detail": f"{err_str} ({elapsed_ms} ms)"
+        }
+
+
+async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Ejecuta un diagnóstico completo de conectividad, proxies, usuarios permitidos y negados (Exclusivo Owner)."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    if update.effective_user.id != owner_id:
+        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        return
+
+    # Mensaje temporal de espera
+    waiting_msg = None
+    try:
+        waiting_msg = await update.message.reply_text(
+            "⏳ <i>Ejecutando diagnóstico en tiempo real de red, proxies y accesos...</i>",
+            parse_mode='HTML'
+        )
+    except Exception:
+        pass
+
+    bot_token = CONFIG.get("bot_token", "")
+    tg_url = f"https://api.telegram.org/bot{bot_token}/getMe"
+
+    # 1. Tareas concurrentes de diagnóstico de red
+    network_tasks = [
+        _check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=3.5)
+    ]
+
+    proxies_list = load_proxies_list()
+    for p in proxies_list:
+        p_name = p.get("name", "Proxy")
+        p_url = p.get("url")
+        if p_url:
+            network_tasks.append(_check_endpoint_health(p_name, tg_url, p_url, timeout=3.5))
+
+    network_results = await asyncio.gather(*network_tasks)
+
+    # 2. Resolución de datos de usuarios y grupos
+    allowed_users = CONFIG.get("allowed_user_ids", [])
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+
+    owner_name, owner_username = await _resolve_user_info(context.bot, owner_id)
+    owner_tag = f" ({owner_username})" if owner_username else ""
+
+    # Usuarios permitidos adicionales
+    other_users = [u for u in allowed_users if u != owner_id]
+    user_info_tasks = [_resolve_user_info(context.bot, uid) for uid in other_users]
+    group_info_tasks = [_resolve_group_info(context.bot, gid) for gid in allowed_groups]
+
+    user_info_results = await asyncio.gather(*user_info_tasks) if user_info_tasks else []
+    group_info_results = await asyncio.gather(*group_info_tasks) if group_info_tasks else []
+
+    # 3. Usuarios negados del log de auditoría
+    denied_users = get_denied_users_summary()
+
+    # 4. Construir reporte estructurado
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    active_channel = ACTIVE_CONNECTION_LABEL or "Conexión Directa"
+
+    lines = [
+        "📊 <b>Informe de Estado y Diagnóstico del Bot</b>",
+        f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>",
+        "",
+        "═══════════════════════════════",
+        "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>",
+        "═══════════════════════════════"
+    ]
+
+    for res in network_results:
+        icon = "🟢" if res["ok"] else "🔴"
+        lines.append(f"• <b>{html.escape(res['name'])}:</b>\n   {icon} <code>{html.escape(res['detail'])}</code>")
+
+    lines.append("")
+    lines.append(f"🔄 <b>Canal Activo del Bot:</b> <code>{html.escape(active_channel)}</code>")
+
+    lines.append("")
+    lines.append("═══════════════════════════════",)
+    lines.append("👥 <b>CONTROL DE ACCESO DE USUARIOS</b>")
+    lines.append("═══════════════════════════════")
+    lines.append(f"👑 <b>Creador / Owner:</b> {html.escape(owner_name)}{html.escape(owner_tag)} [<code>{owner_id}</code>]")
+    lines.append("")
+
+    lines.append("✅ <b>Usuarios Permitidos:</b>")
+    if not other_users:
+        lines.append("• <i>(No hay usuarios adicionales en la lista)</i>")
+    else:
+        for idx, (uid, (uname, uuser)) in enumerate(zip(other_users, user_info_results), 1):
+            utag = f" ({uuser})" if uuser else ""
+            lines.append(f"{idx}. 👤 <b>Usuario:</b> {html.escape(uname)}{html.escape(utag)}\n   🆔 <b>ID de Telegram:</b> <code>{uid}</code>")
+
+    lines.append("")
+    lines.append("🏢 <b>Grupos Permitidos:</b>")
+    if not allowed_groups:
+        lines.append("• <i>(No hay grupos en la lista)</i>")
+    else:
+        for idx, (gid, gtitle) in enumerate(zip(allowed_groups, group_info_results), 1):
+            lines.append(f"{idx}. 👥 <b>Grupo:</b> {html.escape(gtitle)}\n   🆔 <b>ID de Chat:</b> <code>{gid}</code>")
+
+    lines.append("")
+    lines.append("⛔ <b>Usuarios Negados / No Autorizados:</b>")
+    if not denied_users:
+        lines.append("• <i>(No hay usuarios bloqueados o negados recientemente)</i>")
+    else:
+        for idx, duser in enumerate(denied_users, 1):
+            dtag = f" ({duser['username']})" if duser['username'] else ""
+            lines.append(
+                f"{idx}. 🚫 <b>Usuario:</b> {html.escape(duser['name'])}{html.escape(dtag)}\n"
+                f"   🆔 <b>ID de Telegram:</b> <code>{duser['user_id']}</code>\n"
+                f"   ⏰ <b>Último Intento:</b> <code>{duser['last_seen']}</code>"
+            )
+
+    report_text = "\n".join(lines)
+
+    if waiting_msg:
+        try:
+            await waiting_msg.edit_text(report_text, parse_mode='HTML')
+            return
+        except Exception:
+            try:
+                await waiting_msg.delete()
+            except Exception:
+                pass
+
+    await safe_reply_html(update.message, report_text)
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -1249,7 +1475,10 @@ def main() -> None:
         "permisos",
         "autorizados",
         "whitelist",
-        "usuarios"
+        "usuarios",
+        "botstatus",
+        "statusbot",
+        "estado_bot"
     }
 
     # Comandos base
@@ -1260,6 +1489,9 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner gestione permisos
     application.add_handler(CommandHandler(["permisos", "autorizados", "whitelist", "usuarios"], manage_permissions))
+
+    # Comando exclusivo para que el Owner verifique estado de red, proxies y accesos
+    application.add_handler(CommandHandler(["botstatus", "statusbot", "estado_bot"], bot_status))
 
     # Callback query handler para botones de autorización interactiva y revocación
     application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group):"))

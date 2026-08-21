@@ -235,7 +235,20 @@ Configuración aplicada en `commands.json`:
    - Añadidos `"auto_proxy_failover": true` y `"proxies": []` en `config.json` y `config.example.json`.
 
 --------------------------------------------------------------------------------
-14. ESTADO FINAL DE VERIFICACIÓN
+14. DECIMOTERCERA INTERVENCIÓN (2026-08-21): COMANDO EXCLUSIVO /botstatus (DIAGNÓSTICO)
+--------------------------------------------------------------------------------
+1) Comando exclusivo para el Creador (`/botstatus` / `/statusbot`):
+   - Realiza diagnósticos en paralelo de la conexión directa a internet y de cada
+     proxy corporativo configurado (Squid / pfSense A, B, C, D) con medición de
+     latencia en milisegundos (`ms`) y código HTTP.
+   - Indica el canal activo utilizado por el bot (`Conexión Directa` o `Proxy`).
+   - Muestra la lista clasificada de usuarios y grupos permitidos (con nombres,
+     usernames e IDs).
+   - Analiza el log de auditoría (`intentos_acceso.log`) para mostrar los usuarios
+     negados / no autorizados con fecha y hora del último intento.
+
+--------------------------------------------------------------------------------
+15. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
