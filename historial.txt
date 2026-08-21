@@ -200,7 +200,22 @@ Configuración aplicada en `commands.json`:
      botones de autorización; si otro usuario intenta pulsarlos, se emite una alerta.
 
 --------------------------------------------------------------------------------
-12. ESTADO FINAL DE VERIFICACIÓN
+12. UNDÉCIMA INTERVENCIÓN (2026-08-21): COMANDO EXCLUSIVO /permisos Y REVOCACIÓN DE ACCESOS
+--------------------------------------------------------------------------------
+1) Comando exclusivo para el Creador (`/permisos` / `/autorizados`):
+   - Muestra un panel interactivo con la lista completa de usuarios y grupos
+     autorizados actualmente.
+   - Protegido por verificación de identidad (solo accesible por `owner_id`).
+2) Botones interactivos de Revocación (`❌ Revocar`):
+   - Cada usuario o grupo adicional en la lista cuenta con su propio botón inline
+     para ser retirado de forma instantánea.
+   - Al pulsar revocar, el ID es eliminado de `allowed_user_ids` o `allowed_group_ids`,
+     se persiste inmediatamente en `config.json` y se re-renderiza el panel en vivo.
+   - Se envía una notificación al usuario revocado informándole que su acceso
+     ha sido denegado.
+
+--------------------------------------------------------------------------------
+13. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

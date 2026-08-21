@@ -519,13 +519,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
     if not commands_enabled:
-        interactive_msg = (
-            "🤖 <b>Monitor Valle Seco (Modo Interactivo)</b>\n\n"
-            "¡Hola! Los comandos del sistema se encuentran desactivados.\n\n"
-            "💬 <i>Escríbeme directamente cualquier consulta técnica o administrativa para interactuar con el asistente IA.</i>\n\n"
+        lines = [
+            "🤖 <b>Monitor Valle Seco (Modo Interactivo)</b>",
+            "",
+            "¡Hola! Los comandos del sistema se encuentran desactivados.",
+            "",
+            "💬 <i>Escríbeme directamente cualquier consulta técnica o administrativa para interactuar con el asistente IA.</i>",
+            "",
             "🧹 <code>/reset_ia</code> - Reinicia el contexto de la conversación."
-        )
-        await safe_reply_html(update.message, interactive_msg)
+        ]
+        if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
+            lines.append("🔐 <code>/permisos</code> - Administrar usuarios y grupos permitidos.")
+
+        await safe_reply_html(update.message, "\n".join(lines))
         return
 
     if context.args:
@@ -547,6 +553,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         help_lines.append(f"/{cmd_name} - {html.escape(desc)}")
 
     help_lines.append("/reset_ia - Reinicia la conversación con el asistente")
+
+    if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
+        help_lines.append("/permisos - Administrar usuarios y grupos permitidos (Owner)")
 
     await safe_reply_html(update.message, "\n".join(help_lines))
 
@@ -818,8 +827,69 @@ async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await safe_reply_html(update.message, unk_msg)
 
 
+def _build_permissions_panel() -> tuple[str, InlineKeyboardMarkup | None]:
+    """Construye el texto y el teclado interactivo para gestionar la lista de permitidos."""
+    owner_id = CONFIG.get("owner_id", 0)
+    allowed_users = CONFIG.get("allowed_user_ids", [])
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+
+    text_lines = [
+        "🔐 <b>Panel de Control de Acceso y Permisos</b>",
+        "",
+        f"👑 <b>Creador / Owner:</b> <code>{owner_id}</code> (Acceso Permanente)",
+        ""
+    ]
+
+    keyboard = []
+
+    # Usuarios adicionales
+    other_users = [u for u in allowed_users if u != owner_id]
+    text_lines.append("👤 <b>Usuarios Permitidos:</b>")
+    if not other_users:
+        text_lines.append("• <i>(No hay usuarios adicionales en la lista)</i>")
+    else:
+        for uid in other_users:
+            text_lines.append(f"• ID: <code>{uid}</code>")
+            keyboard.append([
+                InlineKeyboardButton(f"❌ Revocar / Quitar Usuario: {uid}", callback_data=f"auth_revoke_user:{uid}")
+            ])
+
+    text_lines.append("")
+    # Grupos permitidos
+    text_lines.append("👥 <b>Grupos Permitidos:</b>")
+    if not allowed_groups:
+        text_lines.append("• <i>(No hay grupos en la lista)</i>")
+    else:
+        for gid in allowed_groups:
+            text_lines.append(f"• ID: <code>{gid}</code>")
+            keyboard.append([
+                InlineKeyboardButton(f"❌ Revocar / Quitar Grupo: {gid}", callback_data=f"auth_revoke_group:{gid}")
+            ])
+
+    if keyboard:
+        text_lines.append("")
+        text_lines.append("ℹ️ <i>Presiona un botón para retirar a un usuario o grupo y revocar su acceso inmediatamente.</i>")
+
+    reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+    return "\n".join(text_lines), reply_markup
+
+
+async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el panel de gestión de permisos exclusivo para el creador del bot."""
+    if not update.effective_user:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    if update.effective_user.id != owner_id:
+        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        return
+
+    panel_text, reply_markup = _build_permissions_panel()
+    await safe_reply_html(update.message, panel_text, reply_markup=reply_markup)
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Maneja la acción de los botones inline de Permitir/Denegar presionados por el creador del bot."""
+    """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
     if not query or not query.data:
         return
@@ -829,7 +899,7 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Seguridad: Solo el owner puede interactuar con estos botones de autorización
     if clicker_id != owner_id:
-        await query.answer("⛔ Solo el creador del bot tiene permiso para autorizar o denegar usuarios.", show_alert=True)
+        await query.answer("⛔ Solo el creador del bot tiene permiso para gestionar accesos.", show_alert=True)
         return
 
     try:
@@ -886,7 +956,6 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             logger.info(f"No se pudo notificar directamente al usuario {target_user_id}: {e}")
 
     elif action == "auth_deny":
-        # Si estuviera en la lista, se retira
         allowed_list = CONFIG.setdefault("allowed_user_ids", [])
         if target_user_id in allowed_list:
             allowed_list.remove(target_user_id)
@@ -923,6 +992,62 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         except Exception as e:
             logger.info(f"No se pudo notificar al usuario {target_user_id}: {e}")
 
+    elif action == "auth_revoke_user":
+        allowed_list = CONFIG.setdefault("allowed_user_ids", [])
+        if target_user_id in allowed_list:
+            allowed_list.remove(target_user_id)
+            save_config()
+            logger.info(f"Usuario {target_user_id} revocado y guardado en config.json por el creador {clicker_id}")
+
+        await query.answer(f"✅ Usuario {target_user_id} revocado de la lista.")
+
+        # Re-renderizar panel de permisos actualizado
+        panel_text, reply_markup = _build_permissions_panel()
+        try:
+            await query.edit_message_text(
+                text=panel_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass
+
+        # Notificar al usuario revocado
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text="⛔ <b>Acceso Revocado</b>\n\nEl administrador ha revocado tu autorización para interactuar con este bot.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.info(f"No se pudo notificar al usuario revocado {target_user_id}: {e}")
+
+    elif action == "auth_revoke_group":
+        allowed_groups = CONFIG.setdefault("allowed_group_ids", [])
+        if target_user_id in allowed_groups:
+            allowed_groups.remove(target_user_id)
+            save_config()
+            logger.info(f"Grupo {target_user_id} revocado y guardado en config.json por el creador {clicker_id}")
+
+        await query.answer(f"✅ Grupo {target_user_id} revocado de la lista.")
+
+        # Re-renderizar panel de permisos actualizado
+        panel_text, reply_markup = _build_permissions_panel()
+        try:
+            await query.edit_message_text(
+                text=panel_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass
+
 
 def main() -> None:
     bot_token = CONFIG.get("bot_token")
@@ -939,7 +1064,11 @@ def main() -> None:
         "ayuda",
         "reset_ia",
         "reset_chat",
-        "borrar_chat"
+        "borrar_chat",
+        "permisos",
+        "autorizados",
+        "whitelist",
+        "usuarios"
     }
 
     # Comandos base
@@ -948,8 +1077,11 @@ def main() -> None:
     # Comando para reiniciar conversación IA
     application.add_handler(CommandHandler(["reset_ia", "reset_chat", "borrar_chat"], reset_chat))
 
-    # Callback query handler para botones de autorización interactiva
-    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny):"))
+    # Comando exclusivo para que el Owner gestione permisos
+    application.add_handler(CommandHandler(["permisos", "autorizados", "whitelist", "usuarios"], manage_permissions))
+
+    # Callback query handler para botones de autorización interactiva y revocación
+    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group):"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
