@@ -181,7 +181,26 @@ Configuración aplicada en `commands.json`:
    - `.gitignore` actualizado para ignorar `*.log` y `intentos_acceso.log`.
 
 --------------------------------------------------------------------------------
-11. ESTADO FINAL DE VERIFICACIÓN
+11. DÉCIMA INTERVENCIÓN (2026-08-21): BOTONES INTERACTIVOS DE AUTORIZACIÓN (ALLOW/DENY)
+--------------------------------------------------------------------------------
+1) Botones Inline en las alertas al creador:
+   - Se añadieron botones interactivos `[✅ Permitir / Autorizar]` y `[❌ Denegar]`
+     al mensaje de alerta enviado a `owner_id`.
+2) Autorización con un solo clic y persistencia:
+   - Al pulsar `Permitir`, el usuario es agregado en tiempo real a `allowed_user_ids`
+     en memoria y se persiste automáticamente en `config.json` mediante `save_config()`.
+   - Se actualiza el mensaje de alerta del creador mostrando el sello de estado
+     `✅ ESTADO: AUTORIZADO Y AGREGADO` y quién lo autorizó.
+   - Se notifica al usuario autorizado vía Telegram que su acceso ha sido aprobado.
+3) Denegación de acceso:
+   - Al pulsar `Denegar`, se retira al usuario si estuviera en la lista, se guarda
+     el cambio, se actualiza el mensaje de alerta y se notifica al usuario.
+4) Control de seguridad:
+   - Únicamente el creador (`owner_id`) tiene permiso para interactuar con los
+     botones de autorización; si otro usuario intenta pulsarlos, se emite una alerta.
+
+--------------------------------------------------------------------------------
+12. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

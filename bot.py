@@ -9,9 +9,9 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 
 async def safe_reply_html(message_obj, text: str, **kwargs) -> None:
@@ -104,6 +104,18 @@ def load_config() -> dict:
         default_config["commands_enabled"] = os.getenv("COMMANDS_ENABLED").strip().lower() in ("true", "1", "yes")
 
     return default_config
+
+
+def save_config() -> bool:
+    """Guarda la configuración actual en config.json asegurando persistencia de cambios."""
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(CONFIG, f, indent=2, ensure_ascii=False)
+        logger.info(f"Configuración guardada exitosamente en {CONFIG_PATH}")
+        return True
+    except Exception as e:
+        logger.error(f"Error al guardar configuración en {CONFIG_PATH}: {e}")
+        return False
 
 
 def load_commands_data() -> tuple[dict, dict]:
@@ -249,7 +261,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await safe_reply_html(update.message, user_reply)
 
-    # 3. Notificar en tiempo real al owner
+    # 3. Notificar en tiempo real al owner con botones interactivos de autorización
     owner_id = CONFIG.get("owner_id", 0)
     if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
         owner_alert = (
@@ -261,10 +273,19 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"📝 <b>Mensaje enviado:</b>\n<pre>{html.escape(msg_text)}</pre>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>"
         )
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Permitir / Autorizar", callback_data=f"auth_allow:{user_id}"),
+                InlineKeyboardButton("❌ Denegar", callback_data=f"auth_deny:{user_id}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         try:
             await context.bot.send_message(
                 chat_id=owner_id,
                 text=owner_alert,
+                reply_markup=reply_markup,
                 parse_mode='HTML'
             )
         except Exception as e:
@@ -797,6 +818,112 @@ async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await safe_reply_html(update.message, unk_msg)
 
 
+async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja la acción de los botones inline de Permitir/Denegar presionados por el creador del bot."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+
+    # Seguridad: Solo el owner puede interactuar con estos botones de autorización
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el creador del bot tiene permiso para autorizar o denegar usuarios.", show_alert=True)
+        return
+
+    try:
+        action, target_id_str = query.data.split(":", 1)
+        target_user_id = int(target_id_str)
+    except (ValueError, IndexError):
+        await query.answer("⚠️ Datos de solicitud inválidos.")
+        return
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    admin_name = query.from_user.full_name or f"@{query.from_user.username or 'admin'}"
+
+    # Recuperar texto original del mensaje
+    original_text = query.message.text_html if query.message else ""
+    if not original_text and query.message and query.message.text:
+        original_text = html.escape(query.message.text)
+
+    if action == "auth_allow":
+        allowed_list = CONFIG.setdefault("allowed_user_ids", [])
+        if target_user_id not in allowed_list:
+            allowed_list.append(target_user_id)
+            save_config()
+            logger.info(f"Usuario {target_user_id} autorizado y guardado en config.json por el creador {clicker_id}")
+
+        await query.answer(f"✅ Usuario {target_user_id} autorizado exitosamente.")
+
+        # Actualizar mensaje del owner retirando los botones
+        status_badge = (
+            f"\n\n═══════════════════════════════\n"
+            f"✅ <b>ESTADO: AUTORIZADO Y AGREGADO</b>\n"
+            f"👮 <b>Por:</b> {html.escape(admin_name)}\n"
+            f"⏰ <b>Fecha:</b> <code>{now_str}</code>"
+        )
+        try:
+            await query.edit_message_text(
+                text=original_text + status_badge,
+                parse_mode='HTML',
+                reply_markup=None
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+
+        # Notificar al usuario aprobado
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text="🎉 <b>¡Acceso Autorizado!</b>\n\nEl administrador ha aprobado tu acceso. Ya puedes interactuar con el bot libremente.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.info(f"No se pudo notificar directamente al usuario {target_user_id}: {e}")
+
+    elif action == "auth_deny":
+        # Si estuviera en la lista, se retira
+        allowed_list = CONFIG.setdefault("allowed_user_ids", [])
+        if target_user_id in allowed_list:
+            allowed_list.remove(target_user_id)
+            save_config()
+
+        await query.answer(f"❌ Acceso denegado para {target_user_id}.")
+
+        # Actualizar mensaje del owner retirando los botones
+        status_badge = (
+            f"\n\n═══════════════════════════════\n"
+            f"❌ <b>ESTADO: ACCESO DENEGADO</b>\n"
+            f"👮 <b>Por:</b> {html.escape(admin_name)}\n"
+            f"⏰ <b>Fecha:</b> <code>{now_str}</code>"
+        )
+        try:
+            await query.edit_message_text(
+                text=original_text + status_badge,
+                parse_mode='HTML',
+                reply_markup=None
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+
+        # Notificar al usuario rechazado
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text="⛔ <b>Solicitud Denegada</b>\n\nEl administrador ha rechazado tu solicitud de acceso a este bot.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.info(f"No se pudo notificar al usuario {target_user_id}: {e}")
+
+
 def main() -> None:
     bot_token = CONFIG.get("bot_token")
 
@@ -820,6 +947,9 @@ def main() -> None:
 
     # Comando para reiniciar conversación IA
     application.add_handler(CommandHandler(["reset_ia", "reset_chat", "borrar_chat"], reset_chat))
+
+    # Callback query handler para botones de autorización interactiva
+    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny):"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
