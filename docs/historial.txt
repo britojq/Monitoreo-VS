@@ -359,7 +359,22 @@ Configuración aplicada en `commands.json`:
    - Aplica actualizaciones automáticamente y notifica al Owner con el reporte de novedades.
 
 --------------------------------------------------------------------------------
-22. ESTADO FINAL DE VERIFICACIÓN
+22. VIGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-24): ESTILIZACIÓN DE REPORTES Y COMANDOS DIRECTOS DE DEBUG
+--------------------------------------------------------------------------------
+1) Refactorización y Estilización Visual de Reportes (`config/mensajes.conf`):
+   - Actualización de la convención de estatus con iconos limpios (✅ Operativo, ⚠️ Advertencia, 🚫 Falla).
+   - Incorporación de barras divisoras superior e inferior ajustadas al ancho de los títulos.
+   - Formateo de cabeceras institucionales, datos de contexto, impacto al SEN y lema en negrita.
+   - Sincronización homogénea de estilos para Servicios (`MENSAJEA`), Sedes (`MENSAJEC`) y depuración (`MENSAJEDEBUGA`, `MENSAJEDEBUGB`).
+2) Comandos Personales de Depuración Directa Exclusivos para el Owner:
+   - `/debug_servicios` - Reporte exhaustivo de todos los servicios (A a Z) con plantilla `MENSAJEDEBUGA` y adjunto técnico `servicelog.txt`.
+   - `/debug_sedes` - Reporte exhaustivo de todas las sedes y equipos (A a H) con plantilla `MENSAJEDEBUGB` y adjunto técnico `servicelog.txt`.
+   - `/debug_completo` - Reporte técnico integral exhaustivo (Servicios + Sedes) + `servicelog.txt`.
+   - Integración en el menú principal `/start`, `/help` y `/ayuda` en chat privado con el Owner.
+   - Blindaje de seguridad: Si un usuario no autorizado intenta ejecutarlos, la petición es bloqueada, registrada en `audit/intentos_acceso.log` y notificada en tiempo real al Owner.
+
+--------------------------------------------------------------------------------
+23. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

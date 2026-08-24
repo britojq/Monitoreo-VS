@@ -755,14 +755,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
-            "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Activar/desactivar modo depuración y generación técnica de <code>servicelog.txt</code>.\n",
-            "📢 <b>Comunicación Institucional Masiva</b>",
-            "• <code>/mensaje &lt;texto&gt;</code> <i>(/broadcast, /difusion)</i> - Emitir comunicados oficiales firmados por el Bot a todos los usuarios y grupos autorizados.\n",
             "📊 <b>Monitoreo e Infraestructura de Red</b>",
-            "• <code>/servicios</code> <i>(/reporte_servicios)</i> - Chequeo concurrente de Servicios Corporativos y páginas web.",
-            "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo concurrente de Sedes y Enlaces de Comunicación.",
+            "• <code>/servicios</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos y páginas web.",
+            "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación.",
             "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
+            "🧪 <b>Diagnóstico Exhaustivo y Depuración (Exclusivo Owner)</b>",
+            "• <code>/debug_servicios</code> - Reporte exhaustivo de todos los servicios (A a Z) con plantilla <code>MENSAJEDEBUGA</code> + <code>servicelog.txt</code>.",
+            "• <code>/debug_sedes</code> - Reporte exhaustivo de todas las sedes y equipos con plantilla <code>MENSAJEDEBUGB</code> + <code>servicelog.txt</code>.",
+            "• <code>/debug_completo</code> <i>(/debug_monitoreo)</i> - Reporte técnico integral exhaustivo (Servicios + Sedes) + <code>servicelog.txt</code>.",
+            "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Conmutar interruptor de modo depuración global para todos los reportes.\n",
             "🧠 <b>ASISTENTE (IA)</b>",
             "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
             "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
@@ -1621,14 +1623,15 @@ async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYP
 async def _run_and_send_monitoring_report(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    target: str,
-    target_name: str
+    target: str = "completo",
+    target_name: str = "Infraestructura",
+    force_debug: bool = False
 ) -> None:
-    """Función unificada para procesar y despachar reportes de monitoreo."""
+    """Función unificada para ejecutar chequeos concurrentes y enviar reportes a Telegram."""
     if not update.effective_user or not update.message:
         return
 
-    # Verificar autorización general
+    # Verificar autorización general del usuario
     if not await check_authorization(update, context):
         return
 
@@ -1637,10 +1640,62 @@ async def _run_and_send_monitoring_report(
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
 
-    # Regla de seguridad 2: Solo el owner o usuarios dentro de los grupos autorizados
     is_owner = (user_id == owner_id)
     is_allowed_group = (chat_id in allowed_groups)
 
+    # Si es comando de debug directo, es estrictamente reservado para el Owner
+    if force_debug and not is_owner:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or f"/debug_{target}"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] DEBUG_DIRECTO DENEGADO ({target.upper()}) | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> Los reportes de depuración técnica directa (debug) son exclusivos para el Creador/Propietario del Bot."
+        )
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "⚠️ <b>Alerta: Intento de Reporte Debug Restringido</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📋 <b>Reporte Intentado:</b> <code>{html.escape(target_name)}</code>\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre solicitud debug denegada: {e}")
+
+        return
+
+    # Regla de seguridad 2: Solo el owner o usuarios dentro de los grupos autorizados
     if not is_owner and not is_allowed_group:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = update.effective_user
@@ -1705,8 +1760,11 @@ async def _run_and_send_monitoring_report(
         )
         return
 
-    # Determinar si se ejecuta en modo depuración (solo si el owner lo tiene activado)
-    is_debug = bool(CONFIG.get("monitor_debug_mode", False)) if is_owner else False
+    # Determinar si se ejecuta en modo depuración
+    if force_debug and is_owner:
+        is_debug = True
+    else:
+        is_debug = bool(CONFIG.get("monitor_debug_mode", False)) if is_owner else False
 
     # Mensaje temporal de espera
     wait_msg = await update.message.reply_text(
@@ -1763,6 +1821,36 @@ async def cmd_reporte_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def cmd_reporte_completo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando para ejecutar y despachar el reporte completo (Servicios + Sedes)."""
     await _run_and_send_monitoring_report(update, context, target="completo", target_name="Servicios Corporativos y Sedes")
+
+
+async def cmd_debug_servicios(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de servicios (MENSAJEDEBUGA)."""
+    await _run_and_send_monitoring_report(
+        update, context,
+        target="servicios",
+        target_name="Servicios Corporativos (Debug Directo)",
+        force_debug=True
+    )
+
+
+async def cmd_debug_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de sedes (MENSAJEDEBUGB)."""
+    await _run_and_send_monitoring_report(
+        update, context,
+        target="sedes",
+        target_name="Sedes y Equipos (Debug Directo)",
+        force_debug=True
+    )
+
+
+async def cmd_debug_completo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner obtenga directamente el reporte técnico integral exhaustivo (Debug Directo)."""
+    await _run_and_send_monitoring_report(
+        update, context,
+        target="completo",
+        target_name="Servicios y Sedes (Debug Directo)",
+        force_debug=True
+    )
 
 
 async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2698,7 +2786,17 @@ def main() -> None:
         "update",
         "upgrade",
         "git_update",
-        "check_update"
+        "check_update",
+        "debug_servicios",
+        "debugservicios",
+        "servicios_debug",
+        "debug_sedes",
+        "debugsedes",
+        "sedes_debug",
+        "debug_completo",
+        "debugcompleto",
+        "debug_monitoreo",
+        "monitoreo_debug"
     }
 
     # Comandos base
@@ -2718,6 +2816,11 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner controle el Modo Depuración del Monitor
     application.add_handler(CommandHandler(["debug_monitor", "monitordebug"], toggle_debug_monitor))
+
+    # Comandos exclusivos para que el Owner ejecute directamente reportes en Modo Depuración
+    application.add_handler(CommandHandler(["debug_servicios", "debugservicios", "servicios_debug"], cmd_debug_servicios))
+    application.add_handler(CommandHandler(["debug_sedes", "debugsedes", "sedes_debug"], cmd_debug_sedes))
+    application.add_handler(CommandHandler(["debug_completo", "debugcompleto", "debug_monitoreo", "monitoreo_debug"], cmd_debug_completo))
 
     # Comando exclusivo para que el Owner bloquee/desbloquee comandos al resto de usuarios y grupos
     application.add_handler(CommandHandler(["bloqueo_comandos", "bloquear_comandos", "lock_commands", "pausar_comandos", "control_comandos"], toggle_commands_lock))
