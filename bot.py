@@ -1669,7 +1669,7 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             pass
 
         # 1. Enviar resumen al chat donde se originó la solicitud
-        await update.message.reply_text(result["summary_text"], parse_mode="Markdown")
+        await update.message.reply_text(result["summary_text"], parse_mode='HTML')
 
         # 2. Si fue solicitado por el Owner y está en modo depuración (o debug explícito), adjuntar reportes
         if is_owner and is_debug:
@@ -1697,7 +1697,7 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 await context.bot.send_message(
                     chat_id=owner_id,
                     text=f"📋 <b>Copia de Auditoría: Reporte de Red ejecutado en {html.escape(group_title)}</b>\n\n" + result["summary_text"],
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
                 if result.get("txt_report") and result["txt_report"].exists():
                     with open(result["txt_report"], "rb") as f:

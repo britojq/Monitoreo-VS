@@ -431,34 +431,35 @@ def build_txt_and_html_reports(
     storm_alert = (broadcast_count > 200 or multicast_v4 > 300 or multicast_v6 > 300)
 
     # -------------------------------------------------------------
-    # 1. RESUMEN EJECUTIVO PARA TELEGRAM
+    # 1. RESUMEN EJECUTIVO PARA TELEGRAM (HTML SEGURO)
     # -------------------------------------------------------------
     sum_lines = [
-        "🔍 *REPORTE DE ANÁLISIS DE RED (Debian)*",
-        f"*Fecha:* {fecha_str} {hora_str}",
-        f"*Interfaz:* `{interface}`",
-        f"*Red local:* `{my_ip}/{my_mask}`" if my_ip else "*Red local:* `N/A`",
-        f"*Duración de captura:* {duration_seconds}s",
-        f"*Paquetes capturados:* {pkt_count:,}",
-        f"*Hosts locales con MAC:* {len(hosts_local_con_mac)}",
-        f"*Hosts locales sin MAC:* {len(hosts_local_sin_mac)}",
-        f"*Hosts externos (WAN):* {total_externos}",
-        f"*Tráfico Sospechoso:* {total_suspicious} paquetes",
+        "🔍 <b>REPORTE DE ANÁLISIS DE RED (Debian)</b>",
+        f"<b>Fecha:</b> {html.escape(fecha_str)} {html.escape(hora_str)}",
+        f"<b>Interfaz:</b> <code>{html.escape(interface)}</code>",
+        f"<b>Red local:</b> <code>{html.escape(my_ip)}/{html.escape(my_mask)}</code>" if my_ip else "<b>Red local:</b> <code>N/A</code>",
+        f"<b>Duración de captura:</b> {duration_seconds}s",
+        f"<b>Paquetes capturados:</b> <code>{pkt_count:,}</code>",
+        f"<b>Hosts locales con MAC:</b> {len(hosts_local_con_mac)}",
+        f"<b>Hosts locales sin MAC:</b> {len(hosts_local_sin_mac)}",
+        f"<b>Hosts externos (WAN):</b> {total_externos}",
+        f"<b>Tráfico Sospechoso:</b> {total_suspicious} paquetes",
     ]
 
     if storm_alert:
-        sum_lines.append("⚠️ *ALERTA:* Tráfico anormal de Broadcast/Multicast detectado.")
+        sum_lines.append("⚠️ <b>ALERTA:</b> Tráfico anormal de Broadcast/Multicast detectado.")
 
     sum_lines.append("")
-    sum_lines.append("📊 *Top Dispositivos en la Red:*")
+    sum_lines.append("📊 <b>Top Dispositivos en la Red:</b>")
 
     for h in (hosts_local_con_mac + hosts_local_sin_mac)[:10]:
         icon = "🟢" if h.latency_ms > 0 else "⚪"
         lat_text = f"[{h.latency_ms} ms]" if h.latency_ms > 0 else "[Sin respuesta ICMP]"
-        auth_flag = " ⚠️(No autorizada)" if not h.is_authorized else ""
-        sum_lines.append(f"{icon} `{h.ip:<15}` • `{h.mac}`{auth_flag}\n   🏷️ _{h.hostname[:22]}_ {lat_text} (TX: {h.tx}, RX: {h.rx})")
+        auth_flag = " ⚠️ <i>(No autorizada)</i>" if not h.is_authorized else ""
+        h_name = html.escape(h.hostname[:22])
+        sum_lines.append(f"{icon} <code>{html.escape(h.ip):<15}</code> • <code>{html.escape(h.mac)}</code>{auth_flag}\n   🏷️ <i>{h_name}</i> <code>{lat_text}</code> (TX: {h.tx}, RX: {h.rx})")
 
-    sum_lines.append(f"\n📁 _Reportes detallados (.txt y .html) generados en audit/_")
+    sum_lines.append(f"\n📁 <i>Reportes detallados (.txt y .html) generados en audit/</i>")
     telegram_summary = "\n".join(sum_lines)
 
     # -------------------------------------------------------------
