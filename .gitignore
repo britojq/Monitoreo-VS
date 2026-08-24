@@ -16,5 +16,6 @@ config/*.token
 audit/*.log
 audit/*.txt
 audit/*.html
+audit/*.pcap
 intentos_acceso.log
 !audit/.gitkeep
