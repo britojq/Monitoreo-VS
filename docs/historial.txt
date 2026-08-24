@@ -325,11 +325,46 @@ Configuración aplicada en `commands.json`:
    - Notificación de alerta al Owner y registro en `audit/intentos_acceso.log`.
 
 --------------------------------------------------------------------------------
-19. ESTADO FINAL DE VERIFICACIÓN
+19. DECIMOCTAVA INTERVENCIÓN (2026-08-24): DIFUSIÓN MASIVA / BROADCAST Y CONTROL DE COMANDOS
+--------------------------------------------------------------------------------
+1) Función de Broadcast Institucional (`/mensaje` / `/broadcast` / `/difusion`):
+   - Exclusivo para el Owner para emitir comunicados oficiales a todos los usuarios y grupos autorizados.
+   - Formato formal con cabecera y firma de la administración.
+   - Reporte de entrega detallado e individual enviado al Owner.
+2) Control Global de Comandos (`/bloqueo_comandos`):
+   - Permite al Owner pausar temporalmente el uso de comandos a los usuarios y grupos mediante
+     parámetros (`on`/`off`) o botones interactivos inline, manteniendo acceso 100% para el Owner.
+
+--------------------------------------------------------------------------------
+20. DECIMONOVENA INTERVENCIÓN (2026-08-24): REESTRUCTURACIÓN DE MENÚS Y AVISO LEGAL/SEGURIDAD
+--------------------------------------------------------------------------------
+1) Separación de Menús por Privacidad:
+   - En chat privado con el Owner: Se despliega el panel administrativo completo.
+   - En grupos autorizados o para otros usuarios: Se muestra el panel funcional general (`COMANDOS FUNCIONALES DEL BOT`).
+2) Integración de Advertencia de Seguridad y Aviso Legal (`docs/texto-aviso.md`):
+   - Antepuesto a los mensajes de acceso denegado a usuarios no autorizados.
+   - Adjuntado como recordatorio legal al aprobar el acceso a nuevos usuarios.
+   - Comando público `/info` (alias `/aviso`, `/legal`, `/terminos`) para consultar términos y confidencialidad.
+
+--------------------------------------------------------------------------------
+21. VIGÉSIMA INTERVENCIÓN (2026-08-24): MÓDULO DE ACTUALIZACIÓN GIT Y SERVICIO AUTÓNOMO CADA 48H
+--------------------------------------------------------------------------------
+1) Actualizador Seguro desde Git (`monitor/system_updater.py` / `/actualizar`):
+   - Comprueba versión local contra `origin/master` e inspecciona commits/archivos pendientes.
+   - Protege y respalda la carpeta `config/` (blindando credenciales y listas de acceso).
+   - Valida sintaxis Python con `py_compile` y reinicia el servicio systemd en segundo plano.
+2) Verificador y Actualizador Autónomo Periódico (cada 48 horas):
+   - Tarea en segundo plano iniciada con `on_post_init` en `bot.py`.
+   - Consulta el repositorio remoto cada 48h (configurable en `config.json`).
+   - Aplica actualizaciones automáticamente y notifica al Owner con el reporte de novedades.
+
+--------------------------------------------------------------------------------
+22. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
 - Conexión Ollama: Verificada la respuesta del modelo `qwen-empresa:latest` en http://localhost:11434.
+- Tareas en segundo plano: Verificador autónomo de actualizaciones Git cada 48h activo.
 
 --------------------------------------------------------------------------------
 6. GUÍA DE ADMINISTRACIÓN RÁPIDA
