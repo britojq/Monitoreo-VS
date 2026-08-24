@@ -17,18 +17,42 @@ logger = logging.getLogger(__name__)
 
 
 async def check_web(url: str, timeout: float = 4.0) -> Tuple[bool, str, str]:
-    """Verifica disponibilidad de una aplicación web vía HTTP/HTTPS."""
+    """
+    Verifica disponibilidad de una aplicación web vía HTTP/HTTPS utilizando
+    curl -k --ciphers 'DEFAULT:@SECLEVEL=0' -s -o /dev/null -w '%{http_code}'
+    para soportar servidores heredados y certificados SSL antiguos/corporativos.
+    """
     if not url or url.startswith("0.0.0.0"):
         return False, "0", "URL inválida o no configurada"
 
+    target_url = url if url.startswith(("http://", "https://")) else f"http://{url}"
+
     try:
-        async with httpx.AsyncClient(verify=False, timeout=timeout, follow_redirects=True) as client:
-            resp = await client.get(url)
-            code = resp.status_code
-            if code in (200, 301, 302, 307, 308):
-                return True, str(code), f"HTTP {code} OK"
-            return False, str(code), f"HTTP {code} Error"
-    except httpx.TimeoutException:
+        proc = await asyncio.create_subprocess_exec(
+            "curl",
+            "-k",
+            "--ciphers", "DEFAULT:@SECLEVEL=0",
+            "-s",
+            "-o", "/dev/null",
+            "-w", "%{http_code}",
+            "--connect-timeout", "3",
+            "--max-time", str(int(timeout)),
+            target_url,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 1.0)
+        code_str = stdout.decode("utf-8", errors="ignore").strip()
+
+        if code_str.isdigit():
+            code = int(code_str)
+            if code in (200, 301, 302, 307, 308, 401, 403):
+                return True, code_str, f"HTTP {code_str} OK"
+            elif code > 0:
+                return False, code_str, f"HTTP {code_str} Error"
+
+        return False, code_str or "0", "Sin respuesta (Timeout / Caído)"
+    except asyncio.TimeoutError:
         return False, "0", "Timeout al conectar al sitio web"
     except Exception as e:
         return False, "0", f"Error de conexión: {e}"
@@ -58,22 +82,39 @@ async def check_dns(dns_server: str, test_host: str, timeout: float = 3.5) -> Tu
 
 
 async def check_proxy(proxy_url: str, test_url: str = "https://core.telegram.org/bots", timeout: float = 4.5) -> Tuple[bool, str, str]:
-    """Verifica navegación a través de un proxy corporativo (Squid/pfSense)."""
+    """Verifica navegación a través de un proxy corporativo (Squid/pfSense) usando curl con SECLEVEL=0."""
     if not proxy_url:
         return False, "0", "Proxy no configurado"
 
-    target = test_url if test_url else "https://api.telegram.org"
+    target = test_url if test_url else "https://core.telegram.org/bots"
     try:
-        async with httpx.AsyncClient(proxy=proxy_url, verify=False, timeout=timeout) as client:
-            resp = await client.get(target)
-            code = resp.status_code
+        proc = await asyncio.create_subprocess_exec(
+            "curl",
+            "-x", proxy_url,
+            "-k",
+            "--ciphers", "DEFAULT:@SECLEVEL=0",
+            "-s",
+            "-o", "/dev/null",
+            "-w", "%{http_code}",
+            "--connect-timeout", "3",
+            "--max-time", str(int(timeout)),
+            target,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 1.0)
+        code_str = stdout.decode("utf-8", errors="ignore").strip()
+        if code_str.isdigit():
+            code = int(code_str)
             if code in (200, 301, 302):
-                return True, str(code), f"Proxy operativo (HTTP {code})"
-            return False, str(code), f"Proxy respondió HTTP {code}"
-    except httpx.TimeoutException:
+                return True, code_str, f"Proxy operativo (HTTP {code_str})"
+            elif code > 0:
+                return False, code_str, f"Proxy respondió HTTP {code_str}"
+        return False, code_str or "0", "Proxy no responde (Timeout / Caído)"
+    except asyncio.TimeoutError:
         return False, "0", "Timeout al probar proxy"
     except Exception as e:
-        return False, "0", f"Fallo de conexión por proxy: {e}"
+        return False, "0", f"Fallo al probar proxy: {e}"
 
 
 async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[bool, str, str]:
