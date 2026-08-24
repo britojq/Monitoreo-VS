@@ -734,6 +734,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         help_lines.append("/botstatus - Diagnóstico de red, proxies y accesos (Owner)")
         help_lines.append("/debug_monitor - Control del modo depuración del monitor (Owner)")
         help_lines.append("/limpiador - Diagnóstico de espacio y limpieza interactiva del sistema (Owner)")
+        help_lines.append("/mensaje <texto> - Enviar comunicado masivo / difusión a todos (Owner)")
         help_lines.append("/reporte_servicios - Chequeo de Servicios Corporativos")
         help_lines.append("/reporte_sedes - Chequeo de Sedes y Enlaces")
         help_lines.append("/reporte_completo - Chequeo Completo (Servicios + Sedes)")
@@ -1865,6 +1866,177 @@ async def handle_cleaner_callback(update: Update, context: ContextTypes.DEFAULT_
             pass
 
 
+async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión) a todos los usuarios y grupos autorizados."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    # 1. Seguridad: Exclusivo Owner
+    if user_id != owner_id:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/mensaje"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] BROADCAST DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> La difusión de mensajes globales (Broadcast) es una función reservada exclusivamente para el Creador/Propietario del Bot."
+        )
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento No Autorizado de Difusión Masiva (Broadcast)</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre intento de broadcast: {e}")
+
+        return
+
+    # 2. Extraer el texto del mensaje a difundir
+    raw_text = update.message.text or ""
+    parts = raw_text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        guide_text = (
+            "📢 <b>Panel de Difusión Masiva (Broadcast)</b>\n\n"
+            "<b>Uso del comando:</b>\n"
+            "<code>/mensaje &lt;texto del comunicado&gt;</code>\n\n"
+            "<b>Ejemplo:</b>\n"
+            "<code>/mensaje Estimado equipo, el día de hoy a las 15:00 se realizará mantenimiento preventivo.</code>\n\n"
+            "<i>El mensaje será enviado por el bot a todos los grupos autorizados y usuarios con acceso al sistema.</i>"
+        )
+        await safe_reply_html(update.message, guide_text)
+        return
+
+    broadcast_content = parts[1].strip()
+    if (broadcast_content.startswith('"') and broadcast_content.endswith('"')) or \
+       (broadcast_content.startswith("'") and broadcast_content.endswith("'")):
+        broadcast_content = broadcast_content[1:-1].strip()
+
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+    formatted_announcement = (
+        "📢 <b>COMUNICADO OFICIAL</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{html.escape(broadcast_content)}\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏛️ <i>Mensaje emitido por la Administración • {now_str}</i>"
+    )
+
+    # 3. Recopilar destinatarios
+    allowed_users = [uid for uid in CONFIG.get("allowed_user_ids", []) if uid != owner_id]
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+
+    total_destinatarios = len(allowed_users) + len(allowed_groups)
+
+    if total_destinatarios == 0:
+        await safe_reply_html(
+            update.message,
+            "⚠️ No hay usuarios ni grupos adicionales en la lista de autorizados para enviar la difusión."
+        )
+        return
+
+    wait_msg = await update.message.reply_text(
+        f"⏳ <i>Iniciando difusión masiva hacia {total_destinatarios} destino(s)... Por favor espere.</i>",
+        parse_mode='HTML'
+    )
+
+    success_count = 0
+    fail_count = 0
+    delivery_details = []
+
+    # 4. Enviar a Grupos Autorizados
+    for gid in allowed_groups:
+        g_title = await _resolve_group_info(context.bot, gid)
+        try:
+            await context.bot.send_message(
+                chat_id=gid,
+                text=formatted_announcement,
+                parse_mode='HTML'
+            )
+            success_count += 1
+            delivery_details.append(f"• 🟢 <b>Grupo:</b> {html.escape(g_title)} (<code>{gid}</code>) → <i>Entregado</i>")
+        except Exception as e:
+            fail_count += 1
+            err_msg = "Bloqueado o expulsado" if "forbidden" in str(e).lower() else "Error de envío"
+            delivery_details.append(f"• 🔴 <b>Grupo:</b> {html.escape(g_title)} (<code>{gid}</code>) → <i>{err_msg}</i>")
+            logger.warning(f"Fallo al enviar broadcast a grupo {gid}: {e}")
+
+    # 5. Enviar a Usuarios Autorizados
+    for uid in allowed_users:
+        u_name, u_uname = await _resolve_user_info(context.bot, uid)
+        u_label = f"{u_name} ({u_uname})" if u_uname else u_name
+        try:
+            await context.bot.send_message(
+                chat_id=uid,
+                text=formatted_announcement,
+                parse_mode='HTML'
+            )
+            success_count += 1
+            delivery_details.append(f"• 🟢 <b>Usuario:</b> {html.escape(u_label)} (<code>{uid}</code>) → <i>Entregado</i>")
+        except Exception as e:
+            fail_count += 1
+            err_msg = "Bot bloqueado por el usuario" if "forbidden" in str(e).lower() else "Chat no iniciado / Inaccesible"
+            delivery_details.append(f"• 🔴 <b>Usuario:</b> {html.escape(u_label)} (<code>{uid}</code>) → <i>{err_msg}</i>")
+            logger.warning(f"Fallo al enviar broadcast a usuario {uid}: {e}")
+
+    try:
+        await wait_msg.delete()
+    except Exception:
+        pass
+
+    # 6. Reporte Final al Owner
+    report_lines = [
+        "📊 <b>Reporte de Difusión Masiva (Broadcast)</b>",
+        "",
+        f"✅ <b>Envíos exitosos:</b> {success_count}",
+        f"❌ <b>Envíos fallidos:</b> {fail_count}",
+        f"👥 <b>Total destinos:</b> {total_destinatarios}",
+        "",
+        "📋 <b>Detalle de Entrega:</b>",
+        *delivery_details,
+        "",
+        "<i>El comunicado fue emitido y firmado por el Bot con éxito.</i>"
+    ]
+
+    await update.message.reply_text(
+        "\n".join(report_lines),
+        parse_mode='HTML'
+    )
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -2106,6 +2278,11 @@ def main() -> None:
         "limpiador",
         "limpieza",
         "cleaner",
+        "mensaje",
+        "broadcast",
+        "difusion",
+        "anuncio",
+        "comunicado",
         "reporte_servicios",
         "servicios",
         "reporte_sedes",
@@ -2136,6 +2313,9 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
+
+    # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)
+    application.add_handler(CommandHandler(["mensaje", "broadcast", "difusion", "anuncio", "comunicado"], cmd_broadcast_mensaje))
 
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
