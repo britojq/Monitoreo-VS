@@ -528,18 +528,25 @@ def markdown_to_telegram_html(text: str) -> str:
     # 3. Escapar caracteres HTML básicos en el texto general
     text = html.escape(text)
 
-    # 4. Títulos y subtítulos (# Título -> <b>Título</b>)
+    # 4. Normalizar viñetas de listas (* item o - item -> • item)
+    text = re.sub(r'^[ \t]*[\*\-][ \t]+', r'• ', text, flags=re.MULTILINE)
+
+    # 5. Títulos y subtítulos (# Título -> <b>Título</b>)
     text = re.sub(r'^(#{1,6})\s+(.+)$', r'<b>\2</b>', text, flags=re.MULTILINE)
 
-    # 5. Negrita (**texto** o __texto__)
+    # 6. Negrita + Cursiva (***texto*** o ___texto___)
+    text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<b><i>\1</i></b>', text, flags=re.DOTALL)
+    text = re.sub(r'___(.+?)___', r'<b><i>\1</i></b>', text, flags=re.DOTALL)
+
+    # 7. Negrita (**texto** o __texto__)
     text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
     text = re.sub(r'(?<![a-zA-Z0-9])__(.+?)__(?![a-zA-Z0-9])', r'<b>\1</b>', text, flags=re.DOTALL)
 
-    # 6. Cursiva (*texto* o _texto_)
+    # 8. Cursiva (*texto* o _texto_)
     text = re.sub(r'(?<!\*)\*([^\*\n]+)\*(?!\*)', r'<i>\1</i>', text)
     text = re.sub(r'(?<![a-zA-Z0-9_])_([^_\n]+)_(?![a-zA-Z0-9_])', r'<i>\1</i>', text)
 
-    # 7. Restaurar bloques de código multilínea <pre><code>...</code></pre>
+    # 9. Restaurar bloques de código multilínea <pre><code>...</code></pre>
     for idx, (lang, code_content) in enumerate(code_blocks):
         escaped_code = html.escape(code_content.strip('\r\n'))
         if lang:
@@ -548,7 +555,7 @@ def markdown_to_telegram_html(text: str) -> str:
             replacement = f'<pre><code>{escaped_code}</code></pre>'
         text = text.replace(f"QQQBLOCKCODE{idx}ZZZ", replacement)
 
-    # 8. Restaurar código inline <code>...</code>
+    # 10. Restaurar código inline <code>...</code>
     for idx, inline_content in enumerate(inline_codes):
         escaped_inline = html.escape(inline_content)
         replacement = f'<code>{escaped_inline}</code>'
