@@ -191,10 +191,8 @@ async def handle_start() -> int:
         "<i>Sistema operando en Debian GNU/Linux • CENCARATIT</i>"
     )
 
+    # Enviar alerta de arranque EXCLUSIVAMENTE al Owner
     recipients = [owner_id]
-    for gid in group_ids:
-        if gid and gid not in recipients:
-            recipients.append(gid)
 
     await send_telegram_alert(token, recipients, mensaje, proxies)
     return 0
