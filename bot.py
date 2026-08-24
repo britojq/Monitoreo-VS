@@ -1671,8 +1671,8 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # 1. Enviar resumen al chat donde se originó la solicitud
         await update.message.reply_text(result["summary_text"], parse_mode='HTML')
 
-        # 2. Si fue solicitado por el Owner y está en modo depuración (o debug explícito), adjuntar reportes
-        if is_owner and is_debug:
+        # 2. Si fue solicitado directamente por el Owner, adjuntar siempre los reportes TXT y HTML
+        if is_owner:
             if result.get("txt_report") and result["txt_report"].exists():
                 with open(result["txt_report"], "rb") as f:
                     await context.bot.send_document(
@@ -1690,7 +1690,7 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         caption="🌐 Reporte interactivo de análisis de red (HTML)"
                     )
 
-        # 3. Si fue solicitado desde el grupo de trabajo autorizado, enviar copia completa con archivos al Owner
+        # 3. Si fue solicitado desde el grupo de trabajo autorizado por otro miembro, enviar copia con archivos al Owner
         elif is_allowed_group and owner_id:
             try:
                 group_title = update.effective_chat.title or "Grupo Autorizado"
