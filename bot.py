@@ -754,6 +754,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
+            "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
             "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Activar/desactivar modo depuración y generación técnica de <code>servicelog.txt</code>.\n",
             "📢 <b>Comunicación Institucional Masiva</b>",
             "• <code>/mensaje &lt;texto&gt;</code> <i>(/broadcast, /difusion)</i> - Emitir comunicados oficiales firmados por el Bot a todos los usuarios y grupos autorizados.\n",
@@ -2248,6 +2249,140 @@ async def cmd_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await safe_reply_html(update.message, aviso_legal)
 
 
+async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id:
+        user = update.effective_user
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/actualizar"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] ACTUALIZAR DENEGADO | ID: {user.id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {update.effective_chat.id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception:
+            pass
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento No Autorizado de Actualización del Bot</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user.id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{update.effective_chat.id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>Acción bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(chat_id=owner_id, text=owner_alert, parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Error notificando al owner sobre intento de actualizacion: {e}")
+
+        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        return
+
+    from monitor.system_updater import build_update_dashboard, execute_git_update
+
+    # Si se pasa argumento 'now', 'apply', 'force' o 'si' -> aplicar directamente
+    if context.args:
+        arg = context.args[0].lower()
+        if arg in ("now", "apply", "aplicar", "force", "instalar", "si"):
+            wait_msg = await update.message.reply_text(
+                "⏳ <i>Descargando novedades desde GitHub y respaldando configuración...</i>",
+                parse_mode='HTML'
+            )
+            res = await execute_git_update()
+            try:
+                await wait_msg.delete()
+            except Exception:
+                pass
+            await update.message.reply_text(res, parse_mode='HTML')
+            return
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Comprobando repositorio remoto en GitHub (origin/master)...</i>",
+        parse_mode='HTML'
+    )
+    dashboard_text, keyboard = await build_update_dashboard()
+    try:
+        await wait_msg.delete()
+    except Exception:
+        pass
+
+    await safe_reply_html(update.message, dashboard_text, reply_markup=keyboard)
+
+
+async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones de actualización del sistema presionadas por el Owner."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el administrador puede gestionar actualizaciones.", show_alert=True)
+        return
+
+    from monitor.system_updater import build_update_dashboard, execute_git_update
+
+    action = query.data.replace("update_act:", "")
+
+    if action in ("check", "refresh"):
+        await query.answer("🔄 Verificando repositorio...")
+        dashboard_text, keyboard = await build_update_dashboard()
+        try:
+            await query.edit_message_text(
+                dashboard_text,
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+        except Exception:
+            pass
+        return
+
+    elif action in ("apply", "force"):
+        await query.answer("🚀 Aplicando actualización...")
+        try:
+            await query.edit_message_text(
+                "⏳ <b>Descargando actualización desde GitHub...</b>\n\n"
+                "• Respaldando archivos en <code>config/</code>...\n"
+                "• Ejecutando <code>git pull origin master</code>...\n"
+                "• Validando integridad de sintaxis...\n"
+                "• Preparando reinicio de servicio...",
+                parse_mode='HTML'
+            )
+        except Exception:
+            pass
+
+        res = await execute_git_update()
+        try:
+            await query.edit_message_text(res, parse_mode='HTML')
+        except Exception:
+            try:
+                await query.message.reply_text(res, parse_mode='HTML')
+            except Exception:
+                pass
+        return
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -2541,7 +2676,12 @@ def main() -> None:
         "info",
         "aviso",
         "legal",
-        "terminos"
+        "terminos",
+        "actualizar",
+        "update",
+        "upgrade",
+        "git_update",
+        "check_update"
     }
 
     # Comandos base
@@ -2568,6 +2708,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
+    # Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git
+    application.add_handler(CommandHandler(["actualizar", "update", "upgrade", "git_update", "check_update"], cmd_actualizar))
+
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)
     application.add_handler(CommandHandler(["mensaje", "broadcast", "difusion", "anuncio", "comunicado"], cmd_broadcast_mensaje))
 
@@ -2584,6 +2727,9 @@ def main() -> None:
 
     # Callback query handler para botones del limpiador del sistema
     application.add_handler(CallbackQueryHandler(handle_cleaner_callback, pattern=r"^cleaner_act:"))
+
+    # Callback query handler para botones del actualizador de sistema
+    application.add_handler(CallbackQueryHandler(handle_update_callback, pattern=r"^update_act:"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
