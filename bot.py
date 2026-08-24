@@ -727,13 +727,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo concurrente de Sedes y Enlaces de Comunicación.",
             "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
-            "🧠 <b>Asistente de Inteligencia Artificial (Ollama)</b>",
+            "🧠 <b>ASISTENTE (IA)</b>",
             "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
-            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>"
+            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>\n"
         ]
 
         if commands_enabled and COMMANDS:
-            owner_menu.append("\n⚙️ <b>Comandos Adicionales del Sistema:</b>")
+            owner_menu.append("⚙️ <b>Comandos Adicionales del Sistema:</b>")
             for cmd_name, cmd_info in COMMANDS.items():
                 desc = cmd_info.get("description", "Sin descripción")
                 owner_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
@@ -758,10 +758,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
         "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.\n",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🧠 <b>ASISTENTE INTELIGENTE (IA)</b>",
+        "🧠 <b>ASISTENTE (IA)</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
-        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>"
+        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n"
     ]
 
     if commands_enabled and COMMANDS:
