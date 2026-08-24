@@ -715,6 +715,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
+            "• <code>/bloqueo_comandos</code> <i>(/bloquear_comandos)</i> - Bloquear o reactivar el uso de comandos para usuarios y grupos.",
             "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
@@ -776,6 +777,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_dynamic_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja comandos dinámicos y soporta timeouts personalizados para tareas extensas."""
     if not await check_authorization(update, context):
+        return
+
+    # Regla de bloqueo global de comandos para usuarios/grupos activada por el Owner
+    if CONFIG.get("commands_locked_for_users", False) and update.effective_user.id != CONFIG.get("owner_id", 0):
+        await safe_reply_html(
+            update.message,
+            "🔒 <b>Comandos Temporalmente Desactivados:</b>\n"
+            "El Administrador ha deshabilitado temporalmente la ejecución de comandos para usuarios y grupos."
+        )
         return
 
     if not CONFIG.get("commands_enabled", True):
@@ -1465,6 +1475,108 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
+async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Permite al Owner bloquear o desbloquear la ejecución de comandos para el resto de usuarios y grupos."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id:
+        user = update.effective_user
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/bloqueo_comandos"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] BLOQUEO_COMANDOS DENEGADO | ID: {user.id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {update.effective_chat.id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception:
+            pass
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento No Autorizado de Gestión de Bloqueo de Comandos</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user.id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{update.effective_chat.id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>Acción bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(chat_id=owner_id, text=owner_alert, parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Error notificando al owner sobre intento de bloqueo: {e}")
+
+        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        return
+
+    current_status = bool(CONFIG.get("commands_locked_for_users", False))
+
+    if context.args:
+        arg = context.args[0].lower()
+        if arg in ("on", "activar", "activado", "bloquear", "lock", "true", "1", "si"):
+            CONFIG["commands_locked_for_users"] = True
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "🔒 <b>Bloqueo de Comandos: ACTIVADO</b>\n\n"
+                "A partir de ahora, los demás usuarios y los grupos <b>NO podrán ejecutar comandos</b>.\n"
+                "Tú como Administrador conservas el acceso total e ilimitado."
+            )
+            return
+        elif arg in ("off", "desactivar", "desactivado", "desbloquear", "unlock", "false", "0", "no"):
+            CONFIG["commands_locked_for_users"] = False
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "🔓 <b>Bloqueo de Comandos: DESACTIVADO</b>\n\n"
+                "Los usuarios y grupos autorizados <b>pueden volver a ejecutar comandos</b> normalmente."
+            )
+            return
+        elif arg in ("status", "estado", "ver"):
+            estado_txt = "🔒 <b>ACTIVADO (Comandos bloqueados para usuarios/grupos)</b>" if current_status else "🔓 <b>DESACTIVADO (Comandos habilitados)</b>"
+            await safe_reply_html(
+                update.message,
+                f"🛡️ <b>Estado del Control de Comandos:</b>\n{estado_txt}"
+            )
+            return
+
+    # Si no se pasó argumento, mostrar panel con botones interactivos
+    estado_str = "🔒 BLOQUEADOS PARA OTROS" if current_status else "🔓 HABILITADOS PARA TODOS"
+    keyboard = [
+        [
+            InlineKeyboardButton("🔒 Bloquear a Otros", callback_data="auth_toggle_cmd_lock:on"),
+            InlineKeyboardButton("🔓 Habilitar a Todos", callback_data="auth_toggle_cmd_lock:off")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    panel_msg = (
+        "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<b>Estado Actual:</b> <code>{estado_str}</code>\n\n"
+        "• <b>Bloquear:</b> Desactiva la ejecución de comandos para el grupo y usuarios autorizados.\n"
+        "• <b>Habilitar:</b> Restablece el uso de comandos a la normalidad.\n\n"
+        "<i>Tú como Administrador siempre mantendrás acceso completo e ilimitado a todas las herramientas.</i>"
+    )
+
+    await safe_reply_html(update.message, panel_msg, reply_markup=reply_markup)
+
+
 async def _run_and_send_monitoring_report(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -1540,6 +1652,16 @@ async def _run_and_send_monitoring_report(
             except Exception as e:
                 logger.error(f"No se pudo notificar al owner sobre solicitud de reporte restringido: {e}")
 
+        return
+
+    # Regla de bloqueo global de comandos para usuarios/grupos activada por el Owner
+    if CONFIG.get("commands_locked_for_users", False) and not is_owner:
+        await safe_reply_html(
+            update.message,
+            "🔒 <b>Comandos Temporalmente Desactivados:</b>\n"
+            "El Administrador ha deshabilitado temporalmente la ejecución de comandos para usuarios y grupos.\n\n"
+            "<i>Por favor contacte al administrador si requiere asistencia técnica.</i>"
+        )
         return
 
     # Determinar si se ejecuta en modo depuración (solo si el owner lo tiene activado)
@@ -1667,6 +1789,16 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             except Exception as e:
                 logger.error(f"No se pudo notificar al owner sobre intento de analisis_red: {e}")
 
+        return
+
+    # Regla de bloqueo global de comandos para usuarios/grupos activada por el Owner
+    if CONFIG.get("commands_locked_for_users", False) and not is_owner:
+        await safe_reply_html(
+            update.message,
+            "🔒 <b>Comandos Temporalmente Desactivados:</b>\n"
+            "El Administrador ha deshabilitado temporalmente la ejecución de comandos para usuarios y grupos.\n\n"
+            "<i>Por favor contacte al administrador si requiere asistencia técnica.</i>"
+        )
         return
 
     # Parsear argumentos opcionales (ej. /analisis_red 60, /analisis_red debug, /analisis_red 30 debug)
@@ -2107,6 +2239,27 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 pass
         return
 
+    if action == "auth_toggle_cmd_lock":
+        new_state = (target_id_str == "on")
+        CONFIG["commands_locked_for_users"] = new_state
+        save_config()
+        estado_label = "🔒 BLOQUEADOS PARA OTROS" if new_state else "🔓 HABILITADOS PARA TODOS"
+        await query.answer(f"Comandos {estado_label}")
+        if query.message:
+            try:
+                await query.edit_message_text(
+                    "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"<b>Estado Actual:</b> <code>{estado_label}</code>\n\n"
+                    f"Configuración guardada exitosamente.\n"
+                    f"{'Los demás usuarios y grupos tienen el uso de comandos temporalmente bloqueado.' if new_state else 'Los usuarios y grupos autorizados pueden usar los comandos normalmente.'}",
+                    parse_mode='HTML',
+                    reply_markup=None
+                )
+            except Exception:
+                pass
+        return
+
     try:
         target_user_id = int(target_id_str)
     except ValueError:
@@ -2305,6 +2458,11 @@ def main() -> None:
         "estado_bot",
         "debug_monitor",
         "monitordebug",
+        "bloqueo_comandos",
+        "bloquear_comandos",
+        "lock_commands",
+        "pausar_comandos",
+        "control_comandos",
         "limpiador",
         "limpieza",
         "cleaner",
@@ -2341,6 +2499,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner controle el Modo Depuración del Monitor
     application.add_handler(CommandHandler(["debug_monitor", "monitordebug"], toggle_debug_monitor))
 
+    # Comando exclusivo para que el Owner bloquee/desbloquee comandos al resto de usuarios y grupos
+    application.add_handler(CommandHandler(["bloqueo_comandos", "bloquear_comandos", "lock_commands", "pausar_comandos", "control_comandos"], toggle_commands_lock))
+
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
@@ -2355,8 +2516,8 @@ def main() -> None:
     # Comando de Análisis de Red Local (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["analisis_red", "red", "escaner_red", "network_scan"], cmd_analisis_red))
 
-    # Callback query handler para botones de autorización interactiva, revocación y debug toggle
-    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug):"))
+    # Callback query handler para botones de autorización interactiva, revocación, debug toggle y bloqueo de comandos
+    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug|toggle_cmd_lock):"))
 
     # Callback query handler para botones del limpiador del sistema
     application.add_handler(CallbackQueryHandler(handle_cleaner_callback, pattern=r"^cleaner_act:"))
