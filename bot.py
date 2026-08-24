@@ -748,7 +748,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 👥 MENÚ PARA USUARIOS Y MIEMBROS DE GRUPOS AUTORIZADOS
     # =========================================================================
     user_menu = [
-        "🤖 <b>PANEL DE ASISTENCIA Y MONITOREO TI</b>",
+        "🤖 <b>PANEL DE MONITOREO A.T.I.T</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
         "Tienes acceso a las siguientes funciones del sistema:\n",
