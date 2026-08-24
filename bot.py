@@ -2353,9 +2353,16 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
         # Notificar al usuario aprobado
         try:
+            aviso_legal = get_security_warning_html()
+            user_approval_msg = (
+                "🎉 <b>¡Acceso Autorizado!</b>\n\n"
+                "El administrador ha aprobado tu acceso. Ya puedes interactuar con el bot libremente.\n\n"
+                "📌 <b>RECUERDA QUE:</b>\n\n"
+                f"{aviso_legal}"
+            )
             await context.bot.send_message(
                 chat_id=target_user_id,
-                text="🎉 <b>¡Acceso Autorizado!</b>\n\nEl administrador ha aprobado tu acceso. Ya puedes interactuar con el bot libremente.",
+                text=user_approval_msg,
                 parse_mode='HTML'
             )
         except Exception as e:
