@@ -767,8 +767,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Conmutar interruptor de modo depuración global para todos los reportes.\n",
             "🧠 <b>ASISTENTE (IA)</b>",
             "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
-            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
-            "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentacion, en caso de obtener una solucion se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
+            "<i>Recuerda también que puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
+            "<i>📌 <b>Nota sobre la memoria:</b> Después de entregar la respuesta técnica detallada, el bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento hasta que se use el comando <code>/reset_ia</code> y reinicie para una nueva consulta referente a otro tema.</i>\n",
+            "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentación, en caso de obtener una solución se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
         ]
 
         if commands_enabled and COMMANDS:
@@ -801,8 +802,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🧠 <b>ASISTENTE (IA)</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
-        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n",
-        "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentacion, en caso de obtener una solucion se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
+        "<i>Recuerda también que puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n",
+        "<i>📌 <b>Nota sobre la memoria:</b> Después de entregar la respuesta técnica detallada, el bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento hasta que se use el comando <code>/reset_ia</code> y reinicie para una nueva consulta referente a otro tema.</i>\n",
+        "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentación, en caso de obtener una solución se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
     ]
 
     if commands_enabled and COMMANDS:
@@ -1061,8 +1063,17 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if success:
         append_to_history(context, "user", user_text)
         append_to_history(context, "assistant", answer)
+        # Recordatorio explícito al usuario sobre la memoria activa y el comando /reset_ia
+        memory_footer = (
+            "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>💡 <b>Nota:</b> El bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento "
+            "hasta que uses <code>/reset_ia</code> para iniciar una nueva consulta referente a otro tema.</i>"
+        )
+        answer_to_send = answer + memory_footer
+    else:
+        answer_to_send = answer
 
-    formatted_answer = markdown_to_telegram_html(answer)
+    formatted_answer = markdown_to_telegram_html(answer_to_send)
 
     for chunk in split_message(formatted_answer):
         await safe_reply_html(
