@@ -380,10 +380,21 @@ Configuración aplicada en `commands.json`:
    - Cualquier solicitud de monitoreo en chat privado por usuarios no administradores es rechazada con mensaje de acceso restringido, asentada en el log de auditoría (audit/intentos_acceso.log) y notificada en tiempo real con alerta roja al Owner.
 
 --------------------------------------------------------------------------------
-23. ESTADO FINAL DE VERIFICACIÓN
+24. VIGÉSIMA CUARTA INTERVENCIÓN (2026-08-24): MIGRACIÓN DE BOT TELEGRAM (@IA_ValleSeco_bot)
+--------------------------------------------------------------------------------
+1) Actualización de Credenciales y Tokens:
+   - Migración al nuevo bot oficial: `@IA_ValleSeco_bot` (Token: `8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU`).
+   - Actualización de `config/config.json` y `config/bot.conf`.
+   - Sincronización con el módulo de alertas de arranque y apagado (`monitor/boot_alert.py`).
+2) Verificación Operativa:
+   - Validación del token mediante llamada API a Telegram (`getMe`).
+   - Reinicio del servicio systemd `tg-admin-bot.service` con polling activo en el nuevo bot.
+
+--------------------------------------------------------------------------------
+25. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
-- Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).
+- Conexión Telegram: Autenticado como `@IA_ValleSeco_bot` (HTTP 200 OK).
 - Conexión Ollama: Verificada la respuesta del modelo `qwen-empresa:latest` en http://localhost:11434.
 - Tareas en segundo plano: Verificador autónomo de actualizaciones Git cada 48h activo.
 
