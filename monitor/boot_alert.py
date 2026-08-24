@@ -1,7 +1,8 @@
 """
 Módulo autónomo de detección de arranque y apagado del servidor.
 Detecta si el arranque es limpio o tras falla eléctrica / apagado forzado.
-Notifica a Telegram con soporte multi-proxy y espera activa de red.
+Notifica a Telegram con soporte multi-proxy y espera activa de red extendida.
+Exclusivo para el Administrador / Owner.
 """
 
 from __future__ import annotations
@@ -67,7 +68,7 @@ def get_local_ips() -> str:
 
 
 async def send_telegram_alert(token: str, chat_ids: List[int | str], message: str, proxies: List[dict] = None) -> bool:
-    """Envía la alerta a todos los chat_ids especificados probando directo y con proxies."""
+    """Envía la alerta a los chat_ids especificados probando directo y con proxies con reintentos."""
     if not token or not chat_ids:
         logger.error("Token o chat_ids vacíos")
         return False
@@ -86,60 +87,68 @@ async def send_telegram_alert(token: str, chat_ids: List[int | str], message: st
 
     for chat_id in chat_ids:
         delivered = False
-        for proxy_url in client_configs:
-            try:
-                async with httpx.AsyncClient(proxy=proxy_url, timeout=8.0) as client:
-                    resp = await client.post(url, json={
-                        "chat_id": chat_id,
-                        "text": message,
-                        "parse_mode": "HTML"
-                    })
-                    if resp.status_code == 200 and resp.json().get("ok"):
-                        logger.info(f"Mensaje entregado a {chat_id} exitosamente.")
-                        delivered = True
-                        success_any = True
-                        break
-            except Exception as e:
-                logger.debug(f"Fallo envío a {chat_id} via {'directo' if not proxy_url else proxy_url}: {e}")
+        for attempt in range(1, 4):
+            for proxy_url in client_configs:
+                try:
+                    async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0) as client:
+                        resp = await client.post(url, json={
+                            "chat_id": chat_id,
+                            "text": message,
+                            "parse_mode": "HTML"
+                        })
+                        if resp.status_code == 200 and resp.json().get("ok"):
+                            logger.info(f"Mensaje entregado a {chat_id} exitosamente (intento {attempt}).")
+                            delivered = True
+                            success_any = True
+                            break
+                except Exception as e:
+                    logger.debug(f"Fallo envío a {chat_id} (intento {attempt}) via {'directo' if not proxy_url else proxy_url}: {e}")
+
+            if delivered:
+                break
+            await asyncio.sleep(3)
 
         if not delivered:
-            logger.warning(f"No se pudo entregar la alerta al chat {chat_id}.")
+            logger.warning(f"No se pudo entregar la alerta al chat {chat_id} tras reintentos.")
 
     return success_any
 
 
-async def wait_for_network_and_telegram(token: str, proxies: List[dict], max_wait_seconds: int = 120) -> bool:
+async def wait_for_network_and_telegram(token: str, proxies: List[dict], max_wait_seconds: int = 240) -> bool:
     """Espera activamente a que la red y la API de Telegram estén accesibles tras el arranque."""
-    logger.info(f"Iniciando espera activa de conectividad (máximo {max_wait_seconds}s)...")
+    logger.info(f"Iniciando espera activa de conectividad (hasta {max_wait_seconds}s)...")
     url = f"https://api.telegram.org/bot{token}/getMe"
     
     elapsed = 0
-    step = 5
+    step = 4
     
     while elapsed < max_wait_seconds:
-        # Probar directo
+        # 1. Probar directo
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
+            async with httpx.AsyncClient(timeout=3.5) as client:
                 r = await client.get(url)
                 if r.status_code == 200 and r.json().get("ok"):
-                    logger.info(f"Conectividad con Telegram verificada exitosamente tras {elapsed}s.")
+                    logger.info(f"Conectividad con Telegram confirmada (Directo) tras {elapsed}s.")
                     return True
         except Exception:
             pass
 
-        # Probar proxies
+        # 2. Probar proxies
         if proxies:
             for p in proxies:
                 p_url = p.get("url") if isinstance(p, dict) else p
                 if p_url:
                     try:
-                        async with httpx.AsyncClient(proxy=p_url, timeout=4.0) as client:
+                        async with httpx.AsyncClient(proxy=p_url, timeout=3.5) as client:
                             r = await client.get(url)
                             if r.status_code == 200 and r.json().get("ok"):
-                                logger.info(f"Conectividad con Telegram verificada via proxy tras {elapsed}s.")
+                                logger.info(f"Conectividad con Telegram confirmada (Proxy: {p_url}) tras {elapsed}s.")
                                 return True
                     except Exception:
                         pass
+
+        if elapsed % 20 == 0 and elapsed > 0:
+            logger.info(f"Aún esperando conectividad con Telegram ({elapsed}s/{max_wait_seconds}s)...")
 
         await asyncio.sleep(step)
         elapsed += step
@@ -153,15 +162,16 @@ async def handle_start() -> int:
     config = load_config()
     token = config.get("bot_token")
     owner_id = config.get("owner_id")
-    group_ids = config.get("allowed_group_ids", [])
     proxies = config.get("proxies", [])
 
     if not token or not owner_id:
         logger.error("Configuración incompleta (bot_token u owner_id faltante).")
         return 0
 
-    # Esperar conectividad activa
-    await wait_for_network_and_telegram(token, proxies, max_wait_seconds=90)
+    # Esperar conectividad activa hasta 4 minutos (240 segundos)
+    connected = await wait_for_network_and_telegram(token, proxies, max_wait_seconds=240)
+    if not connected:
+        logger.warning("No se detectó salida a Internet tras 240s. Intentando envío final...")
 
     hostname = socket.gethostname()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -191,9 +201,8 @@ async def handle_start() -> int:
         "<i>Sistema operando en Debian GNU/Linux • CENCARATIT</i>"
     )
 
-    # Enviar alerta de arranque EXCLUSIVAMENTE al Owner
+    # Exclusivo para el Owner
     recipients = [owner_id]
-
     await send_telegram_alert(token, recipients, mensaje, proxies)
     return 0
 
