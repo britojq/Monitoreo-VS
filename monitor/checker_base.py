@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 import re
 import socket
 from typing import Tuple
@@ -14,6 +15,48 @@ from typing import Tuple
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+def get_active_network_interface(configured_iface: str = "eth0") -> str:
+    """
+    Verifica si la interfaz configurada existe físicamente en el sistema (/sys/class/net/).
+    Si está mal configurada o no existe, detecta y corrige automáticamente a la interfaz activa.
+    """
+    if configured_iface and Path(f"/sys/class/net/{configured_iface}").exists():
+        return configured_iface
+
+    # 1. Intentar detectar interfaz de ruta por defecto
+    try:
+        with open("/proc/net/route", "r") as f:
+            for line in f:
+                fields = line.strip().split()
+                if len(fields) >= 2 and fields[1] == "00000000":
+                    candidate = fields[0]
+                    if Path(f"/sys/class/net/{candidate}").exists():
+                        logger.warning(
+                            f"[!] ADVERTENCIA: La interfaz '{configured_iface}' no existe. "
+                            f"Corrigiendo automáticamente a la interfaz activa detectada: '{candidate}'"
+                        )
+                        return candidate
+    except Exception:
+        pass
+
+    # 2. Buscar primera interfaz activa no-loopback/no-virtual en /sys/class/net/
+    try:
+        net_dir = Path("/sys/class/net")
+        if net_dir.exists():
+            for iface_p in net_dir.iterdir():
+                iname = iface_p.name
+                if iname not in ("lo", "virbr0", "docker0") and not iname.startswith("veth"):
+                    logger.warning(
+                        f"[!] ADVERTENCIA: La interfaz '{configured_iface}' no existe. "
+                        f"Corrigiendo automáticamente a la interfaz detectada: '{iname}'"
+                    )
+                    return iname
+    except Exception:
+        pass
+
+    return configured_iface or "eth0"
 
 
 async def check_web(url: str, timeout: float = 4.0) -> Tuple[bool, str, str]:
@@ -144,22 +187,22 @@ async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[b
         return False, "0", f"Fallo al conectar a servidor SMTP ({ip}:{port_int}): {e}"
 
 
-async def check_dhcp(interface: str = "eth0", timeout: float = 5.0) -> Tuple[bool, str, str]:
-    """Verifica si un servidor DHCP ofrece concesiones en la red local."""
-    iface = interface if interface else "eth0"
+async def check_dhcp(interface: str = "eth0", timeout: float = 13.0) -> Tuple[bool, str, str]:
+    """Verifica si un servidor DHCP ofrece concesiones en la red local usando broadcast con nmap."""
+    active_iface = get_active_network_interface(interface)
     try:
         proc = await asyncio.create_subprocess_exec(
-            "sudo", "nmap", "--script", "broadcast-dhcp-discover", "-e", iface,
+            "sudo", "nmap", "--script", "broadcast-dhcp-discover", "-e", active_iface,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         out_str = stdout.decode("utf-8", errors="ignore")
-        if "DHCP Message Type: DHCPOFFER" in out_str:
-            return True, "200", "Servidor DHCP activo (DHCPOFFER recibido)"
-        return False, "0", "Servidor DHCP no responde u ofertas no recibidas"
+        if "DHCP Message Type: DHCPOFFER" in out_str or "IP Offered:" in out_str:
+            return True, "200", f"Servidor DHCP activo (DHCPOFFER recibido en {active_iface})"
+        return False, "0", f"Servidor DHCP no responde en {active_iface}"
     except asyncio.TimeoutError:
-        return False, "0", "Timeout en broadcast DHCP"
+        return False, "0", f"Timeout en broadcast DHCP ({active_iface})"
     except Exception as e:
         return False, "0", f"Error verificando DHCP: {e}"
 

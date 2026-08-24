@@ -44,9 +44,22 @@ def parse_bash_config(filepath: Path) -> Dict[str, str]:
             k, v = line.split("=", 1)
             k = k.strip()
             v = v.strip()
-            # Remover comillas simples o dobles
-            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-                v = v[1:-1]
+            # Si hay comentarios inline tras comillas o texto
+            if "#" in v:
+                if v.startswith('"') and '"' in v[1:]:
+                    last_quote = v.rfind('"')
+                    if last_quote != -1:
+                        v = v[:last_quote+1].strip()
+                elif v.startswith("'") and "'" in v[1:]:
+                    last_quote = v.rfind("'")
+                    if last_quote != -1:
+                        v = v[:last_quote+1].strip()
+                elif not v.startswith(('"', "'")):
+                    v = v.split("#", 1)[0].strip()
+
+            # Remover comillas simples o dobles envolventes
+            while (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                v = v[1:-1].strip()
             data[k] = v
     return data
 
