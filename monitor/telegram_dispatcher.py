@@ -58,16 +58,20 @@ class TelegramDispatcher:
         self,
         chat_id: int | str,
         text: str,
-        parse_mode: Optional[str] = "Markdown"
+        parse_mode: Optional[str] = "HTML"
     ) -> Tuple[bool, str]:
         """Envía un mensaje de texto formateado a Telegram."""
         if not self.token:
             return False, "Token de Telegram no configurado"
 
+        from monitor.checker_base import markdown_to_telegram_html
+
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
+        final_text = markdown_to_telegram_html(text) if parse_mode == "HTML" else text
+
         payload = {
             "chat_id": chat_id,
-            "text": text
+            "text": final_text
         }
         if parse_mode:
             payload["parse_mode"] = parse_mode
@@ -79,8 +83,9 @@ class TelegramDispatcher:
                 if r.status_code == 200 and r.json().get("ok"):
                     return True, "Mensaje enviado exitosamente"
 
-                # Si falló por formato de parse_mode (Markdown inválido), reintentar sin parse_mode
+                # Si falló por formato de parse_mode, reintentar en texto plano
                 if parse_mode and r.status_code == 400:
+                    payload["text"] = text
                     payload.pop("parse_mode", None)
                     r_retry = await client.post(url, data=payload)
                     if r_retry.status_code == 200 and r_retry.json().get("ok"):

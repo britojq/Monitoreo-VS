@@ -1782,13 +1782,23 @@ async def _run_and_send_monitoring_report(
         except Exception:
             pass
 
-        # Enviar reporte de servicios si aplica
+        # Enviar reporte de servicios si aplica (formateado a HTML)
         if result.get("report_servicios"):
-            await update.message.reply_text(result["report_servicios"])
+            html_svc = markdown_to_telegram_html(result["report_servicios"])
+            try:
+                await update.message.reply_text(html_svc, parse_mode='HTML')
+            except Exception as e_html:
+                logger.warning(f"Fallo envío en HTML de servicios ({e_html}). Enviando en texto plano...")
+                await update.message.reply_text(result["report_servicios"])
 
-        # Enviar reporte de sedes si aplica
+        # Enviar reporte de sedes si aplica (formateado a HTML)
         if result.get("report_sedes"):
-            await update.message.reply_text(result["report_sedes"])
+            html_sedes = markdown_to_telegram_html(result["report_sedes"])
+            try:
+                await update.message.reply_text(html_sedes, parse_mode='HTML')
+            except Exception as e_html:
+                logger.warning(f"Fallo envío en HTML de sedes ({e_html}). Enviando en texto plano...")
+                await update.message.reply_text(result["report_sedes"])
 
         # Si está en modo depuración y fue solicitado por el Owner, adjuntar el archivo de log
         if is_debug and is_owner and result.get("log_file") and result["log_file"].exists():
