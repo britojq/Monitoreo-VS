@@ -291,7 +291,23 @@ Configuración aplicada en `commands.json`:
    - Se ajustó `.gitignore` para proteger `config/config.json` y `audit/*.log`.
 
 --------------------------------------------------------------------------------
-17. ESTADO FINAL DE VERIFICACIÓN
+17. DECIMOSEXTA INTERVENCIÓN (2026-08-24): MÓDULO DE ANÁLISIS DE RED Y ESCANEO ASÍNCRONO
+--------------------------------------------------------------------------------
+1) Refactorización de `analisis_red_completo.sh`:
+   - Creación de `monitor/network_analyzer.py` para análisis y escaneo no bloqueante con `asyncio`.
+   - Descubrimiento ARP ultrarrápido con `arp-scan` y `/proc/net/arp` (~4.1s para toda la subred).
+   - Medición concurrente de latencia ICMP e identificación de anomalías (>150ms).
+   - Generación automática de resumen Telegram y reportes detallados en TXT y HTML bajo `audit/`.
+2) Integración en el Bot (`bot.py`):
+   - Registro del comando `/analisis_red` (alias `/red`, `/escaner_red`, `/network_scan`).
+   - Control de acceso granular: permitido exclusivamente al Owner y al grupo oficial de trabajo.
+   - Modo depuración: Si el Owner lo ejecuta con depuración activa (o `/analisis_red debug`),
+     recibe los reportes `.txt` y `.html` adjuntos en su chat privado.
+   - Seguridad y Auditoría: Intentos no autorizados son bloqueados, registrados en `audit/intentos_acceso.log`
+     y reportados en tiempo real al Owner.
+
+--------------------------------------------------------------------------------
+18. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

@@ -133,6 +133,7 @@ sudo systemctl start tg-admin-bot
 - `/reporte_servicios` (o `/servicios`): Ejecuta el chequeo asíncrono de los Servicios Corporativos (Web, DNS, Proxies, SMTP, DHCP, CUPS, LDAP, etc.) y genera el reporte formal.
 - `/reporte_sedes` (o `/sedes`, `/sitios`): Ejecuta el chequeo asíncrono de las Sedes físicas y sus equipos de comunicación (Routers, Switches, Taquillas).
 - `/reporte_completo` (o `/monitoreo`): Ejecuta ambos chequeos en paralelo y despacha los reportes estructurados.
+- `/analisis_red` (o `/red`, `/escaner_red`): Diagnóstico y escaneo avanzado de red local (ARP / ICMP), descubrimiento de hosts, cálculo de latencias y generación de reportes HTML/TXT.
 - `/permisos` (o `/autorizados`): Abre el panel interactivo de control de acceso para listar usuarios y grupos autorizados, permitiendo revocar permisos con un solo toque.
 - `/reset_ia`: Reinicia el contexto conversacional del asistente IA.
 

@@ -702,6 +702,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             lines.append("⚙️ <code>/reporte_servicios</code> - Ejecutar chequeo de Servicios Corporativos.")
             lines.append("🏢 <code>/reporte_sedes</code> - Ejecutar chequeo de Sedes y Enlaces.")
             lines.append("📋 <code>/reporte_completo</code> - Chequeo Completo (Servicios + Sedes).")
+            lines.append("🌐 <code>/analisis_red</code> - Análisis y escaneo avanzado de red local.")
 
         await safe_reply_html(update.message, "\n".join(lines))
         return
@@ -735,6 +736,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         help_lines.append("/reporte_servicios - Chequeo de Servicios Corporativos")
         help_lines.append("/reporte_sedes - Chequeo de Sedes y Enlaces")
         help_lines.append("/reporte_completo - Chequeo Completo (Servicios + Sedes)")
+        help_lines.append("/analisis_red - Análisis y escaneo avanzado de red local (ARP / ICMP)")
 
     await safe_reply_html(update.message, "\n".join(help_lines))
 
@@ -1568,6 +1570,123 @@ async def cmd_reporte_completo(update: Update, context: ContextTypes.DEFAULT_TYP
     await _run_and_send_monitoring_report(update, context, target="completo", target_name="Servicios Corporativos y Sedes")
 
 
+async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para ejecutar el análisis y diagnóstico avanzado de red local (ARP / ICMP)."""
+    if not update.effective_user or not update.message:
+        return
+
+    # Verificar autorización general
+    if not await check_authorization(update, context):
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    is_owner = (user_id == owner_id)
+    is_allowed_group = (chat_id in allowed_groups)
+
+    if not is_owner and not is_allowed_group:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/analisis_red"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] ANALISIS_RED DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> El análisis de red solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
+        )
+
+        if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "⚠️ <b>Alerta: Intento de Análisis de Red Restringido</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre intento de analisis_red: {e}")
+
+        return
+
+    # Verificar si se solicitó debug explícito o está activo por configuración
+    force_debug = False
+    if context.args and context.args[0].lower() in ("debug", "completo", "full"):
+        force_debug = True
+    is_debug = (bool(CONFIG.get("monitor_debug_mode", False)) or force_debug) if is_owner else False
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Iniciando escaneo y análisis avanzado de la red local... Por favor espere unos segundos.</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        from monitor.network_analyzer import execute_network_analysis
+        result = await execute_network_analysis()
+
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        # Enviar resumen a Telegram
+        await update.message.reply_text(result["summary_text"], parse_mode="Markdown")
+
+        # Si está en modo depuración y fue solicitado por el Owner, enviar archivos adjuntos HTML y TXT
+        if is_debug and is_owner:
+            if result.get("txt_report") and result["txt_report"].exists():
+                with open(result["txt_report"], "rb") as f:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=f,
+                        filename=result["txt_report"].name,
+                        caption="📄 Reporte detallado de análisis de red (TXT)"
+                    )
+            if result.get("html_report") and result["html_report"].exists():
+                with open(result["html_report"], "rb") as f:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=f,
+                        filename=result["html_report"].name,
+                        caption="🌐 Reporte interactivo de análisis de red (HTML)"
+                    )
+
+    except Exception as e:
+        logger.error(f"Error ejecutando análisis de red: {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error durante el escaneo de red:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error ejecutando análisis de red: {e}")
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -1812,7 +1931,11 @@ def main() -> None:
         "sedes",
         "sitios",
         "reporte_completo",
-        "monitoreo"
+        "monitoreo",
+        "analisis_red",
+        "red",
+        "escaner_red",
+        "network_scan"
     }
 
     # Comandos base
@@ -1834,6 +1957,9 @@ def main() -> None:
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
     application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
     application.add_handler(CommandHandler(["reporte_completo", "monitoreo"], cmd_reporte_completo))
+
+    # Comando de Análisis de Red Local (Owner y grupos autorizados)
+    application.add_handler(CommandHandler(["analisis_red", "red", "escaner_red", "network_scan"], cmd_analisis_red))
 
     # Callback query handler para botones de autorización interactiva, revocación y debug toggle
     application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug):"))

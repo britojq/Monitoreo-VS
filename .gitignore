@@ -14,5 +14,7 @@ config/*.token
 # Logs de auditoría y ejecución
 *.log
 audit/*.log
+audit/*.txt
+audit/*.html
 intentos_acceso.log
 !audit/.gitkeep
