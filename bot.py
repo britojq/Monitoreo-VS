@@ -418,7 +418,10 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # 2. Responder al usuario no autorizado
     if update.message and CONFIG.get("reply_unauthorized_user", True):
+        aviso_legal = get_security_warning_html()
         user_reply = (
+            f"{aviso_legal}\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⛔ <b>Acceso Restringido</b>\n\n"
             "No tienes autorización para interactuar con este bot.\n\n"
             f"Para solicitar acceso al administrador, proporciona tu ID:\n"
@@ -579,6 +582,31 @@ def split_message(text: str, limit: int = 4096) -> list:
     return chunks
 
 
+def get_security_warning_html() -> str:
+    """Lee y formatea el aviso legal y advertencia de seguridad desde docs/texto-aviso.md."""
+    aviso_path = PROJECT_ROOT / "docs" / "texto-aviso.md"
+    if aviso_path.exists():
+        try:
+            with open(aviso_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            if content:
+                return markdown_to_telegram_html(content)
+        except Exception as e:
+            logger.error(f"Error leyendo archivo de aviso legal ({aviso_path}): {e}")
+
+    # Fallback en caso de que no exista el archivo
+    return (
+        "<b>ADVERTENCIA DE SEGURIDAD</b>\n\n"
+        "Este BOT está protegido por un <b>Custodio de Registros</b>.\n\n"
+        "Toda la información contenida y procesada por este bot es de carácter Confidencial y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos.\n\n"
+        "<b>AVISO LEGAL</b>\n\n"
+        "Se registran y almacenan los datos <b>(ID:, Usuario, Dirección IP, Fecha, Hora y mensajes enviados)</b> en nuestros servidores en caso de utilizar el bot sin autorización esto con fines de auditoría y seguridad.\n\n"
+        "Cualquier <b>ACCESO NO AUTORIZADO</b>, intento de intrusión o uso indebido de la información será sancionado conforme a lo establecido en la Ley Contra los Delitos Informáticos, <b>Capítulos I y II, artículos 6, 7, 8, 9, 10, 11 y 13</b>.\n\n"
+        "<b>Si usted no cuenta con autorización para acceder a este bot o utilizar sus servicios, desconéctese y elimine inmediatamente.</b>\n\n"
+        "<b>La permanencia en esta chat constituye la aceptación de los términos aquí expuestos.</b>"
+    )
+
+
 def append_to_history(context: ContextTypes.DEFAULT_TYPE, role: str, content: str) -> None:
     """Guarda un mensaje en el historial del chat, con límite configurable."""
     max_history = int(CONFIG.get("ollama_max_history", 12))
@@ -718,7 +746,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
             "• <code>/bloqueo_comandos</code> <i>(/bloquear_comandos)</i> - Bloquear o reactivar el uso de comandos para usuarios y grupos.",
-            "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.\n",
+            "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
+            "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Activar/desactivar modo depuración y generación técnica de <code>servicelog.txt</code>.\n",
@@ -759,7 +788,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/servicios</code> - Consultar estado de los Servicios Corporativos.",
         "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
-        "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.\n",
+        "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.",
+        "• <code>/info</code> - Información legal, privacidad y advertencia de seguridad.\n",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "🧠 <b>ASISTENTE (IA)</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
@@ -2205,6 +2235,15 @@ async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 
+async def cmd_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el aviso legal, términos de confidencialidad y advertencia de seguridad del bot."""
+    if not update.effective_user or not update.message:
+        return
+
+    aviso_legal = get_security_warning_html()
+    await safe_reply_html(update.message, aviso_legal)
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -2487,11 +2526,18 @@ def main() -> None:
         "analisis_red",
         "red",
         "escaner_red",
-        "network_scan"
+        "network_scan",
+        "info",
+        "aviso",
+        "legal",
+        "terminos"
     }
 
     # Comandos base
     application.add_handler(CommandHandler(["start", "help", "ayuda"], start))
+
+    # Comando para información legal, privacidad y advertencia de seguridad
+    application.add_handler(CommandHandler(["info", "aviso", "legal", "terminos"], cmd_info))
 
     # Comando para reiniciar conversación IA
     application.add_handler(CommandHandler(["reset_ia", "reset_chat", "borrar_chat"], reset_chat))
