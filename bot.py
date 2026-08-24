@@ -1637,31 +1637,42 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         return
 
-    # Verificar si se solicitó debug explícito o está activo por configuración
+    # Parsear argumentos opcionales (ej. /analisis_red 60, /analisis_red debug, /analisis_red 30 debug)
+    duration = 120
     force_debug = False
-    if context.args and context.args[0].lower() in ("debug", "completo", "full"):
-        force_debug = True
+
+    if context.args:
+        for arg in context.args:
+            arg_clean = arg.strip().lower()
+            if arg_clean.isdigit():
+                val = int(arg_clean)
+                if 5 <= val <= 600:
+                    duration = val
+            elif arg_clean in ("debug", "completo", "full"):
+                force_debug = True
+
     is_debug = (bool(CONFIG.get("monitor_debug_mode", False)) or force_debug) if is_owner else False
 
     wait_msg = await update.message.reply_text(
-        "⏳ <i>Iniciando escaneo y análisis avanzado de la red local... Por favor espere unos segundos.</i>",
+        f"⏳ <b>Iniciando captura de tráfico en tiempo real ({duration}s) con tcpdump y análisis profundo con tshark...</b>\n\n"
+        "<i>Analizando protocolos, calculando volumen TX/RX, detectando tráfico sospechoso, tormentas de broadcast y midiendo latencias. Por favor espere.</i>",
         parse_mode='HTML'
     )
 
     try:
         from monitor.network_analyzer import execute_network_analysis
-        result = await execute_network_analysis()
+        result = await execute_network_analysis(duration_seconds=duration)
 
         try:
             await wait_msg.delete()
         except Exception:
             pass
 
-        # Enviar resumen a Telegram
+        # 1. Enviar resumen al chat donde se originó la solicitud
         await update.message.reply_text(result["summary_text"], parse_mode="Markdown")
 
-        # Si está en modo depuración y fue solicitado por el Owner, enviar archivos adjuntos HTML y TXT
-        if is_debug and is_owner:
+        # 2. Si fue solicitado por el Owner y está en modo depuración (o debug explícito), adjuntar reportes
+        if is_owner and is_debug:
             if result.get("txt_report") and result["txt_report"].exists():
                 with open(result["txt_report"], "rb") as f:
                     await context.bot.send_document(
@@ -1678,6 +1689,34 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         filename=result["html_report"].name,
                         caption="🌐 Reporte interactivo de análisis de red (HTML)"
                     )
+
+        # 3. Si fue solicitado desde el grupo de trabajo autorizado, enviar copia completa con archivos al Owner
+        elif is_allowed_group and owner_id:
+            try:
+                group_title = update.effective_chat.title or "Grupo Autorizado"
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=f"📋 <b>Copia de Auditoría: Reporte de Red ejecutado en {html.escape(group_title)}</b>\n\n" + result["summary_text"],
+                    parse_mode='Markdown'
+                )
+                if result.get("txt_report") and result["txt_report"].exists():
+                    with open(result["txt_report"], "rb") as f:
+                        await context.bot.send_document(
+                            chat_id=owner_id,
+                            document=f,
+                            filename=result["txt_report"].name,
+                            caption=f"📄 Reporte TXT ({group_title})"
+                        )
+                if result.get("html_report") and result["html_report"].exists():
+                    with open(result["html_report"], "rb") as f:
+                        await context.bot.send_document(
+                            chat_id=owner_id,
+                            document=f,
+                            filename=result["html_report"].name,
+                            caption=f"🌐 Reporte HTML ({group_title})"
+                        )
+            except Exception as e:
+                logger.error(f"Error enviando copia de auditoría al Owner: {e}")
 
     except Exception as e:
         logger.error(f"Error ejecutando análisis de red: {e}", exc_info=True)
