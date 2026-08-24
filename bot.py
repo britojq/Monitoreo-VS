@@ -1063,17 +1063,16 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if success:
         append_to_history(context, "user", user_text)
         append_to_history(context, "assistant", answer)
-        # Recordatorio explícito al usuario sobre la memoria activa y el comando /reset_ia
-        memory_footer = (
+
+    formatted_answer = markdown_to_telegram_html(answer)
+
+    if success:
+        # Recordatorio explícito al usuario sobre la memoria activa y el comando /reset_ia (en HTML puro)
+        formatted_answer += (
             "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "<i>💡 <b>Nota:</b> El bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento "
             "hasta que uses <code>/reset_ia</code> para iniciar una nueva consulta referente a otro tema.</i>"
         )
-        answer_to_send = answer + memory_footer
-    else:
-        answer_to_send = answer
-
-    formatted_answer = markdown_to_telegram_html(answer_to_send)
 
     for chunk in split_message(formatted_answer):
         await safe_reply_html(
