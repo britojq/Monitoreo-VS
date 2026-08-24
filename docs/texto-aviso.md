@@ -6,7 +6,9 @@ Este BOT está protegido por un **Custodio de Registros**.
 
 Toda la información contenida y procesada por este bot es de carácter Confidencial y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos.
 
-# AVISO LEGAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ **AVISO LEGAL**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Se registran y almacenan los datos **(ID:, Usuario, Dirección IP, Fecha, Hora y mensajes enviados)** en nuestros servidores en caso de utilizar el bot sin autorización esto con fines de auditoría y seguridad.
 
