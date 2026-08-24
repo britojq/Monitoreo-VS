@@ -709,7 +709,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # =========================================================================
     if is_owner:
         owner_menu = [
-            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR SUPREMO</b>",
+            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             f"¡Bienvenido, <b>{html.escape(display_name)}</b>! A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
