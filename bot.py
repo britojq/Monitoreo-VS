@@ -682,8 +682,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     owner_id = CONFIG.get("owner_id", 0)
     user = update.effective_user
+    chat = update.effective_chat
     user_id = user.id if user else 0
     is_owner = (user_id == owner_id)
+    is_private = (chat.type == "private") if chat else False
 
     # Si se solicitó ayuda específica de un comando (/help comando)
     if context.args:
@@ -705,9 +707,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
     # =========================================================================
-    # 👑 MENÚ PERSONALIZADO EXCLUSIVO PARA EL PROPIETARIO / CREADOR (OWNER)
+    # 👑 MENÚ PERSONALIZADO EXCLUSIVO PARA EL PROPIETARIO (SOLO EN CHAT PRIVADO)
     # =========================================================================
-    if is_owner:
+    if is_owner and is_private:
         owner_menu = [
             "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
