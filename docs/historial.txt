@@ -291,23 +291,41 @@ Configuración aplicada en `commands.json`:
    - Se ajustó `.gitignore` para proteger `config/config.json` y `audit/*.log`.
 
 --------------------------------------------------------------------------------
-17. DECIMOSEXTA INTERVENCIÓN (2026-08-24): MÓDULO DE ANÁLISIS DE RED Y ESCANEO ASÍNCRONO
+17. DECIMOSEXTA INTERVENCIÓN (2026-08-24): MÓDULO DE ANÁLISIS DE RED Y ESCANEO 1:1 CON PCAP
 --------------------------------------------------------------------------------
-1) Refactorización de `analisis_red_completo.sh`:
+1) Refactorización 1:1 de `analisis_red_completo.sh`:
    - Creación de `monitor/network_analyzer.py` para análisis y escaneo no bloqueante con `asyncio`.
-   - Descubrimiento ARP ultrarrápido con `arp-scan` y `/proc/net/arp` (~4.1s para toda la subred).
-   - Medición concurrente de latencia ICMP e identificación de anomalías (>150ms).
-   - Generación automática de resumen Telegram y reportes detallados en TXT y HTML bajo `audit/`.
-2) Integración en el Bot (`bot.py`):
+   - Captura de paquetes en tiempo real con `tcpdump` (120s por defecto o configurable).
+   - Inspección profunda con `tshark`: cálculo de paquetes TX (enviados) y RX (recibidos),
+     detección de tráfico sospechoso fuera de puertos comunes y detección de storm broadcast/multicast.
+   - Generación automática de resumen Telegram en HTML sanitizado, reporte Markdown (`.md`) y reporte Web (`.html`).
+2) Integración y Despacho en el Bot (`bot.py`):
    - Registro del comando `/analisis_red` (alias `/red`, `/escaner_red`, `/network_scan`).
-   - Control de acceso granular: permitido exclusivamente al Owner y al grupo oficial de trabajo.
-   - Modo depuración: Si el Owner lo ejecuta con depuración activa (o `/analisis_red debug`),
-     recibe los reportes `.txt` y `.html` adjuntos en su chat privado.
+   - Envío de archivos `.md` y `.html` tanto al Owner como al Grupo Autorizado.
    - Seguridad y Auditoría: Intentos no autorizados son bloqueados, registrados en `audit/intentos_acceso.log`
      y reportados en tiempo real al Owner.
 
 --------------------------------------------------------------------------------
-18. ESTADO FINAL DE VERIFICACIÓN
+18. DECIMOSÉPTIMA INTERVENCIÓN (2026-08-24): MÓDULO INTERACTIVO DE LIMPIEZA Y DIAGNÓSTICO DEL SISTEMA
+--------------------------------------------------------------------------------
+1) Refactorización 1:1 de `limpiador.sh` (`monitor/system_cleaner.py`):
+   - Módulo asíncrono que realiza diagnóstico completo de almacenamiento (`df -h /`, inodos `df -i /`).
+   - Detección de directorios no estándar en `/`, archivos grandes (>100M) en zonas sensibles
+     y mayores archivos (>200M) en el sistema.
+   - Panel de control interactivo mediante botones inline (`InlineKeyboardMarkup`) en Telegram:
+     * 🧹 Limpiar Caché APT (`apt-get clean`)
+     * 🗑️ Autoremove Purge (`apt-get autoremove --purge -y`)
+     * 📜 Reducir Journal a 50M (`journalctl --vacuum-size=50M`)
+     * 🗄️ Borrar Logs Rotados en `/var/log` (`*.gz`, `*.[0-9]`, `*.old`)
+     * ⚡ Ejecutar Limpieza Total Segura (todas las rutinas simultáneas)
+     * 🔄 Actualizar Diagnóstico en tiempo real
+2) Control Exclusivo para el Propietario / Creador (`owner_id`):
+   - Comando `/limpiador` (alias `/limpieza`, `/cleaner`): Exclusivo del Owner.
+   - Bloqueo estricto si es invocado por cualquier otro usuario o desde grupos.
+   - Notificación de alerta al Owner y registro en `audit/intentos_acceso.log`.
+
+--------------------------------------------------------------------------------
+19. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

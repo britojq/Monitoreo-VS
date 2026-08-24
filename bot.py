@@ -733,6 +733,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         help_lines.append("/permisos - Administrar usuarios y grupos permitidos (Owner)")
         help_lines.append("/botstatus - Diagnóstico de red, proxies y accesos (Owner)")
         help_lines.append("/debug_monitor - Control del modo depuración del monitor (Owner)")
+        help_lines.append("/limpiador - Diagnóstico de espacio y limpieza interactiva del sistema (Owner)")
         help_lines.append("/reporte_servicios - Chequeo de Servicios Corporativos")
         help_lines.append("/reporte_sedes - Chequeo de Sedes y Enlaces")
         help_lines.append("/reporte_completo - Chequeo Completo (Servicios + Sedes)")
@@ -1728,6 +1729,142 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await safe_reply_html(update.message, f"❌ Error ejecutando análisis de red: {e}")
 
 
+async def cmd_limpiador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para diagnóstico de almacenamiento y limpieza interactiva del sistema (EXCLUSIVO OWNER)."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    if user_id != owner_id:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/limpiador"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] LIMPIADOR DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> El limpiador y optimizador del sistema es una herramienta administrativa crítica reservada exclusivamente para el Creador/Propietario del Bot."
+        )
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento de Acceso a Herramienta de Limpieza del Sistema</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente porque este comando es exclusivo del Owner.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre intento de limpiador: {e}")
+
+        return
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Analizando almacenamiento, inodos y cachés del sistema... Por favor espere unos segundos.</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        from monitor.system_cleaner import build_cleaner_dashboard
+        dashboard_text, keyboard = await build_cleaner_dashboard()
+
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        await update.message.reply_text(
+            dashboard_text,
+            parse_mode='HTML',
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.error(f"Error generando panel de limpieza: {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error generando panel de limpieza:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error: {e}")
+
+
+async def handle_cleaner_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones interactivas del panel de limpieza."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el creador del bot puede ejecutar acciones de limpieza del sistema.", show_alert=True)
+        return
+
+    try:
+        action = query.data.split(":", 1)[1]
+    except IndexError:
+        await query.answer("⚠️ Solicitud inválida.")
+        return
+
+    from monitor.system_cleaner import execute_clean_task, build_cleaner_dashboard
+
+    if action == "refresh":
+        await query.answer("🔄 Actualizando diagnóstico del sistema...")
+        dashboard_text, keyboard = await build_cleaner_dashboard()
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+    await query.answer("⚙️ Ejecutando limpieza en el sistema...")
+
+    result_banner = await execute_clean_task(action)
+    dashboard_text, keyboard = await build_cleaner_dashboard()
+
+    full_message = f"{result_banner}\n\n═══════════════════════════════\n\n{dashboard_text}"
+
+    try:
+        await query.edit_message_text(
+            full_message,
+            parse_mode='HTML',
+            reply_markup=keyboard
+        )
+    except Exception:
+        try:
+            await query.message.reply_text(result_banner, parse_mode='HTML')
+        except Exception:
+            pass
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -1966,6 +2103,9 @@ def main() -> None:
         "estado_bot",
         "debug_monitor",
         "monitordebug",
+        "limpiador",
+        "limpieza",
+        "cleaner",
         "reporte_servicios",
         "servicios",
         "reporte_sedes",
@@ -1994,6 +2134,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner controle el Modo Depuración del Monitor
     application.add_handler(CommandHandler(["debug_monitor", "monitordebug"], toggle_debug_monitor))
 
+    # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
+    application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
+
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
     application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
@@ -2004,6 +2147,9 @@ def main() -> None:
 
     # Callback query handler para botones de autorización interactiva, revocación y debug toggle
     application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug):"))
+
+    # Callback query handler para botones del limpiador del sistema
+    application.add_handler(CallbackQueryHandler(handle_cleaner_callback, pattern=r"^cleaner_act:"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
