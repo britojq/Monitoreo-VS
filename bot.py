@@ -757,7 +757,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
         "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.\n",
-        "🧠 <b>Asistente Inteligente (IA)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🧠 <b>ASISTENTE INTELIGENTE (IA)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
         "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>"
     ]
