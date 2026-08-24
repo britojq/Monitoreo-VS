@@ -273,7 +273,25 @@ Configuración aplicada en `commands.json`:
      `intentos_acceso.log` y reportado al Owner con botones de autorización.
 
 --------------------------------------------------------------------------------
-16. ESTADO FINAL DE VERIFICACIÓN
+16. DECIMOQUINTA INTERVENCIÓN (2026-08-24): REORGANIZACIÓN ESTRUCTURAL DEL PROYECTO
+--------------------------------------------------------------------------------
+1) Creación de carpetas temáticas y centralización:
+   - `config/`: Centraliza todas las configuraciones (`config.json`, `config.example.json`,
+     `commands.json`, `bot.conf`, `monitoreo.conf`, `mensajes.conf`).
+   - `audit/`: Almacena exclusivamente los logs de auditoría y seguridad (`intentos_acceso.log`).
+   - `ai/`: Agrupa archivos del modelo Ollama (`Modelfile.txt`, `parametros.txt`, `system_prompt.txt`).
+   - `docs/`: Centraliza bitácoras históricas y referencias técnicas (`historial.txt`, `referencias-bot-telegram.txt`).
+   - `monitor/`: Paquete modular de chequeo asíncrono en Python.
+2) Limpieza de la raíz del proyecto:
+   - En la raíz se preservan únicamente los archivos esenciales: `bot.py`, `requirements.txt`,
+     `README.md`, `LICENSE`, `.gitignore`.
+3) Compatibilidad y rutas:
+   - Se actualizaron `bot.py` y `monitor/config_parser.py` para resolver las rutas dentro de sus
+     respectivas carpetas con fallback automático a ubicaciones previas.
+   - Se ajustó `.gitignore` para proteger `config/config.json` y `audit/*.log`.
+
+--------------------------------------------------------------------------------
+17. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

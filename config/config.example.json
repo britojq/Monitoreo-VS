@@ -10,7 +10,7 @@
   "notify_unauthorized_to_owner": true,
   "reply_unauthorized_user": true,
   "log_unauthorized_to_file": true,
-  "audit_log_file": "intentos_acceso.log",
+  "audit_log_file": "audit/intentos_acceso.log",
   "auto_proxy_failover": true,
   "proxies": [],
   "monitor_debug_mode": false,

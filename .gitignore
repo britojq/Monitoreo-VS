@@ -6,9 +6,13 @@ __pycache__/
 # Archivos de configuración con tokens o credenciales sensibles
 .env
 config.json
+config/config.json
 OLD-config.json
 *.token
+config/*.token
 
 # Logs de auditoría y ejecución
 *.log
+audit/*.log
 intentos_acceso.log
+!audit/.gitkeep

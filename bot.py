@@ -30,11 +30,38 @@ async def safe_reply_html(message_obj, text: str, **kwargs) -> None:
 
 
 
-# Directorio base del script para cargar archivos de configuración externos
+# Directorio base del script y estructura organizada del proyecto
 BASE_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = BASE_DIR / "config.json"
-COMMANDS_PATH = BASE_DIR / "commands.json"
-SYSTEM_PROMPT_PATH = BASE_DIR / "system_prompt.txt"
+CONFIG_DIR = BASE_DIR / "config"
+AUDIT_DIR = BASE_DIR / "audit"
+AI_DIR = BASE_DIR / "ai"
+DOCS_DIR = BASE_DIR / "docs"
+
+# Asegurar existencia de directorios principales
+for folder in (CONFIG_DIR, AUDIT_DIR, AI_DIR, DOCS_DIR):
+    folder.mkdir(parents=True, exist_ok=True)
+
+# Resolución de rutas con soporte para nuevas ubicaciones y retrocompatibilidad
+CONFIG_PATH = CONFIG_DIR / "config.json"
+if not CONFIG_PATH.exists() and (BASE_DIR / "config.json").exists():
+    CONFIG_PATH = BASE_DIR / "config.json"
+
+COMMANDS_PATH = CONFIG_DIR / "commands.json"
+if not COMMANDS_PATH.exists() and (BASE_DIR / "commands.json").exists():
+    COMMANDS_PATH = BASE_DIR / "commands.json"
+
+SYSTEM_PROMPT_PATH = AI_DIR / "system_prompt.txt"
+
+
+def get_audit_log_path() -> Path:
+    """Obtiene la ruta absoluta del log de auditoría asegurando su directorio."""
+    AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+    raw_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
+    if Path(raw_name).is_absolute():
+        return Path(raw_name)
+    if raw_name.startswith("audit/"):
+        return BASE_DIR / raw_name
+    return AUDIT_DIR / Path(raw_name).name
 
 
 # --- LOGGING ---
@@ -58,7 +85,7 @@ def env_int(name: str, default: int) -> int:
 
 
 def load_config() -> dict:
-    """Carga los parámetros del bot desde config.json o variables de entorno."""
+    """Carga los parámetros del bot desde config/config.json o variables de entorno."""
     default_config = {
         # Telegram
         "bot_token": os.getenv("BOT_TOKEN", ""),
@@ -71,7 +98,7 @@ def load_config() -> dict:
         "notify_unauthorized_to_owner": True,
         "reply_unauthorized_user": True,
         "log_unauthorized_to_file": True,
-        "audit_log_file": "intentos_acceso.log",
+        "audit_log_file": "audit/intentos_acceso.log",
         "auto_proxy_failover": True,
         "proxies": [],
         "monitor_debug_mode": False,
@@ -115,7 +142,7 @@ def load_config() -> dict:
 
 
 def save_config() -> bool:
-    """Guarda la configuración actual en config.json asegurando persistencia de cambios."""
+    """Guarda la configuración actual en config/config.json asegurando persistencia de cambios."""
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(CONFIG, f, indent=2, ensure_ascii=False)
@@ -127,14 +154,19 @@ def save_config() -> bool:
 
 
 def load_proxies_list() -> list[dict]:
-    """Carga la lista de proxies desde config.json o desde /scripts/monitor/config/bot.conf."""
+    """Carga la lista de proxies desde config.json, config/bot.conf o /scripts/monitor/config/bot.conf."""
     custom_proxies = CONFIG.get("proxies")
     if custom_proxies and isinstance(custom_proxies, list) and len(custom_proxies) > 0:
         return custom_proxies
 
-    bot_conf_path = Path("/scripts/monitor/config/bot.conf")
+    bot_conf_candidates = [
+        CONFIG_DIR / "bot.conf",
+        Path("/scripts/monitor/config/bot.conf"),
+        BASE_DIR / "bot.conf"
+    ]
+    bot_conf_path = next((p for p in bot_conf_candidates if p.exists()), None)
     proxies = []
-    if bot_conf_path.exists():
+    if bot_conf_path and bot_conf_path.exists():
         try:
             content = bot_conf_path.read_text(encoding="utf-8")
             data = {}
@@ -250,20 +282,40 @@ def load_commands_data() -> tuple[dict, dict]:
 
 def load_system_prompt(config: dict) -> str:
     """
-    Carga la identidad corporativa / personalidad.
+    Carga la identidad corporativa / personalidad del asistente.
 
     Prioridad:
-    1. system_prompt.txt
-    2. campo ollama_system_prompt dentro de config.json
+    1. ai/system_prompt.txt o system_prompt.txt
+    2. ai/Modelfile.txt (bloque SYSTEM)
+    3. campo ollama_system_prompt dentro de config.json
     """
-    if SYSTEM_PROMPT_PATH.exists():
+    prompt_candidates = [
+        AI_DIR / "system_prompt.txt",
+        BASE_DIR / "system_prompt.txt"
+    ]
+    for p in prompt_candidates:
+        if p.exists():
+            try:
+                content = p.read_text(encoding="utf-8").strip()
+                if content:
+                    logger.info(f"System prompt cargado desde {p}")
+                    return content
+            except Exception as e:
+                logger.error(f"Error al leer {p}: {e}")
+
+    # Extraer de ai/Modelfile.txt si existe
+    modelfile_p = AI_DIR / "Modelfile.txt"
+    if modelfile_p.exists():
         try:
-            content = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
-            if content:
-                logger.info(f"System prompt cargado desde {SYSTEM_PROMPT_PATH}")
-                return content
+            mcontent = modelfile_p.read_text(encoding="utf-8")
+            match = re.search(r'SYSTEM\s+"""(.*?)"""', mcontent, re.DOTALL)
+            if match:
+                extracted = match.group(1).strip()
+                if extracted:
+                    logger.info(f"System prompt extraído desde {modelfile_p}")
+                    return extracted
         except Exception as e:
-            logger.error(f"Error al leer {SYSTEM_PROMPT_PATH}: {e}")
+            logger.error(f"Error al extraer system prompt de {modelfile_p}: {e}")
 
     return str(config.get("ollama_system_prompt", "")).strip()
 
@@ -351,8 +403,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # 1. Registrar en archivo de auditoría
     if CONFIG.get("log_unauthorized_to_file", True):
-        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
-        audit_path = BASE_DIR / audit_file_name
+        audit_path = get_audit_log_path()
         log_line = (
             f"[{now_str}] NO AUTORIZADO | ID: {user_id} | Username: {username} | "
             f"Nombre: {full_name} | Idioma: {lang} | "
@@ -1071,8 +1122,7 @@ async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 def get_denied_users_summary() -> list[dict]:
     """Extrae la lista de usuarios no autorizados registrados en el log de auditoría."""
-    audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
-    audit_path = BASE_DIR / audit_file_name
+    audit_path = get_audit_log_path()
     if not audit_path.exists():
         return []
 
@@ -1300,8 +1350,7 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
         msg_text = update.message.text or "/debug_monitor"
         chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
 
-        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
-        audit_path = BASE_DIR / audit_file_name
+        audit_path = get_audit_log_path()
         log_line = (
             f"[{now_str}] DEBUG DENEGADO | ID: {user.id} | "
             f"Username: {username_str} | Nombre: {full_name} | "
@@ -1418,8 +1467,7 @@ async def _run_and_send_monitoring_report(
         chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
 
         # 1. Registrar en log de auditoría
-        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
-        audit_path = BASE_DIR / audit_file_name
+        audit_path = get_audit_log_path()
         log_line = (
             f"[{now_str}] REPORTE DENEGADO ({target.upper()}) | ID: {user_id} | "
             f"Username: {username_str} | Nombre: {full_name} | "

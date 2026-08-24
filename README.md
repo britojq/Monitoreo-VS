@@ -14,10 +14,43 @@ Bot de administración de servidores Linux/Debian y asistente conversacional pot
 
 ---
 
-## 📂 Archivos de Configuración
+## 📂 Estructura del Proyecto
 
-### 1. `config.json` (Credenciales y Parámetros)
-Contiene las claves de conexión y configuración general *(usa `config.example.json` como plantilla)*:
+```text
+/scripts/telegram-admin-bot/
+├── config/                      <- Archivos de configuración del bot y del monitor
+│   ├── config.json              <- Credenciales y parámetros del bot
+│   ├── config.example.json      <- Plantilla base de configuración
+│   ├── commands.json            <- Definición de comandos dinámicos
+│   ├── bot.conf                 <- Credenciales Telegram monitor y proxies corporativos
+│   ├── monitoreo.conf           <- Parámetros de servicios y sedes
+│   └── mensajes.conf            <- Plantillas de reportes formales
+├── audit/                       <- Registros de auditoría y seguridad
+│   └── intentos_acceso.log      <- Registro de intentos no autorizados y alertas
+├── ai/                          <- Configuración de Inteligencia Artificial (Ollama)
+│   ├── Modelfile.txt            <- Definición del modelo (qwen-empresa) y system prompt
+│   └── parametros.txt           <- Parámetros técnicos del modelo
+├── docs/                        <- Documentación y referencias técnicas
+│   ├── historial.txt            <- Bitácora detallada de intervenciones
+│   └── referencias-bot-telegram.txt <- Referencia de la API de Telegram
+├── monitor/                     <- Motor de monitoreo asíncrono en Python
+│   ├── checker_base.py          <- Verificadores de protocolos (Web, DNS, DHCP, etc.)
+│   ├── config_parser.py         <- Parser de archivos .conf y renderizador
+│   ├── monitor_servicios.py     <- Chequeo de Servicios Corporativos
+│   ├── monitor_sedes.py         <- Chequeo de Sedes y Equipos
+│   ├── monitor_engine.py        <- Orquestador unificado
+│   └── telegram_dispatcher.py   <- Despacho con failover de proxies
+├── bot.py                       <- Código fuente principal del bot
+├── requirements.txt             <- Dependencias de Python
+├── README.md                    <- Documentación general
+└── LICENSE                      <- Licencia AGPL v3
+```
+
+---
+
+## ⚙️ Configuración Principal (`config/config.json`)
+
+Contiene las claves de conexión y configuración general *(usa `config/config.example.json` como plantilla)*:
 ```json
 {
   "bot_token": "TU_TOKEN_DE_TELEGRAM",
@@ -29,9 +62,10 @@ Contiene las claves de conexión y configuración general *(usa `config.example.
   "notify_unauthorized_to_owner": true,
   "reply_unauthorized_user": true,
   "log_unauthorized_to_file": true,
-  "audit_log_file": "intentos_acceso.log",
+  "audit_log_file": "audit/intentos_acceso.log",
   "auto_proxy_failover": true,
   "proxies": [],
+  "monitor_debug_mode": false,
 
   "ollama_enabled": true,
   "ollama_allow_all": false,
@@ -43,11 +77,6 @@ Contiene las claves de conexión y configuración general *(usa `config.example.
   "ollama_max_history": 12
 }
 ```
-
-### 2. `commands.json` (Definición de Comandos del Sistema)
-Permite estructurar los comandos disponibles:
-- **`messages`**: Cabeceras y textos globales (`start_header`, `unknown_command`, `help_general`).
-- **`commands`**:
   - `description`: Descripción corta para la lista `/start`.
   - `help_text`: Ayuda específica al consultar `/comando help` o `/help comando`.
   - `reply_header`: Mensaje previo enviado antes de ejecutar la tarea.
