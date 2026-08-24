@@ -728,8 +728,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
             "🧠 <b>Asistente de Inteligencia Artificial (Ollama)</b>",
-            "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.",
-            "• <i>Escribe directamente cualquier mensaje en el chat para interactuar con la IA.</i>"
+            "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
+            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>"
         ]
 
         if commands_enabled and COMMANDS:
@@ -748,7 +748,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 👥 MENÚ PARA USUARIOS Y MIEMBROS DE GRUPOS AUTORIZADOS
     # =========================================================================
     user_menu = [
-        "🤖 <b>PANEL DE MONITOREO A.T.I.T</b>",
+        "🤖 <b>COMANDOS FUNCIONALES DEL BOT</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
         "Tienes acceso a las siguientes funciones del sistema:\n",
@@ -758,8 +758,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
         "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.\n",
         "🧠 <b>Asistente Inteligente (IA)</b>",
-        "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.",
-        "• <i>Escribe directamente en el chat para realizar cualquier consulta técnica.</i>"
+        "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
+        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>"
     ]
 
     if commands_enabled and COMMANDS:
