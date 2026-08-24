@@ -419,11 +419,11 @@ def build_txt_and_html_reports(
     pkt_count: int,
     duration_seconds: int
 ) -> Tuple[str, Path, Path]:
-    """Genera el resumen de Telegram, el reporte en Texto plano (.txt) y el reporte Web (.html)."""
+    """Genera el resumen de Telegram, el reporte en Markdown (.md) y el reporte Web (.html)."""
     AUDIT_DIR.mkdir(parents=True, exist_ok=True)
     fecha_str, hora_str = get_formatted_datetime()
     timestamp_file = datetime.now().strftime("%Y%m%d_%H%M%S")
-    txt_report_path = AUDIT_DIR / f"reporte_red_{timestamp_file}.txt"
+    md_report_path = AUDIT_DIR / f"reporte_red_{timestamp_file}.md"
     html_report_path = AUDIT_DIR / f"reporte_red_{timestamp_file}.html"
 
     total_locals = len(hosts_local_con_mac) + len(hosts_local_sin_mac)
@@ -459,83 +459,93 @@ def build_txt_and_html_reports(
         h_name = html.escape(h.hostname[:22])
         sum_lines.append(f"{icon} <code>{html.escape(h.ip):<15}</code> • <code>{html.escape(h.mac)}</code>{auth_flag}\n   🏷️ <i>{h_name}</i> <code>{lat_text}</code> (TX: {h.tx}, RX: {h.rx})")
 
-    sum_lines.append(f"\n📁 <i>Reportes detallados (.txt y .html) generados en audit/</i>")
+    sum_lines.append(f"\n📁 <i>Reportes detallados adjuntos (.md y .html)</i>")
     telegram_summary = "\n".join(sum_lines)
 
     # -------------------------------------------------------------
-    # 2. REPORTE EN TEXTO PLANO (.TXT) - 1:1 con analisis_red_completo.sh
+    # 2. REPORTE EN MARKDOWN (.MD) CON TABLAS FORMATEADAS
     # -------------------------------------------------------------
-    txt_lines = [
-        "=== REPORTE DE ANÁLISIS DE RED ===",
-        f"Fecha: {fecha_str} {hora_str}",
-        f"Interfaz: {interface}",
+    md_lines = [
+        "# 🔍 Reporte de Análisis de Red (Debian)",
+        "",
+        f"- **Fecha:** {fecha_str} {hora_str}",
+        f"- **Interfaz:** `{interface}`",
+        f"- **Red local:** `{my_ip}/{my_mask}`" if my_ip else "- **Red local:** `N/A`",
+        f"- **Duración de captura:** {duration_seconds} segundos",
+        f"- **Paquetes capturados:** {pkt_count:,}",
+        f"- **Hosts locales con MAC:** {len(hosts_local_con_mac)}",
+        f"- **Hosts locales sin MAC:** {len(hosts_local_sin_mac)}",
+        f"- **Hosts externos (WAN):** {total_externos}",
+        f"- **Tráfico Sospechoso:** {total_suspicious} paquetes",
+        ""
     ]
-    if my_ip:
-        txt_lines.append(f"Red local: {my_ip}/{my_mask}")
-    txt_lines.append(f"Paquetes capturados: {pkt_count}")
-    txt_lines.append("")
 
     if total_suspicious > 50:
-        txt_lines.append("🚨 TRÁFICO SOSPECHOSO DETECTADO")
-        txt_lines.append("--------------------------------")
-        txt_lines.append(f"{'IP':<40} {'MAC':<20} {'Paquetes Sospechosos'}")
-        txt_lines.append("--------------------------------")
+        md_lines.append("## 🚨 Tráfico Sospechoso Detectado")
+        md_lines.append(f"Se detectaron **{total_suspicious}** paquetes fuera de puertos estándar.")
+        md_lines.append("")
+        md_lines.append("| Dirección IP | Dirección MAC | Paquetes Sospechosos |")
+        md_lines.append("| :--- | :--- | :--- |")
         for s_ip, s_mac, s_count in suspicious_hosts:
-            txt_lines.append(f"{s_ip:<40} {s_mac:<20} {s_count}")
-        txt_lines.append("")
+            md_lines.append(f"| `{s_ip}` | `{s_mac}` | **{s_count}** |")
+        md_lines.append("")
 
-    txt_lines.append("📊 TABLA DE DISPOSITIVOS EN LA RED")
-    txt_lines.append("-" * 140)
-    txt_lines.append(f"{'IP':<35} {'Hostname':<25} {'MAC':<20} {'RX (recibidos)':<16} {'TX (enviados)':<16} {'Total':<10} Fecha")
-    txt_lines.append("-" * 140)
+    md_lines.append("## 📊 Tabla de Dispositivos en la Red")
+    md_lines.append("")
 
     # Sección 1: Hosts locales con MAC
     if hosts_local_con_mac:
-        txt_lines.append("🔹 HOSTS LOCALES (en la misma red):")
+        md_lines.append("### 🔹 Hosts Locales (en la misma red)")
+        md_lines.append("")
+        md_lines.append("| Dirección IP | Hostname / Fabricante | Dirección MAC | RX (recibidos) | TX (enviados) | Total Tráfico |")
+        md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
         for h in hosts_local_con_mac:
-            txt_lines.append(f"{h.ip:<35} {h.hostname:<25} {h.mac:<20} {h.rx:<16} {h.tx:<16} {h.total_traffic:<10} {fecha_str}")
-        txt_lines.append("")
+            md_lines.append(f"| `{h.ip}` | {h.hostname} | `{h.mac}` | {h.rx} | {h.tx} | **{h.total_traffic}** |")
+        md_lines.append("")
 
     # Sección 2: Hosts locales sin MAC
     if hosts_local_sin_mac:
-        txt_lines.append("🔸 HOSTS LOCALES (sin MAC detectada):")
+        md_lines.append("### 🔸 Hosts Locales (sin MAC detectada)")
+        md_lines.append("")
+        md_lines.append("| Dirección IP | Hostname / Fabricante | Dirección MAC | RX (recibidos) | TX (enviados) | Total Tráfico |")
+        md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
         for h in hosts_local_sin_mac:
-            txt_lines.append(f"{h.ip:<35} {h.hostname:<25} {h.mac:<20} {h.rx:<16} {h.tx:<16} {h.total_traffic:<10} {fecha_str}")
-        txt_lines.append("")
+            md_lines.append(f"| `{h.ip}` | {h.hostname} | `{h.mac}` | {h.rx} | {h.tx} | **{h.total_traffic}** |")
+        md_lines.append("")
 
     # Sección 3: Hosts externos
     if hosts_externos:
-        txt_lines.append("🌐 HOSTS EXTERNOS (Internet/otras redes):")
+        md_lines.append("### 🌐 Hosts Externos (Internet / Otras Redes)")
+        md_lines.append("")
+        md_lines.append("| Dirección IP | Hostname / Fabricante | Dirección MAC | RX (recibidos) | TX (enviados) | Total Tráfico |")
+        md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
         for h in hosts_externos:
-            txt_lines.append(f"{h.ip:<35} {h.hostname:<25} {h.mac:<20} {h.rx:<16} {h.tx:<16} {h.total_traffic:<10} {fecha_str}")
-        txt_lines.append("")
+            md_lines.append(f"| `{h.ip}` | {h.hostname} | `{h.mac}` | {h.rx} | {h.tx} | **{h.total_traffic}** |")
+        md_lines.append("")
 
     if storm_alert:
-        txt_lines.append("⚠️  ALERTA GLOBAL: Posible storm de broadcast/multicast")
-        txt_lines.append("")
+        md_lines.append("> ⚠️ **ALERTA GLOBAL:** Posible tormenta (storm) de broadcast o multicast detectada.")
+        md_lines.append("")
 
-    txt_lines.append("=== LATENCIAS (ordenadas de mayor a menor) ===")
+    md_lines.append("## ⏱️ Latencias ICMP (ordenadas de mayor a menor)")
+    md_lines.append("")
     if latencias_ordenadas:
-        txt_lines.append(f"{'Dispositivo':<35} {'Latencia (ms)':<15} {'MAC':<20} {'TX':<10} {'RX':<10} {'Total':<10}")
-        txt_lines.append("-" * 105)
+        md_lines.append("| Dispositivo | Latencia (ms) | Dirección MAC | TX | RX | Total Tráfico |")
+        md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
         for h in latencias_ordenadas:
-            lat_str = f"{h.latency_ms:.2f}" if h.latency_ms > 0 else "N/A"
-            txt_lines.append(f"{h.ip:<35} {lat_str:<15} {h.mac:<20} {h.tx:<10} {h.rx:<10} {h.total_traffic:<10}")
+            lat_str = f"**{h.latency_ms:.2f} ms**" if h.latency_ms > 150.0 else f"{h.latency_ms:.2f} ms"
+            md_lines.append(f"| `{h.ip}` | {lat_str} | `{h.mac}` | {h.tx} | {h.rx} | {h.total_traffic} |")
     else:
-        txt_lines.append("Sin datos de latencia.")
+        md_lines.append("Sin datos de latencia registrados.")
 
-    txt_lines.append("")
-    txt_lines.append(f"ℹ️ Nota: Este reporte analiza solo el tráfico capturado durante su ejecución ({duration_seconds} segundos).")
-    if my_ip:
-        txt_lines.append(f"   - Hosts locales: en tu red {my_ip}/{my_mask}")
-    txt_lines.append("   - Hosts externos: direcciones fuera de tu red local (MAC no visible).")
-    txt_lines.append("")
-    txt_lines.append(f"Archivos guardados en: {AUDIT_DIR}")
+    md_lines.append("")
+    md_lines.append("---")
+    md_lines.append(f"*Reporte de análisis de tráfico generado automáticamente ({duration_seconds} segundos de captura).*")
 
-    txt_report_path.write_text("\n".join(txt_lines), encoding="utf-8")
+    md_report_path.write_text("\n".join(md_lines), encoding="utf-8")
 
     # -------------------------------------------------------------
-    # 3. REPORTE HTML INTERACTIVO (.HTML)
+    # 3. REPORTE HTML INTERACTIVO (.HTML) CON CONTRASTE MEJORADO
     # -------------------------------------------------------------
     html_sections = []
 
@@ -605,47 +615,50 @@ def build_txt_and_html_reports(
     <meta charset="UTF-8">
     <title>Reporte de Análisis de Red - {html.escape(fecha_str)}</title>
     <style>
-        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f4f7f6; color: #333; }}
-        .header {{ background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-        .section {{ background: white; padding: 18px; margin: 15px 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f4f7f6; color: #1e293b; }}
+        .header {{ background: #1e293b; color: #ffffff; padding: 22px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+        .header h1 {{ margin-top: 0; color: #38bdf8; font-size: 24px; }}
+        .header p {{ margin: 6px 0; color: #e2e8f0; font-size: 15px; }}
+        .header code {{ background: #0f172a; color: #4ade80; font-weight: bold; padding: 3px 8px; border-radius: 4px; border: 1px solid #334155; font-family: monospace; font-size: 14px; }}
+        .section {{ background: #ffffff; padding: 18px; margin: 15px 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
         .local {{ border-left: 5px solid #2ecc71; }}
         .local-unknown {{ border-left: 5px solid #f39c12; }}
         .external {{ border-left: 5px solid #3498db; }}
         .suspicious {{ background-color: #ffebee; border-left: 5px solid #e74c3c; }}
         table {{ width: 100%; border-collapse: collapse; margin: 12px 0; }}
-        th, td {{ border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 14px; }}
-        th {{ background-color: #f8fafc; color: #475569; }}
-        tr:hover {{ background-color: #f1f5f9; }}
-        code {{ background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: monospace; }}
-        .high-latency {{ color: #e74c3c; font-weight: bold; }}
-        .alert {{ background-color: #fee2e2; border-left: 5px solid #dc2626; padding: 12px; border-radius: 6px; }}
-        .note {{ background-color: #ecfdf5; border-left: 5px solid #10b981; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; }}
+        th, td {{ border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 14px; color: #1e293b; }}
+        th {{ background-color: #f1f5f9; color: #334155; font-weight: 600; }}
+        tr:hover {{ background-color: #f8fafc; }}
+        code {{ background: #f1f5f9; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }}
+        .high-latency {{ color: #dc2626; font-weight: bold; }}
+        .alert {{ background-color: #fee2e2; border-left: 5px solid #dc2626; padding: 12px; border-radius: 6px; color: #991b1b; }}
+        .note {{ background-color: #f0fdf4; border-left: 5px solid #16a34a; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; color: #166534; }}
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🔍 Reporte de Análisis de Red (Debian)</h1>
         <p><strong>Fecha:</strong> {html.escape(fecha_str)} {html.escape(hora_str)} &nbsp;|&nbsp; <strong>Interfaz:</strong> <code>{html.escape(interface)}</code></p>
-        <p><strong>Red local:</strong> <code>{html.escape(my_ip)}/{html.escape(my_mask)}</code> &nbsp;|&nbsp; <strong>Duración:</strong> {duration_seconds}s &nbsp;|&nbsp; <strong>Paquetes:</strong> {pkt_count:,}</p>
+        <p><strong>Red local:</strong> <code>{html.escape(my_ip)}/{html.escape(my_mask)}</code> &nbsp;|&nbsp; <strong>Duración:</strong> {duration_seconds}s &nbsp;|&nbsp; <strong>Paquetes:</strong> <code>{pkt_count:,}</code></p>
     </div>
 
     {''.join(html_sections)}
 
     <div class="section">
-        <h2>⏱️ Latencias (ordenadas de mayor a menor)</h2>
+        <h2>⏱️ Latencias ICMP (ordenadas de mayor a menor)</h2>
         <table>
-            <tr><th>Dispositivo</th><th>Latencia (ms)</th><th>MAC</th><th>TX</th><th>RX</th><th>Total</th></tr>
+            <tr><th>Dispositivo</th><th>Latencia (ms)</th><th>MAC</th><th>TX</th><th>RX</th><th>Total Tráfico</th></tr>
             {''.join(lat_rows)}
         </table>
     </div>
 
-    {'<div class="alert"><p>⚠️ <strong>ALERTA GLOBAL:</strong> Posible storm de broadcast/multicast detectado.</p></div>' if storm_alert else ''}
+    {'<div class="alert"><p>⚠️ <strong>ALERTA GLOBAL:</strong> Posible tormenta de broadcast/multicast detectada.</p></div>' if storm_alert else ''}
 
     <div class="note">
-        <p><strong>ℹ️ Nota:</strong> Este reporte analiza el tráfico capturado durante su ejecución ({duration_seconds} segundos).<br>
-        - <strong>Hosts locales:</strong> en tu subred {html.escape(my_ip)}/{html.escape(my_mask)}.<br>
-        - <strong>Hosts externos:</strong> direcciones fuera de tu red local (MAC no visible directamente).<br>
-        - <strong class="high-latency">Latencias altas (>150 ms)</strong> se resaltan en rojo.
+        <p><strong>ℹ️ Información del Análisis:</strong><br>
+        - <strong>Hosts locales:</strong> Dispositivos dentro de la subred local {html.escape(my_ip)}/{html.escape(my_mask)}.<br>
+        - <strong>Hosts externos:</strong> Direcciones IP fuera de la subred local (tráfico WAN/Internet).<br>
+        - <strong class="high-latency">Latencias altas (&gt;150 ms)</strong> se destacan en color rojo.
         </p>
     </div>
 </body>
@@ -653,7 +666,7 @@ def build_txt_and_html_reports(
 
     html_report_path.write_text(html_content, encoding="utf-8")
 
-    return telegram_summary, txt_report_path, html_report_path
+    return telegram_summary, md_report_path, html_report_path
 
 
 async def execute_network_analysis(
@@ -762,7 +775,7 @@ async def execute_network_analysis(
     elapsed = round(time.perf_counter() - t0, 2)
 
     # 6. Generar reportes
-    summary_text, txt_report, html_report = build_txt_and_html_reports(
+    summary_text, md_report, html_report = build_txt_and_html_reports(
         hosts_local_con_mac=hosts_local_con_mac,
         hosts_local_sin_mac=hosts_local_sin_mac,
         hosts_externos=hosts_externos,
@@ -791,7 +804,8 @@ async def execute_network_analysis(
         "hosts_externos": len(hosts_externos),
         "total_suspicious": total_suspicious,
         "summary_text": summary_text,
-        "txt_report": txt_report,
+        "md_report": md_report,
+        "txt_report": md_report,
         "html_report": html_report,
         "pcap_file": pcap_path,
         "elapsed_seconds": elapsed

@@ -1668,30 +1668,32 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except Exception:
             pass
 
-        # 1. Enviar resumen al chat donde se originó la solicitud
+        # 1. Enviar resumen al chat donde se originó la solicitud (Owner o Grupo Permitido)
         await update.message.reply_text(result["summary_text"], parse_mode='HTML')
 
-        # 2. Si fue solicitado directamente por el Owner, adjuntar siempre los reportes TXT y HTML
-        if is_owner:
-            if result.get("txt_report") and result["txt_report"].exists():
-                with open(result["txt_report"], "rb") as f:
-                    await context.bot.send_document(
-                        chat_id=chat_id,
-                        document=f,
-                        filename=result["txt_report"].name,
-                        caption="📄 Reporte detallado de análisis de red (TXT)"
-                    )
-            if result.get("html_report") and result["html_report"].exists():
-                with open(result["html_report"], "rb") as f:
-                    await context.bot.send_document(
-                        chat_id=chat_id,
-                        document=f,
-                        filename=result["html_report"].name,
-                        caption="🌐 Reporte interactivo de análisis de red (HTML)"
-                    )
+        # 2. Enviar SIEMPRE los archivos adjuntos (.md y .html) al chat donde se solicitó (Owner o Grupo Permitido)
+        md_file = result.get("md_report") or result.get("txt_report")
+        html_file = result.get("html_report")
 
-        # 3. Si fue solicitado desde el grupo de trabajo autorizado por otro miembro, enviar copia con archivos al Owner
-        elif is_allowed_group and owner_id:
+        if md_file and md_file.exists():
+            with open(md_file, "rb") as f:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=f,
+                    filename=md_file.name,
+                    caption="📄 Reporte estructurado de análisis de red (Markdown)"
+                )
+        if html_file and html_file.exists():
+            with open(html_file, "rb") as f:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=f,
+                    filename=html_file.name,
+                    caption="🌐 Reporte interactivo de análisis de red (HTML)"
+                )
+
+        # 3. Si la solicitud se ejecutó en el Grupo Permitido por otro usuario, enviar copia al chat privado del Owner
+        if is_allowed_group and not is_owner and owner_id:
             try:
                 group_title = update.effective_chat.title or "Grupo Autorizado"
                 await context.bot.send_message(
@@ -1699,20 +1701,20 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     text=f"📋 <b>Copia de Auditoría: Reporte de Red ejecutado en {html.escape(group_title)}</b>\n\n" + result["summary_text"],
                     parse_mode='HTML'
                 )
-                if result.get("txt_report") and result["txt_report"].exists():
-                    with open(result["txt_report"], "rb") as f:
+                if md_file and md_file.exists():
+                    with open(md_file, "rb") as f:
                         await context.bot.send_document(
                             chat_id=owner_id,
                             document=f,
-                            filename=result["txt_report"].name,
-                            caption=f"📄 Reporte TXT ({group_title})"
+                            filename=md_file.name,
+                            caption=f"📄 Reporte Markdown ({group_title})"
                         )
-                if result.get("html_report") and result["html_report"].exists():
-                    with open(result["html_report"], "rb") as f:
+                if html_file and html_file.exists():
+                    with open(html_file, "rb") as f:
                         await context.bot.send_document(
                             chat_id=owner_id,
                             document=f,
-                            filename=result["html_report"].name,
+                            filename=html_file.name,
                             caption=f"🌐 Reporte HTML ({group_title})"
                         )
             except Exception as e:
