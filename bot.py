@@ -729,7 +729,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
             "🧠 <b>ASISTENTE (IA)</b>",
             "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
-            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>\n"
+            "<i>Recuerda tambien puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
+            "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentacion, en caso de obtener una solucion se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
         ]
 
         if commands_enabled and COMMANDS:
@@ -761,7 +762,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🧠 <b>ASISTENTE (IA)</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
-        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n"
+        "<i>Recuerda tambien puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n",
+        "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentacion, en caso de obtener una solucion se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
     ]
 
     if commands_enabled and COMMANDS:
