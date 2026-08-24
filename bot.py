@@ -584,7 +584,7 @@ def split_message(text: str, limit: int = 4096) -> list:
 
 def get_security_warning_html() -> str:
     """Lee y formatea el aviso legal y advertencia de seguridad desde docs/texto-aviso.md."""
-    aviso_path = PROJECT_ROOT / "docs" / "texto-aviso.md"
+    aviso_path = DOCS_DIR / "texto-aviso.md"
     if aviso_path.exists():
         try:
             with open(aviso_path, "r", encoding="utf-8") as f:
