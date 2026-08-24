@@ -675,41 +675,19 @@ async def ask_ollama_async(user_text: str, history: list) -> str:
     return await asyncio.to_thread(_ask_ollama_sync, user_text, history)
 
 
-# --- HANDLERS DE COMANDOS Y AYUDA ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Muestra el mensaje inicial y la lista de comandos disponibles (o bienvenida interactiva)."""
+    """Muestra el mensaje inicial y el panel de comandos personalizados según el rol del usuario (Owner vs Usuario Autorizado)."""
     if not await check_authorization(update, context):
         return
 
-    commands_enabled = bool(CONFIG.get("commands_enabled", True))
+    owner_id = CONFIG.get("owner_id", 0)
+    user = update.effective_user
+    user_id = user.id if user else 0
+    is_owner = (user_id == owner_id)
 
-    if not commands_enabled:
-        lines = [
-            "🤖 <b>Monitor Valle Seco (Modo Interactivo)</b>",
-            "",
-            "¡Hola! Los comandos del sistema se encuentran desactivados.",
-            "",
-            "💬 <i>Escríbeme directamente cualquier consulta técnica o administrativa para interactuar con el asistente IA.</i>",
-            "",
-            "🧹 <code>/reset_ia</code> - Reinicia el contexto de la conversación."
-        ]
-        if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
-            lines.append("")
-            lines.append("👑 <b>Comandos Exclusivos del Creador (Monitoreo y Control):</b>")
-            lines.append("🔐 <code>/permisos</code> - Administrar accesos y whitelist.")
-            lines.append("📊 <code>/botstatus</code> - Diagnóstico de conectividad e internet.")
-            lines.append("🧪 <code>/debug_monitor</code> - Activar/desactivar modo depuración del monitor.")
-            lines.append("⚙️ <code>/reporte_servicios</code> - Ejecutar chequeo de Servicios Corporativos.")
-            lines.append("🏢 <code>/reporte_sedes</code> - Ejecutar chequeo de Sedes y Enlaces.")
-            lines.append("📋 <code>/reporte_completo</code> - Chequeo Completo (Servicios + Sedes).")
-            lines.append("🌐 <code>/analisis_red</code> - Análisis y escaneo avanzado de red local.")
-
-        await safe_reply_html(update.message, "\n".join(lines))
-        return
-
+    # Si se solicitó ayuda específica de un comando (/help comando)
     if context.args:
         target_cmd = context.args[0].lstrip('/').lower()
-
         if target_cmd in COMMANDS:
             help_msg = COMMANDS[target_cmd].get(
                 "help_text",
@@ -718,29 +696,79 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await safe_reply_html(update.message, help_msg)
             return
 
-    start_header = MESSAGES.get("start_header", "🤖 <b>Bot de Administración</b>")
-    help_lines = [start_header, ""]
+    first_name = (user.first_name or "").strip() if user else ""
+    last_name = (user.last_name or "").strip() if user else ""
+    if last_name.lower() == "none":
+        last_name = ""
+    display_name = " ".join([p for p in [first_name, last_name] if p]) or "Administrador"
 
-    for cmd_name, cmd_info in COMMANDS.items():
-        desc = cmd_info.get("description", "Sin descripción")
-        help_lines.append(f"/{cmd_name} - {html.escape(desc)}")
+    commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
-    help_lines.append("/reset_ia - Reinicia la conversación con el asistente")
+    # =========================================================================
+    # 👑 MENÚ PERSONALIZADO EXCLUSIVO PARA EL PROPIETARIO / CREADOR (OWNER)
+    # =========================================================================
+    if is_owner:
+        owner_menu = [
+            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR SUPREMO</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"¡Bienvenido, <b>{html.escape(display_name)}</b>! A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
+            "🛡️ <b>Gestión de Seguridad y Accesos</b>",
+            "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
+            "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.\n",
+            "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
+            "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
+            "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Activar/desactivar modo depuración y generación técnica de <code>servicelog.txt</code>.\n",
+            "📢 <b>Comunicación Institucional Masiva</b>",
+            "• <code>/mensaje &lt;texto&gt;</code> <i>(/broadcast, /difusion)</i> - Emitir comunicados oficiales firmados por el Bot a todos los usuarios y grupos autorizados.\n",
+            "📊 <b>Monitoreo e Infraestructura de Red</b>",
+            "• <code>/servicios</code> <i>(/reporte_servicios)</i> - Chequeo concurrente de Servicios Corporativos y páginas web.",
+            "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo concurrente de Sedes y Enlaces de Comunicación.",
+            "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
+            "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
+            "🧠 <b>Asistente de Inteligencia Artificial (Ollama)</b>",
+            "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.",
+            "• <i>Escribe directamente cualquier mensaje en el chat para interactuar con la IA.</i>"
+        ]
 
-    if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
-        help_lines.append("")
-        help_lines.append("👑 Comandos Exclusivos del Creador (Monitoreo y Control):")
-        help_lines.append("/permisos - Administrar usuarios y grupos permitidos (Owner)")
-        help_lines.append("/botstatus - Diagnóstico de red, proxies y accesos (Owner)")
-        help_lines.append("/debug_monitor - Control del modo depuración del monitor (Owner)")
-        help_lines.append("/limpiador - Diagnóstico de espacio y limpieza interactiva del sistema (Owner)")
-        help_lines.append("/mensaje <texto> - Enviar comunicado masivo / difusión a todos (Owner)")
-        help_lines.append("/reporte_servicios - Chequeo de Servicios Corporativos")
-        help_lines.append("/reporte_sedes - Chequeo de Sedes y Enlaces")
-        help_lines.append("/reporte_completo - Chequeo Completo (Servicios + Sedes)")
-        help_lines.append("/analisis_red - Análisis y escaneo avanzado de red local (ARP / ICMP)")
+        if commands_enabled and COMMANDS:
+            owner_menu.append("\n⚙️ <b>Comandos Adicionales del Sistema:</b>")
+            for cmd_name, cmd_info in COMMANDS.items():
+                desc = cmd_info.get("description", "Sin descripción")
+                owner_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
 
-    await safe_reply_html(update.message, "\n".join(help_lines))
+        owner_menu.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        owner_menu.append("<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
+
+        await safe_reply_html(update.message, "\n".join(owner_menu))
+        return
+
+    # =========================================================================
+    # 👥 MENÚ PARA USUARIOS Y MIEMBROS DE GRUPOS AUTORIZADOS
+    # =========================================================================
+    user_menu = [
+        "🤖 <b>PANEL DE ASISTENCIA Y MONITOREO TI</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"¡Hola, <b>{html.escape(display_name)}</b>! Tienes acceso a las siguientes funciones del sistema:\n",
+        "📊 <b>Monitoreo de Infraestructura</b>",
+        "• <code>/servicios</code> - Consultar estado de los Servicios Corporativos.",
+        "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
+        "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
+        "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.\n",
+        "🧠 <b>Asistente Inteligente (IA)</b>",
+        "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.",
+        "• <i>Escribe directamente en el chat para realizar cualquier consulta técnica.</i>"
+    ]
+
+    if commands_enabled and COMMANDS:
+        user_menu.append("\n⚙️ <b>Comandos del Sistema:</b>")
+        for cmd_name, cmd_info in COMMANDS.items():
+            desc = cmd_info.get("description", "Sin descripción")
+            user_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
+
+    user_menu.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    user_menu.append("<i>Si requieres funciones administrativas avanzadas, contacta al administrador del sistema.</i>")
+
+    await safe_reply_html(update.message, "\n".join(user_menu))
 
 
 async def handle_dynamic_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
