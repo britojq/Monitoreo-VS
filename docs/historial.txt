@@ -372,6 +372,12 @@ Configuración aplicada en `commands.json`:
    - `/debug_completo` - Reporte técnico integral exhaustivo (Servicios + Sedes) + `servicelog.txt`.
    - Integración en el menú principal `/start`, `/help` y `/ayuda` en chat privado con el Owner.
    - Blindaje de seguridad: Si un usuario no autorizado intenta ejecutarlos, la petición es bloqueada, registrada en `audit/intentos_acceso.log` y notificada en tiempo real al Owner.
+3) REGLA ARQUITECTÓNICA DE SEGURIDAD INAMOVIBLE E INCAMBIABLE:
+   - La ejecución de reportes de monitoreo (/servicios, /sedes, /monitoreo, /analisis_red) está estrictamente limitada a:
+     a) El Creador/Owner (user_id == owner_id) en cualquier canal (privado o grupo).
+     b) Usuarios autorizados ÚNICAMENTE dentro de los grupos oficiales de trabajo autorizados (chat_id in allowed_group_ids).
+   - Queda TERMINANTEMENTE PROHIBIDO que usuarios comunes autorizados ejecuten reportes de monitoreo en chats privados personales.
+   - Cualquier solicitud de monitoreo en chat privado por usuarios no administradores es rechazada con mensaje de acceso restringido, asentada en el log de auditoría (audit/intentos_acceso.log) y notificada en tiempo real con alerta roja al Owner.
 
 --------------------------------------------------------------------------------
 23. ESTADO FINAL DE VERIFICACIÓN
