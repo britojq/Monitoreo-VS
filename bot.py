@@ -711,7 +711,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         owner_menu = [
             "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            f"¡Bienvenido, <b>{html.escape(display_name)}</b>! A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
+            f"¡Bienvenido, <b>{html.escape(display_name)}</b>!\n",
+            "A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
             "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.\n",
@@ -748,7 +749,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_menu = [
         "🤖 <b>PANEL DE ASISTENCIA Y MONITOREO TI</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"¡Hola, <b>{html.escape(display_name)}</b>! Tienes acceso a las siguientes funciones del sistema:\n",
+        f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
+        "Tienes acceso a las siguientes funciones del sistema:\n",
         "📊 <b>Monitoreo de Infraestructura</b>",
         "• <code>/servicios</code> - Consultar estado de los Servicios Corporativos.",
         "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
