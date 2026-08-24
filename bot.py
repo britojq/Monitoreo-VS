@@ -596,7 +596,9 @@ def get_security_warning_html() -> str:
 
     # Fallback en caso de que no exista el archivo
     return (
-        "<b>ADVERTENCIA DE SEGURIDAD</b>\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ <b>ADVERTENCIA DE SEGURIDAD</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "Este BOT está protegido por un <b>Custodio de Registros</b>.\n\n"
         "Toda la información contenida y procesada por este bot es de carácter Confidencial y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos.\n\n"
         "<b>AVISO LEGAL</b>\n\n"
