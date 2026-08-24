@@ -248,7 +248,32 @@ Configuración aplicada en `commands.json`:
      negados / no autorizados con fecha y hora del último intento.
 
 --------------------------------------------------------------------------------
-15. ESTADO FINAL DE VERIFICACIÓN
+15. DECIMOCUARTA INTERVENCIÓN (2026-08-24): MÓDULO DE MONITOREO PYTHON MODULAR (SERVICIOS Y SEDES)
+--------------------------------------------------------------------------------
+1) Arquitectura modular en Python con `asyncio`:
+   - Se migró y optimizó la lógica de `monitoreo.sh` a módulos Python nativos bajo `monitor/`:
+     * `monitor/config_parser.py`: Parser de `monitoreo.conf`, `mensajes.conf` y `bot.conf`.
+     * `monitor/checker_base.py`: Verificaciones asíncronas para WEB, DNS, PROXY, SMTP, DHCP, CUPS, LDAP y PING.
+     * `monitor/monitor_servicios.py` (Componente 1): Chequeo de Servicios Corporativos.
+     * `monitor/monitor_sedes.py` (Componente 2): Chequeo de Sedes y Equipos de Comunicación.
+     * `monitor/monitor_engine.py`: Orquestador unificado con soporte CLI y despacho.
+     * `monitor/telegram_dispatcher.py`: Despacho con failover automático de proxies.
+2) Rendimiento:
+   - Reducción del tiempo de chequeo completo de ~60s en Bash a solo ~4.6 segundos en Python.
+3) Control exclusivo del Creador para Modo Depuración:
+   - Comando `/debug_monitor` (o `/monitordebug`): Permite activar/desactivar el modo depuración
+     vía texto (`on`/`off`) o mediante botones inline interactivos.
+   - Cuando el modo depuración está activo, el creador recibe los reportes detallados y el
+     archivo de log consolidado `servicelog.txt` adjunto directamente a su chat privado.
+   - Las opciones de depuración y administración aparecen en `/start` y `/help` exclusivamente al creador.
+4) Control estricto de permisos para reportes:
+   - Los comandos `/reporte_servicios`, `/reporte_sedes` y `/reporte_completo` solo pueden ser
+     solicitados por el Owner o dentro de los grupos autorizados (`allowed_group_ids`).
+   - Cualquier intento de ejecución de un usuario no autorizado es bloqueado, auditado en
+     `intentos_acceso.log` y reportado al Owner con botones de autorización.
+
+--------------------------------------------------------------------------------
+16. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado exitosamente, haciendo polling activo (HTTP 200 OK).

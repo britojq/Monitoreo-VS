@@ -74,6 +74,7 @@ def load_config() -> dict:
         "audit_log_file": "intentos_acceso.log",
         "auto_proxy_failover": True,
         "proxies": [],
+        "monitor_debug_mode": False,
 
         # Ollama
         "ollama_enabled": True,
@@ -642,8 +643,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "🧹 <code>/reset_ia</code> - Reinicia el contexto de la conversación."
         ]
         if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
-            lines.append("🔐 <code>/permisos</code> - Administrar usuarios y grupos permitidos.")
-            lines.append("📊 <code>/botstatus</code> - Diagnóstico de red, proxies y estado de accesos.")
+            lines.append("")
+            lines.append("👑 <b>Comandos Exclusivos del Creador (Monitoreo y Control):</b>")
+            lines.append("🔐 <code>/permisos</code> - Administrar accesos y whitelist.")
+            lines.append("📊 <code>/botstatus</code> - Diagnóstico de conectividad e internet.")
+            lines.append("🧪 <code>/debug_monitor</code> - Activar/desactivar modo depuración del monitor.")
+            lines.append("⚙️ <code>/reporte_servicios</code> - Ejecutar chequeo de Servicios Corporativos.")
+            lines.append("🏢 <code>/reporte_sedes</code> - Ejecutar chequeo de Sedes y Enlaces.")
+            lines.append("📋 <code>/reporte_completo</code> - Chequeo Completo (Servicios + Sedes).")
 
         await safe_reply_html(update.message, "\n".join(lines))
         return
@@ -669,8 +676,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_lines.append("/reset_ia - Reinicia la conversación con el asistente")
 
     if update.effective_user and update.effective_user.id == CONFIG.get("owner_id", 0):
+        help_lines.append("")
+        help_lines.append("👑 Comandos Exclusivos del Creador (Monitoreo y Control):")
         help_lines.append("/permisos - Administrar usuarios y grupos permitidos (Owner)")
         help_lines.append("/botstatus - Diagnóstico de red, proxies y accesos (Owner)")
+        help_lines.append("/debug_monitor - Control del modo depuración del monitor (Owner)")
+        help_lines.append("/reporte_servicios - Chequeo de Servicios Corporativos")
+        help_lines.append("/reporte_sedes - Chequeo de Sedes y Enlaces")
+        help_lines.append("/reporte_completo - Chequeo Completo (Servicios + Sedes)")
 
     await safe_reply_html(update.message, "\n".join(help_lines))
 
@@ -1268,6 +1281,157 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await safe_reply_html(update.message, report_text)
 
 
+async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Permite al Owner activar, desactivar o consultar el Modo Depuración del Monitor."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    if update.effective_user.id != owner_id:
+        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        return
+
+    current_status = bool(CONFIG.get("monitor_debug_mode", False))
+
+    if context.args:
+        arg = context.args[0].lower()
+        if arg in ("on", "activar", "activado", "true", "1", "si"):
+            CONFIG["monitor_debug_mode"] = True
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "🧪 <b>Modo Depuración del Monitor: ACTIVADO</b>\n\n"
+                "Los próximos reportes incluirán información técnica detallada y el archivo consolidado <code>servicelog.txt</code> enviado exclusivamente a tu chat privado."
+            )
+            return
+        elif arg in ("off", "desactivar", "desactivado", "false", "0", "no"):
+            CONFIG["monitor_debug_mode"] = False
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "📊 <b>Modo Depuración del Monitor: DESACTIVADO</b>\n\n"
+                "El monitor operará en modo producción estándar."
+            )
+            return
+        elif arg in ("status", "estado", "ver"):
+            estado_txt = "🟢 <b>ACTIVADO</b>" if current_status else "🔴 <b>DESACTIVADO</b>"
+            await safe_reply_html(
+                update.message,
+                f"🧪 <b>Estado actual del Modo Depuración:</b> {estado_txt}"
+            )
+            return
+
+    # Si no se pasó argumento, mostrar panel con botones interactivos
+    estado_str = "🟢 ACTIVO" if current_status else "🔴 INACTIVO"
+    keyboard = [
+        [
+            InlineKeyboardButton("🟢 Activar Depuración", callback_data="auth_toggle_debug:on"),
+            InlineKeyboardButton("🔴 Desactivar Depuración", callback_data="auth_toggle_debug:off")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await safe_reply_html(
+        update.message,
+        f"🧪 <b>Panel de Modo Depuración (Monitor ATIT)</b>\n\n"
+        f"<b>Estado Actual:</b> <code>{estado_str}</code>\n\n"
+        f"• <b>Activo:</b> Genera reportes exhaustivos y adjunta el archivo <code>servicelog.txt</code>.\n"
+        f"• <b>Inactivo:</b> Envía el resumen ejecutivo estándar.\n\n"
+        f"<i>Presiona una opción para cambiar el estado:</i>",
+        reply_markup=reply_markup
+    )
+
+
+async def _run_and_send_monitoring_report(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    target: str,
+    target_name: str
+) -> None:
+    """Función unificada para procesar y despachar reportes de monitoreo."""
+    if not update.effective_user or not update.message:
+        return
+
+    # Verificar autorización general
+    if not await check_authorization(update, context):
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    # Regla de seguridad 2: Solo el owner o usuarios dentro de los grupos autorizados
+    is_owner = (user_id == owner_id)
+    is_allowed_group = (chat_id in allowed_groups)
+
+    if not is_owner and not is_allowed_group:
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> El chequeo de infraestructura y sedes solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo autorizado."
+        )
+        return
+
+    # Determinar si se ejecuta en modo depuración (solo si el owner lo tiene activado)
+    is_debug = bool(CONFIG.get("monitor_debug_mode", False)) if is_owner else False
+
+    # Mensaje temporal de espera
+    wait_msg = await update.message.reply_text(
+        f"⏳ <i>Ejecutando chequeo concurrente de {target_name}... Por favor espere.</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        from monitor.monitor_engine import execute_monitoring
+        result = await execute_monitoring(target=target, debug_mode=is_debug)
+
+        # Borrar mensaje temporal
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        # Enviar reporte de servicios si aplica
+        if result.get("report_servicios"):
+            await update.message.reply_text(result["report_servicios"])
+
+        # Enviar reporte de sedes si aplica
+        if result.get("report_sedes"):
+            await update.message.reply_text(result["report_sedes"])
+
+        # Si está en modo depuración y fue solicitado por el Owner, adjuntar el archivo de log
+        if is_debug and is_owner and result.get("log_file") and result["log_file"].exists():
+            with open(result["log_file"], "rb") as doc:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=doc,
+                    filename="servicelog.txt",
+                    caption=f"📄 Registro técnico detallado de ejecución ({result['elapsed_seconds']}s)"
+                )
+
+    except Exception as e:
+        logger.error(f"Error ejecutando monitoreo ({target}): {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error durante el chequeo:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error ejecutando chequeo: {e}")
+
+
+async def cmd_reporte_servicios(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para ejecutar y despachar el reporte de Servicios Corporativos."""
+    await _run_and_send_monitoring_report(update, context, target="servicios", target_name="Servicios Corporativos")
+
+
+async def cmd_reporte_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para ejecutar y despachar el reporte de Sedes y Enlaces."""
+    await _run_and_send_monitoring_report(update, context, target="sedes", target_name="Sedes y Equipos de Comunicación")
+
+
+async def cmd_reporte_completo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para ejecutar y despachar el reporte completo (Servicios + Sedes)."""
+    await _run_and_send_monitoring_report(update, context, target="completo", target_name="Servicios Corporativos y Sedes")
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -1284,9 +1448,34 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     try:
         action, target_id_str = query.data.split(":", 1)
-        target_user_id = int(target_id_str)
     except (ValueError, IndexError):
         await query.answer("⚠️ Datos de solicitud inválidos.")
+        return
+
+    if action == "auth_toggle_debug":
+        new_state = (target_id_str == "on")
+        CONFIG["monitor_debug_mode"] = new_state
+        save_config()
+        estado_label = "🟢 ACTIVADO" if new_state else "🔴 DESACTIVADO"
+        await query.answer(f"Modo Depuración {estado_label}")
+        if query.message:
+            try:
+                await query.edit_message_text(
+                    f"🧪 <b>Panel de Modo Depuración (Monitor ATIT)</b>\n\n"
+                    f"<b>Estado Actual:</b> <code>{estado_label}</code>\n\n"
+                    f"Configuración guardada exitosamente. "
+                    f"{'Los próximos reportes incluirán archivo servicelog.txt adjunto.' if new_state else 'El monitor operará en modo producción estándar.'}",
+                    parse_mode='HTML',
+                    reply_markup=None
+                )
+            except Exception:
+                pass
+        return
+
+    try:
+        target_user_id = int(target_id_str)
+    except ValueError:
+        await query.answer("⚠️ ID de usuario inválido.")
         return
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1478,7 +1667,16 @@ def main() -> None:
         "usuarios",
         "botstatus",
         "statusbot",
-        "estado_bot"
+        "estado_bot",
+        "debug_monitor",
+        "monitordebug",
+        "reporte_servicios",
+        "servicios",
+        "reporte_sedes",
+        "sedes",
+        "sitios",
+        "reporte_completo",
+        "monitoreo"
     }
 
     # Comandos base
@@ -1493,8 +1691,16 @@ def main() -> None:
     # Comando exclusivo para que el Owner verifique estado de red, proxies y accesos
     application.add_handler(CommandHandler(["botstatus", "statusbot", "estado_bot"], bot_status))
 
-    # Callback query handler para botones de autorización interactiva y revocación
-    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group):"))
+    # Comando exclusivo para que el Owner controle el Modo Depuración del Monitor
+    application.add_handler(CommandHandler(["debug_monitor", "monitordebug"], toggle_debug_monitor))
+
+    # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
+    application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
+    application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
+    application.add_handler(CommandHandler(["reporte_completo", "monitoreo"], cmd_reporte_completo))
+
+    # Callback query handler para botones de autorización interactiva, revocación y debug toggle
+    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug):"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
