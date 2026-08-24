@@ -1287,7 +1287,47 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     owner_id = CONFIG.get("owner_id", 0)
-    if update.effective_user.id != owner_id:
+    user_id = update.effective_user.id
+    if user_id != owner_id:
+        user = update.effective_user
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/debug_monitor"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
+        audit_path = BASE_DIR / audit_file_name
+        log_line = (
+            f"[{now_str}] DEBUG DENEGADO | ID: {user.id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {update.effective_chat.id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception:
+            pass
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento No Autorizado de Control de Depuración</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user.id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{update.effective_chat.id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>Acción bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(chat_id=owner_id, text=owner_alert, parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Error notificando al owner sobre intento de depuración: {e}")
+
         await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
         return
 
@@ -1366,10 +1406,58 @@ async def _run_and_send_monitoring_report(
     is_allowed_group = (chat_id in allowed_groups)
 
     if not is_owner and not is_allowed_group:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or f"/{target}"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        # 1. Registrar en log de auditoría
+        audit_file_name = CONFIG.get("audit_log_file", "intentos_acceso.log")
+        audit_path = BASE_DIR / audit_file_name
+        log_line = (
+            f"[{now_str}] REPORTE DENEGADO ({target.upper()}) | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        # 2. Responder al usuario denegando la ejecución
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> El chequeo de infraestructura y sedes solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo autorizado."
+            "⛔ <b>Acceso Restringido:</b> El chequeo de infraestructura y sedes solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
         )
+
+        # 3. Notificar inmediatamente al Owner en tiempo real
+        if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "⚠️ <b>Alerta: Intento de Solicitud de Reporte Restringido</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📋 <b>Reporte Intentado:</b> <code>{html.escape(target_name)}</code>\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente porque el usuario no es el administrador ni la petición se originó en el grupo autorizado.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre solicitud de reporte restringido: {e}")
+
         return
 
     # Determinar si se ejecuta en modo depuración (solo si el owner lo tiene activado)
