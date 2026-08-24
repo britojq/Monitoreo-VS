@@ -255,3 +255,71 @@ async def _restart_service_delayed():
         await proc.communicate()
     except Exception as e:
         logger.error(f"Error al reiniciar servicio tras actualización: {e}")
+
+
+async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_config_func=None):
+    """
+    Tarea en segundo plano que comprueba periódicamente (cada 48 horas por defecto)
+    si existen nuevas actualizaciones en el repositorio Git de GitHub.
+    De existir, aplica la actualización protegiendo config/ y notifica al Owner.
+    """
+    logger.info("Servicio de auto-actualización Git iniciado en segundo plano (Revisión cada 48h).")
+    # Espera inicial de 120 segundos para permitir el arranque completo del bot
+    await asyncio.sleep(120)
+
+    while True:
+        try:
+            config = get_config_func() if get_config_func else {}
+            is_enabled = bool(config.get("auto_update_enabled", True))
+            interval_hours = int(config.get("auto_update_interval_hours", 48))
+            interval_seconds = max(300, interval_hours * 3600)  # Mínimo 5 minutos por seguridad
+
+            if is_enabled:
+                logger.info("Ejecutando comprobación autónoma de actualizaciones en GitHub...")
+                check_res = await check_updates()
+                if check_res.get("success") and check_res.get("has_update"):
+                    old_hash = check_res.get("local_hash", "N/A")
+                    new_hash = check_res.get("remote_hash", "N/A")
+                    commits = check_res.get("commits", [])
+                    commits_summary = "\n".join(commits[:8])
+                    if len(commits) > 8:
+                        commits_summary += f"\n<i>... y {len(commits) - 8} commit(s) adicionales.</i>"
+
+                    logger.info(f"Actualización Git detectada: {old_hash} -> {new_hash}. Aplicando de forma autónoma...")
+
+                    owner_id = get_owner_id_func() if get_owner_id_func else 0
+                    if owner_id and bot_instance:
+                        alert_text = (
+                            "🔄 <b>Actualización Automática Detectada</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "El sistema ha verificado de manera autónoma el repositorio en GitHub y ha encontrado una nueva versión.\n\n"
+                            f"🏷️ <b>Versión Actual:</b> <code>{old_hash}</code>\n"
+                            f"🚀 <b>Nueva Versión:</b> <code>{new_hash}</code>\n\n"
+                            f"📦 <b>Novedades ({len(commits)}):</b>\n"
+                            f"{commits_summary}\n\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "⚙️ <i>Aplicando actualización segura y preservando <code>config/</code>...</i>"
+                        )
+                        try:
+                            await bot_instance.send_message(chat_id=owner_id, text=alert_text, parse_mode='HTML')
+                        except Exception as e:
+                            logger.error(f"No se pudo notificar al Owner antes del auto-update: {e}")
+
+                    # Ejecutar actualización segura
+                    res_text = await execute_git_update()
+
+                    if owner_id and bot_instance:
+                        try:
+                            await bot_instance.send_message(chat_id=owner_id, text=res_text, parse_mode='HTML')
+                        except Exception as e:
+                            logger.error(f"No se pudo notificar al Owner el resultado del auto-update: {e}")
+
+            await asyncio.sleep(interval_seconds)
+
+        except asyncio.CancelledError:
+            logger.info("Servicio de auto-actualización Git detenido.")
+            break
+        except Exception as e:
+            logger.error(f"Error en ciclo de auto-actualización Git: {e}", exc_info=True)
+            await asyncio.sleep(3600)
+

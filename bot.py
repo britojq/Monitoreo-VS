@@ -2628,7 +2628,24 @@ def main() -> None:
         proxy=active_proxy
     )
 
-    application = Application.builder().token(bot_token).request(request).build()
+    async def on_post_init(app: Application) -> None:
+        """Inicia tareas en segundo plano del bot (como el verificador autónomo de actualizaciones Git cada 48h)."""
+        from monitor.system_updater import auto_update_worker
+        asyncio.create_task(
+            auto_update_worker(
+                bot_instance=app.bot,
+                get_owner_id_func=lambda: CONFIG.get("owner_id", 0),
+                get_config_func=lambda: CONFIG
+            )
+        )
+
+    application = (
+        Application.builder()
+        .token(bot_token)
+        .request(request)
+        .post_init(on_post_init)
+        .build()
+    )
 
     # Manejador global de errores de red y aplicación
     application.add_error_handler(bot_error_handler)
