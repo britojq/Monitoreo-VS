@@ -769,7 +769,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             user_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
 
     user_menu.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    user_menu.append("<i>Si requieres funciones administrativas avanzadas, contacta al administrador del sistema.</i>")
+    user_menu.append("<i>Sistema de Monitoreo operando en Debian GNU/Linux</i>")
 
     await safe_reply_html(update.message, "\n".join(user_menu))
 
