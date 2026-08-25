@@ -126,37 +126,38 @@ ollama run qwen-empresa "¿Cuáles son las sedes de Valle Seco?"
 
 ## 4. Estructura del Proyecto y Componentes
 
+El proyecto es **100% autónomo y autocontenido** en `/scripts/telegram-admin-bot`:
+
 ```
-/scripts/
+/scripts/telegram-admin-bot/
+├── bot.py                            # Demonio principal del bot de Telegram
+├── installer/
+│   └── install.sh                    # Instalador automatizado de servicios Systemd y hooks PAM
+├── ai/
+│   ├── Modelfile.txt                 # Definición del modelo y system prompt corporativo
+│   └── parametros.txt                # Parámetros térmicos y de contexto Ollama
+├── config/
+│   ├── config.json                   # Configuración operativa visual
+│   ├── bot.conf                      # Configuración de proxies y tokens secundarios
+│   ├── monitoreo.conf                # Definición de sedes, servicios, IPs y puertos
+│   ├── commands.json                 # Textos y descripciones de comandos
+│   ├── mac_whitelist.txt             # Lista blanca de direcciones MAC autorizadas
+│   └── oui.txt                       # Base de datos de fabricantes de red
 ├── monitor/
-│   ├── ssh_alert.sh                  # Hook de PAM para alertas de login SSH
-│   ├── boot_alert.sh                 # Wrapper para alertas de encendido/apagado
-│   └── telegram_alert.sh             # Despachador Bash de emergencias
-├── telegram-admin-bot/
-│   ├── bot.py                        # Demonio principal del bot de Telegram
-│   ├── ai/
-│   │   ├── Modelfile.txt             # Definición del modelo y system prompt corporativo
-│   │   └── parametros.txt            # Parámetros térmicos y de contexto Ollama
-│   ├── config/
-│   │   ├── config.json               # Configuración operativa visual
-│   │   ├── bot.conf                  # Configuración de proxies y tokens secundarios
-│   │   ├── monitoreo.conf            # Definición de sedes, servicios, IPs y puertos
-│   │   ├── commands.json             # Textos y descripciones de comandos
-│   │   ├── mac_whitelist.txt         # Lista blanca de direcciones MAC autorizadas
-│   │   └── oui.txt                   # Base de datos de fabricantes de red
-│   ├── monitor/
-│   │   ├── core_shield.py            # DRM de hardware, Token Canario y SecureCore
-│   │   ├── system_updater.py         # Actualizador autónomo forzado con GitHub (48h)
-│   │   ├── boot_alert.py             # Detección de arranque limpio vs caída eléctrica
-│   │   ├── network_analyzer.py       # Análisis de red, tcpdump, tshark y arp-scan
-│   │   ├── monitor_servicios.py      # Chequeo de puertos TCP/HTTP/DNS/LDAP/SMB
-│   │   ├── monitor_sedes.py          # Chequeo de conectividad ICMP de sedes
-│   │   ├── checker_base.py           # Utilidades base de red y formateador HTML
-│   │   ├── config_parser.py          # Parser unificado de configuraciones
-│   │   └── telegram_dispatcher.py    # Despachador HTTP con failover por proxies
-│   ├── audit/                        # Logs de accesos, reportes de red (.html/.pcap)
-│   ├── docs/                         # Documentación confidencial excluida de Git
-│   └── venv/                         # Entorno virtual de Python
+│   ├── core_shield.py                # DRM de hardware, Token Canario y SecureCore
+│   ├── system_updater.py             # Actualizador autónomo forzado con GitHub (48h)
+│   ├── boot_alert.py                 # Detección de arranque limpio vs caída eléctrica (con failover proxy)
+│   ├── ssh_alert.py                  # Notificador nativo de accesos SSH (con failover proxy)
+│   ├── ssh_alert.sh                  # Wrapper de ejecución rápida para PAM
+│   ├── network_analyzer.py           # Análisis de red, tcpdump, tshark y arp-scan
+│   ├── monitor_servicios.py          # Chequeo de puertos TCP/HTTP/DNS/LDAP/SMB
+│   ├── monitor_sedes.py              # Chequeo de conectividad ICMP de sedes
+│   ├── checker_base.py               # Utilidades base de red y formateador HTML
+│   ├── config_parser.py              # Parser unificado de configuraciones
+│   └── telegram_dispatcher.py        # Despachador HTTP con conmutación inteligente Directo/Proxies
+├── audit/                            # Logs de accesos, anclaje de hardware (.sys_anchor) y reportes (.pcap)
+├── docs/                             # Documentación confidencial excluida de Git (.gitignore)
+└── venv/                             # Entorno virtual aislado de Python
 ```
 
 ---
