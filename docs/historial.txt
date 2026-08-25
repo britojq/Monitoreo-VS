@@ -405,13 +405,31 @@ Configuración aplicada en `commands.json`:
    - Se muestra visualmente en `config/config.json`, pero el código ignora cualquier intento de manipulación externa en el archivo.
 
 --------------------------------------------------------------------------------
-26. ESTADO FINAL DE VERIFICACIÓN
+26. VIGÉSIMA SEXTA INTERVENCIÓN (2026-08-25): IMPLEMENTACIÓN DE DRM DE ENTORNO, ANTI-TAMPER Y DEAD MAN'S SWITCH
+--------------------------------------------------------------------------------
+1) Desofuscación Vinculada Criptográficamente al Hardware (Environment-Bound DRM):
+   - Integración del módulo `SecureCore` en `monitor/core_shield.py`.
+   - Derivación matemática de clave con PBKDF2-HMAC (SHA-256) vinculada al hardware local (`/etc/machine-id`, MAC address via `uuid.getnode()`, hostname y semilla secreta en `audit/.sys_anchor`).
+   - Si el código es copiado o ejecutado en otro servidor, la derivación produce bytes de basura y el bot no puede autenticarse en Telegram.
+2) Detección de Manipulación (Anti-Tampering) con Fallo Silencioso:
+   - Validación de firma HMAC-SHA256 sobre cada payload cifrado.
+   - Ante cualquier intento de parcheo o modificación de strings, entra en fallo silencioso sin arrojar mensajes descriptivos.
+3) Dead Man's Switch por Aislamiento de Red / Git:
+   - Tarea `auto_update_worker` en `monitor/system_updater.py` monitorea fallos consecutivos de sincronización.
+   - Si ocurren 3 fallos consecutivos con el repositorio oficial, se activa `trip_deadman_switch()`, destruyendo de forma irreversible el anclaje criptográfico local (`audit/.sys_anchor`) y bloqueando permanentemente el bot.
+4) Ofuscación Avanzada Nativa:
+   - Control Flow Flattening (máquina de estados en el ciclo de decodificación).
+   - Predicados opacos matemáticos para camuflar bifurcaciones lógicas.
+   - Inyección de código muerto y camuflaje de rutinas internas.
+
+--------------------------------------------------------------------------------
+27. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado como `@IA_ValleSeco_bot` (HTTP 200 OK).
 - Conexión Ollama: Verificada la respuesta del modelo `qwen-empresa:latest` en http://localhost:11434.
 - Tareas en segundo plano: Verificador autónomo de actualizaciones Git inmutable activo (cada 48h).
-- Blindaje de Seguridad: Reglas 1, 2, 3 y 4 activas y blindadas en código.
+- Blindaje de Seguridad: DRM vinculado a hardware, Anti-Tamper, Dead Man's Switch y Políticas Inmutables activas.
 
 --------------------------------------------------------------------------------
 6. GUÍA DE ADMINISTRACIÓN RÁPIDA

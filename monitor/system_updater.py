@@ -34,7 +34,8 @@ from monitor.core_shield import (
     IMMUTABLE_BOT_TOKEN,
     IMMUTABLE_GIT_REPO_URL,
     IMMUTABLE_GIT_BRANCH,
-    IMMUTABLE_AUTO_UPDATE_ENABLED
+    IMMUTABLE_AUTO_UPDATE_ENABLED,
+    trip_deadman_switch
 )
 
 
@@ -338,15 +339,20 @@ async def _restart_service_delayed():
         logger.error(f"Error al reiniciar servicio tras actualización: {e}")
 
 
+
+
 async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_config_func=None):
     """
     Tarea en segundo plano que comprueba periódicamente (cada 48 horas por defecto)
     si existen nuevas actualizaciones en el repositorio Git de GitHub.
-    REGLA INMUTABLE: Jamás se desactiva. Si falla, notifica inmediatamente al Owner.
+    REGLA INMUTABLE: Jamás se desactiva. Si falla 3 veces consecutivas, activa el Dead Man's Switch.
     """
     logger.info("Servicio inmutable de auto-actualización Git iniciado en segundo plano (Revisión cada 48h).")
     # Espera inicial de 120 segundos para permitir el arranque completo del bot
     await asyncio.sleep(120)
+
+    consecutive_git_failures = 0
+    MAX_CONSECUTIVE_GIT_FAILURES = 3
 
     while True:
         try:
@@ -361,11 +367,23 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
 
             # Si falló la comprobación (red, DNS, git), notificar de inmediato al Owner
             if not check_res.get("success"):
+                consecutive_git_failures += 1
                 err_msg = check_res.get("error", "Error desconocido de sincronización con Git")
-                logger.error(f"Auto-actualización: Fallo en comprobación Git: {err_msg}")
-                await notify_owner_git_failure(bot_instance, err_msg, operation="comprobación autónoma de actualizaciones")
+                logger.error(f"Auto-actualización: Fallo #{consecutive_git_failures} en comprobación Git: {err_msg}")
+                await notify_owner_git_failure(
+                    bot_instance,
+                    err_msg,
+                    operation=f"comprobación periódica (intento {consecutive_git_failures}/{MAX_CONSECUTIVE_GIT_FAILURES})"
+                )
+
+                # DEAD MAN'S SWITCH: Si falla 3 veces consecutivas, asumir aislamiento del servidor
+                if consecutive_git_failures >= MAX_CONSECUTIVE_GIT_FAILURES:
+                    logger.critical("🔒 DEAD MAN'S SWITCH: 3 fallos consecutivos con Git. Invalidando anclaje criptográfico local...")
+                    trip_deadman_switch(reason="3 fallos consecutivos de sincronización con el repositorio oficial (sospecha de aislamiento/robo)")
 
             elif check_res.get("has_update"):
+                # Resetear contador de fallos al tener éxito
+                consecutive_git_failures = 0
                 old_hash = check_res.get("local_hash", "N/A")
                 new_hash = check_res.get("remote_hash", "N/A")
                 commits = check_res.get("commits", [])
@@ -401,6 +419,10 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
                         await bot_instance.send_message(chat_id=IMMUTABLE_OWNER_ID, text=res_text, parse_mode='HTML')
                     except Exception as e:
                         logger.error(f"No se pudo notificar al Owner el resultado del auto-update: {e}")
+
+            else:
+                # Comprobación exitosa sin actualizaciones: resetear contador
+                consecutive_git_failures = 0
 
             await asyncio.sleep(interval_seconds)
 
