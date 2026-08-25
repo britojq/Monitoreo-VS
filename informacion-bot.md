@@ -245,7 +245,11 @@ Si el proyecto es clonado o transferido a un nuevo equipo o máquina virtual:
 
 ---
 
-## 7. Módulos de Monitoreo y Herramientas de Red
+## 7. Módulos de Monitoreo, Herramientas de Red y CLI Global (`estatus`)
+
+El sistema incluye dos vías de interacción para el monitoreo: **Comandos interactivos en Telegram** y el **CLI Global del Sistema (`/usr/local/bin/estatus`)** para ejecución manual o mediante tareas programadas en CRON.
+
+### A. Comandos Disponibles en Telegram
 
 | Comando / Módulo | Descripción | Herramientas Utilizadas |
 | :--- | :--- | :--- |
@@ -254,6 +258,36 @@ Si el proyecto es clonado o transferido a un nuevo equipo o máquina virtual:
 | `/analisis_red` | Diagnóstico profundo de tráfico LAN, tormentas broadcast, latencias y hosts no autorizados. | `tcpdump`, `tshark`, `arp-scan`, `mac_whitelist.txt` |
 | `/actualizar` | Comprobación y forzado de sincronización con el repositorio oficial (`git reset --hard`). | Git, PyCompile, Systemctl |
 | `/reset_ia` | Reinicio de la memoria conversacional del asistente con Ollama. | Ollama Context Manager |
+
+---
+
+### B. Herramienta de Línea de Comandos Global: `estatus`
+Ubicación: `/scripts/telegram-admin-bot/estatus` (Enlazado globalmente en `/usr/local/bin/estatus`).
+
+Permite ejecutar los motores de chequeo directamente desde la terminal de Linux o mediante CRON, despachando automáticamente los reportes con formato HTML a Telegram (al grupo autorizado y al administrador) con soporte multi-proxy.
+
+```bash
+# Ejecutar chequeo de Servicios Corporativos y despachar a Telegram (Modo estándar CRON)
+estatus servicios
+
+# Ejecutar chequeo de Sedes y Subestaciones y despachar a Telegram
+estatus sedes
+
+# Ejecutar chequeo Completo (Servicios + Sedes en paralelo) y despachar a Telegram
+estatus completo
+
+# Ejecutar Diagnóstico Profundo de Red (Captura .pcap + Análisis TShark + Escaneo ARP)
+estatus analisis_red
+
+# Ejecutar chequeo en modo local sin enviar a Telegram (Solo salida en terminal)
+estatus servicios --no-send
+
+# Ejecutar en modo depuración (Muestra detalles técnicos y envía log adjunto)
+estatus servicios --debug
+
+# Enviar el reporte a un chat o canal específico
+estatus servicios --chat-id -1001383163558
+```
 
 ---
 
