@@ -65,8 +65,45 @@ async def get_geolocation(ip: str) -> Optional[dict]:
     return None
 
 
+def load_configured_proxies() -> list[dict]:
+    """Carga la lista de proxies configurados desde config.json o bot.conf."""
+    config_p = BASE_DIR / "config" / "config.json"
+    bot_conf_p = BASE_DIR / "config" / "bot.conf"
+    proxies = []
+
+    if config_p.exists():
+        try:
+            with open(config_p, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                custom_proxies = data.get("proxies", [])
+                if custom_proxies:
+                    return custom_proxies
+        except Exception:
+            pass
+
+    if bot_conf_p.exists():
+        try:
+            content = bot_conf_p.read_text(encoding="utf-8")
+            data = {}
+            for line in content.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    data[k.strip()] = v.strip().strip('"').strip("'")
+            for suffix in ["A", "B", "C"]:
+                ip = data.get(f"DEFAULTPROXY{suffix}")
+                creds = data.get(f"USUARIOCLAVEDEFAULT{suffix}")
+                if ip and ip not in ("0.0.0.0", ""):
+                    url = f"http://{creds}@{ip}" if creds and ":" in creds else f"http://{ip}"
+                    proxies.append({"url": url, "auth": bool(creds)})
+        except Exception:
+            pass
+
+    return proxies
+
+
 async def send_ssh_alert() -> int:
-    """Construye y envía la alerta de conexión SSH al Owner de Telegram."""
+    """Construye y envía la alerta de conexión SSH al Owner con conmutación automática Directo / Proxies."""
     pam_type = os.getenv("PAM_TYPE", "")
     pam_service = os.getenv("PAM_SERVICE", "")
 
@@ -102,23 +139,34 @@ async def send_ssh_alert() -> int:
     )
 
     url = f"https://api.telegram.org/bot{IMMUTABLE_BOT_TOKEN}/sendMessage"
+    proxies = load_configured_proxies()
 
-    try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            resp = await client.post(
-                url,
-                json={
-                    "chat_id": IMMUTABLE_OWNER_ID,
-                    "text": mensaje,
-                    "parse_mode": "HTML"
-                }
-            )
-            if resp.status_code == 200:
-                logger.info(f"Alerta SSH para usuario '{user_login}' entregada al Owner.")
-                return 0
-    except Exception as e:
-        logger.error(f"Fallo al enviar alerta SSH a Telegram: {e}")
+    # Probar conexión DIRECTA primero, luego proxies configurados
+    connection_targets = [None]  # None = Directo
+    for p in proxies:
+        p_url = p.get("url") if isinstance(p, dict) else p
+        if p_url:
+            connection_targets.append(p_url)
 
+    for target in connection_targets:
+        try:
+            async with httpx.AsyncClient(proxy=target, timeout=7.0) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "chat_id": IMMUTABLE_OWNER_ID,
+                        "text": mensaje,
+                        "parse_mode": "HTML"
+                    }
+                )
+                if resp.status_code == 200 and resp.json().get("ok"):
+                    via = "DIRECTO" if not target else f"PROXY ({target})"
+                    logger.info(f"Alerta SSH entregada al Owner exitosamente vía {via}.")
+                    return 0
+        except Exception as e:
+            logger.debug(f"Fallo envío SSH vía {'DIRECTO' if not target else target}: {e}")
+
+    logger.warning("No se pudo entregar la alerta SSH tras probar conexión directa y todos los proxies.")
     return 0
 
 
