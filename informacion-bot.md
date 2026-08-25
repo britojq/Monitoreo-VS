@@ -439,12 +439,17 @@ Agregar las siguientes líneas al final del archivo:
 # ==============================================================================
 # ⏰ MONITOREO AUTOMÁTICO VALLE SECO (Reportes a Grupo y Administrador)
 # ==============================================================================
-# Reporte de Servicios Corporativos a las 7:30 AM
+# Reporte de Servicios Corporativos a las 7:30 AM (Ejecución única en el minuto 30)
 30 7 * * * /usr/local/bin/estatus servicios >/dev/null 2>&1
 
-# Reporte de Servicios Corporativos a las 4:00 PM (16:00)
+# Reporte de Servicios Corporativos a las 4:00 PM (16:00) (Ejecución única en el minuto 0)
 0 16 * * * /usr/local/bin/estatus servicios >/dev/null 2>&1
 ```
+
+> [!NOTE]
+> **Garantía de Ejecución Única:**
+> 1. **Comportamiento Nativo de CRON:** El demonio `cron` de Linux se evalúa exactamente una vez por minuto (en el segundo `00`). Al disparar la tarea a las `16:00:00`, `cron` entra en suspensión hasta las `16:01:00`, asegurando que el comando **no se repita durante el transcurso del minuto**.
+> 2. **Doble Protección por Lockfile Atómico:** El motor [`monitor/monitor_engine.py`](file:///scripts/telegram-admin-bot/monitor/monitor_engine.py) implementa un archivo de bloqueo temporal (`/tmp/monitor_engine.lock`) con ventana de 180 segundos que bloquea y descarta cualquier ejecución concurrente o manual simultánea.
 
 ---
 *Manual técnico compilado para uso exclusivo de Administración y Operaciones Valle Seco.*
