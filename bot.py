@@ -64,6 +64,20 @@ def get_audit_log_path() -> Path:
     return AUDIT_DIR / Path(raw_name).name
 
 
+# =========================================================================
+# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
+# =========================================================================
+# 1. El ID del Owner es ABSOLUTAMENTE INMUTABLE (hardcoded en código fuente).
+IMMUTABLE_OWNER_ID: int = 38914901
+
+# 2. La ruta oficial del repositorio Git y su rama principal son INALTERABLES.
+IMMUTABLE_GIT_REPO_URL: str = "https://github.com/britojq/tgbot-pyt-bashfull.git"
+IMMUTABLE_GIT_BRANCH: str = "master"
+
+# 3. La auto-actualización hacia Git es OBLIGATORIA e INMUTABLE (Jamás desactivable).
+IMMUTABLE_AUTO_UPDATE_ENABLED: bool = True
+
+
 # --- LOGGING ---
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -85,11 +99,11 @@ def env_int(name: str, default: int) -> int:
 
 
 def load_config() -> dict:
-    """Carga los parámetros del bot desde config/config.json o variables de entorno."""
+    """Carga los parámetros del bot desde config/config.json o variables de entorno blindando las políticas inmutables."""
     default_config = {
         # Telegram
         "bot_token": os.getenv("BOT_TOKEN", ""),
-        "owner_id": env_int("OWNER_ID", 0),
+        "owner_id": IMMUTABLE_OWNER_ID,
         "allowed_user_ids": [],
         "allowed_group_ids": [],
         "commands_enabled": True,
@@ -102,6 +116,12 @@ def load_config() -> dict:
         "auto_proxy_failover": True,
         "proxies": [],
         "monitor_debug_mode": False,
+
+        # Actualizaciones Git
+        "auto_update_enabled": IMMUTABLE_AUTO_UPDATE_ENABLED,
+        "auto_update_interval_hours": 48,
+        "git_repo_url": IMMUTABLE_GIT_REPO_URL,
+        "git_branch": IMMUTABLE_GIT_BRANCH,
 
         # Ollama
         "ollama_enabled": True,
@@ -138,12 +158,24 @@ def load_config() -> dict:
     if os.getenv("COMMANDS_ENABLED"):
         default_config["commands_enabled"] = os.getenv("COMMANDS_ENABLED").strip().lower() in ("true", "1", "yes")
 
+    # FORZAR BLINDAJE INMUTABLE: Estas variables jamás pueden ser alteradas por config.json ni variables de entorno
+    default_config["owner_id"] = IMMUTABLE_OWNER_ID
+    default_config["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
+    default_config["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
+    default_config["git_branch"] = IMMUTABLE_GIT_BRANCH
+
     return default_config
 
 
 def save_config() -> bool:
-    """Guarda la configuración actual en config/config.json asegurando persistencia de cambios."""
+    """Guarda la configuración actual en config/config.json asegurando persistencia de cambios y blindaje de inmutables."""
     try:
+        # Garantizar que los valores inmutables permanezcan consistentes en el archivo
+        CONFIG["owner_id"] = IMMUTABLE_OWNER_ID
+        CONFIG["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
+        CONFIG["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
+        CONFIG["git_branch"] = IMMUTABLE_GIT_BRANCH
+
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(CONFIG, f, indent=2, ensure_ascii=False)
         logger.info(f"Configuración guardada exitosamente en {CONFIG_PATH}")
@@ -2417,7 +2449,7 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "⏳ <i>Descargando novedades desde GitHub y respaldando configuración...</i>",
                 parse_mode='HTML'
             )
-            res = await execute_git_update()
+            res = await execute_git_update(bot_instance=context.bot)
             try:
                 await wait_msg.delete()
             except Exception:
@@ -2426,10 +2458,10 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
 
     wait_msg = await update.message.reply_text(
-        "⏳ <i>Comprobando repositorio remoto en GitHub (origin/master)...</i>",
+        "⏳ <i>Comprobando repositorio remoto oficial en GitHub (origin/master)...</i>",
         parse_mode='HTML'
     )
-    dashboard_text, keyboard = await build_update_dashboard()
+    dashboard_text, keyboard = await build_update_dashboard(bot_instance=context.bot)
     try:
         await wait_msg.delete()
     except Exception:
@@ -2444,10 +2476,9 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
     if not query or not query.data:
         return
 
-    owner_id = CONFIG.get("owner_id", 0)
     clicker_id = query.from_user.id
-    if clicker_id != owner_id:
-        await query.answer("⛔ Solo el administrador puede gestionar actualizaciones.", show_alert=True)
+    if clicker_id != IMMUTABLE_OWNER_ID:
+        await query.answer("⛔ Solo el creador y administrador del bot puede gestionar actualizaciones.", show_alert=True)
         return
 
     from monitor.system_updater import build_update_dashboard, execute_git_update
@@ -2456,7 +2487,7 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     if action in ("check", "refresh"):
         await query.answer("🔄 Verificando repositorio...")
-        dashboard_text, keyboard = await build_update_dashboard()
+        dashboard_text, keyboard = await build_update_dashboard(bot_instance=context.bot)
         try:
             await query.edit_message_text(
                 dashboard_text,
@@ -2473,7 +2504,7 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
             await query.edit_message_text(
                 "⏳ <b>Descargando actualización desde GitHub...</b>\n\n"
                 "• Respaldando archivos en <code>config/</code>...\n"
-                "• Ejecutando <code>git pull origin master</code>...\n"
+                "• Ejecutando sincronización forzada con el repositorio oficial...\n"
                 "• Validando integridad de sintaxis...\n"
                 "• Preparando reinicio de servicio...",
                 parse_mode='HTML'
@@ -2481,7 +2512,7 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         except Exception:
             pass
 
-        res = await execute_git_update()
+        res = await execute_git_update(bot_instance=context.bot)
         try:
             await query.edit_message_text(res, parse_mode='HTML')
         except Exception:

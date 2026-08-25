@@ -391,12 +391,27 @@ Configuración aplicada en `commands.json`:
    - Reinicio del servicio systemd `tg-admin-bot.service` con polling activo en el nuevo bot.
 
 --------------------------------------------------------------------------------
-25. ESTADO FINAL DE VERIFICACIÓN
+25. VIGÉSIMA QUINTA INTERVENCIÓN (2026-08-25): BLINDAJE INMUTABLE DEL SISTEMA Y REGLAS DE SEGURIDAD GIT/OWNER
+--------------------------------------------------------------------------------
+1) Regla 1 - Auto-actualización Git Obligatoria y Notificación en Fallo:
+   - Parámetro `IMMUTABLE_AUTO_UPDATE_ENABLED = True` hardcoded e imposible de desactivar.
+   - En caso de fallo de red, DNS o error de sincronización, el bot envía inmediatamente una alerta crítica con el detalle técnico al Owner.
+2) Regla 2 - Forzado Estricto de Sincronización (Git Reset Hard):
+   - Al actualizar, el sistema ejecuta `git fetch origin master`, `git reset --hard origin/master` y `git clean -fd` protegiendo `config/`, `audit/`, `venv/`.
+3) Regla 3 - Repositorio Git Inmutable:
+   - Ruta oficial `https://github.com/britojq/tgbot-pyt-bashfull.git` y rama `master` hardcoded en código fuente (`IMMUTABLE_GIT_REPO_URL`). No puede ser modificada desde ningún archivo de configuración.
+4) Regla 4 - ID del Owner Inmutable:
+   - `IMMUTABLE_OWNER_ID = 38914901` fijado directamente en el código fuente de todos los módulos (`bot.py`, `system_updater.py`, `boot_alert.py`).
+   - Se muestra visualmente en `config/config.json`, pero el código ignora cualquier intento de manipulación externa en el archivo.
+
+--------------------------------------------------------------------------------
+26. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Servicio systemd: Active: active (running)
 - Conexión Telegram: Autenticado como `@IA_ValleSeco_bot` (HTTP 200 OK).
 - Conexión Ollama: Verificada la respuesta del modelo `qwen-empresa:latest` en http://localhost:11434.
-- Tareas en segundo plano: Verificador autónomo de actualizaciones Git cada 48h activo.
+- Tareas en segundo plano: Verificador autónomo de actualizaciones Git inmutable activo (cada 48h).
+- Blindaje de Seguridad: Reglas 1, 2, 3 y 4 activas y blindadas en código.
 
 --------------------------------------------------------------------------------
 6. GUÍA DE ADMINISTRACIÓN RÁPIDA

@@ -36,15 +36,24 @@ MARKER_FILE = AUDIT_DIR / ".clean_shutdown"
 AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# =========================================================================
+# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
+# =========================================================================
+IMMUTABLE_OWNER_ID: int = 38914901
+
+
 def load_config() -> Dict[str, any]:
-    """Carga config.json con fallback seguro."""
+    """Carga config.json con fallback seguro y fuerza parámetros inmutables."""
+    cfg = {}
     if CONFIG_PATH.exists():
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cfg = json.load(f)
         except Exception as e:
             logger.error(f"Error leyendo {CONFIG_PATH}: {e}")
-    return {}
+    # Blindaje inmutable de Owner ID
+    cfg["owner_id"] = IMMUTABLE_OWNER_ID
+    return cfg
 
 
 def get_local_ips() -> str:
