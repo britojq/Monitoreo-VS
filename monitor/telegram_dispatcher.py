@@ -16,7 +16,7 @@ from monitor.config_parser import MonitorConfigLoader
 logger = logging.getLogger("monitor.dispatcher")
 
 
-IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
+from monitor.core_shield import IMMUTABLE_BOT_TOKEN
 
 
 class TelegramDispatcher:

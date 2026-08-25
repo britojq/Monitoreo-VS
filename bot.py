@@ -65,20 +65,15 @@ def get_audit_log_path() -> Path:
 
 
 # =========================================================================
-# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
+# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES Y OFUSCADAS (NÚCLEO BLINDADO)
 # =========================================================================
-# 1. El ID del Owner es ABSOLUTAMENTE INMUTABLE (hardcoded en código fuente).
-IMMUTABLE_OWNER_ID: int = 38914901
-
-# 2. El Token del Bot de Telegram es ABSOLUTAMENTE INMUTABLE (hardcoded en código fuente).
-IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
-
-# 3. La ruta oficial del repositorio Git y su rama principal son INALTERABLES.
-IMMUTABLE_GIT_REPO_URL: str = "https://github.com/britojq/tgbot-pyt-bashfull.git"
-IMMUTABLE_GIT_BRANCH: str = "master"
-
-# 4. La auto-actualización hacia Git es OBLIGATORIA e INMUTABLE (Jamás desactivable).
-IMMUTABLE_AUTO_UPDATE_ENABLED: bool = True
+from monitor.core_shield import (
+    IMMUTABLE_OWNER_ID,
+    IMMUTABLE_BOT_TOKEN,
+    IMMUTABLE_GIT_REPO_URL,
+    IMMUTABLE_GIT_BRANCH,
+    IMMUTABLE_AUTO_UPDATE_ENABLED
+)
 
 
 # --- LOGGING ---

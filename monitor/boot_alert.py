@@ -37,10 +37,9 @@ AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # =========================================================================
-# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
+# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES Y OFUSCADAS (NÚCLEO BLINDADO)
 # =========================================================================
-IMMUTABLE_OWNER_ID: int = 38914901
-IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
+from monitor.core_shield import IMMUTABLE_OWNER_ID, IMMUTABLE_BOT_TOKEN
 
 
 def load_config() -> Dict[str, any]:

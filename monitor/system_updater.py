@@ -27,12 +27,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
 
 # =========================================================================
-# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
+# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES Y OFUSCADAS (NÚCLEO BLINDADO)
 # =========================================================================
-IMMUTABLE_OWNER_ID: int = 38914901
-IMMUTABLE_GIT_REPO_URL: str = "https://github.com/britojq/tgbot-pyt-bashfull.git"
-IMMUTABLE_GIT_BRANCH: str = "master"
-IMMUTABLE_AUTO_UPDATE_ENABLED: bool = True
+from monitor.core_shield import (
+    IMMUTABLE_OWNER_ID,
+    IMMUTABLE_BOT_TOKEN,
+    IMMUTABLE_GIT_REPO_URL,
+    IMMUTABLE_GIT_BRANCH,
+    IMMUTABLE_AUTO_UPDATE_ENABLED
+)
 
 
 async def _run_git_command(args: List[str], timeout: float = 20.0) -> Tuple[int, str, str]:
