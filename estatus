@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# CLI y Wrapper de Monitoreo: estatus
+# Ubicación: /scripts/telegram-admin-bot/estatus
+# Enlace Global: /usr/local/bin/estatus -> /scripts/telegram-admin-bot/estatus
+# Descripción: Ejecuta chequeos de servicios, sedes o análisis de red y despacha
+#              reportes a Telegram. Compatible con CRON y terminal interactiva.
+# ==============================================================================
+
+PROJECT_DIR="/scripts/telegram-admin-bot"
+PYTHON_EXEC="$PROJECT_DIR/venv/bin/python"
+ENGINE_SCRIPT="$PROJECT_DIR/monitor/monitor_engine.py"
+
+if [ ! -f "$PYTHON_EXEC" ] || [ ! -f "$ENGINE_SCRIPT" ]; then
+    echo "[ERROR] Entorno de ejecución no encontrado en $PROJECT_DIR." >&2
+    exit 1
+fi
+
+# Pasar todos los argumentos al motor de Python
+exec "$PYTHON_EXEC" "$ENGINE_SCRIPT" "$@"

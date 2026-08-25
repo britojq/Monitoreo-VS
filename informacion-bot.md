@@ -393,5 +393,24 @@ sudo systemctl enable --now tg-admin-bot.service
 2. Responde al bot con el Serial exacto dentro de los 10 minutos.
 3. El sistema confirmará la autenticación y el bot quedará permanentemente activo y vinculado al nuevo servidor.
 
+### Paso 7: Configuración de Tareas Programadas en CRON (Monitoreo Automático)
+Para programar los reportes automáticos de servicios corporativos a las **7:30 AM** y **4:00 PM** (16:00), editar el crontab del sistema:
+
+```bash
+crontab -e
+```
+
+Agregar las siguientes líneas al final del archivo:
+```cron
+# ==============================================================================
+# ⏰ MONITOREO AUTOMÁTICO VALLE SECO (Reportes a Grupo y Administrador)
+# ==============================================================================
+# Reporte de Servicios Corporativos a las 7:30 AM
+30 7 * * * /usr/local/bin/estatus servicios >/dev/null 2>&1
+
+# Reporte de Servicios Corporativos a las 4:00 PM (16:00)
+0 16 * * * /usr/local/bin/estatus servicios >/dev/null 2>&1
+```
+
 ---
 *Manual técnico compilado para uso exclusivo de Administración y Operaciones Valle Seco.*

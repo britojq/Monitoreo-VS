@@ -1,19 +1,28 @@
 """
-Orquestador unificado de monitoreo.
-Permite ejecutar chequeos individuales (servicios o sedes) o el chequeo completo,
-generar los archivos de logs consolidados y despachar alertas a Telegram.
+Orquestador unificado de monitoreo y CLI del sistema.
+Permite ejecutar chequeos individuales (servicios, sedes, completo, analisis_red, limpiar),
+generar logs consolidados y despachar reportes directamente a Telegram.
+Compatible con invocación manual desde consola y tareas programadas en CRON.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
+import os
+import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from monitor.config_parser import get_formatted_datetime
+from monitor.core_shield import IMMUTABLE_OWNER_ID, IMMUTABLE_BOT_TOKEN
 from monitor.monitor_servicios import run_services_check
 from monitor.monitor_sedes import run_sedes_check
 from monitor.telegram_dispatcher import TelegramDispatcher
@@ -21,6 +30,28 @@ from monitor.telegram_dispatcher import TelegramDispatcher
 logger = logging.getLogger("monitor.engine")
 
 LOG_DIR = Path("/tmp/monitor")
+CONFIG_PATH = BASE_DIR / "config" / "config.json"
+
+
+def get_default_telegram_chats() -> List[str | int]:
+    """Obtiene la lista de destinatarios por defecto para reportes programados."""
+    recipients = []
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                groups = cfg.get("allowed_group_ids", [])
+                if groups:
+                    recipients.extend(groups)
+                owner = cfg.get("owner_id")
+                if owner and owner not in recipients:
+                    recipients.append(owner)
+        except Exception:
+            pass
+
+    if not recipients:
+        recipients = [-1001383163558, IMMUTABLE_OWNER_ID]
+    return recipients
 
 
 def write_consolidated_log(logs: List[str]) -> Path:
@@ -48,35 +79,49 @@ async def execute_monitoring(
 ) -> Dict[str, any]:
     """
     Ejecuta el chequeo según el objetivo indicado:
-    - 'servicios': Solo Componente 1 (Servicios Corporativos)
-    - 'sedes': Solo Componente 2 (Sedes y Equipos de Comunicación)
-    - 'completo': Ambos componentes ejecutados en paralelo
+    - 'servicios': Servicios Corporativos
+    - 'sedes': Sedes y Equipos de Comunicación
+    - 'completo' o 'monitoreo': Ambos componentes
+    - 'analisis_red': Análisis profundo de tráfico LAN (.pcap, tshark, arp-scan)
+    - 'limpiar': Limpieza de temporales y logs antiguos
     """
     t0 = time.perf_counter()
     target_clean = target.strip().lower()
 
     report_servicios: Optional[str] = None
     report_sedes: Optional[str] = None
+    report_network: Optional[str] = None
+    pcap_path: Optional[Path] = None
     all_logs: List[str] = []
-    combined_variables: Dict[str, str] = {}
 
     if target_clean == "servicios":
         report_servicios, vars_s, logs_s, _ = await run_services_check(debug_mode=debug_mode)
         all_logs.extend(logs_s)
-        combined_variables.update(vars_s)
+
     elif target_clean == "sedes":
         report_sedes, vars_sd, logs_sd, _ = await run_sedes_check(debug_mode=debug_mode)
         all_logs.extend(logs_sd)
-        combined_variables.update(vars_sd)
-    else:  # completo
+
+    elif target_clean in ("analisis_red", "red", "trafico"):
+        from monitor.network_analyzer import run_full_network_analysis
+        rep_txt, pcap, _, _ = await run_full_network_analysis(capture_duration=60)
+        report_network = rep_txt
+        pcap_path = pcap
+        all_logs.append(rep_txt)
+
+    elif target_clean in ("limpiar", "clean", "limpieza"):
+        from monitor.system_cleaner import run_system_cleanup
+        rep_clean = await run_system_cleanup()
+        report_servicios = rep_clean
+        all_logs.append(rep_clean)
+
+    else:  # completo / monitoreo
         (report_servicios, vars_s, logs_s, _), (report_sedes, vars_sd, logs_sd, _) = await asyncio.gather(
             run_services_check(debug_mode=debug_mode),
             run_sedes_check(debug_mode=debug_mode)
         )
         all_logs.extend(logs_s)
         all_logs.extend(logs_sd)
-        combined_variables.update(vars_s)
-        combined_variables.update(vars_sd)
 
     elapsed_time = round(time.perf_counter() - t0, 2)
     log_file_path = write_consolidated_log(all_logs)
@@ -86,6 +131,8 @@ async def execute_monitoring(
         "debug_mode": debug_mode,
         "report_servicios": report_servicios,
         "report_sedes": report_sedes,
+        "report_network": report_network,
+        "pcap_file": pcap_path,
         "log_file": log_file_path,
         "elapsed_seconds": elapsed_time,
         "total_items_checked": len(all_logs)
@@ -93,43 +140,61 @@ async def execute_monitoring(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Orquestador de Monitoreo ATIT")
-    parser.add_argument("target", nargs="?", default="completo", choices=["servicios", "sedes", "completo"], help="Tipo de chequeo a ejecutar")
+    parser = argparse.ArgumentParser(description="Orquestador CLI de Monitoreo Valle Seco")
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default="servicios",
+        choices=["servicios", "sedes", "completo", "monitoreo", "analisis_red", "limpiar"],
+        help="Tipo de chequeo a ejecutar (por defecto: servicios)"
+    )
     parser.add_argument("--debug", action="store_true", help="Ejecutar en modo depuración")
-    parser.add_argument("--send", action="store_true", help="Enviar reporte por Telegram")
-    parser.add_argument("--chat-id", type=str, help="ID de chat de Telegram para el envío")
+    parser.add_argument("--no-send", action="store_true", help="No enviar por Telegram (solo imprimir en terminal)")
+    parser.add_argument("--chat-id", type=str, help="ID específico de chat de Telegram para el envío")
     args = parser.parse_args()
 
-    print(f"🚀 Ejecutando monitoreo: [{args.target.upper()}] (Debug: {args.debug})...")
+    print(f"🚀 [MONITOR VALLE SECO] Ejecutando: [{args.target.upper()}]...")
     result = asyncio.run(execute_monitoring(target=args.target, debug_mode=args.debug))
 
-    print("\n" + "=" * 60)
-    if result["report_servicios"]:
-        print("📄 REPORTE DE SERVICIOS:")
+    print("\n" + "=" * 65)
+    if result.get("report_servicios"):
+        print("📄 REPORTE DE SERVICIOS:\n")
         print(result["report_servicios"])
-        print("-" * 60)
+        print("-" * 65)
 
-    if result["report_sedes"]:
-        print("🏢 REPORTE DE SEDES:")
+    if result.get("report_sedes"):
+        print("🏢 REPORTE DE SEDES:\n")
         print(result["report_sedes"])
-        print("-" * 60)
+        print("-" * 65)
+
+    if result.get("report_network"):
+        print("🌐 REPORTE DE ANÁLISIS DE RED:\n")
+        print(result["report_network"])
+        print("-" * 65)
 
     print(f"📁 Log consolidado guardado en: {result['log_file']}")
-    print(f"⏱️ Tiempo total de ejecución: {result['elapsed_seconds']} segundos ({result['total_items_checked']} elementos verificados)")
-    print("=" * 60)
+    print(f"⏱️ Tiempo de ejecución: {result['elapsed_seconds']}s")
+    print("=" * 65)
 
-    if args.send:
+    # Envío a Telegram (activo por defecto para ejecuciones de cron a menos que se use --no-send)
+    if not args.no_send:
         dispatcher = TelegramDispatcher()
-        chat = args.chat_id or dispatcher.loader.raw_bot.get("IDC") or dispatcher.loader.raw_bot.get("IDA")
-        if chat:
-            print(f"📤 Despachando alertas a Telegram (Chat ID: {chat})...")
-            if result["report_servicios"]:
+        target_chats = [args.chat_id] if args.chat_id else get_default_telegram_chats()
+
+        for chat in target_chats:
+            print(f"📤 Despachando reporte a Telegram (Chat ID: {chat})...")
+            if result.get("report_servicios"):
                 asyncio.run(dispatcher.send_text(chat, result["report_servicios"]))
-            if result["report_sedes"]:
+            if result.get("report_sedes"):
                 asyncio.run(dispatcher.send_text(chat, result["report_sedes"]))
+            if result.get("report_network"):
+                asyncio.run(dispatcher.send_text(chat, result["report_network"]))
+            if result.get("pcap_file") and Path(result["pcap_file"]).exists():
+                asyncio.run(dispatcher.send_document(chat, Path(result["pcap_file"]), caption="Captura de paquetes de red"))
             if args.debug and result["log_file"].exists():
-                asyncio.run(dispatcher.send_document(chat, result["log_file"], caption="Log técnico de ejecución"))
-            print("✅ Reportes despachados.")
+                asyncio.run(dispatcher.send_document(chat, result["log_file"], caption="Log técnico consolidado"))
+
+        print("✅ Reportes despachados exitosamente a Telegram.")
 
 
 if __name__ == "__main__":
