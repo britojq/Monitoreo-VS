@@ -15,18 +15,11 @@ from typing import Dict, List, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
-FALLBACK_CONFIG_DIR = Path("/scripts/monitor/config")
 
 
 def get_config_path(filename: str) -> Path:
-    """Busca el archivo en el directorio local config/ o en el fallback /scripts/monitor/config/."""
-    local_p = CONFIG_DIR / filename
-    if local_p.exists():
-        return local_p
-    fallback_p = FALLBACK_CONFIG_DIR / filename
-    if fallback_p.exists():
-        return fallback_p
-    return local_p
+    """Busca el archivo exclusivamente en el directorio config/ del proyecto."""
+    return CONFIG_DIR / filename
 
 
 def parse_bash_config(filepath: Path) -> Dict[str, str]:

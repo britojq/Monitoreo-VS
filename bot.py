@@ -183,14 +183,13 @@ def save_config() -> bool:
 
 
 def load_proxies_list() -> list[dict]:
-    """Carga la lista de proxies desde config.json, config/bot.conf o /scripts/monitor/config/bot.conf."""
+    """Carga la lista de proxies desde config.json o config/bot.conf dentro del proyecto."""
     custom_proxies = CONFIG.get("proxies")
     if custom_proxies and isinstance(custom_proxies, list) and len(custom_proxies) > 0:
         return custom_proxies
 
     bot_conf_candidates = [
         CONFIG_DIR / "bot.conf",
-        Path("/scripts/monitor/config/bot.conf"),
         BASE_DIR / "bot.conf"
     ]
     bot_conf_path = next((p for p in bot_conf_candidates if p.exists()), None)

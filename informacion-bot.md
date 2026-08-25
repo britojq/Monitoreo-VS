@@ -211,10 +211,11 @@ El bot implementa un esquema de **Digital Rights Management (DRM) basado en hard
 ### C. Alertas de Acceso SSH en Tiempo Real
 * Configurado a través del módulo PAM (`/etc/pam.d/sshd`) con `pam_exec.so`.
 * Cada vez que un usuario inicia sesión SSH:
-  1. Se ejecuta `/scripts/monitor/ssh_alert.sh` en segundo plano (sin retrasar la terminal).
-  2. Extrae usuario (`$PAM_USER`), IP remota (`$PAM_RHOST`), terminal (`$TTY_SSH`) y fecha.
-  3. Si la IP es pública, consulta la API de geolocalización para determinar Ciudad, País y Proveedor de Internet (ISP).
-  4. Despacha la alerta a Telegram:
+  1. Se ejecuta `/scripts/telegram-admin-bot/monitor/ssh_alert.sh` en segundo plano (sin retrasar la terminal).
+  2. Invoca el módulo nativo `monitor/ssh_alert.py` con el entorno virtual del bot.
+  3. Extrae usuario (`$PAM_USER`), IP remota (`$PAM_RHOST`), terminal (`$TTY_SSH`) y fecha.
+  4. Si la IP es pública, consulta la API de geolocalización para determinar Ciudad, País y Proveedor de Internet (ISP).
+  5. Despacha la alerta a Telegram utilizando el token inmutable del núcleo:
      ```
      🔑 Acceso SSH Detectado
      Servidor: CENCARATIT
@@ -292,15 +293,20 @@ Archivo: `/etc/systemd/system/boot-alert.service`
 
 ```ini
 [Unit]
-Description=Notificacion de arranque de servidor a Telegram
-After=network-online.target
+Description=Notificacion de Arranque y Apagado de Servidor a Telegram
+After=network-online.target NetworkManager.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash /scripts/monitor/boot_alert.sh start
-ExecStop=/bin/bash /scripts/monitor/boot_alert.sh stop
+User=britojab
+Group=britojab
+WorkingDirectory=/scripts/telegram-admin-bot
+ExecStart=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/boot_alert.py start
+ExecStop=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/boot_alert.py stop
+TimeoutStartSec=300
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target
@@ -319,8 +325,8 @@ sudo systemctl start boot-alert.service
 Archivo: `/etc/pam.d/sshd` (al final del archivo):
 
 ```text
-# Enviar alerta de conexión SSH vía Telegram
-session optional pam_exec.so seteuid /bin/bash /scripts/monitor/ssh_alert.sh
+# Alerta de conexion SSH a Telegram (Monitor Valle Seco)
+session optional pam_exec.so seteuid /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh
 ```
 
 ---
