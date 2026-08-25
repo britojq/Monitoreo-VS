@@ -274,8 +274,8 @@ async def execute_git_update(bot_instance=None) -> str:
                 await notify_owner_git_failure(bot_instance, err_detail, operation="sincronización forzada (git reset --hard)")
             return "\n\n".join(logs)
 
-        # Limpiar archivos no rastreados protegiendo directorios locales
-        await _run_git_command(["clean", "-fd", "-e", "config/", "-e", "audit/", "-e", "venv/", "-e", "logs/"])
+        # Limpiar archivos no rastreados protegiendo directorios locales y documentación
+        await _run_git_command(["clean", "-fd", "-e", "config/", "-e", "audit/", "-e", "venv/", "-e", "logs/", "-e", "docs/"])
         logs.append("⬇️ <i>Código y scripts sincronizados exactamente con el repositorio remoto.</i>")
 
         # 4. Restaurar archivos de configuración preservados

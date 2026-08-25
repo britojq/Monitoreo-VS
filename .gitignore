@@ -11,12 +11,18 @@ OLD-config.json
 *.token
 config/*.token
 
-# Logs de auditoría y ejecución
+# Logs de auditoría, anclajes y ejecución
 *.log
 audit/*.log
 audit/*.txt
 audit/*.html
 audit/*.md
 audit/*.pcap
+audit/.sys_anchor
 intentos_acceso.log
 !audit/.gitkeep
+
+# Documentación interna confidencial (Exclusiva del servidor local)
+docs/
+docs/*
+
