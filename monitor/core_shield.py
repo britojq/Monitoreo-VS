@@ -1,11 +1,12 @@
 """
-Módulo de Seguridad, DRM de Entorno y Protocolo de Re-Validación Remota (SecureCore).
+Módulo de Seguridad, DRM de Entorno, Handshake de Activación y Migración de Token (SecureCore).
 Implementa:
 1. Desofuscación Vinculada Criptográficamente al Hardware (Environment-Bound Key Wrapping).
-2. Detección de Manipulación (Anti-Tamper) con Control Flow Flattening y Predicados Opacos.
-3. Token Canario de Emergencia para Notificación al Owner ante Migraciones o Anomalías.
-4. Protocolo de Re-Validación Remota Human-in-the-Loop con Serial Antifalsificación (Challenge).
-5. Interruptor de Autodestrucción Local de Anclaje (Dead Man's Switch).
+2. Protocolo de Activación Inicial (First-Boot Activation Handshake con Serial Challenge).
+3. Módulo de Migración Dinámica de Token de Telegram Cifrado con DRM de Hardware (/migrar_token).
+4. Detección de Manipulación (Anti-Tamper) con Control Flow Flattening y Predicados Opacos.
+5. Token Canario de Emergencia para Notificación al Owner ante Migraciones o Anomalías.
+6. Interruptor de Autodestrucción Local de Anclaje (Dead Man's Switch).
 """
 
 from __future__ import annotations
@@ -111,7 +112,12 @@ class SecureCore:
     """Motor de seguridad DRM y orquestador del protocolo de validación remota."""
     _instance: Optional[SecureCore] = None
     _unwrapped_master_key: Optional[bytes] = None
-    _state: str = "INIT"  # "OPERATIONAL", "PENDING_VALIDATION", "TRIPPED"
+    _custom_token: Optional[str] = None
+    _state: str = "INIT"  # "OPERATIONAL", "FIRST_BOOT_PENDING", "PENDING_VALIDATION", "TRIPPED"
+    _active_serial: Optional[str] = None
+    _serial_timestamp: int = 0
+    _hw_components: List[str] = []
+    _hw_key: bytes = b""
 
     def __new__(cls):
         if cls._instance is None:
@@ -121,28 +127,36 @@ class SecureCore:
 
     def _init_drm_layer(self) -> None:
         """Inicializa la capa DRM verificando el anclaje físico de hardware."""
-        hw_comps = _get_hardware_components()
-        hw_key = _derive_hardware_key(hw_comps)
+        self._hw_components = _get_hardware_components()
+        self._hw_key = _derive_hardware_key(self._hw_components)
 
-        # Si el archivo de anclaje no existe en el servidor inicial, crearlo
+        # 1. Si no existe .sys_anchor -> Estado FIRST_BOOT_PENDING
         if not ANCHOR_FILE.exists():
-            self._write_anchor(hw_key)
+            self._state = "FIRST_BOOT_PENDING"
+            hw_fp = ":".join(self._hw_components)
+            self._active_serial, self._serial_timestamp = self._generate_challenge(hw_fp)
+            logger.warning(f"🔐 SecureCore: Primer arranque post-instalación detectado. Estado: {self._state}")
+            self._send_activation_alert(self._active_serial)
+            return
 
-        # Intentar desencriptar la Master Key usando el Hardware Key actual
-        master_key = self._unwrap_anchor(hw_key)
+        # 2. Si existe .sys_anchor -> Intentar desencriptar la Master Key
+        master_key, custom_tok = self._unwrap_anchor(self._hw_key)
 
         if master_key and hashlib.sha256(master_key).hexdigest() == _MASTER_KEY_HASH:
             self._unwrapped_master_key = master_key
+            self._custom_token = custom_tok
             self._state = "OPERATIONAL"
             logger.info("🔒 SecureCore: Hardware verificado y anclaje criptográfico validado exitosamente.")
         else:
             # Anomalía o migración detectada -> Estado PENDING_VALIDATION
             self._state = "PENDING_VALIDATION"
+            hw_fp = ":".join(self._hw_components)
+            self._active_serial, self._serial_timestamp = self._generate_challenge(hw_fp)
             logger.warning("⚠️ SecureCore: Huella de hardware no coincide. Entrando en protocolo de re-validación...")
-            self._trigger_emergency_protocol(hw_comps, hw_key)
+            self._send_migration_alert(self._active_serial)
 
-    def _write_anchor(self, hw_key: bytes) -> bool:
-        """Envuelve la Master Key con la clave de hardware actual y la guarda en .sys_anchor."""
+    def _write_anchor(self, hw_key: bytes, custom_token: Optional[str] = None) -> bool:
+        """Envuelve la Master Key y opcionalmente un token personalizado con la clave de hardware."""
         try:
             res = bytearray()
             for i, b in enumerate(_CORE_MASTER_KEY):
@@ -152,7 +166,24 @@ class SecureCore:
                 res.append(rotated)
             blob = base64.b64encode(bytes(res)).decode("ascii")
             sig = hmac.new(hw_key, bytes(res), hashlib.sha256).hexdigest()
-            data = {"b": blob, "s": sig, "t": int(time.time())}
+
+            data = {
+                "b": blob,
+                "s": sig,
+                "t": int(time.time()),
+                "node": platform.node()
+            }
+
+            if custom_token:
+                tok_bytes = bytearray()
+                for i, b in enumerate(custom_token.encode("utf-8")):
+                    k = hw_key[i % len(hw_key)]
+                    v = b ^ k
+                    rotated = ((v << 3) & 0xFF) | (v >> 5)
+                    tok_bytes.append(rotated)
+                data["tb"] = base64.b64encode(bytes(tok_bytes)).decode("ascii")
+                data["ts"] = hmac.new(hw_key, bytes(tok_bytes), hashlib.sha256).hexdigest()
+
             ANCHOR_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
             os.sync()
             return True
@@ -160,10 +191,10 @@ class SecureCore:
             logger.error(f"Error escribiendo anclaje local: {e}")
             return False
 
-    def _unwrap_anchor(self, hw_key: bytes) -> Optional[bytes]:
-        """Intenta desencriptar la Master Key desde .sys_anchor con la clave de hardware actual."""
+    def _unwrap_anchor(self, hw_key: bytes) -> Tuple[Optional[bytes], Optional[str]]:
+        """Intenta desencriptar la Master Key y token personalizado desde .sys_anchor."""
         if not ANCHOR_FILE.exists():
-            return None
+            return None, None
         try:
             data = json.loads(ANCHOR_FILE.read_text(encoding="utf-8"))
             raw = base64.b64decode(data["b"])
@@ -171,7 +202,7 @@ class SecureCore:
             computed_sig = hmac.new(hw_key, raw, hashlib.sha256).hexdigest()
 
             if not hmac.compare_digest(computed_sig, expected_sig):
-                return None
+                return None, None
 
             res = bytearray()
             for i, b in enumerate(raw):
@@ -182,10 +213,22 @@ class SecureCore:
 
             res_bytes = bytes(res)
             if hashlib.sha256(res_bytes).hexdigest() != _MASTER_KEY_HASH:
-                return None
-            return res_bytes
+                return None, None
+
+            custom_tok = None
+            if "tb" in data and "ts" in data:
+                raw_tb = base64.b64decode(data["tb"])
+                if hmac.compare_digest(hmac.new(hw_key, raw_tb, hashlib.sha256).hexdigest(), data["ts"]):
+                    tok_res = bytearray()
+                    for i, b in enumerate(raw_tb):
+                        k = hw_key[i % len(hw_key)]
+                        unrotated = ((b >> 3) | ((b << 5) & 0xFF)) & 0xFF
+                        tok_res.append(unrotated ^ k)
+                    custom_tok = tok_res.decode("utf-8")
+
+            return res_bytes, custom_tok
         except Exception:
-            return None
+            return None, None
 
     def _generate_challenge(self, hw_fingerprint: str) -> Tuple[str, int]:
         """Genera un Serial dinámico antifalsificación con ventana de tiempo de 10 min."""
@@ -195,124 +238,114 @@ class SecureCore:
         serial = f"AUTH-{h[:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
         return serial, ts
 
-    def _verify_challenge(self, hw_fingerprint: str, entered_serial: str, generated_ts: int) -> bool:
+    def verify_challenge(self, entered_serial: str) -> bool:
         """Verifica la validez y expiración del Serial de validación."""
-        now = int(time.time())
-        if now - generated_ts > 600 or now < generated_ts:
+        if not self._active_serial or not self._serial_timestamp:
             return False
-        raw = f"{hw_fingerprint}:{generated_ts}:{_CHALLENGE_SALT.hex()}".encode("utf-8")
-        h = hashlib.sha256(raw).hexdigest()[:16].upper()
-        expected = f"AUTH-{h[:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
-        return hmac.compare_digest(entered_serial.strip().upper(), expected)
+        now = int(time.time())
+        if now - self._serial_timestamp > 600 or now < self._serial_timestamp:
+            return False
+        return hmac.compare_digest(entered_serial.strip().upper(), self._active_serial.strip().upper())
 
-    def _trigger_emergency_protocol(self, hw_comps: List[str], hw_key: bytes) -> None:
-        """Ejecuta el protocolo de alerta y espera de re-validación al Owner."""
-        hw_fp = ":".join(hw_comps)
-        serial, ts = self._generate_challenge(hw_fp)
+    def _send_activation_alert(self, serial: str) -> None:
+        """Envía la alerta de primer arranque para solicitar activación al Owner."""
         canary_token = _get_canary_token()
-
         if not canary_token:
-            logger.critical("❌ SecureCore: Token Canario de emergencia no disponible.")
-            self.invalidate_hardware_anchor(reason="Fallo de Token Canario en entorno no autorizado")
             return
-
-        # 1. Enviar notificación de emergencia vía Token Canario
+        hostname = platform.node()
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
-        alert_msg = (
-            "⚠️ <b>[ALERTA DE SEGURIDAD] Entorno Modificado / Migración Detectada</b>\n"
+        msg = (
+            "🔐 <b>[ACTIVACIÓN REQUERIDA] Monitor Valle Seco</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "Se ha detectado un cambio en la huella física de hardware o sistema operativo.\n\n"
-            f"🖥️ <b>Host:</b> <code>{platform.node()}</code>\n"
+            f"Se ha detectado una nueva instalación en el servidor <code>{hostname}</code>.\n\n"
+            f"🖥️ <b>Host:</b> <code>{hostname}</code>\n"
             f"🆔 <b>Nodo:</b> <code>{uuid.getnode()}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            f"🔑 <b>Serial de Activación:</b>\n"
+            f"<code>{serial}</code>\n\n"
+            "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>📌 <b>Instrucción:</b> Responda directamente a este bot con el <b>Serial exacto</b> para anclar el hardware y activar el bot. "
+            "Mientras tanto, los comandos normales permanecen bloqueados.</i>"
+        )
+        self._dispatch_canary_message(canary_token, msg)
+
+    def _send_migration_alert(self, serial: str) -> None:
+        """Envía la alerta de migración/anomalía al Owner."""
+        canary_token = _get_canary_token()
+        if not canary_token:
+            return
+        hostname = platform.node()
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        msg = (
+            "⚠️ <b>[ALERTA DE SEGURIDAD] Entorno Modificado / Migración</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Se ha detectado un cambio en la huella física de hardware en <code>{hostname}</code>.\n\n"
             f"🔑 <b>Serial de Validación:</b>\n"
             f"<code>{serial}</code>\n\n"
-            "⏳ <b>Tiempo Límite de Respuesta:</b> <b>10 Minutos</b>\n\n"
+            "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>📌 <b>Instrucción:</b> Si se trata de una migración legítima autorizada, responda a este mensaje con el <b>Serial exacto</b> para re-vincular el bot al nuevo hardware. "
-            "Si no responde en 10 minutos o el serial es incorrecto, el sistema ejecutará el protocolo de autodestrucción local (Dead Man's Switch).</i>"
+            "<i>📌 <b>Instrucción:</b> Si se trata de una migración autorizada, responda con el <b>Serial exacto</b> para re-vincular el hardware. "
+            "Si no responde en 10 minutos, se ejecutará la autodestrucción local (Dead Man's Switch).</i>"
         )
+        self._dispatch_canary_message(canary_token, msg)
 
+    def _dispatch_canary_message(self, canary_token: str, text: str) -> None:
+        """Despacha un mensaje de emergencia vía Token Canario."""
         try:
             with httpx.Client(timeout=10.0) as client:
-                r = client.post(
+                client.post(
                     f"https://api.telegram.org/bot{canary_token}/sendMessage",
-                    json={"chat_id": IMMUTABLE_OWNER_ID, "text": alert_msg, "parse_mode": "HTML"}
+                    json={"chat_id": IMMUTABLE_OWNER_ID, "text": text, "parse_mode": "HTML"}
                 )
-                if r.status_code == 200:
-                    logger.info("📡 Notificación de emergencia enviada exitosamente al Owner.")
-                else:
-                    logger.warning(f"No se pudo enviar alerta canaria: HTTP {r.status_code}")
         except Exception as e:
-            logger.error(f"Fallo enviando alerta de emergencia al Owner: {e}")
+            logger.error(f"Fallo enviando mensaje canario: {e}")
 
-        # 2. Iniciar listener de re-validación con timeout de 10 minutos (600s)
-        success = self._run_canary_listener(canary_token, hw_fp, serial, ts, timeout_seconds=600)
+    def activate_hardware(self, entered_serial: str) -> Tuple[bool, str]:
+        """Procesa la validación del Serial, ancla la Master Key al hardware y activa el bot."""
+        if not self.verify_challenge(entered_serial):
+            return False, "Serial de activación incorrecto o expirado (límite 10 minutos)."
 
+        success = self._write_anchor(self._hw_key, custom_token=self._custom_token)
         if success:
-            logger.info("✅ SecureCore: Re-validación del Owner exitosa. Re-anclando Master Key al nuevo hardware...")
-            self._write_anchor(hw_key)
             self._unwrapped_master_key = _CORE_MASTER_KEY
             self._state = "OPERATIONAL"
-            # Notificar éxito al Owner
-            try:
-                with httpx.Client(timeout=10.0) as client:
-                    client.post(
-                        f"https://api.telegram.org/bot{canary_token}/sendMessage",
-                        json={
-                            "chat_id": IMMUTABLE_OWNER_ID,
-                            "text": "✅ <b>[RE-VALIDACIÓN EXITOSA]</b>\nEl nuevo hardware ha sido autenticado y re-vinculado. El bot reanuda operaciones normales.",
-                            "parse_mode": "HTML"
-                        }
-                    )
-            except Exception:
-                pass
-        else:
-            logger.critical("⛔ SecureCore: Re-validación fallida o expirada. Ejecutando autodestrucción...")
-            self.invalidate_hardware_anchor(reason="Timeout de 10m o serial incorrecto en re-validación remota")
-            sys.exit(1)
+            self._active_serial = None
+            logger.info("✅ SecureCore: Anclaje de hardware exitoso. Bot activado en modo OPERATIONAL.")
+            return True, "✅ [ACTIVACIÓN EXITOSA] Hardware anclado correctamente. El bot se encuentra ahora 100% OPERATIVO."
+        return False, "Error al escribir el archivo de anclaje de hardware."
 
-    def _run_canary_listener(self, canary_token: str, hw_fp: str, expected_serial: str, ts: int, timeout_seconds: int = 600) -> bool:
-        """Escucha de forma aislada las respuestas exclusivas del Owner durante el challenge."""
-        t_start = time.time()
-        last_update_id = 0
-        get_updates_url = f"https://api.telegram.org/bot{canary_token}/getUpdates"
+    def migrate_token(self, new_token: str) -> Tuple[bool, str]:
+        """
+        Módulo de Migración de Token en Tiempo Real (/migrar_token).
+        Valida el nuevo token contra Telegram y lo cifra con la Clave de Hardware actual.
+        """
+        new_token_clean = new_token.strip()
+        if ":" not in new_token_clean or len(new_token_clean) < 30:
+            return False, "El formato del token no es válido (debe contener ':' y la longitud de BotFather)."
 
-        # Obtener update_id inicial
+        # 1. Validar nuevo token contra la API oficial de Telegram
         try:
             with httpx.Client(timeout=8.0) as client:
-                r = client.get(f"{get_updates_url}?offset=-1")
-                if r.status_code == 200:
-                    results = r.json().get("result", [])
-                    if results:
-                        last_update_id = results[-1].get("update_id", 0) + 1
-        except Exception:
-            pass
+                r = client.get(f"https://api.telegram.org/bot{new_token_clean}/getMe")
+                if r.status_code != 200 or not r.json().get("ok"):
+                    return False, f"El token fue rechazado por Telegram (HTTP {r.status_code}): {r.text}"
+                bot_info = r.json().get("result", {})
+                bot_username = bot_info.get("username", "Desconocido")
+        except Exception as e:
+            return False, f"Fallo al conectar con Telegram para verificar el nuevo token: {e}"
 
-        while (time.time() - t_start) < timeout_seconds:
-            try:
-                with httpx.Client(timeout=12.0) as client:
-                    r = client.get(f"{get_updates_url}?offset={last_update_id}&timeout=8")
-                    if r.status_code == 200:
-                        updates = r.json().get("result", [])
-                        for u in updates:
-                            last_update_id = max(last_update_id, u.get("update_id", 0) + 1)
-                            msg = u.get("message", {})
-                            user_id = msg.get("from", {}).get("id")
-                            text = (msg.get("text") or "").strip()
+        # 2. Cifrar el nuevo token con la Clave de Hardware actual y guardarlo en .sys_anchor
+        if not self._hw_key:
+            self._hw_key = _derive_hardware_key(_get_hardware_components())
 
-                            # Escuchar ÚNICAMENTE al Owner
-                            if user_id == IMMUTABLE_OWNER_ID:
-                                if self._verify_challenge(hw_fp, text, ts):
-                                    return True
-                                elif text.startswith("AUTH-"):
-                                    logger.warning(f"Serial incorrecto recibido: {text}")
-            except Exception as e:
-                logger.warning(f"Error en polling de listener canario: {e}")
+        success = self._write_anchor(self._hw_key, custom_token=new_token_clean)
+        if not success:
+            return False, "Error interno al re-cifrar el nuevo token con el DRM de hardware."
 
-            time.sleep(2.5)
-
-        return False
+        self._custom_token = new_token_clean
+        logger.info(f"✅ Token migrado exitosamente hacia @{bot_username} y re-cifrado con DRM.")
+        return True, f"✅ <b>Identidad migrada exitosamente</b> hacia <code>@{bot_username}</code> y re-cifrada con DRM de hardware."
 
     def deobfuscate(self, cipher_blob: str) -> str:
         """Desofusca un payload usando la Master Key validada por hardware."""
@@ -363,6 +396,7 @@ class SecureCore:
         """DEAD MAN'S SWITCH: Destruye el anclaje de hardware y purga claves en memoria."""
         self._state = "TRIPPED"
         self._unwrapped_master_key = b"\x00" * 32
+        self._custom_token = None
         try:
             if ANCHOR_FILE.exists():
                 ANCHOR_FILE.write_text(os.urandom(128).hex(), encoding="utf-8")
@@ -373,9 +407,37 @@ class SecureCore:
             logger.error(f"Error en invalidación de anclaje: {e}")
             return False
 
+    @property
+    def state(self) -> str:
+        return self._state
+
+    @property
+    def custom_token(self) -> Optional[str]:
+        return self._custom_token
+
 
 # Instancia única global
 _ENGINE = SecureCore()
+
+
+def get_core_status() -> str:
+    """Devuelve el estado actual de seguridad del núcleo."""
+    return _ENGINE.state
+
+
+def is_core_operational() -> bool:
+    """Indica si el bot ha completado la validación de hardware y está operativo."""
+    return _ENGINE.state == "OPERATIONAL"
+
+
+def activate_hardware_first_boot(serial: str) -> Tuple[bool, str]:
+    """Valida el serial del Owner y activa el anclaje de hardware en primer arranque."""
+    return _ENGINE.activate_hardware(serial)
+
+
+def migrate_core_token(new_token: str) -> Tuple[bool, str]:
+    """Migra el token de Telegram y lo re-cifra con DRM de hardware."""
+    return _ENGINE.migrate_token(new_token)
 
 
 def get_core_owner_id() -> int:
@@ -388,7 +450,9 @@ def get_core_owner_id() -> int:
 
 
 def get_core_bot_token() -> str:
-    """Devuelve el Token del Bot verificado por hardware."""
+    """Devuelve el Token del Bot (personalizado o predeterminado) verificado por hardware."""
+    if _ENGINE.custom_token:
+        return _ENGINE.custom_token
     return _ENGINE.deobfuscate(_T_CIPHER)
 
 

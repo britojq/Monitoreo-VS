@@ -256,6 +256,7 @@ El sistema incluye dos vías de interacción para el monitoreo: **Comandos inter
 | `/sedes` | Estado de conectividad de todas las sedes y subestaciones de CORPOELEC. | ICMP Ping concurrente |
 | `/servicios` | Verificación de puertos y servicios corporativos (OTRS, Intranet, DNS, LDAP, SMB, CUPS). | Sockets TCP, HTTP requests, DNS lookup |
 | `/analisis_red` | Diagnóstico profundo de tráfico LAN, tormentas broadcast, latencias y hosts no autorizados. | `tcpdump`, `tshark`, `arp-scan`, `mac_whitelist.txt` |
+| `/migrar_token` | Migración en tiempo real del Token de Telegram re-cifrado con DRM de hardware (Solo Owner). | `ConversationHandler`, Telegram API, PBKDF2-HMAC |
 | `/actualizar` | Comprobación y forzado de sincronización con el repositorio oficial (`git reset --hard`). | Git, PyCompile, Systemctl |
 | `/reset_ia` | Reinicio de la memoria conversacional del asistente con Ollama. | Ollama Context Manager |
 

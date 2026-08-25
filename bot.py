@@ -16,7 +16,15 @@ import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
 from telegram.request import HTTPXRequest
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters
+)
 
 
 async def safe_reply_html(message_obj, text: str, **kwargs) -> None:
@@ -72,7 +80,11 @@ from monitor.core_shield import (
     IMMUTABLE_BOT_TOKEN,
     IMMUTABLE_GIT_REPO_URL,
     IMMUTABLE_GIT_BRANCH,
-    IMMUTABLE_AUTO_UPDATE_ENABLED
+    IMMUTABLE_AUTO_UPDATE_ENABLED,
+    is_core_operational,
+    get_core_status,
+    activate_hardware_first_boot,
+    migrate_core_token
 )
 
 
@@ -384,12 +396,43 @@ def is_authorized(update: Update) -> bool:
 
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
-    Verifica la autorización del usuario y chat.
-    Si NO está autorizado:
-    1. Registra el evento en el archivo de auditoría (intentos_acceso.log).
-    2. Notifica inmediatamente al administrador (owner_id).
-    3. Responde al usuario informándole que no tiene acceso e indicando su ID.
+    Verifica la autorización del usuario, chat y estado de activación DRM del sistema.
+    Si el sistema está en estado FIRST_BOOT_PENDING o PENDING_VALIDATION:
+    - Permite al Owner enviar el Serial de Activación para desbloquear el hardware.
+    - Bloquea todos los demás comandos y usuarios con aviso de espera de activación.
     """
+    # 0. Verificación de Estado de Activación DRM de Hardware
+    if not is_core_operational():
+        user = update.effective_user
+        msg_text = update.message.text.strip() if (update.message and update.message.text) else ""
+
+        # Si el Owner envía el Serial Challenge (ej: AUTH-XXXX-XXXX-XXXX-XXXX)
+        if user and user.id == IMMUTABLE_OWNER_ID and msg_text.upper().startswith("AUTH-"):
+            ok, msg = activate_hardware_first_boot(msg_text)
+            if ok:
+                await safe_reply_html(
+                    update.message,
+                    f"{msg}\n\n"
+                    "🎉 <b>¡Bienvenido!</b> El sistema ha completado el anclaje físico de hardware y se encuentra ahora 100% <b>OPERACIONAL</b>."
+                )
+                return True
+            else:
+                await safe_reply_html(
+                    update.message,
+                    f"❌ <b>Error de Activación:</b>\n\n<code>{html.escape(msg)}</code>\n\n"
+                    "<i>Verifique el Serial recibido en la alerta de emergencia e intente nuevamente dentro del tiempo límite de 10 minutos.</i>"
+                )
+                return False
+
+        if update.message:
+            await safe_reply_html(
+                update.message,
+                "⏳ <b>Bot en espera de activación del Owner.</b>\n\n"
+                "<i>El sistema se encuentra en modo de primer arranque o re-validación de hardware. "
+                "Por favor, introduzca el Serial de Activación para anclar el hardware y desbloquear el bot.</i>"
+            )
+        return False
+
     if is_authorized(update):
         return True
 
@@ -2733,6 +2776,111 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 pass
 
 
+# =========================================================================
+# 🔄 MÓDULO DE MIGRACIÓN DINÁMICA DE TOKEN CON DRM (/migrar_token)
+# =========================================================================
+MIGRAR_TOKEN_WAITING = 1
+
+
+async def cmd_migrar_token_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Inicia el flujo conversacional interactivo para la migración de identidad del bot."""
+    if not is_authorized(update) or not update.effective_user or update.effective_user.id != IMMUTABLE_OWNER_ID:
+        if update.message:
+            await safe_reply_html(
+                update.message,
+                "⛔ <b>Acceso Restringido:</b> Solo el <b>Owner Principal</b> del sistema tiene autorización para migrar la identidad del bot."
+            )
+        return ConversationHandler.END
+
+    if update.effective_chat and update.effective_chat.type in ['group', 'supergroup']:
+        if update.message:
+            await safe_reply_html(
+                update.message,
+                "⚠️ <b>Canal No Seguro:</b> Por políticas de seguridad, el comando <code>/migrar_token</code> debe ejecutarse <b>exclusivamente en un chat privado</b> con el bot."
+            )
+        return ConversationHandler.END
+
+    context.user_data["migrar_token_ts"] = time.time()
+
+    await safe_reply_html(
+        update.message,
+        "🔄 <b>Migración de Identidad del Bot (Token de Telegram)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Este proceso re-cifrará el nuevo token con la <b>Clave de Hardware (DRM)</b> sin alterar el anclaje físico ni exponerlo en texto plano.\n\n"
+        "1️⃣ Ve a @BotFather y copia tu nuevo Token de bot.\n"
+        "2️⃣ <b>Pega y envía el nuevo Token</b> como respuesta a este mensaje.\n\n"
+        "⏳ <i>Tienes 2 minutos para responder. Envía <code>/cancelar</code> para abortar.</i>"
+    )
+    return MIGRAR_TOKEN_WAITING
+
+
+async def handle_new_token_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Procesa, valida con Telegram y re-cifra el nuevo token con el DRM de hardware."""
+    if not update.effective_user or update.effective_user.id != IMMUTABLE_OWNER_ID:
+        return ConversationHandler.END
+
+    start_ts = context.user_data.get("migrar_token_ts", 0)
+    if time.time() - start_ts > 120:
+        await safe_reply_html(
+            update.message,
+            "⏱️ <b>Operación Expirada:</b> Ha transcurrido el tiempo límite de 2 minutos. La migración ha sido cancelada."
+        )
+        return ConversationHandler.END
+
+    new_token = update.message.text.strip() if (update.message and update.message.text) else ""
+
+    if new_token.lower() in ("/cancelar", "cancelar", "/cancel", "abortar"):
+        await safe_reply_html(update.message, "🛑 <b>Migración cancelada:</b> Se mantiene el token actual sin modificaciones.")
+        return ConversationHandler.END
+
+    status_msg = await update.message.reply_text("🔄 Validando nuevo token contra la API oficial de Telegram...")
+
+    ok, msg = migrate_core_token(new_token)
+
+    if ok:
+        try:
+            await status_msg.edit_text(
+                f"{msg}\n\n"
+                "🚀 <b>Reiniciando servicio en 3 segundos para aplicar la nueva identidad...</b>\n"
+                "<i>El bot reanudará la atención automáticamente bajo el nuevo token.</i>",
+                parse_mode='HTML'
+            )
+        except Exception:
+            await safe_reply_html(
+                update.message,
+                f"{msg}\n\n🚀 <b>Reiniciando servicio para aplicar la nueva identidad...</b>"
+            )
+
+        # Disparar reinicio asíncrono desacoplado
+        async def _restart_service():
+            await asyncio.sleep(2.5)
+            os.system("sudo systemctl restart tg-admin-bot.service &")
+
+        asyncio.create_task(_restart_service())
+        return ConversationHandler.END
+    else:
+        try:
+            await status_msg.edit_text(
+                f"❌ <b>Fallo en la Validación:</b>\n\n{html.escape(msg)}\n\n"
+                "<i>La operación fue abortada. El token original sigue activo y protegido.</i>",
+                parse_mode='HTML'
+            )
+        except Exception:
+            await safe_reply_html(
+                update.message,
+                f"❌ <b>Fallo en la Validación:</b>\n\n{html.escape(msg)}\n\n"
+                "<i>La operación fue abortada. El token original sigue activo y protegido.</i>"
+            )
+        return ConversationHandler.END
+
+
+async def cancel_migrar_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancela el flujo de migración de token."""
+    if update.message:
+        await safe_reply_html(update.message, "🛑 <b>Operación cancelada.</b>")
+    return ConversationHandler.END
+
+
 async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Registra y gestiona errores inesperados o fallos de red durante el polling."""
     err = context.error
@@ -2833,6 +2981,9 @@ def main() -> None:
         "aviso",
         "legal",
         "terminos",
+        "migrar_token",
+        "migrartoken",
+        "cambiar_token",
         "actualizar",
         "update",
         "upgrade",
@@ -2849,6 +3000,20 @@ def main() -> None:
         "debug_monitoreo",
         "monitoreo_debug"
     }
+
+    # Conversación exclusiva para que el Owner migre el Token con DRM de hardware
+    migrar_token_handler = ConversationHandler(
+        entry_points=[CommandHandler(["migrar_token", "migrartoken", "cambiar_token"], cmd_migrar_token_start)],
+        states={
+            MIGRAR_TOKEN_WAITING: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_token_input),
+                CommandHandler("cancelar", cancel_migrar_token)
+            ]
+        },
+        fallbacks=[CommandHandler("cancelar", cancel_migrar_token)],
+        conversation_timeout=120
+    )
+    application.add_handler(migrar_token_handler)
 
     # Comandos base
     application.add_handler(CommandHandler(["start", "help", "ayuda"], start))
