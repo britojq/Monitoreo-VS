@@ -757,7 +757,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
             "• <code>/bloqueo_comandos</code> <i>(/bloquear_comandos)</i> - Bloquear o reactivar el uso de comandos para usuarios y grupos.",
-            "• <code>/botstatus</code> <i>(/statusbot, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
+            "• <code>/botstatus</code> <i>(/estatus, /status, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
@@ -1090,22 +1090,16 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Maneja comandos no registrados."""
+    """Maneja comandos no registrados informando al usuario y sugiriendo opciones."""
     if not await check_authorization(update, context):
         return
 
-    commands_enabled = bool(CONFIG.get("commands_enabled", True))
-
-    if not commands_enabled:
-        unk_msg = (
-            "⚠️ Los comandos del sistema están desactivados. El bot se encuentra en <b>modo interactivo</b>.\n"
-            "Escribe directamente tu mensaje o usa <code>/reset_ia</code>."
-        )
-    else:
-        unk_msg = MESSAGES.get(
-            "unknown_command",
-            "Comando no reconocido. Usa /start para ver las opciones."
-        )
+    cmd_text = update.message.text.split()[0] if (update.message and update.message.text) else "/comando"
+    unk_msg = (
+        f"⚠️ <b>Comando no reconocido (<code>{html.escape(cmd_text)}</code>).</b>\n\n"
+        "• Usa <code>/start</code> o <code>/ayuda</code> para consultar los comandos disponibles.\n"
+        "• O escribe tu mensaje directamente en texto plano para consultar al asistente de IA."
+    )
 
     await safe_reply_html(update.message, unk_msg)
 
@@ -2779,6 +2773,9 @@ def main() -> None:
         "botstatus",
         "statusbot",
         "estado_bot",
+        "estatus",
+        "status",
+        "estado",
         "debug_monitor",
         "monitordebug",
         "bloqueo_comandos",
@@ -2839,7 +2836,7 @@ def main() -> None:
     application.add_handler(CommandHandler(["permisos", "autorizados", "whitelist", "usuarios"], manage_permissions))
 
     # Comando exclusivo para que el Owner verifique estado de red, proxies y accesos
-    application.add_handler(CommandHandler(["botstatus", "statusbot", "estado_bot"], bot_status))
+    application.add_handler(CommandHandler(["botstatus", "statusbot", "estado_bot", "estatus", "status", "estado"], bot_status))
 
     # Comando exclusivo para que el Owner controle el Modo Depuración del Monitor
     application.add_handler(CommandHandler(["debug_monitor", "monitordebug"], toggle_debug_monitor))
