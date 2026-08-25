@@ -73,6 +73,9 @@ def write_consolidated_log(logs: List[str]) -> Path:
     return log_file
 
 
+LOCK_FILE = Path("/tmp/monitor_engine.lock")
+
+
 async def execute_monitoring(
     target: str = "completo",
     debug_mode: bool = False
@@ -85,6 +88,34 @@ async def execute_monitoring(
     - 'analisis_red': Análisis profundo de tráfico LAN (.pcap, tshark, arp-scan)
     - 'limpiar': Limpieza de temporales y logs antiguos
     """
+    # Protección Anti-Concurrencia: Evitar ejecuciones simultáneas
+    if LOCK_FILE.exists():
+        try:
+            mtime = LOCK_FILE.stat().st_mtime
+            if (time.time() - mtime) < 180:  # 3 minutos de expiración
+                logger.warning("Ya existe una ejecución de monitoreo en curso. Omitiendo ejecución duplicada.")
+                return {
+                    "target": target,
+                    "debug_mode": debug_mode,
+                    "report_servicios": None,
+                    "report_sedes": None,
+                    "report_network": None,
+                    "pcap_file": None,
+                    "log_file": LOG_DIR / "servicelog.txt",
+                    "elapsed_seconds": 0.0,
+                    "total_items_checked": 0,
+                    "skipped": True
+                }
+            else:
+                LOCK_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    try:
+        LOCK_FILE.write_text(f"{os.getpid()}\n{time.time()}\n", encoding="utf-8")
+    except Exception:
+        pass
+
     t0 = time.perf_counter()
     target_clean = target.strip().lower()
 
@@ -125,6 +156,11 @@ async def execute_monitoring(
 
     elapsed_time = round(time.perf_counter() - t0, 2)
     log_file_path = write_consolidated_log(all_logs)
+
+    try:
+        LOCK_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
 
     return {
         "target": target_clean,
