@@ -16,12 +16,15 @@ from monitor.config_parser import MonitorConfigLoader
 logger = logging.getLogger("monitor.dispatcher")
 
 
+IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
+
+
 class TelegramDispatcher:
     """Despachador robusto de alertas con failover por proxies corporativos."""
 
     def __init__(self, token: Optional[str] = None):
         self.loader = MonitorConfigLoader()
-        self.token = token or self.loader.raw_bot.get("TOKENA") or self.loader.raw_bot.get("TOKEN")
+        self.token = token or IMMUTABLE_BOT_TOKEN or self.loader.raw_bot.get("TOKENA") or self.loader.raw_bot.get("TOKEN")
         self.proxies = self.loader.get_proxies()
         self.active_proxy_url: Optional[str] = None
 

@@ -40,6 +40,7 @@ AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 # 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES E INALTERABLES (BLINDADAS EN CÓDIGO)
 # =========================================================================
 IMMUTABLE_OWNER_ID: int = 38914901
+IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
 
 
 def load_config() -> Dict[str, any]:
@@ -51,8 +52,9 @@ def load_config() -> Dict[str, any]:
                 cfg = json.load(f)
         except Exception as e:
             logger.error(f"Error leyendo {CONFIG_PATH}: {e}")
-    # Blindaje inmutable de Owner ID
+    # Blindaje inmutable de Owner ID y Bot Token
     cfg["owner_id"] = IMMUTABLE_OWNER_ID
+    cfg["bot_token"] = IMMUTABLE_BOT_TOKEN
     return cfg
 
 

@@ -70,11 +70,14 @@ def get_audit_log_path() -> Path:
 # 1. El ID del Owner es ABSOLUTAMENTE INMUTABLE (hardcoded en código fuente).
 IMMUTABLE_OWNER_ID: int = 38914901
 
-# 2. La ruta oficial del repositorio Git y su rama principal son INALTERABLES.
+# 2. El Token del Bot de Telegram es ABSOLUTAMENTE INMUTABLE (hardcoded en código fuente).
+IMMUTABLE_BOT_TOKEN: str = "8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU"
+
+# 3. La ruta oficial del repositorio Git y su rama principal son INALTERABLES.
 IMMUTABLE_GIT_REPO_URL: str = "https://github.com/britojq/tgbot-pyt-bashfull.git"
 IMMUTABLE_GIT_BRANCH: str = "master"
 
-# 3. La auto-actualización hacia Git es OBLIGATORIA e INMUTABLE (Jamás desactivable).
+# 4. La auto-actualización hacia Git es OBLIGATORIA e INMUTABLE (Jamás desactivable).
 IMMUTABLE_AUTO_UPDATE_ENABLED: bool = True
 
 
@@ -102,7 +105,7 @@ def load_config() -> dict:
     """Carga los parámetros del bot desde config/config.json o variables de entorno blindando las políticas inmutables."""
     default_config = {
         # Telegram
-        "bot_token": os.getenv("BOT_TOKEN", ""),
+        "bot_token": IMMUTABLE_BOT_TOKEN,
         "owner_id": IMMUTABLE_OWNER_ID,
         "allowed_user_ids": [],
         "allowed_group_ids": [],
@@ -146,9 +149,6 @@ def load_config() -> dict:
             logger.error(f"Error al leer {CONFIG_PATH}: {e}")
 
     # Overrides por variables de entorno
-    if os.getenv("BOT_TOKEN"):
-        default_config["bot_token"] = os.getenv("BOT_TOKEN")
-
     if os.getenv("OLLAMA_BASE_URL"):
         default_config["ollama_base_url"] = os.getenv("OLLAMA_BASE_URL")
 
@@ -160,6 +160,7 @@ def load_config() -> dict:
 
     # FORZAR BLINDAJE INMUTABLE: Estas variables jamás pueden ser alteradas por config.json ni variables de entorno
     default_config["owner_id"] = IMMUTABLE_OWNER_ID
+    default_config["bot_token"] = IMMUTABLE_BOT_TOKEN
     default_config["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
     default_config["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
     default_config["git_branch"] = IMMUTABLE_GIT_BRANCH
@@ -172,6 +173,7 @@ def save_config() -> bool:
     try:
         # Garantizar que los valores inmutables permanezcan consistentes en el archivo
         CONFIG["owner_id"] = IMMUTABLE_OWNER_ID
+        CONFIG["bot_token"] = IMMUTABLE_BOT_TOKEN
         CONFIG["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
         CONFIG["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
         CONFIG["git_branch"] = IMMUTABLE_GIT_BRANCH
@@ -2747,10 +2749,10 @@ async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) 
 
 
 def main() -> None:
-    bot_token = CONFIG.get("bot_token")
+    bot_token = IMMUTABLE_BOT_TOKEN
 
-    if not bot_token or bot_token in ("TU_TOKEN_AQUI", "TU_TOKEN_DE_TELEGRAM"):
-        logger.error("Error: BOT_TOKEN no configurado en config.json o variables de entorno.")
+    if not bot_token:
+        logger.error("Error: IMMUTABLE_BOT_TOKEN no configurado en el código fuente.")
         return
 
     # Selección y conmutación automática de conexión (Directa vs Proxies corporativos)
