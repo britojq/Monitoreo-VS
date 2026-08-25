@@ -9,10 +9,10 @@
 
 ## 🌟 Visión General y Capacidades Principales
 
-**Monitor Valle Seco** es una plataforma integral de administración de servidores, auditoría continua, telemetría de red y ciberseguridad para infraestructuras críticas corporativas, operando en conjunto con un asistente conversacional potenciado por inteligencia artificial local (**Ollama**).
+**Monitor Valle Seco** es una plataforma integral de administración de servidores, auditoría continua, telemetría de red y ciberseguridad para infraestructuras críticas corporativas, operando en conjunto con un asistente conversacional potenciado por **IA local**.
 
 ### 🚀 Capacidades Destacadas:
-1. 🧠 **Inteligencia Artificial Corporativa Local (Ollama):** Procesamiento de lenguaje natural 100% local con el modelo `qwen-empresa`, entrenado con la topología, direccionamiento IP, enlaces troncales y protocolos internos de CORPOELEC.
+1. 🧠 **IA local:** Procesamiento de lenguaje natural 100% local, conociendo la topología, direccionamiento IP, enlaces troncales y protocolos internos de CORPOELEC.
 2. 🔒 **Seguridad Inmutable & DRM de Hardware (`SecureCore`):** Derivación criptográfica (PBKDF2-HMAC SHA-256) vinculada a los identificadores físicos del servidor (`/etc/machine-id`, MAC address, hostname). Si el código es copiado a otro equipo, entra en bloqueo silencioso con *Token Canario* y *Serial Challenge* antifalsificación.
 3. 🔄 **Migración Dinámica de Token (`/migrar_token`):** Permite al Owner actualizar el Token de Telegram en caliente; el sistema valida el nuevo token con Telegram, lo re-cifra con la Clave de Hardware DRM y reinicia el servicio sin exponer credenciales en texto plano.
 4. 🌐 **Telemetría y Diagnóstico de Red:** Chequeo concurrente de sedes y subestaciones (`/sedes`), servicios corporativos (`/servicios`), y análisis forense de paquetes `.pcap` con `tcpdump`, `tshark` y lista blanca MAC (`/analisis_red`).
@@ -21,7 +21,7 @@
    - Detección de arranque limpio vs **falla eléctrica / apagado forzado** (`boot-alert.service`).
    - Notificación de **inicios de sesión SSH en tiempo real** mediante hook de PAM con geolocalización IP pública.
 7. 🔀 **Conmutación Inteligente Directo / Proxies (Failover):** Despacho automático probando conexión directa primero y conmutando en cascada hacia proxies corporativos (`DEFAULTPROXYA`, `DEFAULTPROXYB`, `DEFAULTPROXYC`).
-8. 📦 **Instalador Maestro (`installer/install.sh`):** Despliegue automatizado y desatendido de paquetes, permisos, Ollama, entornos virtuales y servicios systemd.
+8. 📦 **Instalador Maestro (`installer/install.sh`):** Despliegue automatizado y desatendido de paquetes, permisos, modelos de IA, entornos virtuales y servicios systemd.
 
 ---
 
@@ -35,7 +35,7 @@
 │   └── install.sh                    # Instalador maestro automatizado
 ├── ai/
 │   ├── Modelfile.txt                 # Definición del modelo y system prompt corporativo
-│   └── parametros.txt                # Parámetros térmicos y de contexto de Ollama
+│   └── parametros.txt                # Parámetros térmicos y de contexto de IA
 ├── config/
 │   ├── config.json                   # Configuración operativa visual
 │   ├── config.example.json           # Plantilla base de configuración
