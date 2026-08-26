@@ -1349,8 +1349,76 @@ async def _build_permissions_panel(bot) -> tuple[str, InlineKeyboardMarkup | Non
     return "\n".join(text_lines), reply_markup
 
 
+async def require_private_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Garantiza que un comando administrativo exclusivo del Administrador se ejecute únicamente en chat privado.
+    Si se intenta ejecutar en un grupo o supergrupo:
+    1. Borra de inmediato el mensaje con el comando en el grupo.
+    2. Envía un aviso informativo temporal en el grupo indicando que el comando solo es válido en privado.
+    3. Si quien lo escribió fue el Administrador, le envía una notificación en chat privado para que pueda ejecutarlo allí.
+    """
+    chat = update.effective_chat
+    user = update.effective_user
+    msg = update.message
+
+    if not chat or chat.type == "private":
+        return True
+
+    # Es un grupo o supergrupo: borrar el mensaje inmediatamente
+    if msg:
+        cmd_name = msg.text.split()[0] if (msg.text and msg.text.strip()) else "administrativo"
+        try:
+            await msg.delete()
+        except Exception as e:
+            logger.debug(f"No se pudo borrar mensaje de comando restringido en grupo: {e}")
+
+        # Mensaje temporal en el grupo
+        warning_text = (
+            "⚠️ <b>Comando Restringido:</b> Este comando administrativo es exclusivo para el "
+            "<b>chat privado</b> del Administrador y no puede ser usado en este grupo."
+        )
+        try:
+            temp_msg = await context.bot.send_message(
+                chat_id=chat.id,
+                text=warning_text,
+                parse_mode='HTML'
+            )
+            async def _auto_delete_notice(sent_msg):
+                await asyncio.sleep(8.0)
+                try:
+                    await sent_msg.delete()
+                except Exception:
+                    pass
+            asyncio.create_task(_auto_delete_notice(temp_msg))
+        except Exception as e:
+            logger.debug(f"No se pudo enviar aviso de comando restringido en grupo: {e}")
+
+        # Si el Owner fue quien lo escribió por error, notificarle en privado
+        if user and user.id == IMMUTABLE_OWNER_ID:
+            chat_title = chat.title or "Grupo"
+            owner_notice = (
+                "🔒 <b>Aviso de Seguridad en Grupo</b>\n\n"
+                f"Has intentado ejecutar el comando <code>{html.escape(cmd_name)}</code> en el grupo <b>{html.escape(chat_title)}</b>.\n\n"
+                "Por políticas de seguridad y privacidad, el mensaje fue eliminado automáticamente del grupo.\n"
+                f"Puedes ejecutar <code>{html.escape(cmd_name)}</code> de forma segura directamente aquí en este chat privado."
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=IMMUTABLE_OWNER_ID,
+                    text=owner_notice,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.debug(f"No se pudo enviar aviso privado al owner: {e}")
+
+    return False
+
+
 async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Muestra el panel de gestión de permisos con datos detallados (exclusivo para el owner)."""
+    """Muestra el panel de gestión de permisos con datos detallados (exclusivo para el owner en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user:
         return
 
@@ -1449,7 +1517,10 @@ async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None =
 
 
 async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Ejecuta un diagnóstico completo de conectividad, proxies, usuarios permitidos y negados (Exclusivo Owner)."""
+    """Ejecuta un diagnóstico completo de conectividad, proxies, usuarios permitidos y negados (Exclusivo Owner en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -1511,9 +1582,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "📊 <b>Informe de Estado y Diagnóstico del Bot</b>",
         f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>",
         "",
-        "═══════════════════════════════",
-        "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>",
-        "═══════════════════════════════"
+        "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>"
     ]
 
     for res in network_results:
@@ -1524,9 +1593,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     lines.append(f"🔄 <b>Canal Activo del Bot:</b> <code>{html.escape(active_channel)}</code>")
 
     lines.append("")
-    lines.append("═══════════════════════════════",)
     lines.append("👥 <b>CONTROL DE ACCESO DE USUARIOS</b>")
-    lines.append("═══════════════════════════════")
     lines.append(f"👑 <b>Creador / Owner:</b> {html.escape(owner_name)}{html.escape(owner_tag)} [<code>{owner_id}</code>]")
     lines.append("")
 
@@ -1575,7 +1642,10 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Permite al Owner activar, desactivar o consultar el Modo Depuración del Monitor."""
+    """Permite al Owner activar, desactivar o consultar el Modo Depuración del Monitor (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -1675,7 +1745,10 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Permite al Owner bloquear o desbloquear la ejecución de comandos para el resto de usuarios y grupos."""
+    """Permite al Owner bloquear o desbloquear la ejecución de comandos para el resto de usuarios y grupos (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -1989,7 +2062,10 @@ async def cmd_reporte_completo(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def cmd_debug_servicios(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de servicios (MENSAJEDEBUGA)."""
+    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de servicios (MENSAJEDEBUGA en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     await _run_and_send_monitoring_report(
         update, context,
         target="servicios",
@@ -1999,7 +2075,10 @@ async def cmd_debug_servicios(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def cmd_debug_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de sedes (MENSAJEDEBUGB)."""
+    """Comando exclusivo para que el Owner obtenga directamente el reporte exhaustivo de sedes (MENSAJEDEBUGB en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     await _run_and_send_monitoring_report(
         update, context,
         target="sedes",
@@ -2009,7 +2088,10 @@ async def cmd_debug_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def cmd_debug_completo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando exclusivo para que el Owner obtenga directamente el reporte técnico integral exhaustivo (Debug Directo)."""
+    """Comando exclusivo para que el Owner obtenga directamente el reporte técnico integral exhaustivo (Debug Directo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     await _run_and_send_monitoring_report(
         update, context,
         target="completo",
@@ -2187,7 +2269,10 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def cmd_limpiador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando para diagnóstico de almacenamiento y limpieza interactiva del sistema (EXCLUSIVO OWNER)."""
+    """Comando para diagnóstico de almacenamiento y limpieza interactiva del sistema (EXCLUSIVO OWNER en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -2323,7 +2408,10 @@ async def handle_cleaner_callback(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión) a todos los usuarios y grupos autorizados."""
+    """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -2501,7 +2589,10 @@ async def cmd_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git."""
+    """Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or not update.message:
         return
 
@@ -2853,20 +2944,15 @@ MIGRAR_TOKEN_WAITING = 1
 
 
 async def cmd_migrar_token_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Inicia el flujo conversacional interactivo para la migración de identidad del bot."""
+    """Inicia el flujo conversacional interactivo para la migración de identidad del bot (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return ConversationHandler.END
+
     if not is_authorized(update) or not update.effective_user or update.effective_user.id != IMMUTABLE_OWNER_ID:
         if update.message:
             await safe_reply_html(
                 update.message,
                 "⛔ <b>Acceso Restringido:</b> Solo el <b>Owner Principal</b> del sistema tiene autorización para migrar la identidad del bot."
-            )
-        return ConversationHandler.END
-
-    if update.effective_chat and update.effective_chat.type in ['group', 'supergroup']:
-        if update.message:
-            await safe_reply_html(
-                update.message,
-                "⚠️ <b>Canal No Seguro:</b> Por políticas de seguridad, el comando <code>/migrar_token</code> debe ejecutarse <b>exclusivamente en un chat privado</b> con el bot."
             )
         return ConversationHandler.END
 
@@ -2951,7 +3037,10 @@ async def cancel_migrar_token(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def cmd_activar_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Permite al Owner activar manualmente el anclaje de hardware usando /activar <SERIAL>."""
+    """Permite al Owner activar manualmente el anclaje de hardware usando /activar <SERIAL> (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
     if not update.effective_user or update.effective_user.id != IMMUTABLE_OWNER_ID:
         return
 
@@ -3032,18 +3121,16 @@ async def _delayed_emergency_stop() -> None:
 
 async def cmd_emergencia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Muestra el panel interactivo de emergencia exclusivo para el Owner en chat privado."""
+    if not await require_private_chat(update, context):
+        return
+
     if not await check_authorization(update, context):
         return
 
     user = update.effective_user
-    chat = update.effective_chat
 
     if not user or user.id != IMMUTABLE_OWNER_ID:
         await safe_reply_html(update.message, "⛔ Este comando está estrictamente restringido al Administrador.")
-        return
-
-    if not chat or chat.type != "private":
-        await safe_reply_html(update.message, "🔒 Por estrictas razones de seguridad, el panel de emergencia solo puede abrirse en <b>chat privado</b>.")
         return
 
     text, reply_markup = _build_emergency_panel()
