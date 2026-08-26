@@ -1,26 +1,26 @@
-# 🤖 Monitor Valle Seco (@IA_ValleSeco_bot) - Admin Bot con IA Local & DRM
+# 🤖 Monitor Valle Seco (@IA_ValleSeco_bot) - Plataforma de Administración y Monitoreo con IA Local
 
 > **Organización:** CORPOELEC - Centro de Operaciones Valle Seco / CENCARATIT  
 > **Autor / Administrador:** José Brito (`@britojab` / `@britojq`)  
 > **Sistema Operativo:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server  
-> **Licencia:** GNU Affero General Public License v3.0 (AGPLv3)
+> **Licencia:** GNU Affero General Public License v3.0 (AGPLv3)  
 
 ---
 
 ## 🌟 Visión General y Capacidades Principales
 
-**Monitor Valle Seco** es una plataforma integral de administración de servidores, auditoría continua, telemetría de red y ciberseguridad para infraestructuras críticas corporativas, operando en conjunto con un asistente conversacional potenciado por **IA local**.
+**Monitor Valle Seco** es una plataforma integral de administración de servidores, auditoría continua, telemetría de red y monitoreo para infraestructuras corporativas, operando en conjunto con un asistente conversacional potenciado por **Inteligencia Artificial local**.
 
 ### 🚀 Capacidades Destacadas:
-1. 🧠 **IA local:** Procesamiento de lenguaje natural 100% local, conociendo la topología, direccionamiento IP, enlaces troncales y protocolos internos de CORPOELEC.
-2. 🔒 **Seguridad Inmutable & DRM de Hardware (`SecureCore`):** Derivación criptográfica (PBKDF2-HMAC SHA-256) vinculada a los identificadores físicos del servidor (`/etc/machine-id`, MAC address, hostname). Si el código es copiado a otro equipo, entra en bloqueo silencioso con *Token Canario* y *Serial Challenge* antifalsificación.
-3. 🔄 **Migración Dinámica de Token (`/migrar_token`):** Permite al Owner actualizar el Token de Telegram en caliente; el sistema valida el nuevo token con Telegram, lo re-cifra con la Clave de Hardware DRM y reinicia el servicio sin exponer credenciales en texto plano.
-4. 🌐 **Telemetría y Diagnóstico de Red:** Chequeo concurrente de sedes y subestaciones (`/sedes`), servicios corporativos (`/servicios`), y análisis forense de paquetes `.pcap` con `tcpdump`, `tshark` y lista blanca MAC (`/analisis_red`).
-5. ⏰ **CLI Global (`estatus`) y Compatibilidad CRON:** Herramienta de consola `/usr/local/bin/estatus` con protección por *Lockfile* atómico para reportes programados (7:30 AM y 4:00 PM).
-6. 🚨 **Alertas de Eventos Críticos:**
+1. 🧠 **IA Local (Ollama):** Procesamiento de lenguaje natural 100% privado y local, especializado en la topología de red, direccionamiento IP, enlaces troncales y servicios corporativos.
+2. 🌐 **Telemetría y Diagnóstico de Red:** Chequeo concurrente de sedes y subestaciones (`/sedes`), servicios corporativos (`/servicios`), y análisis forense de paquetes `.pcap` con `tcpdump`, `tshark` y lista blanca MAC (`/analisis_red`).
+3. ⏰ **CLI Global (`estatus`) y Compatibilidad CRON:** Herramienta de consola `/usr/local/bin/estatus` con protección por *Lockfile* atómico para reportes programados (7:30 AM y 4:00 PM).
+4. 🚨 **Notificación de Eventos del Servidor:**
    - Detección de arranque limpio vs **falla eléctrica / apagado forzado** (`boot-alert.service`).
    - Notificación de **inicios de sesión SSH en tiempo real** mediante hook de PAM con geolocalización IP pública.
-7. 🔀 **Conmutación Inteligente Directo / Proxies (Failover):** Despacho automático probando conexión directa primero y conmutando en cascada hacia proxies corporativos (`DEFAULTPROXYA`, `DEFAULTPROXYB`, `DEFAULTPROXYC`).
+5. 🔀 **Conmutación Inteligente Directo / Proxies (Failover):** Despacho automático probando conexión directa primero y conmutando en cascada hacia proxies corporativos (`DEFAULTPROXYA`, `DEFAULTPROXYB`, `DEFAULTPROXYC`).
+6. 🧹 **Mantenimiento y Limpieza del Sistema (`/limpiador`):** Diagnóstico de almacenamiento, inodos y depuración interactiva de disco.
+7. 🚨 **Panel de Control de Emergencia (`/emergencia`):** Opciones de contingencia para detención del servicio, modo mantenimiento y restauración de configuración segura.
 8. 📦 **Instalador Maestro (`installer/install.sh`):** Despliegue automatizado y desatendido de paquetes, permisos, modelos de IA, entornos virtuales y servicios systemd.
 
 ---
@@ -37,16 +37,17 @@
 │   ├── Modelfile.txt                 # Definición del modelo y system prompt corporativo
 │   └── parametros.txt                # Parámetros térmicos y de contexto de IA
 ├── config/
-│   ├── config.json                   # Configuración operativa visual
+│   ├── config.json                   # Configuración operativa del bot
 │   ├── config.example.json           # Plantilla base de configuración
-│   ├── bot.conf                      # Proxies corporativos y credenciales secundarias
+│   ├── bot.conf                      # Configuración de proxies y parámetros de red
 │   ├── monitoreo.conf                # Definición de sedes, servicios, IPs y puertos
+│   ├── mensajes.conf                 # Plantillas de mensajes y reportes
 │   ├── commands.json                 # Textos y descripciones de comandos
 │   ├── mac_whitelist.txt             # Lista blanca de direcciones MAC autorizadas
 │   └── oui.txt                       # Base de datos de fabricantes de red
 ├── monitor/
-│   ├── core_shield.py                # DRM de hardware, Token Canario y SecureCore
-│   ├── system_updater.py             # Actualizador autónomo con GitHub (48h)
+│   ├── core_shield.py                # Núcleo de blindaje y validación del sistema
+│   ├── system_updater.py             # Actualizador autónomo y sincronización Git (48h)
 │   ├── boot_alert.py                 # Detección de arranque limpio vs falla eléctrica
 │   ├── ssh_alert.py                  # Alertas de acceso SSH en tiempo real
 │   ├── ssh_alert.sh                  # Wrapper de ejecución rápida para PAM
@@ -54,11 +55,12 @@
 │   ├── monitor_servicios.py          # Chequeo de puertos TCP, HTTP, DNS, LDAP, SMB
 │   ├── monitor_sedes.py              # Chequeo de conectividad ICMP de sedes
 │   ├── monitor_engine.py             # Orquestador unificado con soporte CLI y CRON
+│   ├── system_cleaner.py             # Diagnóstico de almacenamiento y limpieza interactiva
 │   ├── checker_base.py               # Utilidades de red y formateador HTML
 │   ├── config_parser.py              # Parser unificado de configuraciones
 │   └── telegram_dispatcher.py        # Despachador con conmutación Directo/Proxies
-├── audit/                            # Logs de auditoría y anclaje DRM (.sys_anchor)
-├── docs/                             # Documentación técnica confidencial (.gitignore)
+├── audit/                            # Logs de auditoría, reportes y diagnósticos
+├── docs/                             # Documentación técnica interna (.gitignore)
 ├── requirements.txt                  # Dependencias de Python
 └── venv/                             # Entorno virtual aislado de Python
 ```
@@ -67,7 +69,7 @@
 
 ## 🛠️ Instalación Rápida con el Instalador Maestro
 
-En un servidor nuevo (Debian 12/13 o Ubuntu Server):
+En un servidor base (Debian 12/13 o Ubuntu Server):
 
 ```bash
 # 1. Clonar el repositorio
@@ -83,28 +85,18 @@ sudo /bin/bash installer/install.sh
 sudo systemctl start tg-admin-bot.service
 ```
 
-### 🔐 Protocolo de Activación Inicial (First-Boot Handshake)
-Al iniciar por primera vez en un servidor nuevo:
-1. El bot entra en estado `FIRST_BOOT_PENDING` y envía un mensaje de emergencia con el **Serial Challenge** al Administrador:
-   ```text
-   🔐 [ACTIVACIÓN REQUERIDA] Monitor Valle Seco
-   Serial: AUTH-XXXX-XXXX-XXXX-XXXX
-   ```
-2. Responde al bot en Telegram con el Serial exacto dentro de los 10 minutos.
-3. El sistema deriva la clave de hardware, genera el anclaje local (`audit/.sys_anchor`) y queda 100% **OPERACIONAL**.
-
 ---
 
 ## 📋 Comandos Disponibles
 
-### 👑 Comandos Exclusivos del Administrador / Owner:
+### 👑 Comandos Exclusivos del Administrador:
 | Comando | Descripción |
 | :--- | :--- |
-| `/emergencia` | Panel interactivo de emergencia (detener servicio, modo mantenimiento, rollback de config). |
-| `/migrar_token` | Migración interactiva del Token de Telegram re-cifrado con DRM de hardware. |
-| `/botstatus` | Diagnóstico de latencia de conexión directa y proxies, y estado de accesos. |
+| `/emergencia` | Panel de control de emergencia (detener servicio, modo mantenimiento, restaurar config). |
+| `/migrar_token` | Asistente interactivo para actualización y migración del token de Telegram. |
+| `/botstatus` | Diagnóstico de latencia de conexión directa, proxies y estado de accesos. |
 | `/permisos` | Panel interactivo para autorizar o revocar usuarios y grupos con un toque. |
-| `/debug_monitor` | Activa/desactiva el Modo Depuración del sistema de monitoreo. |
+| `/debug_monitor` | Activa o desactiva el Modo Depuración del sistema de monitoreo. |
 | `/debug_servicios` | Reporte técnico exhaustivo de servicios corporativos + `servicelog.txt`. |
 | `/debug_sedes` | Reporte técnico exhaustivo de sedes y subestaciones + `servicelog.txt`. |
 | `/debug_completo` | Reporte técnico integral (Servicios + Sedes) + archivo de log adjunto. |
@@ -113,7 +105,7 @@ Al iniciar por primera vez en un servidor nuevo:
 | `/mensaje` | Difusión de comunicados oficiales (Broadcast) a usuarios y grupos autorizados. |
 | `/actualizar` | Comprobación y forzado de sincronización con el repositorio oficial Git. |
 
-### 👥 Comandos Funcionales (Owner y Grupos Autorizados):
+### 👥 Comandos Funcionales (Administrador y Grupos Autorizados):
 | Comando | Descripción |
 | :--- | :--- |
 | `/servicios` | Estatus operativo de servicios corporativos (OTRS, Intranet, DNS, LDAP, etc.). |
