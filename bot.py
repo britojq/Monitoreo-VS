@@ -769,6 +769,52 @@ def get_security_warning_html() -> str:
     )
 
 
+# =========================================================================
+# 🛡️ SEGURIDAD DE IA: FILTRO PII Y RATE LIMITING ANTI-DOS
+# =========================================================================
+AI_RATE_LIMITS: Dict[int, List[float]] = {}
+
+
+def sanitizar_pii(texto: str) -> str:
+    """
+    Filtro Anti-Fuga de Datos (PII):
+    Sanitiza cédulas venezolanas (8 dígitos) y teléfonos locales (04XX-XXXXXXX)
+    reemplazándolos por [C.I. OCULTA] y [TLF. OCULTO] antes de inyectar a Ollama.
+    """
+    if not texto:
+        return ""
+
+    # 1. Teléfonos locales venezolanos (04XX-XXXXXXX, 04XXXXXXXXX, +584XXXXXXXXX, 02XXXXXXXXX)
+    patron_tlf = r'(?:\+?58[-\s]?)?0?(?:412|414|424|416|426|418|2\d{2})[-\s]?\d{3}[-\s]?\d{4}\b'
+    texto = re.sub(patron_tlf, '[TLF. OCULTO]', texto)
+
+    # 2. Cédulas venezolanas (7 u 8 dígitos consecutivos con o sin prefijo V/E/CI)
+    patron_ci = r'\b(?:[VvEe][-\s]?|[Cc][Ii][:\.\s]*)?\d{7,8}\b'
+    texto = re.sub(patron_ci, '[C.I. OCULTA]', texto)
+
+    return texto
+
+
+def check_ai_rate_limit(entity_id: int, max_requests: int = 5, window_seconds: float = 60.0) -> bool:
+    """
+    Limitador de tasa (Rate Limiting Anti-DoS) para consultas de texto plano a la IA.
+    Regla: Máximo 5 mensajes por minuto por usuario/chat.
+    Retorna True si está dentro del límite permitido, False si lo excede.
+    """
+    now = time.time()
+    timestamps = AI_RATE_LIMITS.setdefault(entity_id, [])
+    # Filtrar marcas de tiempo dentro de la ventana de tiempo (60s)
+    timestamps = [t for t in timestamps if now - t < window_seconds]
+
+    if len(timestamps) >= max_requests:
+        AI_RATE_LIMITS[entity_id] = timestamps
+        return False
+
+    timestamps.append(now)
+    AI_RATE_LIMITS[entity_id] = timestamps
+    return True
+
+
 def append_to_history(context: ContextTypes.DEFAULT_TYPE, role: str, content: str) -> None:
     """Guarda un mensaje en el historial del chat, con límite configurable."""
     max_history = int(CONFIG.get("ollama_max_history", 12))
@@ -1161,10 +1207,22 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not allow_all and not await check_authorization(update, context):
         return
 
-    user_text = update.message.text.strip()
+    # 3. Rate Limiting (Anti-DoS para IA: Máximo 5 consultas por minuto por usuario)
+    user = update.effective_user
+    chat = update.effective_chat
+    rate_key = user.id if user else (chat.id if chat else 0)
 
-    if not user_text:
+    if not check_ai_rate_limit(rate_key, max_requests=5, window_seconds=60.0):
+        await update.message.reply_text("Limite de consultas a la IA excedido. Espere 60 segundos.")
         return
+
+    raw_user_text = update.message.text.strip()
+
+    if not raw_user_text:
+        return
+
+    # 2. Filtro de PII (Anti-Fuga de Datos): Sanitizar Cédulas y Teléfonos
+    user_text = sanitizar_pii(raw_user_text)
 
     # Mensaje temporal de espera y animación de reloj giratorio
     waiting_msg = None
