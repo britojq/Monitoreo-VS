@@ -1,7 +1,7 @@
 # 🤖 Monitor Valle Seco (@IA_ValleSeco_bot) - Admin Bot con IA Local & DRM
 
 > **Organización:** CORPOELEC - Centro de Operaciones Valle Seco / CENCARATIT  
-> **Autor / Administrador:** José Brito (`@britojab` / `@britojq` • ID Telegram: `38914901`)  
+> **Autor / Administrador:** José Brito (`@britojab` / `@britojq`)  
 > **Sistema Operativo:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server  
 > **Licencia:** GNU Affero General Public License v3.0 (AGPLv3)
 
@@ -85,7 +85,7 @@ sudo systemctl start tg-admin-bot.service
 
 ### 🔐 Protocolo de Activación Inicial (First-Boot Handshake)
 Al iniciar por primera vez en un servidor nuevo:
-1. El bot entra en estado `FIRST_BOOT_PENDING` y envía un mensaje de emergencia con el **Serial Challenge** al Owner (`38914901`):
+1. El bot entra en estado `FIRST_BOOT_PENDING` y envía un mensaje de emergencia con el **Serial Challenge** al Administrador:
    ```text
    🔐 [ACTIVACIÓN REQUERIDA] Monitor Valle Seco
    Serial: AUTH-XXXX-XXXX-XXXX-XXXX

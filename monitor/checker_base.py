@@ -1,6 +1,13 @@
 """
-Módulo base de chequeo de protocolos para el sistema de monitoreo.
-Implementa verificaciones asíncronas para WEB, DNS, PROXY, SMTP, DHCP, CUPS, LDAP y PING.
+# ==============================================================================
+# 🧪 MÓDULO BASE DE CHEQUEO DE PROTOCOLOS: checker_base.py (@IA_ValleSeco_bot)
+# Verificaciones de red (HTTP/S, DNS, SMTP, LDAP, DHCP, CUPS, Ping y Formateo HTML)
+# Ubicación: /scripts/telegram-admin-bot/monitor/checker_base.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

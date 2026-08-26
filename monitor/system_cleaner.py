@@ -1,7 +1,13 @@
 """
-Módulo de diagnóstico de almacenamiento, detección de anomalías y limpieza interactiva del sistema.
-Refactorización 1:1, asíncrona y modular de `limpiador.sh`.
-Exclusivo para el Administrador / Creador (Owner).
+# ==============================================================================
+# 🧹 DIAGNÓSTICO Y LIMPIADOR DEL SISTEMA: system_cleaner.py (@IA_ValleSeco_bot)
+# Monitoreo de espacio en disco, inodos, detección de anomalías y depuración
+# Ubicación: /scripts/telegram-admin-bot/monitor/system_cleaner.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

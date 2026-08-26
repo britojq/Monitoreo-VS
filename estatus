@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# CLI y Wrapper de Monitoreo: estatus
+# 🚀 CLI Y WRAPPER DE MONITOREO: estatus (@IA_ValleSeco_bot)
 # Ubicación: /scripts/telegram-admin-bot/estatus
-# Enlace Global: /usr/local/bin/estatus -> /scripts/telegram-admin-bot/estatus
-# Descripción: Ejecuta chequeos de servicios, sedes o análisis de red y despacha
-#              reportes a Telegram. Compatible con CRON y terminal interactiva.
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 PROJECT_DIR="/scripts/telegram-admin-bot"

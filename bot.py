@@ -1,3 +1,15 @@
+"""
+# ==============================================================================
+# 🤖 BOT PRINCIPAL: MONITOR VALLE SECO (@IA_ValleSeco_bot)
+# Administración de Servidores, Monitoreo de Infraestructura & Asistente IA
+# Ubicación: /scripts/telegram-admin-bot/bot.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+"""
+
 import os
 import re
 import time

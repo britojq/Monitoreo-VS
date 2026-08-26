@@ -1,12 +1,13 @@
 """
-Módulo de Seguridad, DRM de Entorno, Handshake de Activación y Migración de Token (SecureCore).
-Implementa:
-1. Desofuscación Vinculada Criptográficamente al Hardware (Environment-Bound Key Wrapping).
-2. Protocolo de Activación Inicial (First-Boot Activation Handshake con Serial Challenge).
-3. Módulo de Migración Dinámica de Token de Telegram Cifrado con DRM de Hardware (/migrar_token).
-4. Detección de Manipulación (Anti-Tamper) con Control Flow Flattening y Predicados Opacos.
-5. Token Canario de Emergencia para Notificación al Owner ante Migraciones o Anomalías.
-6. Interruptor de Autodestrucción Local de Anclaje (Dead Man's Switch).
+# ==============================================================================
+# 🔒 MOTOR DE SEGURIDAD Y DRM DE HARDWARE: SecureCore (@IA_ValleSeco_bot)
+# Desofuscación criptográfica, anclaje de hardware y protección anti-tamper
+# Ubicación: /scripts/telegram-admin-bot/monitor/core_shield.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

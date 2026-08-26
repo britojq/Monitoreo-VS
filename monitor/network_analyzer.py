@@ -1,15 +1,13 @@
 """
-Módulo completo de análisis y diagnóstico avanzado de red local y tráfico.
-Refactorización 1:1, asíncrona y modular del script `analisis_red_completo.sh`.
-
-Incluye:
-- Detección automática de interfaz activa y subred CIDR.
-- Captura de tráfico real de red con tcpdump (120 segundos configurables) en segundo plano.
-- Análisis profundo de paquetes (.pcap) con tshark (RX, TX, tráfico sospechoso, broadcast/multicast storms).
-- Escaneo ARP (arp-scan) y cálculo de latencias ICMP (ping).
-- Resolución de hostnames (DNS inverso) y base de datos de fabricantes OUI.
-- Comparación contra lista blanca de direcciones MAC (mac_whitelist.txt).
-- Generación de reportes completos: Resumen para Telegram, TXT formateado y HTML interactivo.
+# ==============================================================================
+# 📶 ANÁLISIS Y DIAGNÓSTICO AVANZADO DE RED: network_analyzer.py (@IA_ValleSeco_bot)
+# Captura de tráfico (.pcap), análisis de paquetes (tshark), ARP, OUI y reportes HTML
+# Ubicación: /scripts/telegram-admin-bot/monitor/network_analyzer.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

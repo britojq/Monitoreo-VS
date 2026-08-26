@@ -1,6 +1,13 @@
 """
-Componente 2: Monitoreo de Sedes y Equipos de Comunicación.
-Verifica de forma asíncrona todas las sedes (A a H) y sus respectivos equipos (1 a 8).
+# ==============================================================================
+# 🏢 MONITOREO DE SEDES Y ENLACES: monitor_sedes.py (@IA_ValleSeco_bot)
+# Chequeo concurrente de CIAUs, oficinas comerciales, routers y equipos de red
+# Ubicación: /scripts/telegram-admin-bot/monitor/monitor_sedes.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

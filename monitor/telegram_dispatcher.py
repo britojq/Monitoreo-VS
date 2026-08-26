@@ -1,6 +1,13 @@
 """
-Módulo de despacho de mensajes y documentos a Telegram con conmutación automática de proxies.
-Garantiza la entrega de reportes y logs técnicos en cualquier condición de red.
+# ==============================================================================
+# 📤 DESPACHADOR TELEGRAM CON MULTI-PROXY: telegram_dispatcher.py (@IA_ValleSeco_bot)
+# Despacho resiliente de reportes y documentos técnicos con failover automático
+# Ubicación: /scripts/telegram-admin-bot/monitor/telegram_dispatcher.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations
@@ -12,11 +19,9 @@ from typing import Optional, Tuple
 import httpx
 
 from monitor.config_parser import MonitorConfigLoader
+from monitor.core_shield import get_core_bot_token
 
 logger = logging.getLogger("monitor.dispatcher")
-
-
-from monitor.core_shield import IMMUTABLE_BOT_TOKEN
 
 
 class TelegramDispatcher:
@@ -24,7 +29,7 @@ class TelegramDispatcher:
 
     def __init__(self, token: Optional[str] = None):
         self.loader = MonitorConfigLoader()
-        self.token = token or IMMUTABLE_BOT_TOKEN or self.loader.raw_bot.get("TOKENA") or self.loader.raw_bot.get("TOKEN")
+        self.token = token or get_core_bot_token() or self.loader.raw_bot.get("TOKENA") or self.loader.raw_bot.get("TOKEN")
         self.proxies = self.loader.get_proxies()
         self.active_proxy_url: Optional[str] = None
 

@@ -1,8 +1,13 @@
 """
-Orquestador unificado de monitoreo y CLI del sistema.
-Permite ejecutar chequeos individuales (servicios, sedes, completo, analisis_red, limpiar),
-generar logs consolidados y despachar reportes directamente a Telegram.
-Compatible con invocación manual desde consola y tareas programadas en CRON.
+# ==============================================================================
+# 📊 ORQUESTADOR DE MONITOREO Y CLI: monitor_engine.py (@IA_ValleSeco_bot)
+# Coordinación de chequeos concurrentes, reportes unificados y despacho a Telegram
+# Ubicación: /scripts/telegram-admin-bot/monitor/monitor_engine.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

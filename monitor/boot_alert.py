@@ -1,8 +1,13 @@
 """
-Módulo autónomo de detección de arranque y apagado del servidor.
-Detecta si el arranque es limpio o tras falla eléctrica / apagado forzado.
-Notifica a Telegram con soporte multi-proxy y espera activa de red extendida.
-Exclusivo para el Administrador / Owner.
+# ==============================================================================
+# 🚀 NOTIFICACIÓN DE ARRANQUE Y APAGADO: boot_alert.py (@IA_ValleSeco_bot)
+# Detección de reinicios limpios y cortes de energía con alertas inmediatas
+# Ubicación: /scripts/telegram-admin-bot/monitor/boot_alert.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

@@ -1,6 +1,13 @@
 """
-Módulo de parseo y gestión de configuraciones para el sistema de monitoreo.
-Lee y procesa monitoreo.conf, mensajes.conf y bot.conf.
+# ==============================================================================
+# ⚙️ PARSER Y GESTIÓN DE CONFIGURACIONES: config_parser.py (@IA_ValleSeco_bot)
+# Procesamiento de archivos de configuración (.conf), variables y renderizado
+# Ubicación: /scripts/telegram-admin-bot/monitor/config_parser.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

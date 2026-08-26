@@ -1,10 +1,13 @@
 """
-Módulo de actualización y verificación de versiones desde el repositorio Git.
-Implementa políticas inmutables de seguridad:
-1. Auto-actualización permanente e inamovible (JAMÁS desactivable).
-2. Forzado estricto de sincronización y reset hard con el repositorio remoto.
-3. Ruta del repositorio y rama hardcoded e inalterables desde configuraciones externas.
-4. Notificación inmediata obligatoria al Owner si ocurre cualquier fallo en Git.
+# ==============================================================================
+# 🔄 MÓDULO DE ACTUALIZACIÓN GIT: system_updater.py (@IA_ValleSeco_bot)
+# Sincronización inmutable, respaldo y verificación de versiones desde GitHub
+# Ubicación: /scripts/telegram-admin-bot/monitor/system_updater.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

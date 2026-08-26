@@ -1,8 +1,13 @@
 """
-Módulo de Notificación de Accesos SSH en Tiempo Real.
-Ejecutado por PAM (pam_exec.so) al abrirse una sesión SSH.
-Extrae usuario, IP de origen, geolocalización pública y despacha alerta a Telegram.
-100% integrado dentro de /scripts/telegram-admin-bot.
+# ==============================================================================
+# 🔑 NOTIFICACIÓN DE ACCESOS SSH: ssh_alert.py (@IA_ValleSeco_bot)
+# Extracción de usuario, IP de origen, geolocalización y despacho vía PAM a Telegram
+# Ubicación: /scripts/telegram-admin-bot/monitor/ssh_alert.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations

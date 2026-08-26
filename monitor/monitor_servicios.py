@@ -1,6 +1,13 @@
 """
-Componente 1: Monitoreo de Servicios Corporativos.
-Verifica de forma asíncrona todos los servicios empresariales configurados (A a Z).
+# ==============================================================================
+# 🌐 MONITOREO DE SERVICIOS CORPORATIVOS: monitor_servicios.py (@IA_ValleSeco_bot)
+# Chequeo concurrente de DNS, LDAP, SMTP, Web, SAO, SURGE y Servicios Regionales
+# Ubicación: /scripts/telegram-admin-bot/monitor/monitor_servicios.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
 """
 
 from __future__ import annotations
