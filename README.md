@@ -160,4 +160,4 @@ estatus servicios --no-send
 
 ---
 
-*Desarrollado para la Gerencia de ATIT Región Central • División de ATIT Carabobo • CORPOELEC.*
+*Desarrollado para la Gerencia de ATIT Región Central • División de ATIT Carabobo • CORPOELEC. por: José Brito (`@britojab` / `@britojq`)*
