@@ -74,8 +74,10 @@ def _eval_opaque_gate(v: int) -> bool:
 
 
 def _get_hardware_components() -> List[str]:
-    """Obtiene los identificadores físicos únicos y deterministas del hardware del servidor."""
+    """Obtiene los identificadores físicos únicos, firmes y deterministas del hardware del servidor."""
     components = []
+
+    # 1. Machine ID único del sistema operativo (permanente)
     mid_file = Path("/etc/machine-id")
     if mid_file.exists():
         try:
@@ -85,26 +87,35 @@ def _get_hardware_components() -> List[str]:
     else:
         components.append("NO_MID")
 
-    # Extraer MACs permanentes desde /sys/class/net/*/address
+    # 2. DMI Hardware Motherboard / Fabricante / BIOS (firmware de placa base)
+    for prop in ("sys_vendor", "product_name", "board_name", "bios_vendor"):
+        dmi_p = Path(f"/sys/class/dmi/id/{prop}")
+        if dmi_p.exists():
+            try:
+                val = dmi_p.read_text(encoding="utf-8").strip()
+                if val:
+                    components.append(val)
+            except Exception:
+                pass
+
+    # 3. MAC fija de la tarjeta de red cableada primaria PCI
     net_dir = Path("/sys/class/net")
-    macs = []
     if net_dir.exists():
         for p in sorted(net_dir.iterdir()):
-            if p.name != "lo":
+            if (p / "device").exists() and p.name.startswith(("en", "eth")):
                 addr_f = p / "address"
                 if addr_f.exists():
                     try:
                         addr = addr_f.read_text(encoding="utf-8").strip().lower()
-                        if addr and addr not in ("00:00:00:00:00:00", ""):
-                            macs.append(f"{p.name}:{addr}")
+                        if addr and addr != "00:00:00:00:00:00":
+                            components.append(f"{p.name}:{addr}")
+                            break
                     except Exception:
                         pass
-    if macs:
-        components.append(";".join(macs))
-    else:
-        components.append(str(uuid.getnode()))
 
+    # 4. Hostname y Arquitectura
     components.append(platform.node())
+    components.append(platform.machine())
     return components
 
 
@@ -274,19 +285,15 @@ class SecureCore:
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
             "🔐 <b>[ACTIVACIÓN REQUERIDA] Monitor Valle Seco</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"Se ha detectado una nueva instalación en el servidor <code>{hostname}</code>.\n\n"
             f"🖥️ <b>Host:</b> <code>{hostname}</code>\n"
-            f"🆔 <b>Nodo:</b> <code>{uuid.getnode()}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
             f"🔑 <b>Serial de Activación:</b>\n"
             f"<code>{serial}</code>\n\n"
             "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>📌 <b>Instrucción:</b> Responda directamente a este bot con el <b>Serial exacto</b> para anclar el hardware y activar el bot. "
-            "Mientras tanto, los comandos normales permanecen bloqueados.</i>"
+            "<i>📌 <b>Instrucción:</b> Responda directamente a este bot con el <b>Serial exacto</b> o use <code>/activar {serial}</code> para anclar el hardware.</i>"
         )
-        self._dispatch_canary_message(canary_token, msg)
+        self._dispatch_canary_message(canary_token, msg, alert_type="first_boot")
 
     def _send_migration_alert(self, serial: str) -> None:
         """Envía la alerta de migración/anomalía al Owner."""
@@ -297,19 +304,28 @@ class SecureCore:
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
             "⚠️ <b>[ALERTA DE SEGURIDAD] Entorno Modificado / Migración</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"Se ha detectado un cambio en la huella física de hardware en <code>{hostname}</code>.\n\n"
             f"🔑 <b>Serial de Validación:</b>\n"
             f"<code>{serial}</code>\n\n"
             "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>📌 <b>Instrucción:</b> Si se trata de una migración autorizada, responda con el <b>Serial exacto</b> para re-vincular el hardware. "
-            "Si no responde en 10 minutos, se ejecutará la autodestrucción local (Dead Man's Switch).</i>"
+            "<i>📌 <b>Instrucción:</b> Si se trata de una migración autorizada, responda con el <b>Serial exacto</b> o use <code>/activar {serial}</code> para re-vincular el hardware.</i>"
         )
-        self._dispatch_canary_message(canary_token, msg)
+        self._dispatch_canary_message(canary_token, msg, alert_type="migration")
 
-    def _dispatch_canary_message(self, canary_token: str, text: str) -> None:
-        """Despacha un mensaje de emergencia vía Token Canario con soporte multi-proxy."""
+    def _dispatch_canary_message(self, canary_token: str, text: str, alert_type: str = "alert") -> None:
+        """Despacha un mensaje de emergencia vía Token Canario con soporte multi-proxy y limitación de frecuencia."""
+        # Evitar re-envío en bucle: máximo 1 alerta por tipo cada 10 minutos (600s)
+        debounce_file = Path(f"/tmp/.last_canary_{alert_type}")
+        now = int(time.time())
+        if debounce_file.exists():
+            try:
+                last_ts = int(debounce_file.read_text().strip())
+                if now - last_ts < 600:
+                    logger.debug(f"Alerta canaria ({alert_type}) omitida por límite de frecuencia (debounce).")
+                    return
+            except Exception:
+                pass
+
         url = f"https://api.telegram.org/bot{canary_token}/sendMessage"
         payload = {"chat_id": IMMUTABLE_OWNER_ID, "text": text, "parse_mode": "HTML"}
 
@@ -332,7 +348,11 @@ class SecureCore:
                 with httpx.Client(proxy=p_target, timeout=8.0) as client:
                     resp = client.post(url, json=payload)
                     if resp.status_code == 200 and resp.json().get("ok"):
-                        logger.info("Alerta de emergencia despachada exitosamente al Owner.")
+                        logger.info(f"Alerta de emergencia ({alert_type}) despachada exitosamente al Owner.")
+                        try:
+                            debounce_file.write_text(str(now))
+                        except Exception:
+                            pass
                         return
             except Exception:
                 continue
