@@ -149,9 +149,9 @@ async def capture_packets(
     if pcap_path.exists():
         pcap_path.unlink()
 
-    logger.info(f"Iniciando captura con tcpdump en '{interface}' durante {duration_seconds}s...")
+    logger.info(f"Iniciando captura con tcpdump en '{interface}' durante {duration_seconds}s (máx 5000 paquetes)...")
     proc = await asyncio.create_subprocess_exec(
-        "sudo", "tcpdump", "-i", interface, "-s", "0", "-w", str(pcap_path), "-nn", "-p",
+        "sudo", "tcpdump", "-i", interface, "-s", "0", "-c", "5000", "-w", str(pcap_path), "-nn", "-p",
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.DEVNULL
     )
@@ -705,6 +705,14 @@ async def execute_network_analysis(
         multicast_v6
     ) = await parse_pcap_traffic(pcap_path, my_ip, my_mask)
 
+    # 2.1. Destrucción de Evidencia Cruda (Anti-Forensia): Eliminar captura .pcap cruda
+    try:
+        if pcap_path.exists():
+            pcap_path.unlink()
+            logger.info(f"Evidencia cruda (.pcap) eliminada de forma segura tras análisis: {pcap_path.name}")
+    except Exception as e:
+        logger.warning(f"No se pudo eliminar el archivo pcap crudo ({pcap_path}): {e}")
+
     # 3. Escaneo ARP y NDP
     arp_macs = await run_arp_and_nmap_scan(iface, my_ip, my_mask)
 
@@ -805,6 +813,6 @@ async def execute_network_analysis(
         "md_report": md_report,
         "txt_report": md_report,
         "html_report": html_report,
-        "pcap_file": pcap_path,
+        "pcap_file": None,
         "elapsed_seconds": elapsed
     }
