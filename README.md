@@ -100,6 +100,7 @@ Al iniciar por primera vez en un servidor nuevo:
 ### 👑 Comandos Exclusivos del Administrador / Owner:
 | Comando | Descripción |
 | :--- | :--- |
+| `/emergencia` | Panel interactivo de emergencia (detener servicio, modo mantenimiento, rollback de config). |
 | `/migrar_token` | Migración interactiva del Token de Telegram re-cifrado con DRM de hardware. |
 | `/botstatus` | Diagnóstico de latencia de conexión directa y proxies, y estado de accesos. |
 | `/permisos` | Panel interactivo para autorizar o revocar usuarios y grupos con un toque. |
