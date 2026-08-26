@@ -223,21 +223,63 @@ async def handle_start() -> int:
     return 0
 
 
+async def send_shutdown_alert_fast(token: str, chat_id: int | str, message: str, proxies: List[dict] = None) -> bool:
+    """
+    Envío ultra-rápido y prioritario para apagado del sistema.
+    Timeout estricto de 3.5s por conexión sin sleeps para ganar la carrera al apagado de interfaces.
+    """
+    if not token or not chat_id:
+        return False
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+
+    # Targets: Directo primero, luego proxies configurados
+    targets = [None]
+    if proxies:
+        for p in proxies:
+            p_url = p.get("url") if isinstance(p, dict) else p
+            if p_url and p_url not in targets:
+                targets.append(p_url)
+
+    for target in targets:
+        try:
+            async with httpx.AsyncClient(proxy=target, timeout=3.5) as client:
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200 and resp.json().get("ok"):
+                    logger.info(f"Alerta de apagado entregada exitosamente (Vía: {target or 'Directo'}).")
+                    return True
+        except Exception as e:
+            logger.debug(f"Fallo envío rápido de apagado con {target or 'Directo'}: {e}")
+            continue
+
+    logger.warning("No se pudo entregar la alerta rápida de apagado por ninguna vía.")
+    return False
+
+
 async def handle_stop() -> int:
     """Maneja la notificación de parada / apagado limpio del sistema."""
+    # 1. Crear archivo testigo de apagado limpio INMEDIATAMENTE y forzar volcado físico a disco
+    try:
+        MARKER_FILE.write_text(datetime.now().strftime("%Y-%m-%d %H:%M:%S\n"), encoding="utf-8")
+        try:
+            os.sync()
+        except Exception:
+            pass
+        logger.info("Archivo testigo .clean_shutdown creado y sincronizado a disco exitosamente.")
+    except Exception as e:
+        logger.error(f"Error creando archivo testigo: {e}")
+
+    # 2. Cargar config y enviar alerta ultra-rápida
     config = load_config()
     token = config.get("bot_token")
     owner_id = config.get("owner_id")
     proxies = config.get("proxies", [])
 
-    # 1. Crear archivo testigo de apagado limpio
-    try:
-        MARKER_FILE.write_text(datetime.now().strftime("%Y-%m-%d %H:%M:%S\n"), encoding="utf-8")
-        logger.info("Archivo testigo .clean_shutdown creado exitosamente.")
-    except Exception as e:
-        logger.error(f"Error creando archivo testigo: {e}")
-
-    # 2. Enviar alerta de apagado inmediato si hay conectividad
     if token and owner_id:
         hostname = socket.gethostname()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -249,7 +291,7 @@ async def handle_stop() -> int:
             "<i>El sistema está cerrando servicios antes de desconectar la red.</i>"
         )
         try:
-            await send_telegram_alert(token, [owner_id], mensaje, proxies)
+            await send_shutdown_alert_fast(token, owner_id, mensaje, proxies)
         except Exception as e:
             logger.warning(f"No se pudo enviar notificación de stop: {e}")
 
