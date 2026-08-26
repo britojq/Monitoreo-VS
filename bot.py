@@ -953,7 +953,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• Escribe directamente en este chat tu duda, consulta técnica o problema de infraestructura para recibir asistencia en tiempo real.",
             "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación para comenzar una nueva consulta sobre otro tema.",
             "• <code>/info</code> - Términos de uso, privacidad y políticas de seguridad.\n",
-            "📌 <i><b>Nota:</b> Los reportes de infraestructura (<code>/servicios</code>, <code>/sedes</code>, <code>/monitoreo</code>, <code>/analisis_red</code>) se ejecutan directamente en los grupos de operaciones autorizados.</i>\n",
+            "📌 <i><b>Nota:</b> Los demás comandos solo se ejecutan directamente en los grupos de operaciones autorizados.</i>\n",
             "<i>Sistema operando en Debian GNU/Linux</i>"
         ]
         await safe_reply_html(update.message, "\n".join(user_private_menu))
