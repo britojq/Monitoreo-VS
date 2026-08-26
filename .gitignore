@@ -27,3 +27,8 @@ intentos_acceso.log
 docs/
 docs/*
 
+# Agentes y Habilidades Locales
+.agents/skills/
+.agents/skills/*
+.agents/
+
