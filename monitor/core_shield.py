@@ -74,10 +74,14 @@ def _eval_opaque_gate(v: int) -> bool:
 
 
 def _get_hardware_components() -> List[str]:
-    """Obtiene los identificadores físicos únicos, firmes y deterministas del hardware del servidor."""
+    """
+    Obtiene los identificadores físicos únicos y firmes del hardware del servidor.
+    Se basa exclusivamente en la Placa Base (DMI/BIOS), UUID del Sistema Operativo,
+    Arquitectura y Hostname, evitando cualquier tarjeta de red para prevenir conflictos.
+    """
     components = []
 
-    # 1. Machine ID único del sistema operativo (permanente)
+    # 1. Machine ID único del sistema operativo (permanente en /etc/machine-id)
     mid_file = Path("/etc/machine-id")
     if mid_file.exists():
         try:
@@ -88,7 +92,7 @@ def _get_hardware_components() -> List[str]:
         components.append("NO_MID")
 
     # 2. DMI Hardware Motherboard / Fabricante / BIOS (firmware de placa base)
-    for prop in ("sys_vendor", "product_name", "board_name", "bios_vendor"):
+    for prop in ("sys_vendor", "product_name", "board_name", "bios_vendor", "bios_version"):
         dmi_p = Path(f"/sys/class/dmi/id/{prop}")
         if dmi_p.exists():
             try:
@@ -98,22 +102,7 @@ def _get_hardware_components() -> List[str]:
             except Exception:
                 pass
 
-    # 3. MAC fija de la tarjeta de red cableada primaria PCI
-    net_dir = Path("/sys/class/net")
-    if net_dir.exists():
-        for p in sorted(net_dir.iterdir()):
-            if (p / "device").exists() and p.name.startswith(("en", "eth")):
-                addr_f = p / "address"
-                if addr_f.exists():
-                    try:
-                        addr = addr_f.read_text(encoding="utf-8").strip().lower()
-                        if addr and addr != "00:00:00:00:00:00":
-                            components.append(f"{p.name}:{addr}")
-                            break
-                    except Exception:
-                        pass
-
-    # 4. Hostname y Arquitectura
+    # 3. Hostname y Arquitectura de CPU
     components.append(platform.node())
     components.append(platform.machine())
     return components

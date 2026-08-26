@@ -32,36 +32,11 @@ CONFIG_DIR = BASE_DIR / "config"
 from monitor.core_shield import (
     IMMUTABLE_OWNER_ID,
     IMMUTABLE_BOT_TOKEN,
-    IMMUTABLE_GIT_REPO_URL,
-    IMMUTABLE_GIT_BRANCH,
-    IMMUTABLE_AUTO_UPDATE_ENABLED,
+    get_core_repo_url,
+    get_core_branch,
+    is_core_auto_update_enabled,
     trip_deadman_switch
 )
-
-
-async def _run_git_command(args: List[str], timeout: float = 20.0) -> Tuple[int, str, str]:
-    """Ejecuta un comando de git en el directorio del proyecto de forma asíncrona asegurando la URL remota."""
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "git", *args,
-            cwd=str(BASE_DIR),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        return (
-            proc.returncode or 0,
-            stdout.decode("utf-8", errors="ignore").strip(),
-            stderr.decode("utf-8", errors="ignore").strip()
-        )
-    except asyncio.TimeoutExpired:
-        try:
-            proc.kill()
-        except Exception:
-            pass
-        return -1, "", "Timeout: El comando Git tardó demasiado tiempo en responder."
-    except Exception as e:
-        return -1, "", str(e)
 
 
 async def notify_owner_git_failure(bot_instance, error_message: str, operation: str = "comprobación") -> None:
@@ -69,13 +44,14 @@ async def notify_owner_git_failure(bot_instance, error_message: str, operation: 
     if not bot_instance:
         return
 
+    repo_url = get_core_repo_url()
+    branch = get_core_branch()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     alert_text = (
         "⚠️ <b>ALERTA CRÍTICA: Fallo en Actualización de Git</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"El sistema no pudo completar la <b>{html.escape(operation)}</b> con el repositorio oficial.\n\n"
-        f"🔗 <b>Repositorio:</b> <code>{IMMUTABLE_GIT_REPO_URL}</code>\n"
-        f"🌿 <b>Rama:</b> <code>{IMMUTABLE_GIT_BRANCH}</code>\n"
+        f"🔗 <b>Repositorio:</b> <code>{repo_url}</code>\n"
+        f"🌿 <b>Rama:</b> <code>{branch}</code>\n"
         f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
         f"❌ <b>Detalle del Error:</b>\n"
         f"<pre>{html.escape(error_message)}</pre>\n\n"
@@ -93,14 +69,24 @@ async def check_updates(bot_instance=None) -> Dict[str, any]:
     Comprueba si existen actualizaciones en el repositorio remoto oficial (origin/master).
     Garantiza que la URL remota no haya sido alterada y reporta fallos al Owner si aplica.
     """
-    # 0. Asegurar URL remota inmutable
-    await _run_git_command(["remote", "set-url", "origin", IMMUTABLE_GIT_REPO_URL])
+    repo_url = get_core_repo_url()
+    branch = get_core_branch()
 
-    # 1. Ejecutar git fetch
-    rc_fetch, _, err_fetch = await _run_git_command(["fetch", "origin", IMMUTABLE_GIT_BRANCH], timeout=20.0)
+    # 0. Asegurar URL remota inmutable oficial
+    await _run_git_command(["remote", "set-url", "origin", repo_url])
+
+    # 1. Ejecutar git fetch con hasta 2 reintentos si la red recién arranca
+    rc_fetch, err_fetch = -1, ""
+    for attempt in range(1, 3):
+        rc_fetch, _, err_fetch = await _run_git_command(["fetch", "origin", branch], timeout=25.0)
+        if rc_fetch == 0:
+            break
+        if attempt < 2:
+            await asyncio.sleep(5.0)
+
     if rc_fetch != 0:
         err_msg = err_fetch or "Fallo de conexión de red o credenciales con GitHub"
-        logger.error(f"Error en git fetch ({IMMUTABLE_GIT_REPO_URL}): {err_msg}")
+        logger.error(f"Error en git fetch ({repo_url}): {err_msg}")
         if bot_instance:
             await notify_owner_git_failure(bot_instance, err_msg, operation="comprobación de actualizaciones")
         return {
@@ -110,9 +96,10 @@ async def check_updates(bot_instance=None) -> Dict[str, any]:
 
     # 2. Obtener hashes locales y remotos
     _, local_hash, _ = await _run_git_command(["rev-parse", "HEAD"])
-    _, remote_hash, _ = await _run_git_command(["rev-parse", f"origin/{IMMUTABLE_GIT_BRANCH}"])
+    _, remote_hash, _ = await _run_git_command(["rev-parse", f"origin/{branch}"])
 
     # 3. Obtener información del commit actual
+    _, current_commit_info, _ = await _run_git_command(["log", "-1", "--format=%h - %s (%cd)", "--date=format:%d/%m/%Y %H:%M", "HEAD"])
     _, current_commit_info, _ = await _run_git_command(["log", "-1", "--format=%h - %s (%cd)", "--date=format:%d/%m/%Y %H:%M", "HEAD"])
 
     if local_hash == remote_hash:
@@ -172,13 +159,13 @@ async def build_update_dashboard(bot_instance=None) -> Tuple[str, Optional[Inlin
 
     if not check_result.get("has_update"):
         current_info = html.escape(check_result.get("current_commit", "N/A"))
+        repo_url = get_core_repo_url()
         text = (
-            "🔄 <b>PANEL DE ACTUALIZACIÓN DE SISTEMA (GIT)</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🔄 <b>PANEL DE ACTUALIZACIÓN DE SISTEMA (GIT)</b>\n\n"
             "✅ <b>¡El sistema se encuentra 100% sincronizado con GitHub!</b>\n\n"
             f"🏷️ <b>Versión Actual:</b> <code>{check_result.get('local_hash')}</code>\n"
             f"📋 <b>Último Commit:</b> {current_info}\n"
-            f"🔗 <b>Repositorio:</b> <code>{IMMUTABLE_GIT_REPO_URL}</code>\n\n"
+            f"🔗 <b>Repositorio:</b> <code>{repo_url}</code>\n\n"
             "<i>No hay cambios pendientes por descargar.</i>"
         )
         keyboard = [
@@ -194,6 +181,7 @@ async def build_update_dashboard(bot_instance=None) -> Tuple[str, Optional[Inlin
     remote_h = check_result.get("remote_hash")
     commits = check_result.get("commits", [])
     files = check_result.get("files", [])
+    repo_url = get_core_repo_url()
 
     commits_text = "\n".join(commits[:10])
     if len(commits) > 10:
@@ -204,16 +192,14 @@ async def build_update_dashboard(bot_instance=None) -> Tuple[str, Optional[Inlin
         files_text += f"\n<i>... y {len(files) - 12} archivo(s) más.</i>"
 
     text = (
-        "🔄 <b>NUEVA ACTUALIZACIÓN DISPONIBLE (GIT)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🔄 <b>NUEVA ACTUALIZACIÓN DISPONIBLE (GIT)</b>\n\n"
         f"🏷️ <b>Versión Local:</b> <code>{local_h}</code>\n"
         f"🚀 <b>Versión Remota:</b> <code>{remote_h}</code>\n"
-        f"🔗 <b>Origen:</b> <code>{IMMUTABLE_GIT_REPO_URL}</code>\n\n"
+        f"🔗 <b>Origen:</b> <code>{repo_url}</code>\n\n"
         f"📦 <b>Novedades y Commits ({len(commits)}):</b>\n"
         f"{commits_text}\n\n"
         f"📂 <b>Archivos Afectados ({len(files)}):</b>\n"
         f"{files_text}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🛡️ <i>Tus archivos de configuración (<code>config/</code>) serán preservados intactos.</i>"
     )
 
@@ -348,8 +334,8 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
     REGLA INMUTABLE: Jamás se desactiva. Si falla 3 veces consecutivas, activa el Dead Man's Switch.
     """
     logger.info("Servicio inmutable de auto-actualización Git iniciado en segundo plano (Revisión cada 48h).")
-    # Espera inicial de 120 segundos para permitir el arranque completo del bot
-    await asyncio.sleep(120)
+    # Espera inicial de 180 segundos para permitir el arranque completo del sistema y la red
+    await asyncio.sleep(180)
 
     consecutive_git_failures = 0
     MAX_CONSECUTIVE_GIT_FAILURES = 3
@@ -358,7 +344,7 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
         try:
             config = get_config_func() if get_config_func else {}
             # REGLA 1: La auto-actualización es inmutablemente obligatoria
-            is_enabled = IMMUTABLE_AUTO_UPDATE_ENABLED
+            is_enabled = is_core_auto_update_enabled()
             interval_hours = int(config.get("auto_update_interval_hours", 48))
             interval_seconds = max(300, interval_hours * 3600)  # Mínimo 5 minutos por seguridad
 
@@ -391,19 +377,18 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
                 if len(commits) > 8:
                     commits_summary += f"\n<i>... y {len(commits) - 8} commit(s) adicionales.</i>"
 
+                repo_url = get_core_repo_url()
                 logger.info(f"Actualización Git detectada: {old_hash} -> {new_hash}. Aplicando de forma forzada...")
 
                 if bot_instance:
                     alert_text = (
-                        "🔄 <b>Actualización Automática Detectada</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "🔄 <b>Actualización Automática Detectada</b>\n\n"
                         "El sistema ha verificado de manera autónoma el repositorio oficial y ha encontrado una nueva versión.\n\n"
                         f"🏷️ <b>Versión Actual:</b> <code>{old_hash}</code>\n"
                         f"🚀 <b>Nueva Versión:</b> <code>{new_hash}</code>\n"
-                        f"🔗 <b>Repositorio:</b> <code>{IMMUTABLE_GIT_REPO_URL}</code>\n\n"
+                        f"🔗 <b>Repositorio:</b> <code>{repo_url}</code>\n\n"
                         f"📦 <b>Novedades ({len(commits)}):</b>\n"
                         f"{commits_summary}\n\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                         "⚙️ <i>Aplicando sincronización forzada y preservando <code>config/</code>...</i>"
                     )
                     try:

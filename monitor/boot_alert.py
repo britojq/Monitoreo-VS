@@ -203,14 +203,12 @@ async def handle_start() -> int:
         detalle_texto = "Se detectó un corte de energía eléctrica, desconexión o apagado abrupto (no se registró una parada limpia previa)."
 
     mensaje = (
-        "🚀 <b>Servidor Iniciado</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🚀 <b>Servidor Iniciado</b>\n\n"
         f"🖥️ <b>Host:</b> <code>{html.escape(hostname)}</code>\n"
         f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n"
         f"🌐 <b>IPs Locales:</b> <code>{html.escape(local_ips)}</code>\n"
         f"🏷️ <b>Estado:</b> {estado_titulo}\n"
-        f"📋 <b>Detalle:</b> {detalle_texto}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 <b>Detalle:</b> {detalle_texto}\n\n"
         "<i>Sistema operando en Debian GNU/Linux • CENCARATIT</i>"
     )
 
@@ -239,12 +237,10 @@ async def handle_stop() -> int:
         hostname = socket.gethostname()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         mensaje = (
-            "🛑 <b>Alerta: Servidor Apagándose / Reiniciando</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🛑 <b>Alerta: Servidor Apagándose / Reiniciando</b>\n\n"
             f"🖥️ <b>Host:</b> <code>{html.escape(hostname)}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n"
-            f"📋 <b>Motivo:</b> Parada limpia / reinicio ordenado por el sistema.\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📋 <b>Motivo:</b> Parada limpia / reinicio ordenado por el sistema.\n\n"
             "<i>El sistema está cerrando servicios antes de desconectar la red.</i>"
         )
         try:

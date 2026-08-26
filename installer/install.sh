@@ -130,8 +130,11 @@ echo -e "${BLUE}[*] Paso 6: Configurando servicios Systemd (tg-admin-bot y boot-
 cat <<EOF > /etc/systemd/system/boot-alert.service
 [Unit]
 Description=Notificacion de Arranque y Apagado de Servidor a Telegram
-After=network-online.target NetworkManager.service
+DefaultDependencies=no
+After=network-online.target NetworkManager.service systemd-resolved.service
 Wants=network-online.target
+Conflicts=shutdown.target reboot.target halt.target poweroff.target
+Before=shutdown.target reboot.target halt.target poweroff.target network.target network-online.target NetworkManager.service
 
 [Service]
 Type=oneshot
@@ -142,7 +145,7 @@ WorkingDirectory=$PROJECT_DIR
 ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py start
 ExecStop=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py stop
 TimeoutStartSec=300
-TimeoutStopSec=15
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
