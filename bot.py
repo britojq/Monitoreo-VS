@@ -15,6 +15,7 @@ import re
 import time
 import json
 import html
+import shutil
 import logging
 import asyncio
 import subprocess
@@ -23,6 +24,7 @@ import httpx
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -204,6 +206,47 @@ def save_config() -> bool:
     except Exception as e:
         logger.error(f"Error al guardar configuración en {CONFIG_PATH}: {e}")
         return False
+
+
+GOLDEN_BACKUP_DIR = CONFIG_DIR / ".backup_golden"
+
+
+def ensure_golden_backup() -> None:
+    """Crea una copia de respaldo segura y dorada de los archivos de config/ si no existe."""
+    try:
+        GOLDEN_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        for fname in ("config.json", "commands.json", "bot.conf", "monitoreo.conf", "mensajes.conf", "mac_whitelist.txt", "oui.txt"):
+            src = CONFIG_DIR / fname
+            dst = GOLDEN_BACKUP_DIR / fname
+            if src.exists() and (not dst.exists() or dst.stat().st_size == 0):
+                shutil.copy2(src, dst)
+    except Exception as e:
+        logger.warning(f"No se pudo crear el backup dorado de configuración: {e}")
+
+
+def restore_golden_backup() -> Tuple[bool, str]:
+    """Restaura los archivos de configuración desde la copia dorada o desde el commit HEAD de Git."""
+    global CONFIG, COMMANDS
+    restored_files = []
+    try:
+        if GOLDEN_BACKUP_DIR.exists():
+            for fname in ("config.json", "commands.json", "bot.conf", "monitoreo.conf", "mensajes.conf", "mac_whitelist.txt", "oui.txt"):
+                src = GOLDEN_BACKUP_DIR / fname
+                dst = CONFIG_DIR / fname
+                if src.exists():
+                    shutil.copy2(src, dst)
+                    restored_files.append(fname)
+        if not restored_files:
+            res = subprocess.run(["git", "checkout", "HEAD", "--", "config/"], cwd=str(BASE_DIR), capture_output=True, text=True)
+            if res.returncode == 0:
+                restored_files.append("todos (vía Git HEAD)")
+
+        CONFIG = load_config()
+        MESSAGES, COMMANDS = load_commands_data()
+        return True, f"Archivos restaurados: {', '.join(restored_files) if restored_files else 'config/'}"
+    except Exception as e:
+        logger.error(f"Error restaurando configuración dorada: {e}")
+        return False, str(e)
 
 
 def load_proxies_list() -> list[dict]:
@@ -459,6 +502,21 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "o use el comando <code>/activar AUTH-XXXX-XXXX-XXXX-XXXX</code> para desbloquear el bot.</i>"
             )
         return False
+
+    # 2. Modo Mantenimiento Activado por el Owner
+    if CONFIG.get("maintenance_mode", False):
+        user = update.effective_user
+        if user and user.id == IMMUTABLE_OWNER_ID:
+            pass  # El Owner siempre tiene acceso irrestricto en modo mantenimiento
+        else:
+            if update.message:
+                await safe_reply_html(
+                    update.message,
+                    "🔧 <b>Modo Mantenimiento Activo</b>\n\n"
+                    "El bot se encuentra temporalmente en modo de mantenimiento por el Administrador. "
+                    "Las funciones se reanudarán en breve."
+                )
+            return False
 
     if is_authorized(update):
         return True
@@ -852,6 +910,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/botstatus</code> <i>(/estatus, /status, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
+            "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
             "📊 <b>Monitoreo e Infraestructura de Red</b>",
@@ -2925,6 +2984,211 @@ async def cmd_activar_manual(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
 
+# =========================================================================
+# 🚨 PANEL DE CONTROL DE EMERGENCIA Y CONTINGENCIA (/emergencia)
+# =========================================================================
+
+def _build_emergency_panel() -> Tuple[str, InlineKeyboardMarkup]:
+    """Construye el texto y botones interactivos para el panel de control de emergencia."""
+    is_maint = bool(CONFIG.get("maintenance_mode", False))
+    maint_label = "🔴 ACTIVADO (Usuarios y grupos bloqueados)" if is_maint else "🟢 DESACTIVADO (Operación normal)"
+
+    text = (
+        "🚨 <b>PANEL DE CONTROL DE EMERGENCIA (EXCLUSIVO OWNER)</b>\n\n"
+        "Este panel permite ejecutar acciones de contingencia inmediata sobre el servicio del bot y su configuración:\n\n"
+        "• <b>Estado del Servicio:</b> <code>ACTIVO (Running)</code>\n"
+        f"• <b>Modo Mantenimiento:</b> <code>{maint_label}</code>\n"
+        "• <b>Respaldo de Configuración:</b> <code>Disponible</code>\n\n"
+        "<i>Seleccione una acción de emergencia a continuación:</i>"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("🛑 Detener Servicio del Bot", callback_data="emergencia:stop_prompt"),
+        ],
+        [
+            InlineKeyboardButton("▶️ Reanudar Normalidad" if is_maint else "⏸️ Activar Mantenimiento",
+                                 callback_data="emergencia:toggle_maint"),
+            InlineKeyboardButton("🔄 Restaurar Configuración", callback_data="emergencia:restore_prompt"),
+        ],
+        [
+            InlineKeyboardButton("❌ Cerrar Panel", callback_data="emergencia:close")
+        ]
+    ]
+    return text, InlineKeyboardMarkup(keyboard)
+
+
+async def _delayed_emergency_stop() -> None:
+    """Espera 1.5 segundos para permitir el envío del mensaje de confirmación y detiene el servicio."""
+    await asyncio.sleep(1.5)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "sudo", "systemctl", "stop", "tg-admin-bot.service"
+        )
+        await proc.communicate()
+    except Exception as e:
+        logger.error(f"Error al detener servicio por emergencia: {e}")
+
+
+async def cmd_emergencia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el panel interactivo de emergencia exclusivo para el Owner en chat privado."""
+    if not await check_authorization(update, context):
+        return
+
+    user = update.effective_user
+    chat = update.effective_chat
+
+    if not user or user.id != IMMUTABLE_OWNER_ID:
+        await safe_reply_html(update.message, "⛔ Este comando está estrictamente restringido al Administrador.")
+        return
+
+    if not chat or chat.type != "private":
+        await safe_reply_html(update.message, "🔒 Por estrictas razones de seguridad, el panel de emergencia solo puede abrirse en <b>chat privado</b>.")
+        return
+
+    text, reply_markup = _build_emergency_panel()
+    await safe_reply_html(update.message, text, reply_markup=reply_markup)
+
+
+async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones interactivas del panel de emergencia del Owner."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    clicker_id = query.from_user.id
+    if clicker_id != IMMUTABLE_OWNER_ID:
+        await query.answer("⛔ Acción reservada exclusivamente al Administrador.", show_alert=True)
+        return
+
+    action = query.data.replace("emergencia:", "")
+
+    if action == "close":
+        await query.answer("Panel cerrado.")
+        try:
+            await query.message.delete()
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+        return
+
+    elif action == "menu":
+        await query.answer()
+        text, reply_markup = _build_emergency_panel()
+        try:
+            await query.edit_message_text(text, parse_mode='HTML', reply_markup=reply_markup)
+        except Exception:
+            pass
+        return
+
+    elif action == "stop_prompt":
+        await query.answer()
+        prompt_text = (
+            "⚠️ <b>CONFIRMACIÓN: DETENER SERVICIO</b>\n\n"
+            "¿Está seguro de que desea detener el servicio <code>tg-admin-bot.service</code>?\n\n"
+            "El bot dejará de responder inmediatamente a todos los usuarios y no ejecutará tareas programadas hasta que se inicie manualmente en el servidor mediante:\n"
+            "<code>sudo systemctl start tg-admin-bot.service</code>"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🛑 SÍ, DETENER SERVICIO AHORA", callback_data="emergencia:stop_confirm"),
+            ],
+            [
+                InlineKeyboardButton("⬅️ Volver al Panel", callback_data="emergencia:menu")
+            ]
+        ]
+        try:
+            await query.edit_message_text(prompt_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception:
+            pass
+        return
+
+    elif action == "stop_confirm":
+        await query.answer("🛑 Deteniendo servicio del bot...")
+        try:
+            await query.edit_message_text(
+                "🛑 <b>Servicio Detenido por Emergencia</b>\n\n"
+                "El bot ha recibido la orden de apagado del Administrador y se ha detenido correctamente.\n\n"
+                "Para reactivarlo en sitio o vía SSH, ejecute en la consola:\n"
+                "<code>sudo systemctl start tg-admin-bot.service</code>",
+                parse_mode='HTML',
+                reply_markup=None
+            )
+        except Exception:
+            pass
+        asyncio.create_task(_delayed_emergency_stop())
+        return
+
+    elif action == "toggle_maint":
+        current_maint = bool(CONFIG.get("maintenance_mode", False))
+        new_maint = not current_maint
+        CONFIG["maintenance_mode"] = new_maint
+        save_config()
+
+        status_msg = "Mantenimiento ACTIVADO (usuarios y grupos bloqueados)" if new_maint else "Operación NORMAL restablecida"
+        await query.answer(f"✅ {status_msg}")
+
+        text, reply_markup = _build_emergency_panel()
+        try:
+            await query.edit_message_text(text, parse_mode='HTML', reply_markup=reply_markup)
+        except Exception:
+            pass
+        return
+
+    elif action == "restore_prompt":
+        await query.answer()
+        prompt_text = (
+            "⚠️ <b>CONFIRMACIÓN: RESTAURAR CONFIGURACIÓN</b>\n\n"
+            "¿Desea restaurar los archivos de configuración desde la copia de seguridad segura?\n\n"
+            "Se restaurarán:\n"
+            "• <code>config/config.json</code>\n"
+            "• <code>config/bot.conf</code>\n"
+            "• <code>config/monitoreo.conf</code>\n"
+            "• <code>config/mensajes.conf</code>\n\n"
+            "<i>Las credenciales protegidas y el anclaje DRM de hardware se mantendrán intactos.</i>"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🔄 SÍ, RESTAURAR AHORA", callback_data="emergencia:restore_confirm"),
+            ],
+            [
+                InlineKeyboardButton("⬅️ Volver al Panel", callback_data="emergencia:menu")
+            ]
+        ]
+        try:
+            await query.edit_message_text(prompt_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception:
+            pass
+        return
+
+    elif action == "restore_confirm":
+        await query.answer("🔄 Restaurando configuración...")
+        ok, msg = restore_golden_backup()
+        if ok:
+            res_text = (
+                "✅ <b>Configuración Restaurada con Éxito</b>\n\n"
+                f"{html.escape(msg)}\n\n"
+                "Los archivos de configuración han sido restablecidos y recargados en memoria."
+            )
+        else:
+            res_text = (
+                "❌ <b>Error al Restaurar Configuración:</b>\n\n"
+                f"<code>{html.escape(msg)}</code>"
+            )
+        keyboard = [
+            [
+                InlineKeyboardButton("⬅️ Volver al Panel", callback_data="emergencia:menu")
+            ]
+        ]
+        try:
+            await query.edit_message_text(res_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception:
+            pass
+        return
+
+
 async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Registra y gestiona errores inesperados o fallos de red durante el polling."""
     err = context.error
@@ -3045,8 +3309,14 @@ def main() -> None:
         "debug_completo",
         "debugcompleto",
         "debug_monitoreo",
-        "monitoreo_debug"
+        "monitoreo_debug",
+        "emergencia",
+        "panico",
+        "contingencia"
     }
+
+    # Asegurar existencia de copia dorada de respaldo de configuración
+    ensure_golden_backup()
 
     # Conversación exclusiva para que el Owner migre el Token con DRM de hardware
     migrar_token_handler = ConversationHandler(
@@ -3067,6 +3337,9 @@ def main() -> None:
 
     # Comando para activación manual de hardware (Owner)
     application.add_handler(CommandHandler(["activar", "autorizar_hardware", "auth_hw"], cmd_activar_manual))
+
+    # Comando de Panel de Control de Emergencia (Exclusivo Owner en privado)
+    application.add_handler(CommandHandler(["emergencia", "panico", "contingencia"], cmd_emergencia))
 
     # Comando para información legal, privacidad y advertencia de seguridad
     application.add_handler(CommandHandler(["info", "aviso", "legal", "terminos"], cmd_info))
@@ -3107,6 +3380,9 @@ def main() -> None:
 
     # Comando de Análisis de Red Local (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["analisis_red", "red", "escaner_red", "network_scan"], cmd_analisis_red))
+
+    # Callback query handler para panel de control de emergencia
+    application.add_handler(CallbackQueryHandler(handle_emergency_callback, pattern=r"^emergencia:"))
 
     # Callback query handler para botones de autorización interactiva, revocación, debug toggle y bloqueo de comandos
     application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug|toggle_cmd_lock):"))
