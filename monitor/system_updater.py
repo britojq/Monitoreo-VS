@@ -39,6 +39,31 @@ from monitor.core_shield import (
 )
 
 
+async def _run_git_command(args: List[str], timeout: float = 20.0) -> Tuple[int, str, str]:
+    """Ejecuta un comando de git en el directorio del proyecto de forma asíncrona."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", *args,
+            cwd=str(BASE_DIR),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        return (
+            proc.returncode or 0,
+            stdout.decode("utf-8", errors="ignore").strip(),
+            stderr.decode("utf-8", errors="ignore").strip()
+        )
+    except asyncio.TimeoutExpired:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        return -1, "", "Timeout: El comando Git tardó demasiado tiempo en responder."
+    except Exception as e:
+        return -1, "", str(e)
+
+
 async def notify_owner_git_failure(bot_instance, error_message: str, operation: str = "comprobación") -> None:
     """Envía una alerta crítica inmediata al Owner si Git no puede actualizarse o sincronizarse."""
     if not bot_instance:
