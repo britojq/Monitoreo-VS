@@ -515,12 +515,18 @@ def get_core_bot_token() -> str:
 
 def get_core_repo_url() -> str:
     """Devuelve la URL oficial del Repositorio Git."""
-    return _ENGINE.deobfuscate(_R_CIPHER)
+    url = _ENGINE.deobfuscate(_R_CIPHER)
+    if not url or not url.startswith("http") or url.startswith("FAIL_SILENT_"):
+        return "https://github.com/britojq/tgbot-pyt-bashfull.git"
+    return url
 
 
 def get_core_branch() -> str:
     """Devuelve la rama oficial de Git."""
-    return _ENGINE.deobfuscate(_B_CIPHER)
+    branch = _ENGINE.deobfuscate(_B_CIPHER)
+    if not branch or branch.startswith("FAIL_SILENT_"):
+        return "master"
+    return branch
 
 
 def is_core_auto_update_enabled() -> bool:
