@@ -149,12 +149,13 @@ def main():
     pam_type = os.getenv("PAM_TYPE", "")
     pam_service = os.getenv("PAM_SERVICE", "")
 
-    if pam_type != "open_session" or pam_service != "sshd":
+    # Si se ejecuta desde PAM sin argumentos y no es sshd open_session, salir
+    if pam_type and (pam_type != "open_session" or pam_service != "sshd"):
         sys.exit(0)
 
-    user_login = os.getenv("PAM_USER", "desconocido")
-    ip_origin = os.getenv("PAM_RHOST", "") or "desconocida/local"
-    tty_ssh = os.getenv("PAM_TTY", "") or "ssh"
+    user_login = sys.argv[1] if (len(sys.argv) > 1 and sys.argv[1]) else (os.getenv("PAM_USER", "desconocido"))
+    ip_origin = sys.argv[2] if (len(sys.argv) > 2 and sys.argv[2]) else (os.getenv("PAM_RHOST", "") or "desconocida/local")
+    tty_ssh = sys.argv[3] if (len(sys.argv) > 3 and sys.argv[3]) else (os.getenv("PAM_TTY", "") or "ssh")
 
     try:
         asyncio.run(send_ssh_alert(user_login, ip_origin, tty_ssh))
