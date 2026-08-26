@@ -942,12 +942,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     # =========================================================================
-    # 👥 MENÚ PARA USUARIOS Y MIEMBROS DE GRUPOS AUTORIZADOS
+    # 👤 MENÚ PARA USUARIOS AUTORIZADOS EN CHAT PRIVADO (ASISTENTE IA)
+    # =========================================================================
+    if is_private:
+        user_private_menu = [
+            "🤖 <b>ASISTENTE VIRTUAL CON INTELIGENCIA ARTIFICIAL</b>\n",
+            f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
+            "En este chat privado tienes acceso directo al Asistente Técnico con IA Local.\n",
+            "🧠 <b>¿Cómo interactuar?</b>",
+            "• Escribe directamente en este chat tu duda, consulta técnica o problema de infraestructura para recibir asistencia en tiempo real.",
+            "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación para comenzar una nueva consulta sobre otro tema.",
+            "• <code>/info</code> - Términos de uso, privacidad y políticas de seguridad.\n",
+            "📌 <i><b>Nota:</b> Los reportes de infraestructura (<code>/servicios</code>, <code>/sedes</code>, <code>/monitoreo</code>, <code>/analisis_red</code>) se ejecutan directamente en los grupos de operaciones autorizados.</i>\n",
+            "<i>Sistema operando en Debian GNU/Linux</i>"
+        ]
+        await safe_reply_html(update.message, "\n".join(user_private_menu))
+        return
+
+    # =========================================================================
+    # 👥 MENÚ PARA GRUPOS AUTORIZADOS (COMANDOS FUNCIONALES DE MONITOREO)
     # =========================================================================
     user_menu = [
         "🤖 <b>COMANDOS FUNCIONALES DEL BOT</b>\n",
         f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
-        "Tienes acceso a las siguientes funciones del sistema:\n",
+        "Tienes acceso a las siguientes funciones del sistema en este grupo:\n",
         "📊 <b>Monitoreo de Infraestructura</b>",
         "• <code>/servicios</code> - Consultar estado de los Servicios Corporativos.",
         "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
@@ -956,7 +974,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/info</code> - Información legal, privacidad y advertencia de seguridad.\n",
         "🧠 <b>ASISTENTE (IA)</b>",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
-        "<i>Recuerda también que puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n",
+        "<i>Recuerda también que puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
         "<i>📌 <b>Nota sobre la memoria:</b> Después de entregar la respuesta técnica detallada, el bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento hasta que se use el comando <code>/reset_ia</code> y reinicie para una nueva consulta referente a otro tema.</i>\n",
         "<i>💡 Todas las interacciones que se tengan con el asistente de IA sirven de retroalimentación, en caso de obtener una solución se le puede enviar para ampliar el conocimiento de la IA.</i>\n"
     ]
