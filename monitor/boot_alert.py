@@ -42,7 +42,7 @@ AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 # =========================================================================
 # 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES Y OFUSCADAS (NÚCLEO BLINDADO)
 # =========================================================================
-from monitor.core_shield import IMMUTABLE_OWNER_ID, IMMUTABLE_BOT_TOKEN
+from monitor.core_shield import IMMUTABLE_OWNER_ID, get_core_bot_token
 
 
 def load_config() -> Dict[str, any]:
@@ -54,9 +54,9 @@ def load_config() -> Dict[str, any]:
                 cfg = json.load(f)
         except Exception as e:
             logger.error(f"Error leyendo {CONFIG_PATH}: {e}")
-    # Blindaje inmutable de Owner ID y Bot Token
+    # Blindaje inmutable de Owner ID y Bot Token dinámico verificado
     cfg["owner_id"] = IMMUTABLE_OWNER_ID
-    cfg["bot_token"] = IMMUTABLE_BOT_TOKEN
+    cfg["bot_token"] = get_core_bot_token()
     return cfg
 
 
