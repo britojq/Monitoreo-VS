@@ -404,11 +404,25 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     # 0. Verificación de Estado de Activación DRM de Hardware
     if not is_core_operational():
         user = update.effective_user
-        msg_text = update.message.text.strip() if (update.message and update.message.text) else ""
+        raw_text = (update.message.text or update.message.caption or "") if update.message else ""
 
-        # Si el Owner envía el Serial Challenge (ej: AUTH-XXXX-XXXX-XXXX-XXXX)
-        if user and user.id == IMMUTABLE_OWNER_ID and msg_text.upper().startswith("AUTH-"):
-            ok, msg = activate_hardware_first_boot(msg_text)
+        # Extraer Serial Challenge de forma flexible mediante Regex
+        serial_candidate = ""
+        match = re.search(r'(AUTH-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4})', raw_text, re.IGNORECASE)
+        if match:
+            serial_candidate = match.group(1).upper()
+        elif raw_text.strip().upper().startswith("AUTH-"):
+            serial_candidate = raw_text.strip().upper()
+        elif context and getattr(context, "args", None):
+            for arg in context.args:
+                m_arg = re.search(r'(AUTH-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4})', arg, re.IGNORECASE)
+                if m_arg:
+                    serial_candidate = m_arg.group(1).upper()
+                    break
+
+        # Si el Owner envía el Serial Challenge
+        if user and user.id == IMMUTABLE_OWNER_ID and serial_candidate:
+            ok, msg = activate_hardware_first_boot(serial_candidate)
             if ok:
                 await safe_reply_html(
                     update.message,
@@ -429,7 +443,8 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
                 update.message,
                 "⏳ <b>Bot en espera de activación del Owner.</b>\n\n"
                 "<i>El sistema se encuentra en modo de primer arranque o re-validación de hardware. "
-                "Por favor, introduzca el Serial de Activación para anclar el hardware y desbloquear el bot.</i>"
+                "Por favor, responda con el Serial de Activación (ej: <code>AUTH-XXXX-XXXX-XXXX-XXXX</code>) "
+                "o use el comando <code>/activar AUTH-XXXX-XXXX-XXXX-XXXX</code> para desbloquear el bot.</i>"
             )
         return False
 
@@ -2881,6 +2896,40 @@ async def cancel_migrar_token(update: Update, context: ContextTypes.DEFAULT_TYPE
     return ConversationHandler.END
 
 
+async def cmd_activar_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Permite al Owner activar manualmente el anclaje de hardware usando /activar <SERIAL>."""
+    if not update.effective_user or update.effective_user.id != IMMUTABLE_OWNER_ID:
+        return
+
+    serial_arg = ""
+    if context.args:
+        serial_arg = context.args[0].strip().upper()
+    elif update.message and update.message.text:
+        match = re.search(r'(AUTH-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4})', update.message.text, re.IGNORECASE)
+        if match:
+            serial_arg = match.group(1).upper()
+
+    if not serial_arg:
+        await safe_reply_html(
+            update.message,
+            "ℹ️ <b>Uso del comando:</b> <code>/activar AUTH-XXXX-XXXX-XXXX-XXXX</code>"
+        )
+        return
+
+    ok, msg = activate_hardware_first_boot(serial_arg)
+    if ok:
+        await safe_reply_html(
+            update.message,
+            f"<b>{msg}</b>\n\n🎉 <b>¡Bienvenido!</b> El sistema ha completado el anclaje físico de hardware y se encuentra ahora 100% <b>OPERACIONAL</b>."
+        )
+    else:
+        await safe_reply_html(
+            update.message,
+            f"❌ <b>Error de Activación:</b>\n\n<code>{html.escape(msg)}</code>\n\n"
+            "<i>Verifique el Serial recibido en la alerta de emergencia e intente nuevamente dentro de la ventana de 10 minutos.</i>"
+        )
+
+
 async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Registra y gestiona errores inesperados o fallos de red durante el polling."""
     err = context.error
@@ -2938,6 +2987,9 @@ def main() -> None:
         "start",
         "help",
         "ayuda",
+        "activar",
+        "autorizar_hardware",
+        "auth_hw",
         "reset_ia",
         "reset_chat",
         "borrar_chat",
@@ -3017,6 +3069,9 @@ def main() -> None:
 
     # Comandos base
     application.add_handler(CommandHandler(["start", "help", "ayuda"], start))
+
+    # Comando para activación manual de hardware (Owner)
+    application.add_handler(CommandHandler(["activar", "autorizar_hardware", "auth_hw"], cmd_activar_manual))
 
     # Comando para información legal, privacidad y advertencia de seguridad
     application.add_handler(CommandHandler(["info", "aviso", "legal", "terminos"], cmd_info))

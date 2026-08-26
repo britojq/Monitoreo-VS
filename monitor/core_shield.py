@@ -309,28 +309,62 @@ class SecureCore:
         self._dispatch_canary_message(canary_token, msg)
 
     def _dispatch_canary_message(self, canary_token: str, text: str) -> None:
-        """Despacha un mensaje de emergencia vía Token Canario."""
-        try:
-            with httpx.Client(timeout=10.0) as client:
-                client.post(
-                    f"https://api.telegram.org/bot{canary_token}/sendMessage",
-                    json={"chat_id": IMMUTABLE_OWNER_ID, "text": text, "parse_mode": "HTML"}
-                )
-        except Exception as e:
-            logger.error(f"Fallo enviando mensaje canario: {e}")
+        """Despacha un mensaje de emergencia vía Token Canario con soporte multi-proxy."""
+        url = f"https://api.telegram.org/bot{canary_token}/sendMessage"
+        payload = {"chat_id": IMMUTABLE_OWNER_ID, "text": text, "parse_mode": "HTML"}
+
+        # Cargar proxies si existen
+        proxies_to_test = [None]
+        config_p = BASE_DIR / "config" / "config.json"
+        if config_p.exists():
+            try:
+                with open(config_p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for p in data.get("proxies", []):
+                        p_url = p.get("url") if isinstance(p, dict) else p
+                        if p_url and p_url not in proxies_to_test:
+                            proxies_to_test.append(p_url)
+            except Exception:
+                pass
+
+        for p_target in proxies_to_test:
+            try:
+                with httpx.Client(proxy=p_target, timeout=8.0) as client:
+                    resp = client.post(url, json=payload)
+                    if resp.status_code == 200 and resp.json().get("ok"):
+                        logger.info("Alerta de emergencia despachada exitosamente al Owner.")
+                        return
+            except Exception:
+                continue
+        logger.warning("No se pudo entregar la alerta de emergencia tras probar conexión directa y proxies.")
 
     def activate_hardware(self, entered_serial: str) -> Tuple[bool, str]:
         """Procesa la validación del Serial, ancla la Master Key al hardware y activa el bot."""
-        if not self.verify_challenge(entered_serial):
-            return False, "Serial de activación incorrecto o expirado (límite 10 minutos)."
+        clean_serial = entered_serial.strip().upper()
+        # Normalizar serial si viene sin prefijo
+        if not clean_serial.startswith("AUTH-") and len(clean_serial) == 19:
+            clean_serial = f"AUTH-{clean_serial}"
+
+        if not self.verify_challenge(clean_serial):
+            if not self._active_serial:
+                return False, "No hay ningún desafío de activación pendiente en este momento."
+            now = int(time.time())
+            if now - self._serial_timestamp > 600 or now < self._serial_timestamp:
+                return False, "El Serial de activación ha expirado (límite 10 minutos). Reinicie el servicio para generar uno nuevo."
+            return False, "Serial de activación incorrecto. Verifique el código recibido por Telegram."
+
+        if not self._hw_key:
+            self._hw_components = _get_hardware_components()
+            self._hw_key = _derive_hardware_key(self._hw_components)
 
         success = self._write_anchor(self._hw_key, custom_token=self._custom_token)
         if success:
             self._unwrapped_master_key = _CORE_MASTER_KEY
             self._state = "OPERATIONAL"
             self._active_serial = None
+            self._serial_timestamp = 0
             logger.info("✅ SecureCore: Anclaje de hardware exitoso. Bot activado en modo OPERATIONAL.")
-            return True, "✅ [ACTIVACIÓN EXITOSA] Hardware anclado correctamente. El bot se encuentra ahora 100% OPERATIVO."
+            return True, "✅ [ACTIVACIÓN EXITOSA] Hardware anclado correctamente a la máquina local."
         return False, "Error al escribir el archivo de anclaje de hardware."
 
     def migrate_token(self, new_token: str) -> Tuple[bool, str]:
