@@ -167,11 +167,11 @@ async def build_update_dashboard(bot_instance=None) -> Tuple[str, Optional[Inlin
 
     if not check_result.get("success"):
         error_msg = html.escape(check_result.get("error", "Error desconocido"))
+        repo_url = get_core_repo_url()
         text = (
-            "🔄 <b>PANEL DE ACTUALIZACIÓN DE SISTEMA (GIT)</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🔄 <b>PANEL DE ACTUALIZACIÓN DE SISTEMA (GIT)</b>\n\n"
             f"❌ <b>Error al verificar actualizaciones:</b>\n<pre>{error_msg}</pre>\n\n"
-            f"🔗 <b>Repositorio Obligatorio:</b> <code>{IMMUTABLE_GIT_REPO_URL}</code>\n"
+            f"🔗 <b>Repositorio Obligatorio:</b> <code>{repo_url}</code>\n"
             "<i>Se ha generado un registro de auditoría y alerta al Administrador.</i>"
         )
         keyboard = [

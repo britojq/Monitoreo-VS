@@ -507,7 +507,6 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         aviso_legal = get_security_warning_html()
         user_reply = (
             f"{aviso_legal}\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⛔ <b>Acceso Restringido</b>\n\n"
             "No tienes autorización para interactuar con este bot.\n\n"
             f"Para solicitar acceso al administrador, proporciona tu ID:\n"
@@ -689,14 +688,10 @@ def get_security_warning_html() -> str:
 
     # Fallback en caso de que no exista el archivo
     return (
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚠️ <b>ADVERTENCIA DE SEGURIDAD</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "⚠️ <b>ADVERTENCIA DE SEGURIDAD</b>\n\n"
         "Este BOT está protegido por un <b>Custodio de Registros</b>.\n\n"
         "Toda la información contenida y procesada por este bot es de carácter Confidencial y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos.\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚖️ <b>AVISO LEGAL</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "⚖️ <b>AVISO LEGAL</b>\n\n"
         "Se registran y almacenan los datos <b>(ID:, Usuario, Dirección IP, Fecha, Hora y mensajes enviados)</b> en nuestros servidores en caso de utilizar el bot sin autorización esto con fines de auditoría y seguridad.\n\n"
         "Cualquier <b>ACCESO NO AUTORIZADO</b>, intento de intrusión o uso indebido de la información será sancionado conforme a lo establecido en la Ley Contra los Delitos Informáticos, <b>Capítulos I y II, artículos 6, 7, 8, 9, 10, 11 y 13</b>.\n\n"
         "<b>Si usted no cuenta con autorización para acceder a este bot o utilizar sus servicios, desconéctese y elimine inmediatamente.</b>\n\n"
@@ -836,8 +831,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # =========================================================================
     if is_owner and is_private:
         owner_menu = [
-            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>\n",
             f"¡Bienvenido, <b>{html.escape(display_name)}</b>!\n",
             "A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
@@ -871,8 +865,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 desc = cmd_info.get("description", "Sin descripción")
                 owner_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
 
-        owner_menu.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        owner_menu.append("<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
+        owner_menu.append("\n<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
 
         await safe_reply_html(update.message, "\n".join(owner_menu))
         return
@@ -881,8 +874,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 👥 MENÚ PARA USUARIOS Y MIEMBROS DE GRUPOS AUTORIZADOS
     # =========================================================================
     user_menu = [
-        "🤖 <b>COMANDOS FUNCIONALES DEL BOT</b>",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🤖 <b>COMANDOS FUNCIONALES DEL BOT</b>\n",
         f"¡Hola, <b>{html.escape(display_name)}</b>!\n",
         "Tienes acceso a las siguientes funciones del sistema:\n",
         "📊 <b>Monitoreo de Infraestructura</b>",
@@ -891,9 +883,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
         "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.",
         "• <code>/info</code> - Información legal, privacidad y advertencia de seguridad.\n",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "🧠 <b>ASISTENTE (IA)</b>",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "• <code>/reset_ia</code> - Reiniciar la memoria de la conversación.\n",
         "<i>Recuerda también que puedes escribir directamente en el chat para realizar cualquier consulta técnica.</i>\n",
         "<i>📌 <b>Nota sobre la memoria:</b> Después de entregar la respuesta técnica detallada, el bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento hasta que se use el comando <code>/reset_ia</code> y reinicie para una nueva consulta referente a otro tema.</i>\n",
@@ -901,13 +891,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
 
     if commands_enabled and COMMANDS:
-        user_menu.append("\n⚙️ <b>Comandos del Sistema:</b>")
+        user_menu.append("⚙️ <b>Comandos del Sistema:</b>")
         for cmd_name, cmd_info in COMMANDS.items():
             desc = cmd_info.get("description", "Sin descripción")
             user_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
 
-    user_menu.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    user_menu.append("<i>Sistema de Monitoreo operando en Debian GNU/Linux</i>")
+    user_menu.append("\n<i>Sistema de Monitoreo operando en Debian GNU/Linux</i>")
 
     await safe_reply_html(update.message, "\n".join(user_menu))
 
@@ -1162,8 +1151,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if success:
         # Recordatorio explícito al usuario sobre la memoria activa y el comando /reset_ia (en HTML puro)
         formatted_answer += (
-            "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>💡 <b>Nota:</b> El bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento "
+            "\n\n<i>💡 <b>Nota:</b> El bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento "
             "hasta que uses <code>/reset_ia</code> para iniciar una nueva consulta referente a otro tema.</i>"
         )
 
@@ -1706,8 +1694,7 @@ async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     panel_msg = (
-        "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n\n"
         f"<b>Estado Actual:</b> <code>{estado_str}</code>\n\n"
         "• <b>Bloquear:</b> Desactiva la ejecución de comandos para el grupo y usuarios autorizados.\n"
         "• <b>Habilitar:</b> Restablece el uso de comandos a la normalidad.\n\n"
@@ -2346,10 +2333,8 @@ async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TY
 
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
     formatted_announcement = (
-        "📢 <b>COMUNICADO OFICIAL</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📢 <b>COMUNICADO OFICIAL</b>\n\n"
         f"{html.escape(broadcast_content)}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🏛️ <i>Mensaje emitido por la Administración • {now_str}</i>"
     )
 
@@ -2626,8 +2611,7 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         if query.message:
             try:
                 await query.edit_message_text(
-                    "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "🛡️ <b>Control de Acceso a Comandos (Exclusivo Owner)</b>\n\n"
                     f"<b>Estado Actual:</b> <code>{estado_label}</code>\n\n"
                     f"Configuración guardada exitosamente.\n"
                     f"{'Los demás usuarios y grupos tienen el uso de comandos temporalmente bloqueado.' if new_state else 'Los usuarios y grupos autorizados pueden usar los comandos normalmente.'}",
@@ -2819,8 +2803,7 @@ async def cmd_migrar_token_start(update: Update, context: ContextTypes.DEFAULT_T
 
     await safe_reply_html(
         update.message,
-        "🔄 <b>Migración de Identidad del Bot (Token de Telegram)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🔄 <b>Migración de Identidad del Bot (Token de Telegram)</b>\n\n"
         "Este proceso re-cifrará el nuevo token con la <b>Clave de Hardware (DRM)</b> sin alterar el anclaje físico ni exponerlo en texto plano.\n\n"
         "1️⃣ Ve a @BotFather y copia tu nuevo Token de bot.\n"
         "2️⃣ <b>Pega y envía el nuevo Token</b> como respuesta a este mensaje.\n\n"
