@@ -74,7 +74,14 @@ fi
 if id "$SYS_USER" >/dev/null 2>&1; then
     usermod -aG wireshark "$SYS_USER" 2>/dev/null || true
 fi
-echo -e "${GREEN}[+] Capacidades de red (tcpdump / arp-scan) configuradas.${NC}\n"
+
+# Asegurar que las conexiones de red sean globales (system-wide) para no desconectar en shutdown
+if command -v nmcli >/dev/null 2>&1; then
+    nmcli -t -f UUID con show 2>/dev/null | while read -r uuid; do
+        [ -n "$uuid" ] && nmcli con mod uuid "$uuid" connection.permissions "" 2>/dev/null || true
+    done
+fi
+echo -e "${GREEN}[+] Capacidades de red (tcpdump / arp-scan / conexiones globales) configuradas.${NC}\n"
 
 # 3. Instalación y configuración del Motor de IA (Ollama)
 echo -e "${BLUE}[*] Paso 3: Verificando / Instalando motor de Inteligencia Artificial (Ollama)...${NC}"
@@ -140,8 +147,9 @@ Before=shutdown.target reboot.target halt.target poweroff.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-User=$SYS_USER
-Group=$SYS_USER
+Slice=system.slice
+User=root
+Group=root
 WorkingDirectory=$PROJECT_DIR
 ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py start
 ExecStop=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py stop

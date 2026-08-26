@@ -248,13 +248,13 @@ async def send_shutdown_alert_fast(token: str, chat_id: int | str, message: str,
 
     for target in targets:
         try:
-            async with httpx.AsyncClient(proxy=target, timeout=3.5) as client:
+            async with httpx.AsyncClient(proxy=target, timeout=4.0) as client:
                 resp = await client.post(url, json=payload)
                 if resp.status_code == 200 and resp.json().get("ok"):
                     logger.info(f"Alerta de apagado entregada exitosamente (Vía: {target or 'Directo'}).")
                     return True
         except Exception as e:
-            logger.debug(f"Fallo envío rápido de apagado con {target or 'Directo'}: {e}")
+            logger.warning(f"Fallo envío rápido de apagado con {target or 'Directo'}: {e}")
             continue
 
     logger.warning("No se pudo entregar la alerta rápida de apagado por ninguna vía.")
@@ -267,6 +267,7 @@ async def handle_stop() -> int:
     try:
         MARKER_FILE.write_text(datetime.now().strftime("%Y-%m-%d %H:%M:%S\n"), encoding="utf-8")
         try:
+            os.chmod(MARKER_FILE, 0o666)
             os.sync()
         except Exception:
             pass
