@@ -29,6 +29,9 @@ logging.basicConfig(
 logger = logging.getLogger("monitor.boot_alert")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 CONFIG_PATH = BASE_DIR / "config" / "config.json"
 AUDIT_DIR = BASE_DIR / "audit"
 MARKER_FILE = AUDIT_DIR / ".clean_shutdown"

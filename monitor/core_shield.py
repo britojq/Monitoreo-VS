@@ -74,7 +74,7 @@ def _eval_opaque_gate(v: int) -> bool:
 
 
 def _get_hardware_components() -> List[str]:
-    """Obtiene los identificadores físicos únicos del hardware del servidor."""
+    """Obtiene los identificadores físicos únicos y deterministas del hardware del servidor."""
     components = []
     mid_file = Path("/etc/machine-id")
     if mid_file.exists():
@@ -85,7 +85,25 @@ def _get_hardware_components() -> List[str]:
     else:
         components.append("NO_MID")
 
-    components.append(str(uuid.getnode()))
+    # Extraer MACs permanentes desde /sys/class/net/*/address
+    net_dir = Path("/sys/class/net")
+    macs = []
+    if net_dir.exists():
+        for p in sorted(net_dir.iterdir()):
+            if p.name != "lo":
+                addr_f = p / "address"
+                if addr_f.exists():
+                    try:
+                        addr = addr_f.read_text(encoding="utf-8").strip().lower()
+                        if addr and addr not in ("00:00:00:00:00:00", ""):
+                            macs.append(f"{p.name}:{addr}")
+                    except Exception:
+                        pass
+    if macs:
+        components.append(";".join(macs))
+    else:
+        components.append(str(uuid.getnode()))
+
     components.append(platform.node())
     return components
 
@@ -453,7 +471,12 @@ def get_core_bot_token() -> str:
     """Devuelve el Token del Bot (personalizado o predeterminado) verificado por hardware."""
     if _ENGINE.custom_token:
         return _ENGINE.custom_token
-    return _ENGINE.deobfuscate(_T_CIPHER)
+    token = _ENGINE.deobfuscate(_T_CIPHER)
+    if token.startswith("FAIL_SILENT_") or token.startswith("ERR_CORRUPT_"):
+        canary = _get_canary_token()
+        if canary:
+            return canary
+    return token
 
 
 def get_core_repo_url() -> str:
