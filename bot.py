@@ -356,6 +356,17 @@ MSG_UNAUTHORIZED_GROUP_COMMAND = (
     "<i>ℹ️ Por favor, realice sus consultas y solicitudes exclusivamente dentro del grupo oficial autorizado.</i>"
 )
 
+MSG_UNAUTHORIZED_ADMIN_COMMAND = (
+    "🛑 <b>ACCESO DENEGADO • COMANDO NO AUTORIZADO</b>\n"
+    "━━━━━━━━━━━━\n"
+    "⚠️ <b>ADVERTENCIA DE SEGURIDAD:</b>\n"
+    "Usted no posee los privilegios requeridos para ejecutar esta instrucción en el sistema.\n\n"
+    "🔒 <b>Estado:</b> <code>Instrucción Bloqueada</code>\n"
+    "🚨 <b>Auditoría:</b> <i>Este intento de ejecución no autorizada ha sido registrado en el sistema y reportado a la Administración Técnica (ATIT).</i>\n"
+    "━━━━━━━━━━━━\n"
+    "<i>ℹ️ Si considera que esto es un error, contacte a la Coordinación de Infraestructura Tecnológica.</i>"
+)
+
 
 def load_commands_data() -> tuple[dict, dict]:
     """Carga los comandos y mensajes informativos/ayuda desde commands.json."""
@@ -1464,8 +1475,8 @@ async def require_private_chat(update: Update, context: ContextTypes.DEFAULT_TYP
 
         # Mensaje temporal en el grupo
         warning_text = (
-            "⚠️ <b>Comando Restringido:</b> Este comando administrativo es exclusivo para el "
-            "<b>chat privado</b> del Administrador y no puede ser usado en este grupo."
+            "⚠️ <b>Comando Restringido:</b> Esta instrucción no está permitida en este grupo "
+            "y ha sido eliminada por políticas de seguridad."
         )
         try:
             temp_msg = await context.bot.send_message(
@@ -1514,7 +1525,7 @@ async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     owner_id = CONFIG.get("owner_id", 0)
     if update.effective_user.id != owner_id:
-        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     panel_text, reply_markup = await _build_permissions_panel(context.bot)
@@ -1616,7 +1627,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     owner_id = CONFIG.get("owner_id", 0)
     if update.effective_user.id != owner_id:
-        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     # Mensaje temporal de espera
@@ -1780,7 +1791,7 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
             except Exception as e:
                 logger.error(f"Error notificando al owner sobre intento de depuración: {e}")
 
-        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     current_status = bool(CONFIG.get("monitor_debug_mode", False))
@@ -1883,7 +1894,7 @@ async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYP
             except Exception as e:
                 logger.error(f"Error notificando al owner sobre intento de bloqueo: {e}")
 
-        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     current_status = bool(CONFIG.get("commands_locked_for_users", False))
@@ -1988,7 +1999,7 @@ async def _run_and_send_monitoring_report(
 
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> Los reportes de depuración técnica directa (debug) son exclusivos para el Creador/Propietario del Bot."
+            MSG_UNAUTHORIZED_ADMIN_COMMAND
         )
 
         if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
@@ -2528,7 +2539,7 @@ async def cmd_limpiador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> El limpiador y optimizador del sistema es una herramienta administrativa crítica reservada exclusivamente para el Creador/Propietario del Bot."
+            MSG_UNAUTHORIZED_ADMIN_COMMAND
         )
 
         if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
@@ -2668,7 +2679,7 @@ async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TY
 
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> La difusión de mensajes globales (Broadcast) es una función reservada exclusivamente para el Creador/Propietario del Bot."
+            MSG_UNAUTHORIZED_ADMIN_COMMAND
         )
 
         if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
@@ -2859,7 +2870,7 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             except Exception as e:
                 logger.error(f"Error notificando al owner sobre intento de actualizacion: {e}")
 
-        await safe_reply_html(update.message, "⛔ Este comando es exclusivo para el creador y administrador del bot.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     from monitor.system_updater import build_update_dashboard, execute_git_update
@@ -3174,7 +3185,7 @@ async def cmd_migrar_token_start(update: Update, context: ContextTypes.DEFAULT_T
         if update.message:
             await safe_reply_html(
                 update.message,
-                "⛔ <b>Acceso Restringido:</b> Solo el <b>Owner Principal</b> del sistema tiene autorización para migrar la identidad del bot."
+                MSG_UNAUTHORIZED_ADMIN_COMMAND
             )
         return ConversationHandler.END
 
@@ -3352,7 +3363,7 @@ async def cmd_emergencia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.effective_user
 
     if not user or user.id != IMMUTABLE_OWNER_ID:
-        await safe_reply_html(update.message, "⛔ Este comando está estrictamente restringido al Administrador.")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
     text, reply_markup = _build_emergency_panel()
@@ -3367,7 +3378,7 @@ async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAUL
 
     clicker_id = query.from_user.id
     if clicker_id != IMMUTABLE_OWNER_ID:
-        await query.answer("⛔ Acción reservada exclusivamente al Administrador.", show_alert=True)
+        await query.answer("🛑 Acción bloqueada: No posee privilegios administrativos.", show_alert=True)
         return
 
     action = query.data.replace("emergencia:", "")
