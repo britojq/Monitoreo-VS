@@ -2193,12 +2193,10 @@ async def cmd_internet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     is_owner = (user_id == owner_id)
 
     allowed_groups = CONFIG.get("allowed_group_ids", [])
-    allowed_users = CONFIG.get("allowed_user_ids", [])
     is_allowed_group = (chat_id in allowed_groups)
-    is_allowed_user = (user_id in allowed_users)
 
-    # Verificación de autorización (Owner, Grupo autorizado o Usuario autorizado)
-    if not is_owner and not is_allowed_group and not is_allowed_user:
+    # Regla estricta de seguridad: Solo el Owner (privado o grupo) o cualquier petición originada dentro del grupo autorizado
+    if not is_owner and not is_allowed_group:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = update.effective_user
         first_name = (user.first_name or "").strip()
@@ -2290,9 +2288,10 @@ async def cmd_internet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         except Exception:
             pass
 
-        # Construir reporte
+        # Construir reporte con barra divisoria compacta bajo el título
         lines = [
-            "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>\n"
+            "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>",
+            "━━━━━━━━━━━━━━━"
         ]
 
         for res in network_results:
