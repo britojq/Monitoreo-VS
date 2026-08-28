@@ -296,12 +296,16 @@ def load_proxies_list() -> list[dict]:
 
 ACTIVE_CONNECTION_LABEL = "Conexión Directa"
 ACTIVE_PROXY_URL = None
+_LAST_SUCCESSFUL_POLL_TIME = time.time()
+_CONSECUTIVE_NETWORK_ERRORS = 0
+_FAILOVER_LOCK = asyncio.Lock()
+_BOT_APP_INSTANCE: Any = None
 
 
 def select_working_connection(bot_token: str) -> str | None:
     """
-    Evalúa la conectividad con Telegram Bot API:
-    1. Prueba conexión directa con timeout corto (3.5s).
+    Evalúa la conectividad con Telegram Bot API al arranque:
+    1. Prueba conexión directa con timeout corto (3.0s).
     2. Si falla directa, prueba en orden los proxies configurados en config.json o bot.conf.
     3. Retorna la URL del proxy funcional (o None si la conexión directa funciona).
     """
@@ -310,7 +314,7 @@ def select_working_connection(bot_token: str) -> str | None:
 
     # 1. Probar conexión directa
     try:
-        r = httpx.get(url, timeout=3.5)
+        r = httpx.get(url, timeout=3.0)
         if r.status_code == 200 and r.json().get("ok"):
             logger.info("🌐 Conexión DIRECTA a Telegram verificada exitosamente.")
             ACTIVE_CONNECTION_LABEL = "Conexión Directa"
@@ -330,7 +334,7 @@ def select_working_connection(bot_token: str) -> str | None:
             continue
 
         try:
-            r = httpx.get(url, proxy=p_url, timeout=4.5)
+            r = httpx.get(url, proxy=p_url, timeout=3.5)
             if r.status_code == 200 and r.json().get("ok"):
                 logger.info(f"🔄 Conectividad exitosa con Telegram vía [{p_name}]: {p_url}")
                 ACTIVE_CONNECTION_LABEL = f"Proxy: {p_name}"
@@ -343,6 +347,127 @@ def select_working_connection(bot_token: str) -> str | None:
     ACTIVE_CONNECTION_LABEL = "Conexión Estándar (Sin verificar)"
     ACTIVE_PROXY_URL = None
     return None
+
+
+async def async_evaluate_best_connection(bot_token: str) -> tuple[str | None, str]:
+    """
+    Evalúa de forma asíncrona la mejor conexión a Telegram disponible en tiempo real:
+    1. Prioridad 1: Conexión Directa a Internet.
+    2. Prioridad 2: Proxies corporativos configurados (Squid, pfSense).
+    Retorna (proxy_url, connection_label).
+    """
+    url = f"https://api.telegram.org/bot{bot_token}/getMe"
+
+    # 1. Probar conexión directa
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(url)
+            if r.status_code == 200 and r.json().get("ok"):
+                return None, "Conexión Directa"
+    except Exception:
+        pass
+
+    # 2. Probar proxies corporativos
+    proxies = load_proxies_list()
+    for p in proxies:
+        if not p.get("enabled", True):
+            continue
+        p_name = p.get("name", "Proxy")
+        p_url = p.get("url")
+        if not p_url:
+            continue
+        try:
+            async with httpx.AsyncClient(proxy=p_url, timeout=3.5) as client:
+                r = await client.get(url)
+                if r.status_code == 200 and r.json().get("ok"):
+                    return p_url, f"Proxy: {p_name}"
+        except Exception:
+            continue
+
+    # Si ninguno responde, mantener la conexión actual
+    return ACTIVE_PROXY_URL, ACTIVE_CONNECTION_LABEL
+
+
+async def hot_switch_connection(app: Application, target_proxy_url: str | None, target_label: str) -> bool:
+    """Conmuta en caliente el cliente de transporte HTTP de python-telegram-bot sin reiniciar el bot."""
+    global ACTIVE_CONNECTION_LABEL, ACTIVE_PROXY_URL, _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
+
+    if ACTIVE_PROXY_URL == target_proxy_url and ACTIVE_CONNECTION_LABEL == target_label:
+        return True
+
+    logger.info(f"🔄 Conmutando conexión en caliente: [{ACTIVE_CONNECTION_LABEL}] -> [{target_label}]...")
+    try:
+        req = app.bot._request
+        if isinstance(req, HTTPXRequest):
+            old_client = req._client
+            req._client_kwargs["proxy"] = target_proxy_url
+            new_client = req._build_client()
+            req._client = new_client
+            if old_client:
+                try:
+                    await old_client.aclose()
+                except Exception:
+                    pass
+
+            ACTIVE_PROXY_URL = target_proxy_url
+            ACTIVE_CONNECTION_LABEL = target_label
+            _CONSECUTIVE_NETWORK_ERRORS = 0
+            _LAST_SUCCESSFUL_POLL_TIME = time.time()
+            logger.info(f"✅ Conmutación en caliente exitosa. Enlace activo: {target_label}")
+            return True
+    except Exception as e:
+        logger.error(f"Error durante la conmutación en caliente de conexión: {e}", exc_info=True)
+    return False
+
+
+async def trigger_connection_failover(app: Application, reason: str = "Aviso de red") -> None:
+    """Dispara una evaluación y conmutación inmediata si la conexión actual falla."""
+    if _FAILOVER_LOCK.locked():
+        return
+    async with _FAILOVER_LOCK:
+        bot_token = CONFIG.get("bot_token", IMMUTABLE_BOT_TOKEN)
+        best_url, best_label = await async_evaluate_best_connection(bot_token)
+        if best_url != ACTIVE_PROXY_URL or best_label != ACTIVE_CONNECTION_LABEL:
+            logger.warning(f"⚠️ Fallo de conexión detectado ({reason}). Conmutando enlace a: {best_label}")
+            await hot_switch_connection(app, best_url, best_label)
+
+
+async def runtime_connection_watchdog(app: Application) -> None:
+    """
+    Centinela asíncrono permanente de conectividad:
+    1. Revisa cada 20 segundos la estabilidad de la conexión activa.
+    2. Si está en un Proxy, comprueba si la Conexión Directa se recuperó para retornar a ella.
+    3. Si detecta 2 o más errores consecutivos de red o inactividad prolongada (> 45s), conmuta al mejor proxy operativo.
+    """
+    global _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
+    logger.info("🛡️ Centinela de Conmutación Dinámica en Caliente (Failover Watchdog) iniciado.")
+    bot_token = CONFIG.get("bot_token", IMMUTABLE_BOT_TOKEN)
+
+    while True:
+        try:
+            await asyncio.sleep(20)
+
+            # Caso A: Si actualmente estamos en un Proxy, verificar si la Conexión Directa regresó
+            if ACTIVE_PROXY_URL is not None:
+                try:
+                    async with httpx.AsyncClient(timeout=3.0) as client:
+                        r = await client.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+                        if r.status_code == 200 and r.json().get("ok"):
+                            logger.info("🌐 Conexión DIRECTA a internet restablecida. Retornando a conexión directa...")
+                            async with _FAILOVER_LOCK:
+                                await hot_switch_connection(app, None, "Conexión Directa")
+                except Exception:
+                    pass
+
+            # Caso B: Si hay errores acumulados de red o no ha habido respuesta en más de 45s
+            now = time.time()
+            if _CONSECUTIVE_NETWORK_ERRORS >= 2 or (now - _LAST_SUCCESSFUL_POLL_TIME > 45 and _CONSECUTIVE_NETWORK_ERRORS > 0):
+                await trigger_connection_failover(app, reason="Watchdog timeout/errores acumulados")
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error en centinela de red watchdog: {e}")
 
 
 MSG_UNAUTHORIZED_GROUP_COMMAND = (
@@ -479,6 +604,10 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     - Permite al Owner enviar el Serial de Activación para desbloquear el hardware.
     - Bloquea todos los demás comandos y usuarios con aviso de espera de activación.
     """
+    global _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
+    _CONSECUTIVE_NETWORK_ERRORS = 0
+    _LAST_SUCCESSFUL_POLL_TIME = time.time()
+
     # 0. Verificación de Estado de Activación DRM de Hardware
     if not is_core_operational():
         user = update.effective_user
@@ -3511,14 +3640,19 @@ async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Registra y gestiona errores inesperados o fallos de red durante el polling."""
+    global _CONSECUTIVE_NETWORK_ERRORS
     err = context.error
-    if isinstance(err, (telegram.error.NetworkError, httpx.NetworkError, httpx.TimeoutException)):
-        logger.warning(f"Aviso de red en polling Telegram: {err}. Reintentando automáticamente...")
+    if isinstance(err, (telegram.error.NetworkError, telegram.error.TimedOut, httpx.NetworkError, httpx.TimeoutException)):
+        _CONSECUTIVE_NETWORK_ERRORS += 1
+        logger.warning(f"Aviso de red en polling Telegram (fallo #{_CONSECUTIVE_NETWORK_ERRORS}): {err}. Evaluando conmutación de proxy...")
+        if _CONSECUTIVE_NETWORK_ERRORS >= 2 and _BOT_APP_INSTANCE:
+            asyncio.create_task(trigger_connection_failover(_BOT_APP_INSTANCE, reason=str(err)))
     else:
         logger.error(f"Excepción en bot handler: {err}", exc_info=err)
 
 
 def main() -> None:
+    global _BOT_APP_INSTANCE
     bot_token = IMMUTABLE_BOT_TOKEN
 
     if not bot_token:
@@ -3541,8 +3675,14 @@ def main() -> None:
     )
 
     async def on_post_init(app: Application) -> None:
-        """Inicia tareas en segundo plano del bot y notifica al Owner si ocurrió un auto-rollback en arranque."""
+        """Inicia tareas en segundo plano del bot (Watchdog de red, actualizaciones y auto-rollback)."""
         from monitor.system_updater import auto_update_worker
+        
+        # 1. Iniciar Centinela de Conmutación Dinámica en Caliente (Watchdog)
+        if CONFIG.get("auto_proxy_failover", True):
+            asyncio.create_task(runtime_connection_watchdog(app))
+
+        # 2. Iniciar Actualizador Autónomo Git
         asyncio.create_task(
             auto_update_worker(
                 bot_instance=app.bot,
@@ -3551,7 +3691,7 @@ def main() -> None:
             )
         )
 
-        # Verificador de Autorrecuperación (Auto-Rollback)
+        # 3. Verificador de Autorrecuperación (Auto-Rollback)
         async def _check_auto_rollback_notice():
             flag_file = Path("/tmp/.auto_rollback_occurred")
             if flag_file.exists():
@@ -3589,6 +3729,8 @@ def main() -> None:
         .post_init(on_post_init)
         .build()
     )
+
+    _BOT_APP_INSTANCE = application
 
     # Manejador global de errores de red y aplicación
     application.add_error_handler(bot_error_handler)
