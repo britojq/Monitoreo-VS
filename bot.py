@@ -3541,7 +3541,7 @@ def main() -> None:
     )
 
     async def on_post_init(app: Application) -> None:
-        """Inicia tareas en segundo plano del bot (como el verificador autónomo de actualizaciones Git cada 48h)."""
+        """Inicia tareas en segundo plano del bot y notifica al Owner si ocurrió un auto-rollback en arranque."""
         from monitor.system_updater import auto_update_worker
         asyncio.create_task(
             auto_update_worker(
@@ -3550,6 +3550,37 @@ def main() -> None:
                 get_config_func=lambda: CONFIG
             )
         )
+
+        # Verificador de Autorrecuperación (Auto-Rollback)
+        async def _check_auto_rollback_notice():
+            flag_file = Path("/tmp/.auto_rollback_occurred")
+            if flag_file.exists():
+                try:
+                    with open(flag_file, "r", encoding="utf-8") as f:
+                        info = json.load(f)
+                    cp_id = info.get("checkpoint_id", "LATEST")
+                    desc = info.get("description", "Recuperación automática de estado seguro")
+                    dt = info.get("datetime", "Reciente")
+                    owner_id = CONFIG.get("owner_id", 0)
+                    if owner_id:
+                        alert_msg = (
+                            "⚠️ <b>Alerta de Autorrecuperación (Auto-Rollback)</b>\n"
+                            "━━━━━━━━━━━━\n"
+                            "El sistema detectó corrupción de archivos o apagón imprevisto durante el arranque.\n\n"
+                            "🔄 <b>Acción:</b> <code>Rollback Automático Ejecutado</code>\n"
+                            "✅ <b>Estado Actual:</b> <code>Sistema Restaurado y Operativo</code>\n"
+                            f"📁 <b>Punto Restaurado:</b> <code>{html.escape(cp_id)}</code>\n"
+                            f"📝 <b>Detalle:</b> <i>{html.escape(desc)}</i>\n"
+                            f"⏰ <b>Fecha:</b> <code>{html.escape(dt)}</code>\n"
+                            "━━━━━━━━━━━━\n"
+                            "<i>El bot se encuentra en línea y completamente funcional.</i>"
+                        )
+                        await app.bot.send_message(chat_id=owner_id, text=alert_msg, parse_mode='HTML')
+                    flag_file.unlink(missing_ok=True)
+                except Exception as err:
+                    logger.error(f"Error procesando notificación de auto-rollback: {err}")
+
+        asyncio.create_task(_check_auto_rollback_notice())
 
     application = (
         Application.builder()

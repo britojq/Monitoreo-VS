@@ -11,6 +11,7 @@ OLD-config.json
 *.token
 config/*.token
 config/.backup_golden/
+config/.checkpoints/
 
 # Logs de auditoría, anclajes y ejecución
 *.log

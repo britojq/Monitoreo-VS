@@ -127,11 +127,13 @@ fi
 
 echo -e "${GREEN}[+] Entorno virtual y dependencias Python instaladas.${NC}\n"
 
-# 5. Configurar CLI Global `estatus`
-echo -e "${BLUE}[*] Paso 5: Instalando herramienta CLI global /usr/local/bin/estatus...${NC}"
-chmod +x "$PROJECT_DIR/estatus" 2>/dev/null || true
+# 5. Configurar CLI Global `estatus`, `checkpoint` y `rollback`
+echo -e "${BLUE}[*] Paso 5: Instalando herramientas CLI globales en /usr/local/bin...${NC}"
+chmod +x "$PROJECT_DIR/estatus" "$PROJECT_DIR/checkpoint" "$PROJECT_DIR/rollback" 2>/dev/null || true
 ln -sf "$PROJECT_DIR/estatus" /usr/local/bin/estatus
-echo -e "${GREEN}[+] Comando global 'estatus' vinculado en /usr/local/bin/estatus.${NC}\n"
+ln -sf "$PROJECT_DIR/checkpoint" /usr/local/bin/checkpoint
+ln -sf "$PROJECT_DIR/rollback" /usr/local/bin/rollback
+echo -e "${GREEN}[+] Comandos globales 'estatus', 'checkpoint' y 'rollback' vinculados en /usr/local/bin.${NC}\n"
 
 # 6. Despliegue de Servicios Systemd
 echo -e "${BLUE}[*] Paso 6: Configurando servicios Systemd (tg-admin-bot y boot-alert)...${NC}"
@@ -160,7 +162,7 @@ TimeoutStopSec=30
 WantedBy=multi-user.target
 EOF
 
-# Servicio Principal del Bot
+# Servicio Principal del Bot con Auto-Recuperacion Pre-Start
 cat <<EOF > /etc/systemd/system/tg-admin-bot.service
 [Unit]
 Description=Telegram Admin Bot
@@ -171,6 +173,7 @@ After=network-online.target
 User=$SYS_USER
 Group=$SYS_USER
 WorkingDirectory=$PROJECT_DIR
+ExecStartPre=$PROJECT_DIR/rollback --pre-start-check
 ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/bot.py
 Restart=always
 RestartSec=10

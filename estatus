@@ -17,5 +17,14 @@ if [ ! -f "$PYTHON_EXEC" ] || [ ! -f "$ENGINE_SCRIPT" ]; then
     exit 1
 fi
 
+# Soporte para subcomandos directos de resiliencia
+if [ "${1:-}" = "rollback" ]; then
+    shift
+    exec "$PROJECT_DIR/rollback" "$@"
+elif [ "${1:-}" = "checkpoint" ]; then
+    shift
+    exec "$PROJECT_DIR/checkpoint" "$@"
+fi
+
 # Pasar todos los argumentos al motor de Python
 exec "$PYTHON_EXEC" "$ENGINE_SCRIPT" "$@"

@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🔄 SISTEMA DE RESILIENCIA: rollback (@IA_ValleSeco_bot)
+# Restauración Atómica de Estado Seguro y Autorrecuperación ante Cortes de Luz
+# Ubicación: /scripts/telegram-admin-bot/rollback
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+
+set -euo pipefail
+
+BASE_DIR="/scripts/telegram-admin-bot"
+cd "$BASE_DIR"
+
+CHECKPOINTS_DIR="$BASE_DIR/config/.checkpoints"
+GOLDEN_DIR="$BASE_DIR/config/.backup_golden"
+AUDIT_LOG="$BASE_DIR/audit/system_events.log"
+AUTO_FLAG_FILE="/tmp/.auto_rollback_occurred"
+PYTHON_EXEC="$BASE_DIR/venv/bin/python"
+
+# Colores para salida interactiva
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+RED="\033[0;31m"
+BLUE="\033[0;34m"
+CYAN="\033[0;36m"
+BOLD="\033[1m"
+NC="\033[0m" # No Color
+
+# ------------------------------------------------------------------------------
+# 1. VERIFICACIÓN RÁPIDA DE INTEGRIDAD (< 50ms)
+# ------------------------------------------------------------------------------
+check_health() {
+    # 1.1 Comprobar si existen archivos críticos con tamaño > 0
+    for f in "bot.py" "config/config.json" "config/mensajes.conf"; do
+        if [ ! -f "$BASE_DIR/$f" ] || [ ! -s "$BASE_DIR/$f" ]; then
+            return 1
+        fi
+    done
+
+    # 1.2 Comprobar compilación Python
+    if [ -f "$PYTHON_EXEC" ]; then
+        if ! "$PYTHON_EXEC" -m py_compile bot.py >/dev/null 2>&1; then
+            return 2
+        fi
+    fi
+
+    # 1.3 Comprobar JSON de configuración
+    if command -v jq >/dev/null 2>&1; then
+        if ! jq empty "$BASE_DIR/config/config.json" >/dev/null 2>&1; then
+            return 3
+        fi
+    fi
+
+    return 0
+}
+
+# ------------------------------------------------------------------------------
+# 2. LIMPIEZA DE BLOQUEOS HUÉRFANOS DE GIT (POR APAGÓN REPENTINO)
+# ------------------------------------------------------------------------------
+cleanup_git_locks() {
+    if [ -f "$BASE_DIR/.git/index.lock" ]; then
+        rm -f "$BASE_DIR/.git/index.lock"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 3. RESTAURACIÓN DE UN CHECKPOINT
+# ------------------------------------------------------------------------------
+restore_checkpoint() {
+    local target_id="${1:-""}"
+    local is_auto="${2:-0}"
+    local target_path=""
+    local desc="Último estado funcional conocido"
+
+    cleanup_git_locks
+
+    # Determinar carpeta de origen
+    if [ -n "$target_id" ]; then
+        target_path="$CHECKPOINTS_DIR/$target_id"
+        if [ ! -d "$target_path" ]; then
+            echo -e "${RED}[ERROR] El checkpoint "$target_id" no existe.${NC}" >&2
+            return 1
+        fi
+    elif [ -f "$CHECKPOINTS_DIR/LATEST" ]; then
+        latest_id=$(cat "$CHECKPOINTS_DIR/LATEST" | tr -d "[:space:]")
+        if [ -n "$latest_id" ] && [ -d "$CHECKPOINTS_DIR/$latest_id" ]; then
+            target_path="$CHECKPOINTS_DIR/$latest_id"
+            target_id="$latest_id"
+        fi
+    fi
+
+    if [ $is_auto -eq 0 ]; then
+        echo -e "${CYAN}=================================================================${NC}"
+        echo -e "${BOLD}🔄 INICIANDO RESTAURACIÓN DE SEGURIDAD (ROLLBACK)${NC}"
+        echo -e "${CYAN}=================================================================${NC}"
+    fi
+
+    # 1. Restaurar código base vía Git
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        if [ $is_auto -eq 0 ]; then
+            echo -e "📦 Restaurando archivos del repositorio Git..."
+        fi
+        git reset --hard HEAD >/dev/null 2>&1 || true
+        # Limpiar archivos no rastreados sin tocar .env ni hardware.lock
+        git clean -fd -e ".env" -e "config/hardware.lock" -e "audit" -e "config/.checkpoints" -e "config/.backup_golden" >/dev/null 2>&1 || true
+    fi
+
+    # 2. Restaurar configuraciones desde el Checkpoint o Golden Backup
+    if [ -n "$target_path" ] && [ -d "$target_path" ]; then
+        if [ $is_auto -eq 0 ]; then
+            echo -e "⚙️  Restaurando configuración desde checkpoint ${CYAN}[$target_id]${NC}..."
+        fi
+        for cfg in "config/config.json" "config/commands.json" "config/mensajes.conf"; do
+            if [ -f "$target_path/$cfg" ]; then
+                cp -p "$target_path/$cfg" "$BASE_DIR/$cfg"
+            fi
+        done
+        if [ -f "$target_path/metadata.json" ] && command -v jq >/dev/null 2>&1; then
+            desc=$(jq -r ".description // \"Sin descripción\"" "$target_path/metadata.json")
+        fi
+    elif [ -d "$GOLDEN_DIR" ]; then
+        if [ $is_auto -eq 0 ]; then
+            echo -e "⚙️  Restaurando configuración desde Copia Dorada de Emergencia..."
+        fi
+        for cfg in "config/config.json" "config/commands.json" "config/mensajes.conf"; do
+            if [ -f "$GOLDEN_DIR/$cfg" ]; then
+                cp -p "$GOLDEN_DIR/$cfg" "$BASE_DIR/$cfg"
+            fi
+        done
+        target_id="GOLDEN_BACKUP"
+    fi
+
+    # 3. Forzar escritura a disco
+    sync
+
+    # 4. Validar integridad resultante
+    if ! check_health; then
+        if [ $is_auto -eq 0 ]; then
+            echo -e "${RED}[ERROR CRÍTICO] La restauración no pudo dejar los archivos en un estado sintáctico válido.${NC}" >&2
+        fi
+        return 1
+    fi
+
+    # 5. Registrar en log de auditoría de eventos del sistema
+    mkdir -p "$(dirname "$AUDIT_LOG")"
+    NOW_STR=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "[$NOW_STR] ROLLBACK EJECUTADO | Tipo: $( [ $is_auto -eq 1 ] && echo "AUTONOMO_AUTO" || echo "MANUAL" ) | Checkpoint: $target_id | Desc: $desc" >> "$AUDIT_LOG"
+
+    # 6. Si fue automático, dejar bandera para notificación a Telegram
+    if [ $is_auto -eq 1 ]; then
+        python3 -c "import sys, json; json.dump({"datetime": sys.argv[1], "checkpoint_id": sys.argv[2], "description": sys.argv[3]}, open("$AUTO_FLAG_FILE", "w", encoding="utf-8"))"             "$NOW_STR" "$target_id" "$desc"
+    fi
+
+    # 7. Reiniciar servicio si se ejecuta interactivamente
+    if [ $is_auto -eq 0 ]; then
+        echo -e "🚀 Reiniciando servicio ${BOLD}tg-admin-bot.service${NC}..."
+        if command -v systemctl >/dev/null 2>&1; then
+            sudo systemctl restart tg-admin-bot.service >/dev/null 2>&1 || systemctl restart tg-admin-bot.service >/dev/null 2>&1 || true
+            sleep 1
+            if systemctl is-active --quiet tg-admin-bot.service 2>/dev/null; then
+                echo -e "${GREEN}✅ Servicio tg-admin-bot activo y funcionando al 100%.${NC}"
+            else
+                echo -e "${YELLOW}⚠️ Servicio reiniciado. Verifique el estado con: sudo systemctl status tg-admin-bot${NC}"
+            fi
+        fi
+
+        echo -e "${GREEN}=================================================================${NC}"
+        echo -e "${GREEN}✅ RESTAURACIÓN COMPLETADA CON ÉXITO${NC}"
+        echo -e "   🆔 Checkpoint aplicado: ${CYAN}$target_id${NC}"
+        echo -e "   📝 Descripción:         $desc"
+        echo -e "   🛡️ Estado del sistema:   ${GREEN}Operativo y Libre de Errores${NC}"
+        echo -e "${GREEN}=================================================================${NC}"
+    fi
+
+    return 0
+}
+
+# ------------------------------------------------------------------------------
+# 4. PRE-START CHECK DE SYSTEMD (AUTORRECUPERACIÓN AUTÓNOMA)
+# ------------------------------------------------------------------------------
+pre_start_check() {
+    if check_health; then
+        exit 0
+    fi
+
+    # Detectada falla o corrupción: disparar auto-rollback
+    NOW_STR=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "[$NOW_STR] [ALERTA PRE-START] Archivos corruptos o rotos detectados en arranque. Ejecutando Auto-Rollback..." >> "$AUDIT_LOG"
+    
+    if restore_checkpoint "" 1; then
+        echo "[$NOW_STR] [PRE-START] Auto-Rollback completado exitosamente. Continuando arranque del bot..." >> "$AUDIT_LOG"
+        exit 0
+    else
+        echo "[$NOW_STR] [ERROR FATAL] Falló el Auto-Rollback en pre-start." >> "$AUDIT_LOG"
+        exit 1
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 5. ENTRADA PRINCIPAL
+# ------------------------------------------------------------------------------
+case "${1:-}" in
+    --pre-start-check)
+        pre_start_check
+        ;;
+    -l|--list|list)
+        if [ -f "$BASE_DIR/checkpoint" ]; then
+            "$BASE_DIR/checkpoint" --list
+        else
+            echo "Directorio de checkpoints: $CHECKPOINTS_DIR"
+            ls -la "$CHECKPOINTS_DIR"
+        fi
+        ;;
+    -t|--to)
+        if [ -z "${2:-}" ]; then
+            echo -e "${RED}[ERROR] Debe especificar el ID del checkpoint. Ejemplo: rollback --to 20260828_094701${NC}" >&2
+            exit 1
+        fi
+        restore_checkpoint "$2" 0
+        ;;
+    -c|--check|check)
+        echo -e "${CYAN}🔍 Verificando integridad sintáctica y física del proyecto...${NC}"
+        if check_health; then
+            echo -e "${GREEN}✅ Todos los archivos críticos, sintaxis de Python y JSON son 100% válidos.${NC}"
+        else
+            echo -e "${RED}❌ Se detectaron fallas de sintaxis o archivos vacíos/corruptos.${NC}"
+            echo -e "   Ejecute ${YELLOW}rollback${NC} para restaurar el sistema."
+            exit 1
+        fi
+        ;;
+    -g|--git)
+        echo -e "${YELLOW}Forzando reseteo a último commit de Git...${NC}"
+        cleanup_git_locks
+        git reset --hard HEAD
+        git clean -fd -e ".env" -e "config/hardware.lock" -e "audit"
+        sync
+        echo -e "${GREEN}✅ Git reseteado al estado del último commit.${NC}"
+        ;;
+    -h|--help|help)
+        echo "Uso: rollback [OPCIÓN]"
+        echo ""
+        echo "Comandos y Opciones:"
+        echo "  (sin argumentos)    Restaura de inmediato al último checkpoint funcional y reinicia el bot."
+        echo "  --to <ID>, -t <ID>  Restaura al ID de checkpoint especificado (Ver lista con --list)."
+        echo "  --list, -l          Muestra todos los checkpoints históricos disponibles."
+        echo "  --check, -c         Verifica la salud de los archivos del bot sin modificarlos."
+        echo "  --git, -g           Restaura el árbol de trabajo al último commit de Git."
+        echo "  --help, -h          Muestra esta ayuda."
+        ;;
+    *)
+        restore_checkpoint "" 0
+        ;;
+esac
