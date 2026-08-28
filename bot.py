@@ -963,6 +963,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/servicios</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos y páginas web.",
             "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación.",
             "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
+            "• <code>/internet</code> <i>(/proxy, /proxies)</i> - Diagnóstico de conectividad a internet y proxies corporativos.",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
             "🧪 <b>Diagnóstico Exhaustivo y Depuración (Exclusivo Owner)</b>",
             "• <code>/debug_servicios</code> - Reporte exhaustivo de todos los servicios (A a Z) con plantilla <code>MENSAJEDEBUGA</code> + <code>servicelog.txt</code>.",
@@ -1016,6 +1017,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/servicios</code> - Consultar estado de los Servicios Corporativos.",
         "• <code>/sedes</code> - Consultar estado de Sedes y Enlaces de Comunicación.",
         "• <code>/monitoreo</code> - Ejecutar reporte completo de infraestructura.",
+        "• <code>/internet</code> - Diagnóstico de salidas a internet y proxies corporativos.",
         "• <code>/analisis_red</code> - Solicitar análisis y diagnóstico de la red local.",
         "• <code>/info</code> - Información legal, privacidad y advertencia de seguridad.\n",
         "🧠 <b>ASISTENTE (IA)</b>",
@@ -2174,6 +2176,138 @@ async def cmd_debug_completo(update: Update, context: ContextTypes.DEFAULT_TYPE)
         target_name="Servicios y Sedes (Debug Directo)",
         force_debug=True
     )
+
+
+async def cmd_internet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Comando para verificar la funcionalidad y latencia de las salidas a internet y proxies corporativos.
+    Disponible para el Owner y en grupos autorizados.
+    Oculta la conexión directa si la solicitud no proviene del Owner.
+    """
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+    is_owner = (user_id == owner_id)
+
+    allowed_groups = CONFIG.get("allowed_group_ids", [])
+    allowed_users = CONFIG.get("allowed_user_ids", [])
+    is_allowed_group = (chat_id in allowed_groups)
+    is_allowed_user = (user_id in allowed_users)
+
+    # Verificación de autorización (Owner, Grupo autorizado o Usuario autorizado)
+    if not is_owner and not is_allowed_group and not is_allowed_user:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/internet"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        # 1. Registrar en log de auditoría
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] INTERNET DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        # 2. Responder al usuario denegando la ejecución
+        await safe_reply_html(
+            update.message,
+            "⛔ <b>Acceso Restringido:</b> El diagnóstico de internet y proxies corporativos solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
+        )
+
+        # 3. Notificar al Owner si aplica
+        if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "⚠️ <b>Alerta: Intento de Solicitud de Diagnóstico de Internet Restringido</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📋 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente porque el usuario no es el administrador ni la petición se originó en el grupo autorizado.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre solicitud /internet denegada: {e}")
+        return
+
+    # Regla de bloqueo global de comandos para usuarios/grupos activada por el Owner
+    if CONFIG.get("commands_locked_for_users", False) and not is_owner:
+        await safe_reply_html(
+            update.message,
+            "🔒 <b>Comandos Temporalmente Desactivados:</b>\n"
+            "El Administrador ha deshabilitado temporalmente la ejecución de comandos para usuarios y grupos.\n\n"
+            "<i>Por favor contacte al administrador si requiere asistencia técnica.</i>"
+        )
+        return
+
+    # Mensaje temporal de espera
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Verificando estado y latencia de salida a internet y proxies corporativos... Por favor espere.</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        bot_token = CONFIG.get("bot_token", "")
+        tg_url = f"https://api.telegram.org/bot{bot_token}/getMe"
+
+        network_tasks = []
+        # Solo incluir conexión directa si el solicitante es el Owner
+        if is_owner:
+            network_tasks.append(_check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=3.5))
+
+        proxies_list = load_proxies_list()
+        for p in proxies_list:
+            p_name = p.get("name", "Proxy")
+            p_url = p.get("url")
+            if p_url:
+                network_tasks.append(_check_endpoint_health(p_name, tg_url, p_url, timeout=3.5))
+
+        network_results = await asyncio.gather(*network_tasks)
+
+        # Borrar mensaje de espera
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        # Construir reporte
+        lines = [
+            "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>\n"
+        ]
+
+        for res in network_results:
+            icon = "🟢" if res["ok"] else "🔴"
+            lines.append(f"• <b>{html.escape(res['name'])}:</b>\n   {icon} <code>{html.escape(res['detail'])}</code>")
+
+        response_text = "\n".join(lines)
+        await update.message.reply_text(response_text, parse_mode='HTML')
+
+    except Exception as e:
+        logger.error(f"Error ejecutando diagnóstico de internet (/internet): {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error durante el diagnóstico:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error ejecutando diagnóstico de internet: {e}")
 
 
 async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -3451,6 +3585,10 @@ def main() -> None:
         "red",
         "escaner_red",
         "network_scan",
+        "internet",
+        "proxy",
+        "proxies",
+        "conectividad",
         "info",
         "aviso",
         "legal",
@@ -3540,6 +3678,9 @@ def main() -> None:
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
     application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
     application.add_handler(CommandHandler(["reporte_completo", "monitoreo"], cmd_reporte_completo))
+
+    # Comando de Diagnóstico de Internet y Proxies (Owner y grupos autorizados)
+    application.add_handler(CommandHandler(["internet", "proxy", "proxies", "conectividad"], cmd_internet))
 
     # Comando de Análisis de Red Local (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["analisis_red", "red", "escaner_red", "network_scan"], cmd_analisis_red))

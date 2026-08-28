@@ -83,7 +83,13 @@
           "timeout": 300
         }
       ]
+    },
+    "internet": {
+      "description": "Diagnóstico de salidas a internet y proxies corporativos",
+      "help_text": "ℹ️ <b>Ayuda del comando /internet:</b>\n\nEste comando verifica en tiempo real la conectividad y latencia de todas las salidas a internet y proxies corporativos configurados (Squid, pfSense, Dansguardian).",
+      "reply_header": "🌐 <b>Iniciando diagnóstico de internet y proxies...</b>",
+      "reply_footer": "✅ Diagnóstico de internet finalizado.",
+      "show_output": false
     }
-
   }
 }
