@@ -347,12 +347,12 @@ def select_working_connection(bot_token: str) -> str | None:
 
 MSG_UNAUTHORIZED_GROUP_COMMAND = (
     "🛑 <b>ACCESO DENEGADO • POLÍTICA DE SEGURIDAD</b>\n"
-    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "━━━━━━━━━━━━\n"
     "⚠️ <b>ADVERTENCIA DE SEGURIDAD:</b>\n"
     "La ejecución de comandos operativos <b>NO está permitida fuera del grupo de trabajo oficial asignado</b>.\n\n"
     "🔒 <b>Estado:</b> <code>Solicitud Bloqueada</code>\n"
     "🚨 <b>Auditoría:</b> <i>Este incidente de ejecución fuera de grupo ha sido registrado en el sistema y reportado a la Administración Técnica (ATIT).</i>\n"
-    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "━━━━━━━━━━━━\n"
     "<i>ℹ️ Por favor, realice sus consultas y solicitudes exclusivamente dentro del grupo oficial autorizado.</i>"
 )
 
@@ -2303,7 +2303,7 @@ async def cmd_internet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Construir reporte con barra divisoria compacta bajo el título
         lines = [
             "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>",
-            "━━━━━━━━━━━━━━━"
+            "━━━━━━━━━━━━"
         ]
 
         for res in network_results:
