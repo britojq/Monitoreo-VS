@@ -345,6 +345,18 @@ def select_working_connection(bot_token: str) -> str | None:
     return None
 
 
+MSG_UNAUTHORIZED_GROUP_COMMAND = (
+    "🛑 <b>ACCESO DENEGADO • POLÍTICA DE SEGURIDAD</b>\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "⚠️ <b>ADVERTENCIA DE SEGURIDAD:</b>\n"
+    "La ejecución de comandos operativos <b>NO está permitida fuera del grupo de trabajo oficial asignado</b>.\n\n"
+    "🔒 <b>Estado:</b> <code>Solicitud Bloqueada</code>\n"
+    "🚨 <b>Auditoría:</b> <i>Este incidente de ejecución fuera de grupo ha sido registrado en el sistema y reportado a la Administración Técnica (ATIT).</i>\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "<i>ℹ️ Por favor, realice sus consultas y solicitudes exclusivamente dentro del grupo oficial autorizado.</i>"
+)
+
+
 def load_commands_data() -> tuple[dict, dict]:
     """Carga los comandos y mensajes informativos/ayuda desde commands.json."""
     default_messages = {
@@ -2027,10 +2039,10 @@ async def _run_and_send_monitoring_report(
         except Exception as e:
             logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
 
-        # 2. Responder al usuario denegando la ejecución
+        # 2. Responder al usuario denegando la ejecución con formato unificado y de alto impacto
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> El chequeo de infraestructura y sedes solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
+            MSG_UNAUTHORIZED_GROUP_COMMAND
         )
 
         # 3. Notificar inmediatamente al Owner en tiempo real
@@ -2221,10 +2233,10 @@ async def cmd_internet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         except Exception as e:
             logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
 
-        # 2. Responder al usuario denegando la ejecución
+        # 2. Responder al usuario denegando la ejecución con formato unificado y de alto impacto
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> El diagnóstico de internet y proxies corporativos solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
+            MSG_UNAUTHORIZED_GROUP_COMMAND
         )
 
         # 3. Notificar al Owner si aplica
@@ -2350,9 +2362,10 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except Exception as e:
             logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
 
+        # 2. Responder al usuario denegando la ejecución con formato unificado y de alto impacto
         await safe_reply_html(
             update.message,
-            "⛔ <b>Acceso Restringido:</b> El análisis de red solo puede ser solicitado por el administrador o ejecutado dentro del grupo de trabajo oficial autorizado."
+            MSG_UNAUTHORIZED_GROUP_COMMAND
         )
 
         if owner_id and user_id != owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
