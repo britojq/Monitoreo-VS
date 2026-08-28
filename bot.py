@@ -2454,7 +2454,7 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     chat_id=chat_id,
                     document=f,
                     filename=md_file.name,
-                    caption="📄 Reporte estructurado de análisis de red (Markdown)"
+                    caption="📄 Reporte estructurado de análisis de red"
                 )
         if html_file and html_file.exists():
             with open(html_file, "rb") as f:
@@ -2480,7 +2480,7 @@ async def cmd_analisis_red(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                             chat_id=owner_id,
                             document=f,
                             filename=md_file.name,
-                            caption=f"📄 Reporte Markdown ({group_title})"
+                            caption=f"📄 Reporte de análisis de red ({group_title})"
                         )
                 if html_file and html_file.exists():
                     with open(html_file, "rb") as f:
