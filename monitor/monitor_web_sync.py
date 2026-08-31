@@ -169,35 +169,23 @@ async def evaluate_site(site: dict, devices: list) -> dict:
     ip = site.get("ip") or ""
     is_up, latency = await check_ping(ip)
 
-    # Evaluar dispositivos secundarios concurrentemente
-    dev_tasks = [check_ping(d.get("ip")) for d in devices if d.get("is_active")]
+    # Evaluar dispositivos secundarios concurrentemente (solo configurados y activos)
+    valid_devices = [d for d in devices if d.get("is_active") and "NO CONFIGURADO" not in (d.get("name") or "").upper() and d.get("ip") not in ("0.0.0.0", "127.0.0.1", "")]
+    dev_tasks = [check_ping(d.get("ip")) for d in valid_devices]
     dev_results = await asyncio.gather(*dev_tasks) if dev_tasks else []
 
     evaluated_devices = []
-    dev_idx = 0
-    for d in devices:
-        if d.get("is_active"):
-            d_up, d_lat = dev_results[dev_idx]
-            dev_idx += 1
-            evaluated_devices.append({
-                "id": d["id"],
-                "device_number": d["device_number"],
-                "name": d["name"],
-                "ip": d["ip"],
-                "status": "ACTIVO" if d_up else "APAGADO",
-                "is_up": d_up,
-                "latency_ms": d_lat
-            })
-        else:
-            evaluated_devices.append({
-                "id": d["id"],
-                "device_number": d["device_number"],
-                "name": d["name"],
-                "ip": d["ip"],
-                "status": "DESACTIVADO",
-                "is_up": False,
-                "latency_ms": 0.0
-            })
+    for idx, d in enumerate(valid_devices):
+        d_up, d_lat = dev_results[idx]
+        evaluated_devices.append({
+            "id": d["id"],
+            "device_number": d["device_number"],
+            "name": d["name"],
+            "ip": d["ip"],
+            "status": "ACTIVO" if d_up else "APAGADO",
+            "is_up": d_up,
+            "latency_ms": d_lat
+        })
 
     return {
         "id": site["id"],
@@ -228,16 +216,16 @@ async def run_full_scan():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM monitored_services WHERE is_active = 1 ORDER BY sort_order")
+            cursor.execute("SELECT * FROM monitored_services WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND (host_ip != '0.0.0.0' OR web_url != '') ORDER BY sort_order")
             services_db = cursor.fetchall()
 
-            cursor.execute("SELECT * FROM monitored_sites WHERE is_active = 1 ORDER BY sort_order")
+            cursor.execute("SELECT * FROM monitored_sites WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND ip != '0.0.0.0' ORDER BY sort_order")
             sites_db = cursor.fetchall()
 
-            cursor.execute("SELECT * FROM monitored_site_devices WHERE is_active = 1")
+            cursor.execute("SELECT * FROM monitored_site_devices WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND ip != '0.0.0.0' ORDER BY device_number")
             devices_db = cursor.fetchall()
 
-            cursor.execute("SELECT * FROM monitored_proxies WHERE is_active = 1 ORDER BY letter")
+            cursor.execute("SELECT * FROM monitored_proxies WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND ip_port != '' ORDER BY letter")
             proxies_db = cursor.fetchall()
     finally:
         conn.close()
