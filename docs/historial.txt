@@ -939,7 +939,16 @@ debe alterar su código, tiempos o configuración systemd.
      * Re-vinculación fluida del HUD Tooltip flotante e interactivo.
 
 --------------------------------------------------------------------------------
-70. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+70. SEPTUAGÉSIMA INTERVENCIÓN (2026-08-31): RESTRICCIÓN DE ADMINISTRACIÓN A EDICIÓN DE SLOTS ESTRUCTURALES
+--------------------------------------------------------------------------------
+1) Blindaje de Integridad entre Panel Web y monitoreo.conf:
+   - Se removieron los botones de creación arbitraria ("Agregar Nuevo Servicio", "Agregar Nueva Sede", "Agregar Nuevo Proxy") y sus modales en el Panel de Administración (`admin/services`, `admin/sites`, `admin/proxies`).
+   - Se retiraron las acciones de eliminación directa, protegiendo la estructura base de slots (`A..Z` para Servicios, `A..H` para Sedes y `A..D` para Proxies).
+   - Se preservaron exclusivamente las funciones de **Modificar Parámetros** y **Habilitar/Deshabilitar**, asegurando la coherencia 1 a 1 con el archivo físico `monitoreo.conf` y el bot de Telegram.
+
+--------------------------------------------------------------------------------
+71. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
