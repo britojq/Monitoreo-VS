@@ -1099,7 +1099,19 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-87. ESTADO FINAL DE VERIFICACIÓN
+87. OCTOGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): CORRECCIÓN CRÍTICA DE PROXY EN GET_UPDATES_REQUEST
+--------------------------------------------------------------------------------
+1) Descubrimiento de Fallo de Arquitectura en `ApplicationBuilder`:
+   - En `python-telegram-bot`, la clase `ApplicationBuilder` gestiona dos instancias separadas de `HTTPXRequest`: una para operaciones regulares de la API (`_request`) y otra exclusiva para el ciclo de polling (`_get_updates_request`).
+   - Al configurar solo `.request(request)` con el proxy activo, el objeto `_get_updates_request` quedaba por defecto con `proxy=None` (conexión directa).
+   - Por esta razón, al caerse la WAN de Valle Seco, las funciones de inicio (`getMe`, `deleteWebhook`) usaban el proxy de Carabobo con éxito, pero el bucle continuo de `getUpdates` (escucha de mensajes) intentaba salir de forma directa a Internet sin proxy, generando los errores de red continuos.
+2) Solución Definitiva:
+   - Se instanció explícitamente `get_updates_request = HTTPXRequest(proxy=active_proxy, ...)` y se vinculó en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) mediante `.get_updates_request(get_updates_request)`.
+   - Se verificó mediante introspección que tanto `r0` (API) como `r1` (Polling) operan a través del proxy activo de forma simultánea.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+88. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
