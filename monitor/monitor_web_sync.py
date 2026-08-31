@@ -211,8 +211,141 @@ async def evaluate_proxy(p: dict) -> dict:
         "latency_ms": latency
     }
 
+def sync_conf_to_db():
+    """
+    Sincroniza automáticamente /config/monitoreo.conf y bot.conf con MySQL.
+    Permite que cualquier cambio manual en los archivos físicos .conf se refleje
+    de inmediato en la base de datos y en el sitio web en cada ciclo de escaneo.
+    """
+    conf_path = BASE_DIR / "config" / "monitoreo.conf"
+    bot_conf_path = BASE_DIR / "config" / "bot.conf"
+
+    if not conf_path.exists():
+        return
+
+    content = conf_path.read_text(encoding="utf-8", errors="ignore")
+    data = {}
+    for line in content.splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            data[k.strip()] = v.strip().strip("\"'").strip("'")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # 1. SERVICIOS (A..Z)
+            for i, letter in enumerate([chr(c) for c in range(ord("A"), ord("Z") + 1)]):
+                name = data.get(f"NAMESERVICE{letter}")
+                if not name:
+                    continue
+                stype = data.get(f"TYPESERVICE{letter}", "WEB")
+                ip = data.get(f"IPSERVICE{letter}") or "0.0.0.0"
+                web = data.get(f"WEBSERVICE{letter}") or ""
+                cups = data.get(f"CUPSPORTIP{letter}") or ""
+                ldap = data.get(f"LDAPPORTIP{letter}") or ""
+                smtp = data.get(f"SMTPPORT{letter}") or ""
+                iface = data.get(f"NETINTERFACE{letter}") or "eno1"
+                dns = data.get(f"TESTHOSTDNS{letter}") or ""
+                proxy_auth = data.get(f"PROXYUSERPASSW{letter}") or ""
+                normal_msg = data.get(f"NORMALESTATEMSG{letter}") or ""
+                error_msg = data.get(f"ERRORESTATEMSG{letter}") or ""
+
+                port_val = int(smtp) if smtp and smtp.isdigit() else (int(ldap) if ldap and ldap.isdigit() else (int(cups) if cups and cups.isdigit() else None))
+                
+                is_active = (
+                    "NO CONFIGURADO" not in name.upper() 
+                    and stype.upper() != "DESACTIVADO" 
+                    and (ip not in ("0.0.0.0", "127.0.0.1", "") or (web != "" and "127.0.0.1" not in web))
+                )
+
+                sql = """
+                    INSERT INTO monitored_services (letter, name, type, host_ip, web_url, port, credentials, check_interface, dns_test_domain, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE
+                    name = VALUES(name), type = VALUES(type), host_ip = VALUES(host_ip), web_url = VALUES(web_url), port = VALUES(port),
+                    credentials = VALUES(credentials), check_interface = VALUES(check_interface), dns_test_domain = VALUES(dns_test_domain),
+                    normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
+                """
+                cursor.execute(sql, (letter, name, stype, ip, web, port_val, proxy_auth, iface, dns, normal_msg, error_msg, 1 if is_active else 0, i))
+
+            # 2. SEDES Y EQUIPOS (A..H)
+            for i, letter in enumerate(["A", "B", "C", "D", "E", "F", "G", "H"]):
+                name = data.get(f"NAMESITE{letter}")
+                if not name:
+                    continue
+                ip = data.get(f"IPSITE{letter}") or "0.0.0.0"
+                phones = [data.get(f"SITE{letter}TELEFONO{n}") or "" for n in range(1, 9)]
+                addr = data.get(f"SITE{letter}DIRECCION") or ""
+                normal_msg = data.get(f"NORMALSITE{letter}") or ""
+                error_msg = data.get(f"ERRORSITE{letter}") or ""
+
+                is_site_active = ("NO CONFIGURADO" not in name.upper() and ip not in ("0.0.0.0", "127.0.0.1", ""))
+
+                sql_site = """
+                    INSERT INTO monitored_sites (letter, name, ip, phone_1, phone_2, phone_3, phone_4, phone_5, phone_6, phone_7, phone_8, address, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE
+                    name = VALUES(name), ip = VALUES(ip), phone_1 = VALUES(phone_1), phone_2 = VALUES(phone_2), phone_3 = VALUES(phone_3),
+                    phone_4 = VALUES(phone_4), phone_5 = VALUES(phone_5), phone_6 = VALUES(phone_6), phone_7 = VALUES(phone_7), phone_8 = VALUES(phone_8),
+                    address = VALUES(address), normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
+                """
+                cursor.execute(sql_site, (letter, name, ip, phones[0], phones[1], phones[2], phones[3], phones[4], phones[5], phones[6], phones[7], addr, normal_msg, error_msg, 1 if is_site_active else 0, i))
+                
+                cursor.execute("SELECT id FROM monitored_sites WHERE letter = %s", (letter,))
+                site_row = cursor.fetchone()
+                if site_row:
+                    site_id = site_row["id"]
+                    for dev_num in range(1, 9):
+                        dev_name = data.get(f"NAMESITE{letter}EQUIPO{dev_num}") or f"Equipo {dev_num}"
+                        dev_ip = data.get(f"IPSITE{letter}EQUIPO{dev_num}") or "0.0.0.0"
+                        dev_norm = data.get(f"NORMALSITE{letter}EQUIPO{dev_num}") or ""
+                        dev_err = data.get(f"ERRORSITE{letter}EQUIPO{dev_num}") or ""
+                        
+                        is_dev_active = (is_site_active and "NO CONFIGURADO" not in dev_name.upper() and dev_ip not in ("0.0.0.0", "127.0.0.1", ""))
+
+                        sql_dev = """
+                            INSERT INTO monitored_site_devices (monitored_site_id, device_number, name, ip, normal_state_msg, error_state_msg, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            ON DUPLICATE KEY UPDATE
+                            name = VALUES(name), ip = VALUES(ip), normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
+                        """
+                        cursor.execute(sql_dev, (site_id, dev_num, dev_name, dev_ip, dev_norm, dev_err, 1 if is_dev_active else 0))
+
+            # 3. PROXIES (bot.conf)
+            if bot_conf_path.exists():
+                bot_content = bot_conf_path.read_text(encoding="utf-8", errors="ignore")
+                bdata = {}
+                for line in bot_content.splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        bdata[k.strip()] = v.strip().strip("\"'").strip("'")
+
+                for letter in ["A", "B", "C", "D"]:
+                    pname = bdata.get(f"NAMEPROXY{letter}")
+                    pipport = bdata.get(f"IPADDRPORTPROXY{letter}")
+                    pauth = bdata.get(f"USERPASSWDPROXY{letter}")
+                    if pname and pipport:
+                        is_p_active = ("NO CONFIGURADO" not in pname.upper() and pipport != "")
+                        sql_p = """
+                            INSERT INTO monitored_proxies (letter, name, ip_port, auth_userpass, test_url, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            ON DUPLICATE KEY UPDATE
+                            name = VALUES(name), ip_port = VALUES(ip_port), auth_userpass = VALUES(auth_userpass), is_active = VALUES(is_active), updated_at = NOW()
+                        """
+                        cursor.execute(sql_p, (letter, pname, pipport, pauth, 'https://core.telegram.org/bots', 1 if is_p_active else 0))
+    finally:
+        conn.close()
+
 async def run_full_scan():
     start_time = time.perf_counter()
+    # Sincronizar archivos .conf físicos con MySQL automáticamente
+    try:
+        sync_conf_to_db()
+    except Exception as e:
+        print(f"⚠️ Error sincronizando conf a DB: {e}", file=sys.stderr)
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
