@@ -1008,7 +1008,14 @@ debe alterar su código, tiempos o configuración systemd.
    - Se integró el modal de telemetría e histórico de sede en `admin/sites` con gráfico de líneas en degradado púrpura neón, puntos de desconexión en rojo, tabla de incidentes y soporte de cierre por clic exterior / tecla Escape.
 
 --------------------------------------------------------------------------------
-77. ESTADO FINAL DE VERIFICACIÓN
+77. SEPTUAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE TÍTULO EN SEDES ADMINISTRATIVAS
+--------------------------------------------------------------------------------
+1) Ajuste Visual de Cabecera:
+   - Se renombró el título principal en `admin/sites` a `"Sedes Regionales y Equipos de Red Monitoreados"`.
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+78. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
