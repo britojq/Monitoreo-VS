@@ -1064,7 +1064,18 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-83. ESTADO FINAL DE VERIFICACIÓN
+83. OCTOGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): VISUALIZACIÓN ACTIVA DE LÍNEA PARA ELEMENTOS CAÍDOS
+--------------------------------------------------------------------------------
+1) Ajuste en Endpoints de Historial (`AdminServiceController`, `AdminSiteController`, `AdminProxyController`):
+   - Se estableció la latencia en `0.0 ms` para chequeos no operativos (`is_up = false`) en lugar de `null`.
+   - Se forzó el ordenamiento cronológico ascendente estricto (`reorder('checked_at', 'asc')`).
+2) Mejoras Visuales en Chart.js (Servicios, Sedes y Proxies):
+   - Se activó `spanGaps: true` y trazado dinámico con curva y degradado rojo neón cuando el elemento está 100% caído.
+   - Se añadieron puntos circulares rojos visibles en cada evento de desconexión / servicio apagado con tooltips diagnósticos claros (`❌ SERVICIO CAÍDO / APAGADO`).
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+84. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
