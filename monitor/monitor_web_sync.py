@@ -297,7 +297,10 @@ async def run_full_scan():
     # Guardar en archivo JSON estático de Laravel
     SNAPSHOT_FILE.parent.mkdir(parents=True, exist_ok=True)
     SNAPSHOT_FILE.write_text(json.dumps(snapshot_payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.chmod(SNAPSHOT_FILE, 0o666)
+    try:
+        os.chmod(SNAPSHOT_FILE, 0o666)
+    except Exception:
+        pass
 
     # Guardar en base de datos MySQL
     conn = get_db_connection()
