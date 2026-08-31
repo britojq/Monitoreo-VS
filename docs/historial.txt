@@ -758,7 +758,18 @@ debe alterar su código, tiempos o configuración systemd.
    - `LDAPADMIN Corporativo` ahora responde exitosamente con `HTTP 200 OK` y latencia promedio de 138 ms, reportándose como OPERATIVO en verde.
 
 --------------------------------------------------------------------------------
-53. ESTADO FINAL DE VERIFICACIÓN
+53. QUINCUAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE ASIGNACIÓN DE PUERTOS (LDAP 389, SMTP 25, CUPS 631)
+--------------------------------------------------------------------------------
+1) Diagnóstico de LDAP CARABOBO:
+   - `ldapr2-t4.corpoelec.com.ve` (`10.20.0.22`) tiene los puertos LDAP (389) y LDAPS (636) abiertos y funcionales.
+   - En la sincronización de `monitoreo.conf`, al leer `SMTPPORTL=25` y `LDAPPORTIPL=389`, la lógica anterior asignaba erróneamente el puerto 25 (SMTP de correo) al servicio de tipo `LDAP`.
+   - Como el puerto 25 está cerrado en el servidor LDAP (`Connection refused`), el monitor reportaba el servicio como inactivo.
+2) Solución Aplicada:
+   - Se ajustó el mapeo estricto por tipo de servicio: los servicios `LDAP` se verifican exclusivamente contra el puerto 389 (o `LDAPPORTIP`), `SMTP` contra el 25 y `CUPS` contra el 631.
+   - `LDAP CARABOBO` ahora responde exitosamente en 123 ms y se muestra como OPERATIVO en verde.
+
+--------------------------------------------------------------------------------
+54. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
