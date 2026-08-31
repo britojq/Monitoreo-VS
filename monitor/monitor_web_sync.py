@@ -162,9 +162,14 @@ async def evaluate_service(s: dict) -> dict:
 
     if stype == "WEB":
         is_up, http_code, latency = await check_web_service(url or f"http://{ip}")
-    elif stype in ("SMTP", "LDAP", "CUPS"):
-        default_ports = {"SMTP": 25, "LDAP": 389, "CUPS": 631}
-        target_port = port if port else default_ports.get(stype, 80)
+    elif stype == "LDAP":
+        target_port = port if port else 389
+        is_up, latency = await check_tcp_port(ip, target_port)
+    elif stype == "SMTP":
+        target_port = port if port else 25
+        is_up, latency = await check_tcp_port(ip, target_port)
+    elif stype == "CUPS":
+        target_port = port if port else 631
         is_up, latency = await check_tcp_port(ip, target_port)
     elif stype == "DNS":
         is_up, latency = await check_tcp_port(ip, 53)
@@ -272,7 +277,16 @@ def sync_conf_to_db():
                 normal_msg = data.get(f"NORMALESTATEMSG{letter}") or ""
                 error_msg = data.get(f"ERRORESTATEMSG{letter}") or ""
 
-                port_val = int(smtp) if smtp and smtp.isdigit() else (int(ldap) if ldap and ldap.isdigit() else (int(cups) if cups and cups.isdigit() else None))
+                if stype == "LDAP":
+                    port_val = int(ldap) if ldap and ldap.isdigit() else 389
+                elif stype == "SMTP":
+                    port_val = int(smtp) if smtp and smtp.isdigit() else 25
+                elif stype == "CUPS":
+                    port_val = int(cups.split(":")[1]) if (":" in cups and cups.split(":")[1].isdigit()) else (int(cups) if cups.isdigit() else 631)
+                elif stype == "DNS":
+                    port_val = 53
+                else:
+                    port_val = None
                 
                 is_active = (
                     "NO CONFIGURADO" not in name.upper() 
