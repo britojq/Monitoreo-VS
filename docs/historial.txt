@@ -1075,7 +1075,14 @@ debe alterar su código, tiempos o configuración systemd.
    - Se limpió la caché compilada de Blade (`php artisan view:clear`).
 
 --------------------------------------------------------------------------------
-84. ESTADO FINAL DE VERIFICACIÓN
+84. OCTOGÉSIMA CUARTA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE IMPORT EN REINICIO AUTÓNOMO DE CONEXIÓN
+--------------------------------------------------------------------------------
+1) Corrección de Excepción en Conmutación:
+   - Se añadió el import faltante `import sys` en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) que impedía la ejecución de `restart_bot_process` (`python_bin = sys.executable` y `os.execv`) al dispararse el failover tras fallas de red en polling.
+   - Se verificó la compilación limpia del script y se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+85. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
