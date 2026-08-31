@@ -865,7 +865,14 @@ debe alterar su código, tiempos o configuración systemd.
      * Sidebar del Panel de Control (`resources/views/layouts/admin.blade.php`).
 
 --------------------------------------------------------------------------------
-63. ESTADO FINAL DE VERIFICACIÓN
+63. SEXAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): REUBICACIÓN DEFINITIVA DE logo.png
+--------------------------------------------------------------------------------
+1) Limpieza y Consolidación:
+   - Se eliminó el archivo residual en la raíz `/var/www/testapp/logo.png`.
+   - La ubicación canónica y definitiva del logo queda establecida exclusivamente en `/var/www/testapp/public/img/logo.png`.
+
+--------------------------------------------------------------------------------
+64. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
