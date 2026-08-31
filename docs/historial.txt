@@ -1046,7 +1046,17 @@ debe alterar su código, tiempos o configuración systemd.
    - Se unificó el comando `/servicios` para despachar por defecto la imagen panorámica global de 3 columnas (`mode="full"`), igual que la opción `/servicios web`.
 
 --------------------------------------------------------------------------------
-81. ESTADO FINAL DE VERIFICACIÓN
+81. OCTOGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): AJUSTE PRECISO DE CAPTURAS: INTERACTIVAS VS AUTOMÁTICAS
+--------------------------------------------------------------------------------
+1) Restauración de Comandos Interactivos en `bot.py`:
+   - `/servicios`: Vuelve a enviar la captura focalizada de la columna de Servicios Corporativos (`mode="servicios"`).
+   - `/servicios web`: Se mantiene para solicitar explícitamente la panorámica completa de 3 columnas (`mode="full"`).
+   - `/sedes` y `/caidas`: Conservan sus capturas especializadas por columna.
+2) Reporte Automático Programado en Cron (`monitor_engine.py`):
+   - Se mantiene configurado exclusivamente para que a las 7:30 AM y 4:00 PM envíe el texto institucional junto con la **captura panorámica global de 3 columnas** (`mode="full"`).
+
+--------------------------------------------------------------------------------
+82. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
