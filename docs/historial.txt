@@ -721,7 +721,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Al posar el mouse sobre cualquier badge o elemento técnico, se despliega una ventana flotante con efecto Glassmorphism que detalla: Destino/IP, Puerto, Protocolo, Método de Check, Latencia en ms, Estado y Detalles operativos.
 
 --------------------------------------------------------------------------------
-49. ESTADO FINAL DE VERIFICACIÓN
+49. CUADRAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): OCULTAMIENTO DE IPS CRUDAS Y REFINAMIENTO DE VENTANA HUD TOOLTIP
+--------------------------------------------------------------------------------
+1) Ajuste Estético de Tarjetas:
+   - Se removieron todas las direcciones IP y textos técnicos crudos visibles en la cara frontal de las tarjetas de servicios y sedes.
+   - En su lugar, se añadieron etiquetas estilizadas de estado operativo y rol de sede (`Operativo • Protocolo WEB`, `Centro de Telecomunicaciones`, etc.).
+2) Delegación Total de Datos Técnicos a la Ventana Emergente:
+   - Las direcciones IP, puertos, endpoints y detalles de transporte se consultan exclusivamente mediante la ventana emergente flotante (*Glassmorphism HUD Tooltip*) al posar el mouse sobre los badges o tarjetas.
+
+--------------------------------------------------------------------------------
+50. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
