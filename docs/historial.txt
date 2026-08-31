@@ -730,7 +730,15 @@ debe alterar su código, tiempos o configuración systemd.
    - Las direcciones IP, puertos, endpoints y detalles de transporte se consultan exclusivamente mediante la ventana emergente flotante (*Glassmorphism HUD Tooltip*) al posar el mouse sobre los badges o tarjetas.
 
 --------------------------------------------------------------------------------
-50. ESTADO FINAL DE VERIFICACIÓN
+50. QUINCUAGÉSIMA INTERVENCIÓN (2026-08-31): DEPURACIÓN COMPLETA DE EQUIPOS Y SEDES NO CONFIGURADOS
+--------------------------------------------------------------------------------
+1) Filtrado Integral en Base de Datos y Motor:
+   - Se desactivaron y excluyeron todos los slots residuales con "NO CONFIGURADO" o `0.0.0.0` en la tabla `monitored_site_devices` (reduciendo de 64 a los 21 equipos secundarios reales en producción).
+   - Se sanearon los campos de direcciones físicas y teléfonos de contacto para eliminar cualquier texto de "NO CONFIGURADO" residual.
+   - El motor `monitor_web_sync.py` ahora reporta exactamente 19 servicios y 6 sedes activas reales, optimizando el ciclo de escaneo a 2.6 segundos.
+
+--------------------------------------------------------------------------------
+51. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
