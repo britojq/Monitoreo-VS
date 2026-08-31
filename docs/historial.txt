@@ -748,7 +748,17 @@ debe alterar su código, tiempos o configuración systemd.
    - El mapa Leaflet ahora dibuja marcadores y líneas de enlace exclusivamente para las sedes activas reportadas en la base de datos.
 
 --------------------------------------------------------------------------------
-52. ESTADO FINAL DE VERIFICACIÓN
+52. QUINCUAGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): SOPORTE TLS 1.0 LEGACY PARA LDAPADMIN Y SERVICIOS WEB
+--------------------------------------------------------------------------------
+1) Diagnóstico de Incompatibilidad SSL:
+   - El servicio `LDAPADMIN Corporativo` (`https://ldapadmin.corpoelec.com.ve/htdocs/index.php` en IP `10.2.28.64`) opera sobre un servidor con Debian Lenny, Apache 2.2.9 y OpenSSL 0.9.8g usando TLS 1.0 (TLSv1) y suite de cifrado `DHE-RSA-AES256-SHA`.
+   - Python HTTPX y OpenSSL 3.0 por defecto rechazan conexiones con versiones menores a TLS 1.2 (`unsupported protocol`), marcando erróneamente el servicio como caído.
+2) Solución e Integración:
+   - Se configuró el contexto `SSL_PERMISSIVE_CTX` con `SECLEVEL=0` y `minimum_version=TLSv1` en `/scripts/telegram-admin-bot/monitor/monitor_web_sync.py`.
+   - `LDAPADMIN Corporativo` ahora responde exitosamente con `HTTP 200 OK` y latencia promedio de 138 ms, reportándose como OPERATIVO en verde.
+
+--------------------------------------------------------------------------------
+53. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
