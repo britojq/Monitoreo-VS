@@ -794,7 +794,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Al pasar el cursor sobre cada equipo secundario dentro del panel desplegado, se activa su propio HUD Tooltip técnico individual con IP, slot y latencia.
 
 --------------------------------------------------------------------------------
-56. ESTADO FINAL DE VERIFICACIÓN
+56. QUINCUAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): COMPACTACIÓN INTEGRAL DE SERVICIOS ACTIVOS Y CAÍDOS
+--------------------------------------------------------------------------------
+1) Diseño Ultra-Compacto de Servicios Activos (Columna 1):
+   - Se transformaron las tarjetas en filas esbeltas de una sola línea (`py-1.5 px-2.5`), mostrando el LED verde pulsante, el nombre del servicio, la latencia en milisegundos y el badge de protocolo.
+   - Todo el detalle técnico completo (IP, puerto, endpoint, respuesta HTTP) se mantiene accesible de inmediato mediante la ventana emergente flotante (HUD Tooltip) al posar el mouse.
+2) Homogeneización de la Columna 3 (Incidentes):
+   - Se aplicó la misma estructura ultra-compacta en los bloques de Servicios Caídos y Sedes sin Conexión, logrando un aprovechamiento óptimo del espacio vertical.
+
+--------------------------------------------------------------------------------
+57. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
