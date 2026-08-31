@@ -836,7 +836,14 @@ debe alterar su código, tiempos o configuración systemd.
    - Aplicado tanto para Servicios Activos y Sedes Conectadas como para el bloque de Servicios Caídos y Sedes sin Conexión.
 
 --------------------------------------------------------------------------------
-60. ESTADO FINAL DE VERIFICACIÓN
+60. SEXAGÉSIMA INTERVENCIÓN (2026-08-31): AJUSTE DE SUBTÍTULO INSTITUCIONAL DEL HEADER
+--------------------------------------------------------------------------------
+1) Actualización de Texto:
+   - Se modificó el subtítulo superior en la cabecera principal (`resources/views/public/index.blade.php`) de `"CENTRO DE COMANDO & TELECOMUNICACIONES"` a `"SISTEMA DE MONITOREO VALLE SECO"`.
+   - Se vació la caché de vistas compiladas de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+61. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
