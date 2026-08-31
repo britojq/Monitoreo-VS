@@ -826,7 +826,17 @@ debe alterar su código, tiempos o configuración systemd.
    - El portal responde con `HTTP 200 OK` en `http://monitoreo-vs.local/`.
 
 --------------------------------------------------------------------------------
-59. ESTADO FINAL DE VERIFICACIÓN
+59. QUINCUAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): AJUSTE DE MICRO-TIPOGRAFÍA EN COLUMNAS
+--------------------------------------------------------------------------------
+1) Reducción de Fuentes en Tarjetas:
+   - Se ajustó el tamaño de los nombres de servicios y sedes principales a `text-[11px]` (`font-semibold` / `font-bold`), logrando mayor elegancia y menor ocupación de espacio horizontal.
+   - Se adaptaron los indicadores de latencia a `text-[9px]`, los badges de protocolo a `text-[8.5px]` y los subtítulos a `text-[9px]`.
+   - Los equipos en sitio dentro del acordeón de sedes se ajustaron a `text-[9px]`.
+2) Homogeneidad en todo el Dashboard:
+   - Aplicado tanto para Servicios Activos y Sedes Conectadas como para el bloque de Servicios Caídos y Sedes sin Conexión.
+
+--------------------------------------------------------------------------------
+60. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
