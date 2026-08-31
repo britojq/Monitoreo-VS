@@ -1082,7 +1082,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Se verificó la compilación limpia del script y se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-85. ESTADO FINAL DE VERIFICACIÓN
+85. OCTOGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): RESOLUCIÓN DE BUCLE DE REINICIOS PREMATUROS EN PROXIES
+--------------------------------------------------------------------------------
+1) Diagnóstico y Corrección de Bucle de Failover:
+   - Se detectó que al conmutar a un proxy remoto (Carabobo), los primeros reintentos de handshake TLS activaban `trigger_connection_failover`, el cual volvía a reiniciar el bot cada 15 segundos antes de que pudiera completar la sesión de polling.
+   - En [`bot.py`](file:///scripts/telegram-admin-bot/bot.py), se ajustó `trigger_connection_failover` para que, si la ruta actual es saludable y operativa, no reinicie el proceso, sino que restablezca los contadores y continúe la escucha activa.
+   - Se aumentó el umbral de tolerancia a 8 fallos consecutivos en `bot_error_handler` y se optimizaron los timeouts de [`HTTPXRequest`](file:///scripts/telegram-admin-bot/bot.py#L3723) (`connect_timeout=15s`, `read_timeout=35s`).
+   - Se validó el polling real con `POST getUpdates` retornando `HTTP 200 OK` en todas las rutas de proxy.
+
+--------------------------------------------------------------------------------
+86. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
