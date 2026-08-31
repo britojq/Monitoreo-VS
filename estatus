@@ -17,13 +17,16 @@ if [ ! -f "$PYTHON_EXEC" ] || [ ! -f "$ENGINE_SCRIPT" ]; then
     exit 1
 fi
 
-# Soporte para subcomandos directos de resiliencia
+# Soporte para subcomandos directos de resiliencia y sincronización web
 if [ "${1:-}" = "rollback" ]; then
     shift
     exec "$PROJECT_DIR/rollback" "$@"
 elif [ "${1:-}" = "checkpoint" ]; then
     shift
     exec "$PROJECT_DIR/checkpoint" "$@"
+elif [ "${1:-}" = "web" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/monitor_web_sync.py" "$@"
 fi
 
 # Pasar todos los argumentos al motor de Python
