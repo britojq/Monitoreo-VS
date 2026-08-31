@@ -948,7 +948,19 @@ debe alterar su código, tiempos o configuración systemd.
    - Se preservaron exclusivamente las funciones de **Modificar Parámetros** y **Habilitar/Deshabilitar**, asegurando la coherencia 1 a 1 con el archivo físico `monitoreo.conf` y el bot de Telegram.
 
 --------------------------------------------------------------------------------
-71. ESTADO FINAL DE VERIFICACIÓN
+71. SEPTUAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): HISTÓRICO TEMPORAL Y GRÁFICOS DE LÍNEA POR SERVICIO
+--------------------------------------------------------------------------------
+1) Base de Datos y Modelo:
+   - Se creó la tabla `service_check_histories` con campos `monitored_service_id`, `is_up`, `latency_ms`, `http_code`, `status_message` y `checked_at` (indexado).
+   - Se creó el modelo `App\Models\ServiceCheckHistory` y su relación `histories()` con `MonitoredService`.
+2) Registro de Chequeos en Escaneos Python:
+   - Se actualizó `monitor/monitor_web_sync.py` para registrar cada chequeo individual en `service_check_histories` con política de retención de 30 días.
+3) API y Gráficos Interactivos (Chart.js):
+   - Se añadió el endpoint `/admin/services/{service}/history` con soporte para rangos temporales (`6h`, `24h`, `7d`, `30d`) y cálculo de estadísticas clave (Uptime %, Latencia Media, Latencia Máxima, Caídas e Incidentes).
+   - Se integró un modal de telemetría e histórico temporal en `admin/services` con gráfico de líneas suave en degradado neón, puntos de detección de caídas en rojo y tabla de incidentes.
+
+--------------------------------------------------------------------------------
+72. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
