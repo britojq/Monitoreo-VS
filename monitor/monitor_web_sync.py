@@ -174,7 +174,10 @@ async def evaluate_service(s: dict) -> dict:
     elif stype == "DNS":
         is_up, latency = await check_tcp_port(ip, 53)
     elif stype == "PROXY":
-        is_up, latency = await check_proxy_service(s.get("host_ip") or f"{ip}:{port or 8080}", s.get("credentials"))
+        proxy_target = ip
+        if ":" not in proxy_target and proxy_target:
+            proxy_target = f"{proxy_target}:{port or 8080}"
+        is_up, latency = await check_proxy_service(proxy_target, s.get("credentials"))
     else: # PING / OTRO
         is_up, latency = await check_ping(ip)
 
@@ -285,6 +288,9 @@ def sync_conf_to_db():
                     port_val = int(cups.split(":")[1]) if (":" in cups and cups.split(":")[1].isdigit()) else (int(cups) if cups.isdigit() else 631)
                 elif stype == "DNS":
                     port_val = 53
+                elif stype == "PROXY":
+                    proxy_cfg = data.get(f"PROXYIPPORT{letter}") or ""
+                    port_val = int(proxy_cfg.split(":")[1]) if (":" in proxy_cfg and proxy_cfg.split(":")[1].isdigit()) else 8080
                 else:
                     port_val = None
                 
