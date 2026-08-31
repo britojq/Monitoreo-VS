@@ -969,7 +969,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Se verificó que todas las fechas, timestamps de auditoría, gráficos y capturas reflejen con precisión la hora de Venezuela.
 
 --------------------------------------------------------------------------------
-73. ESTADO FINAL DE VERIFICACIÓN
+73. SEPTUAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): CIERRE DE MODALES AL CLIC EXTERIOR Y TECLA ESC
+--------------------------------------------------------------------------------
+1) Experiencia de Usuario (UX) en Modales Administrativos:
+   - Se implementó el cierre automático del modal de **Histórico y Telemetría** al hacer clic sobre el fondo oscuro/backdrop exterior.
+   - Se mantuvo el botón de cierre [×] interactivo y accesible.
+   - Se añadió un listener global para cerrar cualquier modal abierto mediante la tecla `Escape`.
+   - Se controló el bloqueo de scroll (`overflow-hidden`) del body mientras el modal permanezca abierto.
+
+--------------------------------------------------------------------------------
+74. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
