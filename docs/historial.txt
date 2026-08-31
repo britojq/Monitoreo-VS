@@ -1120,7 +1120,14 @@ debe alterar su código, tiempos o configuración systemd.
    - Se actualizó [`config/commands.json`](file:///scripts/telegram-admin-bot/config/commands.json) y se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-89. ESTADO FINAL DE VERIFICACIÓN
+89. OCTOGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): NOTIFICACIÓN PRIVADA EXCLUSIVA PARA /REINICIA
+--------------------------------------------------------------------------------
+1) Privacidad Estricta de Notificación de Reinicio:
+   - Se ajustó [`cmd_reinicia`](file:///scripts/telegram-admin-bot/bot.py#L3556) en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) para que el mensaje de alerta de reinicio se transmita única y exclusivamente al chat privado del Owner (`IMMUTABLE_OWNER_ID`), eliminando cualquier rastro en grupos públicos si fue invocado desde ellos.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+90. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
