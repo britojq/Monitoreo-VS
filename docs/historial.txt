@@ -985,7 +985,18 @@ debe alterar su código, tiempos o configuración systemd.
    - Se limpió la caché compilada de Blade (`php artisan view:clear`).
 
 --------------------------------------------------------------------------------
-75. ESTADO FINAL DE VERIFICACIÓN
+75. SEPTUAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): MENÚ LATERAL RETRÁCTIL Y ACTUALIZACIÓN DE SUBTÍTULO
+--------------------------------------------------------------------------------
+1) Menú Lateral Auto-Escondido (Sidebar Retráctil):
+   - Se configuró el sidebar administrativo para permanecer oculto por defecto fuera de pantalla (`-translate-x-full`).
+   - Se integró un botón referencial de acceso directo en la barra superior con badge e icono reactivo (`menu` / `menu_open`).
+   - Se añadió animación suave de deslizamiento con fondo oscuro traslúcido (backdrop) y soporte de cierre automático con clic fuera o tecla `Escape`.
+   - Se expandió el área de contenido principal al 100% de la pantalla para máxima visibilidad de gráficos y tablas.
+2) Actualización de Subtítulo:
+   - Se cambió el subtítulo en `admin/services` a `"Datos del Historial de conexión"`.
+
+--------------------------------------------------------------------------------
+76. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
