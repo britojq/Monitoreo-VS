@@ -883,7 +883,27 @@ debe alterar su código, tiempos o configuración systemd.
    - Se duplicó `favicon.ico` en la raíz `/var/www/testapp/public/favicon.ico` para soporte nativo y directo de navegadores.
 
 --------------------------------------------------------------------------------
-65. ESTADO FINAL DE VERIFICACIÓN
+65. SEXAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): CAPTURAS WEB AUTOMATIZADAS EN ALTA DEFINICIÓN
+--------------------------------------------------------------------------------
+1) Motor de Captura Web Headless (`monitor/web_screenshot.py`):
+   - Integración de Chromium Headless vía Playwright con renderizado @2x Retina (1920x1080).
+   - Soporte para 4 modos de captura:
+     * `full`: Vista panorámica global completa de las 3 columnas.
+     * `servicios`: Captura focalizada de la Columna 1 (Servicios Activos).
+     * `sedes`: Captura focalizada de la Columna 2 con apertura interactiva de acordeones de equipos.
+     * `caidas`: Captura focalizada de la Columna 3 (Incidentes y Servicios Caídos).
+   - Sistema de caché en memoria de 15 segundos para evitar sobrecarga de renderizado.
+2) Comandos e Interacción en Telegram:
+   - `/servicios`: Reporte textual + Captura focalizada de Servicios Activos.
+   - `/servicios web` o `/servicios full`: Reporte textual + Captura panorámica global (3 columnas).
+   - `/sedes`: Reporte textual + Captura focalizada de Sedes y Equipos en Sitio.
+   - `/sedes web`: Reporte textual + Captura panorámica global (3 columnas).
+   - `/caidas` / `/incidentes`: Reporte de fallas + Captura de la columna de incidentes.
+   - `/web` / `/pantalla`: Captura gráfica directa panorámica en HD.
+   - `/estatus`: Preservado de forma inmutable con su funcionalidad de diagnóstico original.
+
+--------------------------------------------------------------------------------
+66. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
