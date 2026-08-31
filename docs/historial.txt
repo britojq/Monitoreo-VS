@@ -1111,7 +1111,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-88. ESTADO FINAL DE VERIFICACIÓN
+88. OCTOGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): IMPLEMENTACIÓN DEL COMANDO EXCLUSIVO /REINICIA
+--------------------------------------------------------------------------------
+1) Comando Exclusivo para el Owner:
+   - Se implementó el comando [`/reinicia`](file:///scripts/telegram-admin-bot/bot.py#L3556) (y alias `/reboot`) en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) para la ejecución de `sudo reboot`.
+   - Se blindó con verificación estricta de identidad: solo el Administrador Propietario (`IMMUTABLE_OWNER_ID`) puede invocarlo; cualquier intento de un tercero es rechazado, registrado en auditoría y notificado como violación de seguridad.
+   - Cuenta con confirmación visual en Telegram, sincronización de discos (`sync`) y temporizador de 2 segundos para asegurar la entrega de la confirmación antes del apagado.
+   - Se actualizó [`config/commands.json`](file:///scripts/telegram-admin-bot/config/commands.json) y se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+89. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
