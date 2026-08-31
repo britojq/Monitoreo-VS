@@ -1027,7 +1027,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Se integró el modal de telemetría e histórico de proxies en `admin/proxies` con gráfico de líneas en degradado ámbar/dorado neón, puntos de fallo en rojo, tabla de incidentes y soporte de cierre por clic exterior / tecla Escape.
 
 --------------------------------------------------------------------------------
-79. ESTADO FINAL DE VERIFICACIÓN
+79. SEPTUAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): PURGA DE DATOS SINTÉTICOS Y REGISTRO 100% REAL EN VIVO
+--------------------------------------------------------------------------------
+1) Purga Completa (Truncate):
+   - Se vaciaron las tablas `service_check_histories`, `site_check_histories` y `proxy_check_histories`, eliminando todos los registros generados inicialmente.
+2) Inicio de Registro Auténtico:
+   - Se ejecutó un ciclo de escaneo en vivo con el motor en Python ([`monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py)) generando los primeros puntos auténticos con marcas de tiempo en hora oficial de Venezuela (`America/Caracas`).
+   - Cada ciclo programado (cada 5 minutos) continuará acumulando exclusivamente telemetría real y fidedigna.
+
+--------------------------------------------------------------------------------
+80. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
