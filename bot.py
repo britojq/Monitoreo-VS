@@ -349,21 +349,37 @@ def select_working_connection(bot_token: str) -> str | None:
     return None
 
 
-async def async_evaluate_best_connection(bot_token: str) -> tuple[str | None, str]:
+def restart_bot_process(reason: str = "Conmutación de Red") -> None:
+    """
+    Reinicia limpiamente el proceso del bot de forma instantánea mediante os.execv.
+    Garantiza que todos los sockets se liberen y que el bot inicie con transporte nuevo
+    utilizando el proxy o la conexión directa operativa.
+    """
+    logger.warning(f"🚀 REINICIO AUTÓNOMO DE CONEXIÓN: {reason}. Reiniciando bot...")
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+    python_bin = sys.executable
+    os.execv(python_bin, [python_bin] + sys.argv)
+
+
+async def async_evaluate_best_connection(bot_token: str) -> tuple[str | None, str, bool]:
     """
     Evalúa de forma asíncrona la mejor conexión a Telegram disponible en tiempo real:
     1. Prioridad 1: Conexión Directa a Internet.
     2. Prioridad 2: Proxies corporativos configurados (Squid, pfSense).
-    Retorna (proxy_url, connection_label).
+    Retorna (proxy_url, connection_label, is_functional).
     """
     url = f"https://api.telegram.org/bot{bot_token}/getMe"
 
     # 1. Probar conexión directa
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with httpx.AsyncClient(timeout=3.5) as client:
             r = await client.get(url)
             if r.status_code == 200 and r.json().get("ok"):
-                return None, "Conexión Directa"
+                return None, "Conexión Directa", True
     except Exception:
         pass
 
@@ -377,92 +393,76 @@ async def async_evaluate_best_connection(bot_token: str) -> tuple[str | None, st
         if not p_url:
             continue
         try:
-            async with httpx.AsyncClient(proxy=p_url, timeout=3.5) as client:
+            async with httpx.AsyncClient(proxy=p_url, timeout=4.0) as client:
                 r = await client.get(url)
                 if r.status_code == 200 and r.json().get("ok"):
-                    return p_url, f"Proxy: {p_name}"
+                    return p_url, f"Proxy: {p_name}", True
         except Exception:
             continue
 
-    # Si ninguno responde, mantener la conexión actual
-    return ACTIVE_PROXY_URL, ACTIVE_CONNECTION_LABEL
+    # Si ninguno responde
+    return ACTIVE_PROXY_URL, ACTIVE_CONNECTION_LABEL, False
 
 
-async def hot_switch_connection(app: Application, target_proxy_url: str | None, target_label: str) -> bool:
-    """Conmuta en caliente el cliente de transporte HTTP de python-telegram-bot sin reiniciar el bot."""
-    global ACTIVE_CONNECTION_LABEL, ACTIVE_PROXY_URL, _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
-
-    if ACTIVE_PROXY_URL == target_proxy_url and ACTIVE_CONNECTION_LABEL == target_label:
-        return True
-
-    logger.info(f"🔄 Conmutando conexión en caliente: [{ACTIVE_CONNECTION_LABEL}] -> [{target_label}]...")
-    try:
-        req = app.bot._request
-        if isinstance(req, HTTPXRequest):
-            old_client = req._client
-            req._client_kwargs["proxy"] = target_proxy_url
-            new_client = req._build_client()
-            req._client = new_client
-            if old_client:
-                try:
-                    await old_client.aclose()
-                except Exception:
-                    pass
-
-            ACTIVE_PROXY_URL = target_proxy_url
-            ACTIVE_CONNECTION_LABEL = target_label
-            _CONSECUTIVE_NETWORK_ERRORS = 0
-            _LAST_SUCCESSFUL_POLL_TIME = time.time()
-            logger.info(f"✅ Conmutación en caliente exitosa. Enlace activo: {target_label}")
-            return True
-    except Exception as e:
-        logger.error(f"Error durante la conmutación en caliente de conexión: {e}", exc_info=True)
-    return False
-
-
-async def trigger_connection_failover(app: Application, reason: str = "Aviso de red") -> None:
-    """Dispara una evaluación y conmutación inmediata si la conexión actual falla."""
+async def trigger_connection_failover(reason: str = "Aviso de red") -> None:
+    """Evalúa rutas y reinicia el proceso del bot de forma limpia si la conexión actual falló."""
     if _FAILOVER_LOCK.locked():
         return
     async with _FAILOVER_LOCK:
         bot_token = CONFIG.get("bot_token", IMMUTABLE_BOT_TOKEN)
-        best_url, best_label = await async_evaluate_best_connection(bot_token)
-        if best_url != ACTIVE_PROXY_URL or best_label != ACTIVE_CONNECTION_LABEL:
-            logger.warning(f"⚠️ Fallo de conexión detectado ({reason}). Conmutando enlace a: {best_label}")
-            await hot_switch_connection(app, best_url, best_label)
+        best_url, best_label, is_ok = await async_evaluate_best_connection(bot_token)
+        if is_ok:
+            if best_url != ACTIVE_PROXY_URL or best_label != ACTIVE_CONNECTION_LABEL:
+                restart_bot_process(f"Conmutación a ruta operativa [{best_label}] debido a: {reason}")
+            else:
+                # La conexión actual supuestamente era la misma pero el polling se atascó
+                restart_bot_process(f"Reinicio preventivo de sockets de red debido a: {reason}")
+        else:
+            logger.warning(f"⚠️ Ninguna ruta de internet o proxy responde ({reason}). Esperando próximo ciclo...")
 
 
 async def runtime_connection_watchdog(app: Application) -> None:
     """
-    Centinela asíncrono permanente de conectividad:
-    1. Revisa cada 20 segundos la estabilidad de la conexión activa.
-    2. Si está en un Proxy, comprueba si la Conexión Directa se recuperó para retornar a ella.
-    3. Si detecta 2 o más errores consecutivos de red o inactividad prolongada (> 45s), conmuta al mejor proxy operativo.
+    Centinela asíncrono de conectividad del Bot (Revisión cada 10 minutos):
+    1. Verifica cada 600 segundos (10 min) la conectividad hacia Telegram Bot API.
+    2. Si estamos en un Proxy y la Conexión Directa se restableció -> Reinicia para volver a Directa.
+    3. Si la conexión actual dejó de responder -> Busca la mejor ruta viva y reinicia el bot en 1 segundo.
+    4. Cero saturación: No bombardea la red a cada instante.
     """
     global _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
-    logger.info("🛡️ Centinela de Conmutación Dinámica en Caliente (Failover Watchdog) iniciado.")
+    CHECK_INTERVAL_SECONDS = 600  # 10 minutos
+    logger.info("🛡️ Centinela Autorreparable de Red (Watchdog activo, revisión cada 10 min).")
     bot_token = CONFIG.get("bot_token", IMMUTABLE_BOT_TOKEN)
 
     while True:
         try:
-            await asyncio.sleep(20)
+            await asyncio.sleep(CHECK_INTERVAL_SECONDS)
 
-            # Caso A: Si actualmente estamos en un Proxy, verificar si la Conexión Directa regresó
+            # Caso A: Si estamos usando Proxy, verificar si la Conexión Directa regresó
             if ACTIVE_PROXY_URL is not None:
                 try:
-                    async with httpx.AsyncClient(timeout=3.0) as client:
+                    async with httpx.AsyncClient(timeout=3.5) as client:
                         r = await client.get(f"https://api.telegram.org/bot{bot_token}/getMe")
                         if r.status_code == 200 and r.json().get("ok"):
-                            logger.info("🌐 Conexión DIRECTA a internet restablecida. Retornando a conexión directa...")
-                            async with _FAILOVER_LOCK:
-                                await hot_switch_connection(app, None, "Conexión Directa")
+                            logger.info("🌐 Conexión DIRECTA a internet restablecida.")
+                            restart_bot_process("Retorno a Conexión Directa restablecida")
                 except Exception:
                     pass
 
-            # Caso B: Si hay errores acumulados de red o no ha habido respuesta en más de 45s
-            now = time.time()
-            if _CONSECUTIVE_NETWORK_ERRORS >= 2 or (now - _LAST_SUCCESSFUL_POLL_TIME > 45 and _CONSECUTIVE_NETWORK_ERRORS > 0):
-                await trigger_connection_failover(app, reason="Watchdog timeout/errores acumulados")
+            # Caso B: Probar la conexión actual
+            is_current_alive = False
+            try:
+                async with httpx.AsyncClient(proxy=ACTIVE_PROXY_URL, timeout=4.0) as client:
+                    r = await client.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+                    if r.status_code == 200 and r.json().get("ok"):
+                        is_current_alive = True
+                        _LAST_SUCCESSFUL_POLL_TIME = time.time()
+            except Exception:
+                is_current_alive = False
+
+            if not is_current_alive:
+                logger.warning("⚠️ Chequeo periódico de 10 min detectó que la conexión actual no responde.")
+                await trigger_connection_failover(reason="Chequeo periódico de 10 minutos fallido")
 
         except asyncio.CancelledError:
             break
@@ -3644,9 +3644,14 @@ async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) 
     err = context.error
     if isinstance(err, (telegram.error.NetworkError, telegram.error.TimedOut, httpx.NetworkError, httpx.TimeoutException)):
         _CONSECUTIVE_NETWORK_ERRORS += 1
-        logger.warning(f"Aviso de red en polling Telegram (fallo #{_CONSECUTIVE_NETWORK_ERRORS}): {err}. Evaluando conmutación de proxy...")
-        if _CONSECUTIVE_NETWORK_ERRORS >= 2 and _BOT_APP_INSTANCE:
-            asyncio.create_task(trigger_connection_failover(_BOT_APP_INSTANCE, reason=str(err)))
+        logger.warning(f"Aviso de red en polling Telegram (fallo #{_CONSECUTIVE_NETWORK_ERRORS}): {err}")
+        # Si acumula 3 fallos consecutivos en polling, esperar 12s para descartar micro-cortes y conmutar
+        if _CONSECUTIVE_NETWORK_ERRORS >= 3:
+            async def _delayed_failover():
+                await asyncio.sleep(12)
+                if _CONSECUTIVE_NETWORK_ERRORS >= 3:
+                    await trigger_connection_failover(reason=f"3 fallos consecutivos en polling ({err})")
+            asyncio.create_task(_delayed_failover())
     else:
         logger.error(f"Excepción en bot handler: {err}", exc_info=err)
 
