@@ -927,7 +927,19 @@ debe alterar su código, tiempos o configuración systemd.
    - Se transformó el botón de acceso de la cabecera en un botón cuadrado minimalista (`w-9 h-9`) con el ícono centrado (`lock` para invitados y `admin_panel_settings` para administradores autenticados), eliminando el texto y ahorrando espacio horizontal en la barra superior.
 
 --------------------------------------------------------------------------------
-69. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+69. SEXAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DINÁMICA DEL DOM EN VIVO (OPCIÓN B)
+--------------------------------------------------------------------------------
+1) Motor Reactivo Frontend (AJAX / JSON Snapshot):
+   - Se configuró el ciclo de sondeo reactivo cada 15 segundos hacia `/api/status`.
+   - Si un servicio o sede cambia de estado (se cae o se recupera), el DOM se reordena de forma instantánea sin recarga de página ni parpadeos:
+     * Traslado automático entre la Columna 1 (Activos), Columna 2 (Sedes) y Columna 3 (Caídos / Desconectadas).
+     * Preservación del estado abierto/cerrado de los acordeones de equipos en sitio que el usuario esté inspeccionando.
+     * Actualización en tiempo real de los porcentajes y métricas de telemetría (Servicios, Sedes, Proxies).
+     * Re-vinculación fluida del HUD Tooltip flotante e interactivo.
+
+--------------------------------------------------------------------------------
+70. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
