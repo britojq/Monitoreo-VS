@@ -803,7 +803,18 @@ debe alterar su código, tiempos o configuración systemd.
    - Se aplicó la misma estructura ultra-compacta en los bloques de Servicios Caídos y Sedes sin Conexión, logrando un aprovechamiento óptimo del espacio vertical.
 
 --------------------------------------------------------------------------------
-57. ESTADO FINAL DE VERIFICACIÓN
+57. QUINCUAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE RESOLUCIÓN DE PUERTOS EN PROXIES (8080)
+--------------------------------------------------------------------------------
+1) Diagnóstico del Desfase de Proxies:
+   - En el Bot de Telegram (`bot.py`), el comando `/internet` evalúa la lista `bot.conf` donde los proxies incluyen explícitamente el puerto `:8080`.
+   - En `monitoreo.conf`, los servicios Q, R, S (`Pfsense`) tenían `IPSERVICE=10.20.0.89` (sin el puerto `:8080`), mientras que la variable con puerto estaba en `PROXYIPPORT=10.20.0.89:8080`.
+   - Como el evaluador del monitor web tomaba la IP sin puerto (`10.20.0.89`), el cliente HTTP intentaba conectarse al puerto 80 estándar en lugar del puerto 8080 del Squid/PfSense, retornando fallo o 400 Bad Request.
+2) Solución Aplicada:
+   - Se ajustó el evaluador asíncrono `evaluate_service` y el sincronizador `sync_conf_to_db` para forzar automáticamente el puerto de proxy (`:8080`) si no viene especificado en la IP.
+   - Tras el escaneo, los 3 proxies (`Pfsense CARABOBO 119`, `Pfsense CARABOBO 89` y `Pfsense Valle Seco 65`) responden con `HTTP 200 OK` y aparecen directamente en la columna de **Servicios Activos** en la página web.
+
+--------------------------------------------------------------------------------
+58. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
