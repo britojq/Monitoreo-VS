@@ -1112,8 +1112,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
             "📊 <b>Monitoreo e Infraestructura de Red</b>",
-            "• <code>/servicios</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos y páginas web.",
-            "• <code>/sedes</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación.",
+            "• <code>/servicios [web]</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos (con captura web).",
+            "• <code>/sedes [web]</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación (con captura web).",
+            "• <code>/caidas [web]</code> <i>(/incidentes, /fallas)</i> - Reporte enfocado en fallas, servicios caídos y sedes desconectadas.",
+            "• <code>/web [modo]</code> <i>(/pantalla, /dashboard)</i> - Captura gráfica panorámica HD del portal en tiempo real.",
             "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/internet</code> <i>(/proxy, /proxies)</i> - Diagnóstico de conectividad a internet y proxies corporativos.",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
@@ -2258,6 +2260,43 @@ async def _run_and_send_monitoring_report(
                 logger.warning(f"Fallo envío en HTML de sedes ({e_html}). Enviando en texto plano...")
                 await update.message.reply_text(result["report_sedes"])
 
+        # Generar y enviar Captura Web en Alta Definición (Playwright)
+        arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
+        if arg_first in ("web", "full", "pantalla", "todo", "global"):
+            capture_mode = "full"
+            mode_label = "Vista Panorámica Global (3 Columnas)"
+        elif target == "servicios":
+            capture_mode = "servicios"
+            mode_label = "Servicios Activos"
+        elif target == "sedes":
+            capture_mode = "sedes"
+            mode_label = "Sedes Regionales y Equipos en Sitio"
+        elif target in ("caidas", "incidentes", "fallas"):
+            capture_mode = "caidas"
+            mode_label = "Incidentes y Servicios Caídos"
+        else:
+            capture_mode = "full"
+            mode_label = "Vista Panorámica General (3 Columnas)"
+
+        try:
+            from monitor.web_screenshot import capture_web_dashboard
+            screen_file = await capture_web_dashboard(mode=capture_mode)
+            if screen_file and screen_file.exists():
+                caption = (
+                    f"📸 <b>Captura Web en Tiempo Real</b>\n"
+                    f"🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
+                    f"📌 <i>{mode_label}</i>\n"
+                    f"🌐 <code>http://monitoreo-vs.local/</code>"
+                )
+                with open(screen_file, "rb") as photo_doc:
+                    await update.message.reply_photo(
+                        photo=photo_doc,
+                        caption=caption,
+                        parse_mode='HTML'
+                    )
+        except Exception as e_screen:
+            logger.warning(f"No se pudo generar/enviar captura web ({e_screen})")
+
         # Si está en modo depuración y fue solicitado por el Owner, adjuntar el archivo de log
         if is_debug and is_owner and result.get("log_file") and result["log_file"].exists():
             with open(result["log_file"], "rb") as doc:
@@ -2284,6 +2323,16 @@ async def cmd_reporte_servicios(update: Update, context: ContextTypes.DEFAULT_TY
 async def cmd_reporte_sedes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando para ejecutar y despachar el reporte de Sedes y Enlaces."""
     await _run_and_send_monitoring_report(update, context, target="sedes", target_name="Sedes y Equipos de Comunicación")
+
+
+async def cmd_reporte_caidas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para ejecutar y despachar el reporte de Incidentes y Caídas."""
+    await _run_and_send_monitoring_report(update, context, target="caidas", target_name="Incidentes y Servicios Caídos")
+
+
+async def cmd_captura_web(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando directo para obtener la captura web en tiempo real."""
+    await _run_and_send_monitoring_report(update, context, target="web", target_name="Vista Web en Tiempo Real")
 
 
 async def cmd_reporte_completo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -3814,7 +3863,16 @@ def main() -> None:
         "monitoreo_debug",
         "emergencia",
         "panico",
-        "contingencia"
+        "contingencia",
+        "web",
+        "pantalla",
+        "captura",
+        "dashboard",
+        "screenshot",
+        "caidas",
+        "incidentes",
+        "fallas",
+        "reporte_caidas"
     }
 
     # Asegurar existencia de copia dorada de respaldo de configuración
@@ -3878,6 +3936,8 @@ def main() -> None:
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
     application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
+    application.add_handler(CommandHandler(["reporte_caidas", "caidas", "incidentes", "fallas"], cmd_reporte_caidas))
+    application.add_handler(CommandHandler(["web", "pantalla", "captura", "dashboard", "screenshot"], cmd_captura_web))
     application.add_handler(CommandHandler(["reporte_completo", "monitoreo"], cmd_reporte_completo))
 
     # Comando de Diagnóstico de Internet y Proxies (Owner y grupos autorizados)

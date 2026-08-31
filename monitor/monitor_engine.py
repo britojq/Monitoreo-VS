@@ -145,6 +145,45 @@ async def execute_monitoring(
         pcap_path = pcap
         all_logs.append(rep_txt)
 
+    elif target_clean in ("caidas", "incidentes", "fallas"):
+        (rep_s, vars_s, logs_s, _), (rep_sd, vars_sd, logs_sd, _) = await asyncio.gather(
+            run_services_check(debug_mode=debug_mode),
+            run_sedes_check(debug_mode=debug_mode)
+        )
+        all_logs.extend(logs_s)
+        all_logs.extend(logs_sd)
+        caidas_lines = []
+        if rep_s:
+            for l in rep_s.splitlines():
+                if "❌" in l:
+                    caidas_lines.append(l)
+        if rep_sd:
+            for l in rep_sd.splitlines():
+                if "❌" in l:
+                    caidas_lines.append(l)
+
+        fecha_str, hora_str = get_formatted_datetime()
+        if caidas_lines:
+            report_servicios = (
+                f"🚨 **REPORTE DE INCIDENTES Y SERVICIOS CAÍDOS**\n"
+                f"📅 *{fecha_str} • {hora_str}*\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                + "\n".join(caidas_lines) + "\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"⚠️ *Revise la captura web adjunta o http://monitoreo-vs.local/*"
+            )
+        else:
+            report_servicios = (
+                f"✅ **SIN INCIDENTES ACTIVOS**\n"
+                f"📅 *{fecha_str} • {hora_str}*\n\n"
+                f"Todos los servicios y enlaces se encuentran operando con normalidad."
+            )
+        report_sedes = None
+
+    elif target_clean in ("web", "pantalla", "dashboard"):
+        report_servicios = None
+        report_sedes = None
+
     elif target_clean in ("limpiar", "clean", "limpieza"):
         from monitor.system_cleaner import run_system_cleanup
         rep_clean = await run_system_cleanup()
