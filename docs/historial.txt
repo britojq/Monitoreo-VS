@@ -843,7 +843,18 @@ debe alterar su código, tiempos o configuración systemd.
    - Se vació la caché de vistas compiladas de Blade (`php artisan view:clear`).
 
 --------------------------------------------------------------------------------
-61. ESTADO FINAL DE VERIFICACIÓN
+61. SEXAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE IP EN PROXYIPPORTQ (PROXY 119)
+--------------------------------------------------------------------------------
+1) Causa del Desfase entre /estatus y /servicios:
+   - El comando `/estatus` (o `/internet`) lee la lista de proxies directamente de `bot.conf`, donde el Proxy 119 tenía configurada la IP correcta `10.20.0.119:8080`.
+   - El reporte `/servicios` lee las definiciones en `monitoreo.conf` (Host Q); allí `PROXYIPPORTQ` tenía por error la dirección `10.20.23.25:8080` (una IP del segmento 23) en lugar de `10.20.0.119:8080`.
+   - Al ejecutar `/servicios`, el motor intentaba conectarse a `10.20.23.25:8080` (timeout), marcando el servicio como fallido.
+2) Corrección Aplicada:
+   - Se ajustó `PROXYIPPORTQ=10.20.0.119:8080` en `config/monitoreo.conf`.
+   - Al ejecutar `/servicios`, `Pfsense - CARABOBO (119)` responde exitosamente y se reporta como `✅ Operativo`.
+
+--------------------------------------------------------------------------------
+62. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
