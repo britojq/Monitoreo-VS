@@ -1036,7 +1036,17 @@ debe alterar su código, tiempos o configuración systemd.
    - Cada ciclo programado (cada 5 minutos) continuará acumulando exclusivamente telemetría real y fidedigna.
 
 --------------------------------------------------------------------------------
-80. ESTADO FINAL DE VERIFICACIÓN
+80. OCTOGÉSIMA INTERVENCIÓN (2026-08-31): CAPTURA PANORÁMICA WEB GLOBAL EN REPORTES DE SERVICIOS Y CRON
+--------------------------------------------------------------------------------
+1) Actualización del Motor de Reportes CLI y Cron (`monitor_engine.py`):
+   - Se añadió generación y despacho automático de la captura web panorámica en alta definición (vista de 3 columnas de `http://monitoreo-vs.local/`) en cada ejecución de `/usr/local/bin/estatus servicios` (7:30 AM y 4:00 PM).
+2) Incorporación de `send_photo` en `TelegramDispatcher`:
+   - Se implementó el método nativo `send_photo` en `TelegramDispatcher` con soporte de failover multiproxy y caption formateado en HTML.
+3) Comando Interactivo `/servicios`:
+   - Se unificó el comando `/servicios` para despachar por defecto la imagen panorámica global de 3 columnas (`mode="full"`), igual que la opción `/servicios web`.
+
+--------------------------------------------------------------------------------
+81. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
