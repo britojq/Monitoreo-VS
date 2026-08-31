@@ -903,7 +903,18 @@ debe alterar su código, tiempos o configuración systemd.
    - `/estatus`: Preservado de forma inmutable con su funcionalidad de diagnóstico original.
 
 --------------------------------------------------------------------------------
-66. ESTADO FINAL DE VERIFICACIÓN
+66. SEXAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): MÓDULO DE TELEMETRÍA Y SALUD GLOBAL EN COLUMNA 3
+--------------------------------------------------------------------------------
+1) Integración Visual:
+   - Se añadió un panel de telemetría institucional en la base de la Columna 3 (debajo de "Sedes sin Conexión").
+   - Contiene:
+     * Badge reactivo de Estado Global con LED pulsante (`OPERACIONAL` / `DEGRADADO` / `CRÍTICO`).
+     * Cuadrícula de 3 micro-tarjetas glass con contadores y porcentajes de disponibilidad: Servicios (14/18 - 77.8%), Sedes (4/5 - 80%), Proxies (4/4 - 100%).
+     * Leyenda explicativa con los umbrales de cada estado.
+     * Integración con el sistema interactivo de HUD Tooltips flotantes.
+
+--------------------------------------------------------------------------------
+67. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
