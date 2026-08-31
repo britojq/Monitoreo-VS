@@ -738,7 +738,17 @@ debe alterar su código, tiempos o configuración systemd.
    - El motor `monitor_web_sync.py` ahora reporta exactamente 19 servicios y 6 sedes activas reales, optimizando el ciclo de escaneo a 2.6 segundos.
 
 --------------------------------------------------------------------------------
-51. ESTADO FINAL DE VERIFICACIÓN
+51. QUINCUAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): AUTO-SINCRONIZACIÓN FÍSICA MONITOREO.CONF -> MYSQL
+--------------------------------------------------------------------------------
+1) Auto-Sincronización Bidireccional en Tiempo Real:
+   - Se implementó la función `sync_conf_to_db()` en `/scripts/telegram-admin-bot/monitor/monitor_web_sync.py`.
+   - Cada vez que el motor de escaneo se ejecuta (por Cron cada 5 min o manualmente con `estatus web`), lee directamente los archivos físicos `/config/monitoreo.conf` y `bot.conf`.
+   - Cualquier cambio manual en los archivos de texto (como cambiar IPs, nombres o marcar sitios como "NO CONFIGURADO") se traslada e impacta de inmediato en MySQL y en el Dashboard Web sin intervención manual.
+2) Mapa de Topología Dinámico:
+   - El mapa Leaflet ahora dibuja marcadores y líneas de enlace exclusivamente para las sedes activas reportadas en la base de datos.
+
+--------------------------------------------------------------------------------
+52. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
