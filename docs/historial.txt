@@ -814,9 +814,21 @@ debe alterar su código, tiempos o configuración systemd.
    - Tras el escaneo, los 3 proxies (`Pfsense CARABOBO 119`, `Pfsense CARABOBO 89` y `Pfsense Valle Seco 65`) responden con `HTTP 200 OK` y aparecen directamente en la columna de **Servicios Activos** en la página web.
 
 --------------------------------------------------------------------------------
-58. ESTADO FINAL DE VERIFICACIÓN
+58. QUINCUAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): MIGRACIÓN DE DOMINIO LOCAL A monitoreo-vs.local
 --------------------------------------------------------------------------------
-- Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
+1) Actualización en Sistema Operativo & Resolución Local:
+   - Se configuró `/etc/hosts` para mapear `monitoreo-vs.local` a `127.0.0.1`, `10.20.23.221` y `192.168.1.107` (preservando `testapp.local` y `localhost` como alias compatibles).
+2) Servidor Web Apache:
+   - Se actualizó el VirtualHost en `/etc/apache2/sites-available/laravel.conf` definiendo `ServerName monitoreo-vs.local` y `ServerAlias testapp.local localhost 127.0.0.1 *`.
+   - Se validó la sintaxis con `apache2ctl configtest` y se recargó el servicio `apache2`.
+3) Configuración de Aplicación Laravel:
+   - Se actualizó `APP_URL=http://monitoreo-vs.local` en `/var/www/testapp/.env` y se limpiaron las cachés del framework (`config:clear` y `cache:clear`).
+   - El portal responde con `HTTP 200 OK` en `http://monitoreo-vs.local/`.
+
+--------------------------------------------------------------------------------
+59. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+- Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
 - Conexión Telegram: Autenticado como `@IA_ValleSeco_bot` (HTTP 200 OK).
 - Tareas en segundo plano: Cron Web cada 5 min, Watchdog 10 min, y Verificador Git cada 48h.
