@@ -921,7 +921,13 @@ debe alterar su código, tiempos o configuración systemd.
    - Se limpió la caché compilada de Blade (`php artisan view:clear`).
 
 --------------------------------------------------------------------------------
-68. ESTADO FINAL DE VERIFICACIÓN
+68. SEXAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): BOTÓN DE LOGIN EN MODO SÓLO ÍCONO
+--------------------------------------------------------------------------------
+1) Simplificación Visual:
+   - Se transformó el botón de acceso de la cabecera en un botón cuadrado minimalista (`w-9 h-9`) con el ícono centrado (`lock` para invitados y `admin_panel_settings` para administradores autenticados), eliminando el texto y ahorrando espacio horizontal en la barra superior.
+
+--------------------------------------------------------------------------------
+69. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
