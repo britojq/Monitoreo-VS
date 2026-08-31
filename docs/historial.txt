@@ -783,7 +783,18 @@ debe alterar su código, tiempos o configuración systemd.
    - Funcional en las 3 columnas y 4 subsecciones al posar el mouse sobre cualquier tarjeta o badge.
 
 --------------------------------------------------------------------------------
-55. ESTADO FINAL DE VERIFICACIÓN
+55. QUINCUAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): VISTA COMPACTA Y ACORDEÓN INTERACTIVO DE SEDES
+--------------------------------------------------------------------------------
+1) Compactación de Sedes en Columna 2:
+   - Las tarjetas de sedes regionales se renderizan de forma ultra-compacta por defecto (mostrando solo el nombre principal, LED verde de estado, badge de rol y flecha interactiva).
+2) Comportamiento Hover vs Click:
+   - Al posar el mouse sobre el nombre/cabecera de la sede, se despliega la ventana emergente flotante (HUD Tooltip) con su IP, latencia, teléfonos y dirección.
+   - Al hacer clic sobre la tarjeta de la sede, se expande suavemente hacia abajo el panel con la latencia del gateway y la cuadrícula de equipos en sitio.
+3) Preservación de Tooltips en Equipos Secundarios:
+   - Al pasar el cursor sobre cada equipo secundario dentro del panel desplegado, se activa su propio HUD Tooltip técnico individual con IP, slot y latencia.
+
+--------------------------------------------------------------------------------
+56. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
