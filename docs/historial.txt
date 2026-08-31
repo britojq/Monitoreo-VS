@@ -1091,7 +1091,15 @@ debe alterar su código, tiempos o configuración systemd.
    - Se validó el polling real con `POST getUpdates` retornando `HTTP 200 OK` en todas las rutas de proxy.
 
 --------------------------------------------------------------------------------
-86. ESTADO FINAL DE VERIFICACIÓN
+86. OCTOGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): PARÁMETROS DE POLLING ROBUSTOS PARA CONEXIONES PROXY
+--------------------------------------------------------------------------------
+1) Ajuste en `run_polling` de [`bot.py`](file:///scripts/telegram-admin-bot/bot.py):
+   - Se configuró `bootstrap_retries=-1` para reintentos continuos y suaves durante la inicialización de sockets en túneles Squid.
+   - Se definió `poll_interval=1.0` y `drop_pending_updates=False` para evitar colisiones de conexión y preservar todos los mensajes enviados por los usuarios durante la conmutación.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+87. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
