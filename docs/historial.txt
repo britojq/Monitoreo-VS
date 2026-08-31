@@ -996,7 +996,19 @@ debe alterar su código, tiempos o configuración systemd.
    - Se cambió el subtítulo en `admin/services` a `"Datos del Historial de conexión"`.
 
 --------------------------------------------------------------------------------
-76. ESTADO FINAL DE VERIFICACIÓN
+76. SEPTUAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): HISTÓRICO TEMPORAL Y GRÁFICOS DE LÍNEA PARA SEDES Y ENLACES
+--------------------------------------------------------------------------------
+1) Base de Datos y Modelo:
+   - Se creó la migración y tabla `site_check_histories` con campos `monitored_site_id`, `is_up`, `latency_ms`, `devices_online`, `devices_total`, `status_message` y `checked_at` (indexado).
+   - Se creó el modelo `App\Models\SiteCheckHistory` y relación `histories()` en `MonitoredSite`.
+2) Registro de Chequeos en Escaneos Python:
+   - Se actualizó `monitor/monitor_web_sync.py` para registrar cada chequeo de enlace de sede y equipos en `site_check_histories` con política de retención de 30 días.
+3) API y Gráficos Interactivos (Chart.js):
+   - Se añadió el endpoint `/admin/sites/{site}/history` con soporte para rangos temporales (`6h`, `24h`, `7d`, `30d`) y cálculo de estadísticas clave (Disponibilidad %, Latencia Ping Media, Latencia Máxima, Equipos Promedio ON y Desconexiones).
+   - Se integró el modal de telemetría e histórico de sede en `admin/sites` con gráfico de líneas en degradado púrpura neón, puntos de desconexión en rojo, tabla de incidentes y soporte de cierre por clic exterior / tecla Escape.
+
+--------------------------------------------------------------------------------
+77. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
