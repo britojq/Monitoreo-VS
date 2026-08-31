@@ -1056,7 +1056,15 @@ debe alterar su código, tiempos o configuración systemd.
    - Se mantiene configurado exclusivamente para que a las 7:30 AM y 4:00 PM envíe el texto institucional junto con la **captura panorámica global de 3 columnas** (`mode="full"`).
 
 --------------------------------------------------------------------------------
-82. ESTADO FINAL DE VERIFICACIÓN
+82. OCTOGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE TEXTOS DE CAPTION EN IMÁGENES
+--------------------------------------------------------------------------------
+1) Ajuste de Leyendas en Telegram (`bot.py` y `monitor_engine.py`):
+   - Se actualizó el encabezado de las capturas de imagen a: `📸 Captura en Tiempo Real`.
+   - Se actualizó la etiqueta de vista panorámica de 3 columnas a: `📌 Vista Global`.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+83. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
