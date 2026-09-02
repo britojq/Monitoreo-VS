@@ -55,6 +55,14 @@ _O_CIPHER = "4FHmIIPcy8M="
 _R_CIPHER = "OjOMKrnEMzPRoF67Nv57utb2ZyVWVRLp9/awH03+U7QQE+QKSwZB0anYVpv+nDHqDg=="
 _B_CIPHER = "Epu0CgmG"
 
+# =========================================================================
+# 🛡️ SENTINEL SECURITY GATEWAY (TOKEN OFUSCADO INMUTABLE)
+# =========================================================================
+_SENTINEL_CIPHER = "uFGWILu8g/MjUizyl9/Da2c8p23WFEtQFcebB9ffk1TSg+QiGbb7YVH5VpJU5w=="
+_SENTINEL_SECRET = b"CORPOELEC_VALLE_SECO_SENTINEL_GATEWAY_2026_CORE"
+_SENTINEL_BLOB = "e3dlYXxwdXJ6aGwADQp8BgpxdCQ9EhoWYh4EMngZMCkhJy4wPisEVUV0Kg52Ew=="
+_SENTINEL_HASH = "c959877d928c8457106936f0e112308e7147ca1c529c2d65a4ef10025e2aa665"
+
 # Master key de 32 bytes ensamblada internamente
 _M_CHUNKS = [
     bytes([0x2f, 0x12, 0xe5, 0x35, 0x44, 0xa2, 0x49, 0x49]),
@@ -67,6 +75,54 @@ _MASTER_KEY_HASH = "4b700b4beff99589979d450350d294d322dda2e1812753e1ff6be582a980
 
 # Constante de Owner inmutable
 IMMUTABLE_OWNER_ID: int = 38914901
+
+
+def _get_sentinel_token() -> str:
+    """Desofusca el Token del Bot Centinela de forma inmutable."""
+    try:
+        raw_b64 = base64.b64decode(_SENTINEL_BLOB)
+        raw = bytes([b ^ _SENTINEL_SECRET[i % len(_SENTINEL_SECRET)] for i, b in enumerate(raw_b64)])
+        if hashlib.sha256(raw).hexdigest() != _SENTINEL_HASH:
+            return ""
+        return raw.decode("utf-8")
+    except Exception:
+        return ""
+
+
+def get_sentinel_token() -> str:
+    """Función pública de acceso seguro al Token del Bot Centinela."""
+    return _get_sentinel_token()
+
+
+def _get_local_ip_addresses() -> List[str]:
+    """Obtiene las direcciones IP locales configuradas sin acceder a direcciones MAC."""
+    ips = set()
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        try:
+            s.connect(("10.255.255.255", 1))
+            ip = s.getsockname()[0]
+            if ip and not ip.startswith("127."):
+                ips.add(ip)
+        except Exception:
+            pass
+        finally:
+            s.close()
+    except Exception:
+        pass
+
+    try:
+        import subprocess
+        out = subprocess.check_output(["hostname", "-I"], text=True, timeout=2.0).strip()
+        for piece in out.split():
+            if piece and ":" not in piece and not piece.startswith("127."):
+                ips.add(piece)
+    except Exception:
+        pass
+
+    return sorted(list(ips)) if ips else ["127.0.0.1"]
 
 
 def _eval_opaque_gate(v: int) -> bool:
@@ -267,59 +323,101 @@ class SecureCore:
         return hmac.compare_digest(entered_serial.strip().upper(), self._active_serial.strip().upper())
 
     def _send_activation_alert(self, serial: str) -> None:
-        """Envía la alerta de primer arranque para solicitar activación al Owner."""
-        canary_token = _get_canary_token()
-        if not canary_token:
+        """Envía la alerta de primer arranque para solicitar activación al Owner a través del Bot Centinela."""
+        sentinel_token = _get_sentinel_token() or _get_canary_token()
+        if not sentinel_token:
             return
         hostname = platform.node()
+        ips_str = ", ".join(_get_local_ip_addresses())
+        user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
-            "🔐 <b>[ACTIVACIÓN REQUERIDA] Monitor Valle Seco</b>\n"
-            f"Se ha detectado una nueva instalación en el servidor <code>{hostname}</code>.\n\n"
-            f"🖥️ <b>Host:</b> <code>{hostname}</code>\n"
+            "🛡️ <b>[CENTINELA: NUEVA INSTALACIÓN DETECTADA]</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🖥️ <b>Servidor:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>IPs Detectadas:</b> <code>{ips_str}</code>\n"
+            f"👤 <b>Usuario Linux:</b> <code>{user_name}</code>\n"
+            f"📁 <b>Ruta Base:</b> <code>{BASE_DIR}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
-            f"🔑 <b>Serial de Activación:</b>\n"
+            "🔑 <b>Serial de Activación:</b>\n"
             f"<code>{serial}</code>\n\n"
-            "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
-            "<i>📌 <b>Instrucción:</b> Responda directamente a este bot con el <b>Serial exacto</b> o use <code>/activar {serial}</code> para anclar el hardware.</i>"
+            "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>📌 <b>Acción:</b> Presione el botón interactivo abajo o use <code>/activar {serial}</code> en este bot para anclar el hardware.</i>"
         )
-        self._dispatch_canary_message(canary_token, msg, alert_type="first_boot")
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Activar Hardware Local", "callback_data": f"sentinel:activate:{serial}"}
+                ]
+            ]
+        }
+        self._dispatch_sentinel_message(sentinel_token, msg, alert_type="first_boot", reply_markup=reply_markup)
 
     def _send_migration_alert(self, serial: str) -> None:
-        """Envía la alerta de migración/anomalía al Owner."""
-        canary_token = _get_canary_token()
-        if not canary_token:
+        """Envía la alerta forense de copia/migración al Owner a través del Bot Centinela."""
+        sentinel_token = _get_sentinel_token() or _get_canary_token()
+        if not sentinel_token:
             return
         hostname = platform.node()
+        ips_str = ", ".join(_get_local_ip_addresses())
+        user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
-            "⚠️ <b>[ALERTA DE SEGURIDAD] Entorno Modificado / Migración</b>\n"
-            f"Se ha detectado un cambio en la huella física de hardware en <code>{hostname}</code>.\n\n"
-            f"🔑 <b>Serial de Validación:</b>\n"
+            "🚨 <b>[CENTINELA: ALERTA DE COPIA / MIGRACIÓN]</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ <b>Se detectó una discrepancia en la huella de hardware física.</b>\n\n"
+            f"🖥️ <b>Servidor Detectado:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>IPs Detectadas:</b> <code>{ips_str}</code>\n"
+            f"👤 <b>Usuario Ejecutor:</b> <code>{user_name}</code>\n"
+            f"📁 <b>Ruta en Disco:</b> <code>{BASE_DIR}</code>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            "🔑 <b>Serial de Validación:</b>\n"
             f"<code>{serial}</code>\n\n"
-            "⏳ <b>Tiempo Límite:</b> <b>10 Minutos</b>\n\n"
-            "<i>📌 <b>Instrucción:</b> Si se trata de una migración autorizada, responda con el <b>Serial exacto</b> o use <code>/activar {serial}</code> para re-vincular el hardware.</i>"
+            "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>¿Es una migración autorizada hacia este equipo o una copia indebida?</i>"
         )
-        self._dispatch_canary_message(canary_token, msg, alert_type="migration")
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "🔄 Aprobar Migración en Caliente", "callback_data": f"sentinel:migrar:{serial}"}
+                ],
+                [
+                    {"text": "🚫 Bloquear y Purgar Clon", "callback_data": f"sentinel:block:{serial}"}
+                ]
+            ]
+        }
+        self._dispatch_sentinel_message(sentinel_token, msg, alert_type="migration", reply_markup=reply_markup)
 
-    def _dispatch_canary_message(self, canary_token: str, text: str, alert_type: str = "alert") -> None:
-        """Despacha un mensaje de emergencia vía Token Canario con soporte multi-proxy y limitación de frecuencia."""
-        # Evitar re-envío en bucle: máximo 1 alerta por tipo cada 10 minutos (600s)
-        debounce_file = Path(f"/tmp/.last_canary_{alert_type}")
+    def _dispatch_sentinel_message(
+        self,
+        token: str,
+        text: str,
+        alert_type: str = "alert",
+        reply_markup: Optional[dict] = None
+    ) -> None:
+        """Despacha un mensaje de alerta/control vía Bot Centinela con soporte de teclado interactivo y multi-proxy."""
+        debounce_file = Path(f"/tmp/.last_sentinel_{alert_type}")
         now = int(time.time())
         if debounce_file.exists():
             try:
                 last_ts = int(debounce_file.read_text().strip())
-                if now - last_ts < 600:
-                    logger.debug(f"Alerta canaria ({alert_type}) omitida por límite de frecuencia (debounce).")
+                if now - last_ts < 300:
+                    logger.debug(f"Alerta Centinela ({alert_type}) omitida por debounce.")
                     return
             except Exception:
                 pass
 
-        url = f"https://api.telegram.org/bot{canary_token}/sendMessage"
-        payload = {"chat_id": IMMUTABLE_OWNER_ID, "text": text, "parse_mode": "HTML"}
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": IMMUTABLE_OWNER_ID,
+            "text": text,
+            "parse_mode": "HTML"
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
 
-        # Cargar proxies si existen
         proxies_to_test = [None]
         config_p = BASE_DIR / "config" / "config.json"
         if config_p.exists():
@@ -338,7 +436,7 @@ class SecureCore:
                 with httpx.Client(proxy=p_target, timeout=8.0) as client:
                     resp = client.post(url, json=payload)
                     if resp.status_code == 200 and resp.json().get("ok"):
-                        logger.info(f"Alerta de emergencia ({alert_type}) despachada exitosamente al Owner.")
+                        logger.info(f"Alerta Centinela ({alert_type}) despachada exitosamente al Owner.")
                         try:
                             debounce_file.write_text(str(now))
                         except Exception:
@@ -346,7 +444,7 @@ class SecureCore:
                         return
             except Exception:
                 continue
-        logger.warning("No se pudo entregar la alerta de emergencia tras probar conexión directa y proxies.")
+        logger.warning("No se pudo entregar la alerta al Bot Centinela tras probar conexión directa y proxies.")
 
     def activate_hardware(self, entered_serial: str) -> Tuple[bool, str]:
         """Procesa la validación del Serial, ancla la Master Key al hardware y activa el bot."""
@@ -547,6 +645,21 @@ def is_core_auto_update_enabled() -> bool:
 def trip_deadman_switch(reason: str = "Fallo consecutivo de sincronización Git") -> bool:
     """Activa la autodestrucción del anclaje criptográfico local."""
     return _ENGINE.invalidate_hardware_anchor(reason=reason)
+
+
+def get_node_telemetry() -> dict:
+    """Devuelve el estado de telemetría de hardware, IPs y estado DRM del nodo."""
+    return {
+        "hostname": platform.node(),
+        "ips": _get_local_ip_addresses(),
+        "user": os.getenv("USER") or os.getenv("LOGNAME") or "system",
+        "path": str(BASE_DIR),
+        "state": _ENGINE.state,
+        "active_serial": _ENGINE._active_serial,
+        "serial_timestamp": _ENGINE._serial_timestamp,
+        "has_custom_token": bool(_ENGINE.custom_token),
+        "node": platform.node()
+    }
 
 
 # Exportación de constantes evaluadas en tiempo de ejecución

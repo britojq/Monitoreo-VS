@@ -1134,29 +1134,41 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-91. ESTADO FINAL DE VERIFICACIÓN
+91. NONAGÉSIMA PRIMERA INTERVENCIÓN (2026-09-02): INTEGRACIÓN DEL BOT CENTINELA DEDICADO
+--------------------------------------------------------------------------------
+1) Despliegue de Arquitectura Sentinel de Seguridad y Licenciamiento:
+   - Se integró y ofuscó de forma inmutable el Token del Bot Centinela (`8871359797:AAF9YY47kbA_X6WJw4Fwhubyqgt6ewBuM9A` - `@nimda_control_bot`) en [`monitor/core_shield.py`](file:///scripts/telegram-admin-bot/monitor/core_shield.py).
+   - Se implementó el servicio autónomo [`sentinel_bot.py`](file:///scripts/telegram-admin-bot/sentinel_bot.py) y el servicio systemd `tg-sentinel-bot.service` para la gestión centralizada de autorizaciones, auditoría forense y migración en caliente (*Zero-Downtime Hot Swap*).
+   - Las alertas de primer arranque y discrepancias de hardware ahora se transmiten al Bot Centinela con telemetría de Hostname, IPs locales (sin MAC) y botones interactivos de un clic para activación, migración asistida o bloqueo de clones no autorizados.
+   - Ambos servicios (`tg-admin-bot` y `tg-sentinel-bot`) se encuentran activos, verificados y monitoreados.
+
+--------------------------------------------------------------------------------
+92. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
-- Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
-- Conexión Telegram: Autenticado como `@IA_ValleSeco_bot` (HTTP 200 OK).
+- Servicios systemd:
+  • `tg-admin-bot.service`: Active (running) - Bot de Monitoreo (@IA_ValleSeco_bot).
+  • `tg-sentinel-bot.service`: Active (running) - Bot Centinela (@nimda_control_bot).
+- Conexiones Telegram: Autenticados como `@IA_ValleSeco_bot` y `@nimda_control_bot` (HTTP 200 OK).
 - Tareas en segundo plano: Cron Web cada 5 min, Watchdog 10 min, y Verificador Git cada 48h.
-- Blindaje de Seguridad: DRM de hardware, Anti-Tamper, Token Canario, Filtro PII, Rate Limiting, Anti-Forensia, PAM Timeout 15s, Boot-Alert Fast Shutdown (congelado por Regla de Oro), SRR, Centinela de Red de 10 min, Panel de Emergencia y Portal Web Administrativo activos.
+- Blindaje de Seguridad: DRM de hardware, Anti-Tamper, Token Canario, Token Centinela Ofuscado, Filtro PII, Rate Limiting, Anti-Forensia, PAM Timeout 15s, Boot-Alert Fast Shutdown (congelado por Regla de Oro), SRR, Centinela de Red de 10 min, Panel de Emergencia y Portal Web Administrativo activos.
 
 --------------------------------------------------------------------------------
 6. GUÍA DE ADMINISTRACIÓN RÁPIDA
 --------------------------------------------------------------------------------
-Verificar estado del servicio bot:
+Verificar estado del servicio bot de monitoreo:
   sudo systemctl status tg-admin-bot
+
+Verificar estado del servicio bot centinela:
+  sudo systemctl status tg-sentinel-bot
 
 Ejecutar escaneo web manual:
   /scripts/telegram-admin-bot/estatus web
 
 Ver logs del bot en tiempo real:
   sudo journalctl -u tg-admin-bot -f
+  sudo journalctl -u tg-sentinel-bot -f
 
-Reiniciar el bot tras modificaciones:
-  sudo systemctl restart tg-admin-bot
-
-Detener el bot:
-  sudo systemctl stop tg-admin-bot
+Reiniciar los bots tras modificaciones:
+  sudo systemctl restart tg-admin-bot tg-sentinel-bot
 ================================================================================
