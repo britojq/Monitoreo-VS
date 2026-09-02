@@ -157,7 +157,8 @@
                          data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}"
                          data-tech-status="OPERATIVO (200 OK / Response)"
                          data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Verificación por socket de transporte directo.' }}"
-                         data-tech-history="{{ json_encode($serviceHistoryMap[$s->id] ?? null) }}">
+                         data-tech-id="{{ $s->id }}"
+                         data-tech-kind="service">
                         
                         <div class="flex items-center gap-2 min-w-0">
                             <!-- LED VERDE COMPACTO -->
@@ -228,7 +229,8 @@
                              data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 20 ms' }}"
                              data-tech-status="ENLACE PRINCIPAL OPERATIVO"
                              data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
-                             data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
+                             data-tech-id="{{ $site->id }}"
+                             data-tech-kind="site">
                             
                             <div class="flex items-center space-x-2 min-w-0">
                                 <div class="w-2 h-2 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
@@ -277,7 +279,8 @@
                                                  data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
                                                  data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
                                                  data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
-                                                 data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
+                                                 data-tech-id="{{ $site->id }}"
+                                                 data-tech-kind="site">
                                                 <span class="text-white truncate max-w-[85px]">{{ $dev->name }}</span>
                                                 <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
                                             </div>
@@ -331,7 +334,8 @@
                              data-tech-latency="Timeout / Sin respuesta"
                              data-tech-status="APAGADO (Host / Puerto inalcanzable)"
                              data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Sin respuesta de transporte de red.' }}"
-                             data-tech-history="{{ json_encode($serviceHistoryMap[$s->id] ?? null) }}">
+                             data-tech-id="{{ $s->id }}"
+                             data-tech-kind="service">
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -387,7 +391,8 @@
                              data-tech-latency="100% Packet Loss"
                              data-tech-status="ENLACE WAN CAÍDO"
                              data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
-                             data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
+                             data-tech-id="{{ $site->id }}"
+                             data-tech-kind="site">
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -568,12 +573,12 @@
         </div>
     </div>
 
-    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (12 HORAS) -->
+    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (24 HORAS) -->
     <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
         <div class="flex items-center justify-between mb-1">
             <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
                 <span class="material-symbols-outlined text-[12px]">ssid_chart</span>
-                Histórico (Últimas 12 Horas)
+                Histórico (Últimas 24 Horas)
             </span>
             <span id="tt-uptime-badge" class="px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40">
                 100% Up
@@ -601,6 +606,10 @@
 
 @push('scripts')
 <script>
+    // --- HISTORIAL EN MEMORIA FIJA (INMUNE AL REFRESCO DE 15 SEGUNDOS) ---
+    window.SERVICE_HISTORIES = @json($serviceHistoryMap);
+    window.SITE_HISTORIES = @json($siteHistoryMap);
+
     // --- 1. GESTIÓN DEL TOOLTIP HUD EMERGENTE AL POSAR EL MOUSE CON CHART.JS ---
     const tooltip = document.getElementById('tech-tooltip');
     const ttTitle = document.getElementById('tt-title');
@@ -624,18 +633,17 @@
 
         if (!canvas) return;
 
-        // Caso 1: Servicio totalmente caído sin telemetría (100% caídas en 12h)
-        const isCompletelyDown = !historyData || historyData.is_all_down || (historyData.latencies && historyData.latencies.every(v => v === 0));
+        const hasValidData = historyData && historyData.has_data;
 
-        if (isCompletelyDown) {
+        if (!hasValidData) {
             if (sparklineChart) {
                 sparklineChart.destroy();
                 sparklineChart = null;
             }
             canvas.style.display = 'none';
             noChartEl.style.display = 'flex';
-            noChartEl.innerHTML = '<div class="flex items-center justify-center gap-1.5 text-red-400 py-3"><span class="material-symbols-outlined text-base">cloud_off</span><span class="text-[9.5px] font-bold tracking-wide">ENLACE CAÍDO / SIN TELEMETRÍA (12H)</span></div>';
-            uptimeBadge.innerText = '0% Up (12h)';
+            noChartEl.innerHTML = '<div class="flex items-center justify-center gap-1.5 text-red-400 py-3"><span class="material-symbols-outlined text-base">cloud_off</span><span class="text-[9.5px] font-bold tracking-wide">SIN TELEMETRÍA / ENLACE FUERA DE SERVICIO</span></div>';
+            uptimeBadge.innerText = '0% Up (24h)';
             uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/50';
             statMin.innerText = '--';
             statAvg.innerText = '--';
@@ -649,42 +657,38 @@
         const labels = historyData.labels || [];
         const dataPoints = historyData.latencies || [];
         const statuses = historyData.statuses || [];
-        const uptime = historyData.uptime !== undefined ? historyData.uptime : (isUp ? 100 : 0);
-        const downCount = historyData.down_count || 0;
+        const uptime = historyData.uptime_pct !== undefined ? historyData.uptime_pct : (isUp ? 100 : 0);
+        const downCount = historyData.down_checks || 0;
 
-        // Badge de disponibilidad con conteo de caídas destacadas
         if (downCount > 0) {
             uptimeBadge.innerText = `${uptime}% Up (${downCount} Caídas)`;
             uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40 glow-red';
         } else {
-            uptimeBadge.innerText = `${uptime}% Up (12h)`;
+            uptimeBadge.innerText = `${uptime}% Up (24h)`;
             uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40';
         }
 
-        statMin.innerText = `${historyData.min || 0}ms`;
-        statAvg.innerText = `${historyData.avg || 0}ms`;
-        statMax.innerText = `${historyData.max || 0}ms`;
-
-        // Marcadores: Los puntos operativos van sin radio (línea limpia), las caídas van con punto rojo grande
-        const pointRadiuses = statuses.map(s => s === 1 ? 0 : 4.5);
-        const pointHoverRadiuses = statuses.map(s => s === 1 ? 4 : 7);
-        const pointBgColors = statuses.map(s => s === 1 ? '#00e5ff' : '#ef4444');
-        const pointBorderColors = statuses.map(s => s === 1 ? '#00e5ff' : '#ffffff');
-        const pointBorderWidths = statuses.map(s => s === 1 ? 0 : 1.5);
+        statMin.innerText = `${historyData.min_latency || 0}ms`;
+        statAvg.innerText = `${historyData.avg_latency || 0}ms`;
+        statMax.innerText = `${historyData.max_latency || 0}ms`;
 
         const ctx = canvas.getContext('2d');
-        const lineColor = isUp ? '#00e5ff' : '#ef4444';
-        const fillColor = isUp ? 'rgba(0, 229, 255, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-
-        // Escala vertical inteligente: si hay un pico anómalo (> 2.5x percentil 90), acotar el techo sugerido
-        const validLats = dataPoints.filter(v => v > 0).sort((a, b) => a - b);
-        let suggestedYMax = undefined;
-        if (validLats.length > 5) {
-            const p90 = validLats[Math.floor(validLats.length * 0.90)];
-            if (historyData.max > p90 * 2.5 && p90 > 25) {
-                suggestedYMax = Math.round(p90 * 2.2);
-            }
+        const lineColor = isUp ? '#22d3ee' : '#ef4444';
+        
+        // Degradado idéntico a admin/services
+        const gradient = ctx.createLinearGradient(0, 0, 0, 70);
+        if (isUp) {
+            gradient.addColorStop(0, 'rgba(34, 211, 238, 0.35)');
+            gradient.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+        } else {
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.35)');
+            gradient.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
         }
+
+        const pointBackgroundColors = statuses.map(s => s === 1 ? '#22d3ee' : '#ef4444');
+        const pointBorderColors = statuses.map(s => s === 1 ? '#051424' : '#fee2e2');
+        const pointRadiuses = statuses.map(s => s === 1 ? 0 : 4);
+        const pointHoverRadiuses = statuses.map(s => s === 1 ? 4 : 7);
 
         if (sparklineChart) {
             sparklineChart.destroy();
@@ -698,15 +702,15 @@
                     data: dataPoints,
                     borderColor: lineColor,
                     borderWidth: 1.5,
-                    backgroundColor: fillColor,
+                    backgroundColor: gradient,
                     fill: true,
                     tension: 0.25,
                     pointRadius: pointRadiuses,
                     pointHoverRadius: pointHoverRadiuses,
                     pointHitRadius: 10,
-                    pointBackgroundColor: pointBgColors,
+                    pointBackgroundColor: pointBackgroundColors,
                     pointBorderColor: pointBorderColors,
-                    pointBorderWidth: pointBorderWidths,
+                    pointBorderWidth: 1.2,
                 }]
             },
             options: {
@@ -743,12 +747,11 @@
                         ticks: {
                             color: '#64748b',
                             font: { size: 7.5, family: 'monospace' },
-                            maxTicksLimit: 5
+                            maxTicksLimit: 6
                         }
                     },
                     y: {
                         display: true,
-                        suggestedMax: suggestedYMax,
                         grid: { color: 'rgba(255,255,255,0.05)' },
                         ticks: {
                             color: '#64748b',
@@ -784,17 +787,16 @@
 
                 ttDetails.innerText = el.getAttribute('data-tech-details') || 'Monitoreo continuo cada 5 min.';
 
-                // Parsear e inicializar gráfico de histórico temporal
+                // Obtener historial desde la memoria JavaScript fija por ID y Tipo
+                const id = el.getAttribute('data-tech-id');
+                const kind = el.getAttribute('data-tech-kind') || 'service';
                 let hist = null;
-                try {
-                    const rawHist = el.getAttribute('data-tech-history');
-                    if (rawHist) hist = JSON.parse(rawHist);
-                } catch(err) {
-                    hist = null;
+                if (id) {
+                    hist = (kind === 'site' ? window.SITE_HISTORIES[id] : window.SERVICE_HISTORIES[id]) || null;
                 }
                 renderSparklineChart(hist, isItemUp);
 
-                tooltip.classList.add('show');
+                tooltip.classList.add('show');                tooltip.classList.add('show');
                 positionTooltip(e);
             });
 
@@ -925,7 +927,9 @@
                              data-tech-protocol="${protocol}"
                              data-tech-latency="${latencyStr}"
                              data-tech-status="OPERATIVO (200 OK / Response)"
-                             data-tech-details="${details}">
+                             data-tech-details="${details}"
+                             data-tech-id="${s.id}"
+                             data-tech-kind="service">
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
                                 <span class="text-[11px] font-semibold text-white group-hover:text-emerald-300 transition-colors truncate">
@@ -980,7 +984,9 @@
                                                  data-tech-protocol="ICMP Echo Ping"
                                                  data-tech-latency="${dev.is_up ? '< 10 ms' : '--'}"
                                                  data-tech-status="${dev.is_up ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)'}"
-                                                 data-tech-details="Dispositivo interno vinculado a la red local de ${site.name}.">
+                                                 data-tech-details="Dispositivo interno vinculado a la red local de ${site.name}."
+                                                 data-tech-id="${site.id}"
+                                                 data-tech-kind="site">
                                                 <span class="text-white truncate max-w-[85px]">${dev.name}</span>
                                                 <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dev.is_up ? 'bg-emerald-400 glow-green' : 'bg-red-500'}"></span>
                                             </div>
@@ -1001,7 +1007,9 @@
                                  data-tech-protocol="Enlace de Transporte WAN"
                                  data-tech-latency="${latencyStr}"
                                  data-tech-status="ONLINE (Conectado / Operativo)"
-                                 data-tech-details="${details}">
+                                 data-tech-details="${details}"
+                                 data-tech-id="${site.id}"
+                                 data-tech-kind="site">
                                 <div class="flex items-center gap-2 min-w-0">
                                     <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
                                     <div class="min-w-0">
@@ -1069,7 +1077,9 @@
                              data-tech-protocol="${protocol}"
                              data-tech-latency="Timeout / Sin respuesta"
                              data-tech-status="APAGADO (Host / Puerto inalcanzable)"
-                             data-tech-details="${details}">
+                             data-tech-details="${details}"
+                             data-tech-id="${s.id}"
+                             data-tech-kind="service">
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
                                 <span class="text-[11px] font-semibold text-red-200 group-hover:text-red-100 transition-colors truncate">
@@ -1121,7 +1131,9 @@
                              data-tech-protocol="Enlace de Transporte WAN"
                              data-tech-latency="100% Packet Loss"
                              data-tech-status="ENLACE WAN CAÍDO"
-                             data-tech-details="${details}">
+                             data-tech-details="${details}"
+                             data-tech-id="${site.id}"
+                             data-tech-kind="site">
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
                                 <span class="text-[11px] font-semibold text-red-200 group-hover:text-red-100 transition-colors truncate">

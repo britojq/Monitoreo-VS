@@ -53,85 +53,86 @@ class PublicMonitoringController extends Controller
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotData = $latestSnapshot ? $latestSnapshot->payload_json : null;
 
-        // Cargar últimos 144 chequeos por servicio (12 horas completas a intervalos de 5 min)
+        // Cargar historial de 24h para servicios (exactamente igual que AdminServiceController)
         $serviceHistories = \App\Models\ServiceCheckHistory::whereIn('monitored_service_id', $services->pluck('id'))
-            ->where('checked_at', '>=', now()->subHours(12))
-            ->orderBy('id', 'desc')
+            ->where('checked_at', '>=', now()->subHours(24))
+            ->orderBy('checked_at', 'asc')
             ->get()
             ->groupBy('monitored_service_id');
 
         $serviceHistoryMap = [];
         foreach ($services as $s) {
-            $rows = ($serviceHistories->get($s->id) ?? collect())->take(144)->reverse()->values();
-            if ($rows->isEmpty()) {
-                $serviceHistoryMap[$s->id] = null;
-            } else {
-                $latencies = $rows->pluck('latency_ms')->map(fn($v) => round((float)$v, 1))->toArray();
-                $labels = $rows->map(fn($r) => $r->checked_at ? $r->checked_at->format('H:i') : '')->toArray();
-                $ups = $rows->pluck('is_up')->map(fn($v) => (bool)$v)->toArray();
-                $validLats = array_filter($latencies, fn($v) => $v > 0);
-                $avg = count($validLats) > 0 ? round(array_sum($validLats) / count($validLats), 1) : 0;
-                $min = count($validLats) > 0 ? min($validLats) : 0;
-                $max = count($validLats) > 0 ? max($validLats) : 0;
-                $uptime = count($ups) > 0 ? round((count(array_filter($ups)) / count($ups)) * 100) : 100;
+            $records = $serviceHistories->get($s->id) ?? collect();
+            $totalChecks = $records->count();
+            $upRecords = $records->where('is_up', true);
+            $upChecks = $upRecords->count();
+            $downChecks = $totalChecks - $upChecks;
+            $uptimePct = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 1) : 0.0;
+            $avgLatency = $upRecords->count() > 0 ? round($upRecords->avg('latency_ms'), 1) : 0.0;
+            $maxLatency = $upRecords->count() > 0 ? round($upRecords->max('latency_ms'), 1) : 0.0;
+            $minLatency = $upRecords->count() > 0 ? round($upRecords->min('latency_ms'), 1) : 0.0;
 
-                $statuses = array_map(fn($u) => $u ? 1 : 0, $ups);
-                $downCount = count(array_filter($ups, fn($u) => !$u));
-                $isAllDown = empty(array_filter($ups));
-
-                $serviceHistoryMap[$s->id] = [
-                    'labels' => $labels,
-                    'latencies' => $latencies,
-                    'ups' => $ups,
-                    'statuses' => $statuses,
-                    'down_count' => $downCount,
-                    'is_all_down' => $isAllDown,
-                    'avg' => $avg,
-                    'min' => $min,
-                    'max' => $max,
-                    'uptime' => $uptime
-                ];
+            $labels = [];
+            $latencies = [];
+            $statuses = [];
+            foreach ($records as $r) {
+                $labels[] = $r->checked_at ? $r->checked_at->format('H:i') : '';
+                $latencies[] = $r->is_up ? round((float)$r->latency_ms, 1) : 0.0;
+                $statuses[] = $r->is_up ? 1 : 0;
             }
+
+            $serviceHistoryMap[$s->id] = [
+                'labels' => $labels,
+                'latencies' => $latencies,
+                'statuses' => $statuses,
+                'uptime_pct' => $uptimePct,
+                'down_checks' => $downChecks,
+                'avg_latency' => $avgLatency,
+                'min_latency' => $minLatency,
+                'max_latency' => $maxLatency,
+                'has_data' => $totalChecks > 0 && $upChecks > 0,
+            ];
         }
 
-        // Cargar últimos 144 chequeos por sede (12 horas completas a intervalos de 5 min)
+        // Cargar historial de 24h para sedes (exactamente igual que AdminServiceController)
         $siteHistories = \App\Models\SiteCheckHistory::whereIn('monitored_site_id', $sites->pluck('id'))
-            ->where('checked_at', '>=', now()->subHours(12))
-            ->orderBy('id', 'desc')
+            ->where('checked_at', '>=', now()->subHours(24))
+            ->orderBy('checked_at', 'asc')
             ->get()
             ->groupBy('monitored_site_id');
 
         $siteHistoryMap = [];
         foreach ($sites as $st) {
-            $rows = ($siteHistories->get($st->id) ?? collect())->take(144)->reverse()->values();
-            if ($rows->isEmpty()) {
-                $siteHistoryMap[$st->id] = null;
-            } else {
-                $latencies = $rows->pluck('latency_ms')->map(fn($v) => round((float)$v, 1))->toArray();
-                $labels = $rows->map(fn($r) => $r->checked_at ? $r->checked_at->format('H:i') : '')->toArray();
-                $ups = $rows->pluck('is_up')->map(fn($v) => (bool)$v)->toArray();
-                $validLats = array_filter($latencies, fn($v) => $v > 0);
-                $avg = count($validLats) > 0 ? round(array_sum($validLats) / count($validLats), 1) : 0;
-                $min = count($validLats) > 0 ? min($validLats) : 0;
-                $max = count($validLats) > 0 ? max($validLats) : 0;
-                $uptime = count($ups) > 0 ? round((count(array_filter($ups)) / count($ups)) * 100) : 100;
-                $statuses = array_map(fn($u) => $u ? 1 : 0, $ups);
-                $downCount = count(array_filter($ups, fn($u) => !$u));
-                $isAllDown = empty(array_filter($ups));
+            $records = $siteHistories->get($st->id) ?? collect();
+            $totalChecks = $records->count();
+            $upRecords = $records->where('is_up', true);
+            $upChecks = $upRecords->count();
+            $downChecks = $totalChecks - $upChecks;
+            $uptimePct = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 1) : 0.0;
+            $avgLatency = $upRecords->count() > 0 ? round($upRecords->avg('latency_ms'), 1) : 0.0;
+            $maxLatency = $upRecords->count() > 0 ? round($upRecords->max('latency_ms'), 1) : 0.0;
+            $minLatency = $upRecords->count() > 0 ? round($upRecords->min('latency_ms'), 1) : 0.0;
 
-                $siteHistoryMap[$st->id] = [
-                    'labels' => $labels,
-                    'latencies' => $latencies,
-                    'ups' => $ups,
-                    'statuses' => $statuses,
-                    'down_count' => $downCount,
-                    'is_all_down' => $isAllDown,
-                    'avg' => $avg,
-                    'min' => $min,
-                    'max' => $max,
-                    'uptime' => $uptime
-                ];
+            $labels = [];
+            $latencies = [];
+            $statuses = [];
+            foreach ($records as $r) {
+                $labels[] = $r->checked_at ? $r->checked_at->format('H:i') : '';
+                $latencies[] = $r->is_up ? round((float)$r->latency_ms, 1) : 0.0;
+                $statuses[] = $r->is_up ? 1 : 0;
             }
+
+            $siteHistoryMap[$st->id] = [
+                'labels' => $labels,
+                'latencies' => $latencies,
+                'statuses' => $statuses,
+                'uptime_pct' => $uptimePct,
+                'down_checks' => $downChecks,
+                'avg_latency' => $avgLatency,
+                'min_latency' => $minLatency,
+                'max_latency' => $maxLatency,
+                'has_data' => $totalChecks > 0 && $upChecks > 0,
+            ];
         }
 
         return view('public.index', compact('services', 'sites', 'proxies', 'latestSnapshot', 'snapshotData', 'serviceHistoryMap', 'siteHistoryMap'));
