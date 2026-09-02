@@ -787,16 +787,24 @@
 
                 ttDetails.innerText = el.getAttribute('data-tech-details') || 'Monitoreo continuo cada 5 min.';
 
-                // Obtener historial desde la memoria JavaScript fija por ID y Tipo
+                const chartContainer = document.getElementById('tt-chart-container');
                 const id = el.getAttribute('data-tech-id');
-                const kind = el.getAttribute('data-tech-kind') || 'service';
-                let hist = null;
-                if (id) {
-                    hist = (kind === 'site' ? window.SITE_HISTORIES[id] : window.SERVICE_HISTORIES[id]) || null;
-                }
-                renderSparklineChart(hist, isItemUp);
+                const kind = el.getAttribute('data-tech-kind');
 
-                tooltip.classList.add('show');                tooltip.classList.add('show');
+                // Si no tiene data-tech-id (tarjetas de resumen global/telemetría), ocultar el gráfico
+                if (!id || !kind) {
+                    if (chartContainer) chartContainer.style.display = 'none';
+                    if (sparklineChart) {
+                        sparklineChart.destroy();
+                        sparklineChart = null;
+                    }
+                } else {
+                    if (chartContainer) chartContainer.style.display = 'block';
+                    const hist = (kind === 'site' ? window.SITE_HISTORIES[id] : window.SERVICE_HISTORIES[id]) || null;
+                    renderSparklineChart(hist, isItemUp);
+                }
+
+                tooltip.classList.add('show');
                 positionTooltip(e);
             });
 
