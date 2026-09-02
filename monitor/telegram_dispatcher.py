@@ -133,3 +133,36 @@ class TelegramDispatcher:
                     return False, f"HTTP {r.status_code}: {r.text}"
         except Exception as e:
             return False, f"Error al enviar documento: {e}"
+
+    async def send_photo(
+        self,
+        chat_id: int | str,
+        photo_path: str | Path,
+        caption: Optional[str] = None
+    ) -> Tuple[bool, str]:
+        """Envía una imagen/captura de pantalla en alta definición a Telegram."""
+        if not self.token:
+            return False, "Token de Telegram no configurado"
+
+        photo_p = Path(photo_path)
+        if not photo_p.exists():
+            return False, f"Imagen no encontrada: {photo_p}"
+
+        url = f"https://api.telegram.org/bot{self.token}/sendPhoto"
+        data = {"chat_id": str(chat_id)}
+        if caption:
+            data["caption"] = caption
+            data["parse_mode"] = "HTML"
+
+        client = await self.get_active_client(timeout=30.0)
+        try:
+            async with client:
+                with open(photo_p, "rb") as f:
+                    files = {"photo": (photo_p.name, f, "image/png")}
+                    r = await client.post(url, data=data, files=files)
+                    if r.status_code == 200 and r.json().get("ok"):
+                        return True, "Foto enviada exitosamente"
+                    return False, f"HTTP {r.status_code}: {r.text}"
+        except Exception as e:
+            return False, f"Error al enviar foto: {e}"
+

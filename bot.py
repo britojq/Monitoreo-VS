@@ -11,6 +11,7 @@
 """
 
 import os
+import sys
 import re
 import time
 import json
@@ -406,6 +407,7 @@ async def async_evaluate_best_connection(bot_token: str) -> tuple[str | None, st
 
 async def trigger_connection_failover(reason: str = "Aviso de red") -> None:
     """Evalúa rutas y reinicia el proceso del bot de forma limpia si la conexión actual falló."""
+    global _CONSECUTIVE_NETWORK_ERRORS, _LAST_SUCCESSFUL_POLL_TIME
     if _FAILOVER_LOCK.locked():
         return
     async with _FAILOVER_LOCK:
@@ -415,8 +417,10 @@ async def trigger_connection_failover(reason: str = "Aviso de red") -> None:
             if best_url != ACTIVE_PROXY_URL or best_label != ACTIVE_CONNECTION_LABEL:
                 restart_bot_process(f"Conmutación a ruta operativa [{best_label}] debido a: {reason}")
             else:
-                # La conexión actual supuestamente era la misma pero el polling se atascó
-                restart_bot_process(f"Reinicio preventivo de sockets de red debido a: {reason}")
+                # La conexión actual sigue siendo la mejor y está operativa
+                logger.info(f"✅ Ruta actual [{best_label}] verificada y operativa. Reseteando contadores de error.")
+                _CONSECUTIVE_NETWORK_ERRORS = 0
+                _LAST_SUCCESSFUL_POLL_TIME = time.time()
         else:
             logger.warning(f"⚠️ Ninguna ruta de internet o proxy responde ({reason}). Esperando próximo ciclo...")
 
@@ -457,6 +461,7 @@ async def runtime_connection_watchdog(app: Application) -> None:
                     if r.status_code == 200 and r.json().get("ok"):
                         is_current_alive = True
                         _LAST_SUCCESSFUL_POLL_TIME = time.time()
+                        _CONSECUTIVE_NETWORK_ERRORS = 0
             except Exception:
                 is_current_alive = False
 
@@ -2264,7 +2269,7 @@ async def _run_and_send_monitoring_report(
         arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
         if arg_first in ("web", "full", "pantalla", "todo", "global"):
             capture_mode = "full"
-            mode_label = "Vista Panorámica Global (3 Columnas)"
+            mode_label = "Vista Global"
         elif target == "servicios":
             capture_mode = "servicios"
             mode_label = "Servicios Activos"
@@ -2276,17 +2281,16 @@ async def _run_and_send_monitoring_report(
             mode_label = "Incidentes y Servicios Caídos"
         else:
             capture_mode = "full"
-            mode_label = "Vista Panorámica General (3 Columnas)"
+            mode_label = "Vista Global"
 
         try:
             from monitor.web_screenshot import capture_web_dashboard
             screen_file = await capture_web_dashboard(mode=capture_mode)
             if screen_file and screen_file.exists():
                 caption = (
-                    f"📸 <b>Captura Web en Tiempo Real</b>\n"
+                    f"📸 <b>Captura en Tiempo Real</b>\n"
                     f"🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
-                    f"📌 <i>{mode_label}</i>\n"
-                    f"🌐 <code>http://monitoreo-vs.local/</code>"
+                    f"📌 <i>{mode_label}</i>"
                 )
                 with open(screen_file, "rb") as photo_doc:
                     await update.message.reply_photo(
@@ -3548,6 +3552,64 @@ async def cmd_emergencia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await safe_reply_html(update.message, text, reply_markup=reply_markup)
 
 
+async def cmd_reinicia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Comando exclusivo para el Owner: Ejecuta el reinicio completo del sistema operativo (sudo reboot).
+    El mensaje de confirmación de reinicio se envía ÚNICA Y EXCLUSIVAMENTE al chat privado del Owner.
+    """
+    user = update.effective_user
+    if not user or user.id != IMMUTABLE_OWNER_ID:
+        logger.warning(f"Intento NO AUTORIZADO de ejecutar /reinicia por usuario: {user.id if user else 'desconocido'}")
+        if update.message and update.effective_chat and update.effective_chat.type == "private":
+            await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    logger.critical(f"🛑 INSTRUCCIÓN DE REINICIO DEL SERVIDOR (/reinicia) RECIBIDA POR EL OWNER (ID: {user.id})")
+
+    # Si se ejecutó desde un grupo, borrar el comando del grupo para mayor discreción
+    if update.message and update.effective_chat and update.effective_chat.type in ("group", "supergroup"):
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+
+    # Enviar mensaje de confirmación ÚNICA Y EXCLUSIVAMENTE al chat del Owner
+    msg_owner = (
+        "🔄 <b>REINICIO DEL SERVIDOR EN PROGRESO</b>\n"
+        "━━━━━━━━━━━━\n"
+        "⚠️ <b>Instrucción recibida:</b> <code>/reinicia</code>\n\n"
+        "💾 <i>Sincronizando buffers de disco (sync)...</i>\n"
+        "⏳ <i>Ejecutando reinicio del sistema (<code>sudo reboot</code>) en 2 segundos...</i>\n"
+        "━━━━━━━━━━━━\n"
+        "👋 <i>El bot y todos los servicios se reactivarán automáticamente tras el arranque.</i>"
+    )
+
+    try:
+        await context.bot.send_message(
+            chat_id=IMMUTABLE_OWNER_ID,
+            text=msg_owner,
+            parse_mode='HTML'
+        )
+    except Exception as e_send:
+        logger.error(f"Error enviando notificación de reinicio al Owner: {e_send}")
+        if update.message and update.effective_chat and update.effective_chat.type == "private":
+            try:
+                await safe_reply_html(update.message, msg_owner)
+            except Exception:
+                pass
+
+    # Tarea asíncrona para permitir que el mensaje de Telegram se transmita antes del apagado
+    async def _execute_system_reboot():
+        await asyncio.sleep(2.0)
+        try:
+            subprocess.run(["sync"], check=False)
+            subprocess.run(["sudo", "reboot"], check=False)
+        except Exception as err:
+            logger.error(f"Error al ejecutar sudo reboot: {err}")
+
+    asyncio.create_task(_execute_system_reboot())
+
+
 async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja las acciones interactivas del panel de emergencia del Owner."""
     query = update.callback_query
@@ -3694,12 +3756,12 @@ async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) 
     if isinstance(err, (telegram.error.NetworkError, telegram.error.TimedOut, httpx.NetworkError, httpx.TimeoutException)):
         _CONSECUTIVE_NETWORK_ERRORS += 1
         logger.warning(f"Aviso de red en polling Telegram (fallo #{_CONSECUTIVE_NETWORK_ERRORS}): {err}")
-        # Si acumula 3 fallos consecutivos en polling, esperar 12s para descartar micro-cortes y conmutar
-        if _CONSECUTIVE_NETWORK_ERRORS >= 3:
+        # Solo activar conmutación si hay fallos persistentes sostenidos (mínimo 8 fallos seguidos)
+        if _CONSECUTIVE_NETWORK_ERRORS >= 8:
             async def _delayed_failover():
-                await asyncio.sleep(12)
-                if _CONSECUTIVE_NETWORK_ERRORS >= 3:
-                    await trigger_connection_failover(reason=f"3 fallos consecutivos en polling ({err})")
+                await asyncio.sleep(15)
+                if _CONSECUTIVE_NETWORK_ERRORS >= 8:
+                    await trigger_connection_failover(reason=f"8 fallos consecutivos en polling ({err})")
             asyncio.create_task(_delayed_failover())
     else:
         logger.error(f"Excepción en bot handler: {err}", exc_info=err)
@@ -3718,13 +3780,21 @@ def main() -> None:
     if CONFIG.get("auto_proxy_failover", True):
         active_proxy = select_working_connection(bot_token)
 
-    # Configurar cliente HTTP con timeouts optimizados y proxy si corresponde
+    # Configurar clientes HTTP con timeouts optimizados y proxy para API general y polling
     request = HTTPXRequest(
         connection_pool_size=256,
-        connect_timeout=10.0,
-        read_timeout=30.0,
-        write_timeout=30.0,
-        pool_timeout=5.0,
+        connect_timeout=15.0,
+        read_timeout=35.0,
+        write_timeout=35.0,
+        pool_timeout=10.0,
+        proxy=active_proxy
+    )
+    get_updates_request = HTTPXRequest(
+        connection_pool_size=1,
+        connect_timeout=15.0,
+        read_timeout=35.0,
+        write_timeout=35.0,
+        pool_timeout=10.0,
         proxy=active_proxy
     )
 
@@ -3780,6 +3850,7 @@ def main() -> None:
         Application.builder()
         .token(bot_token)
         .request(request)
+        .get_updates_request(get_updates_request)
         .post_init(on_post_init)
         .build()
     )
@@ -3872,7 +3943,9 @@ def main() -> None:
         "caidas",
         "incidentes",
         "fallas",
-        "reporte_caidas"
+        "reporte_caidas",
+        "reinicia",
+        "reboot"
     }
 
     # Asegurar existencia de copia dorada de respaldo de configuración
@@ -3933,6 +4006,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)
     application.add_handler(CommandHandler(["mensaje", "broadcast", "difusion", "anuncio", "comunicado"], cmd_broadcast_mensaje))
 
+    # Comando exclusivo para que el Owner reinicie el servidor (sudo reboot)
+    application.add_handler(CommandHandler(["reinicia", "reboot"], cmd_reinicia))
+
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
     application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
@@ -3977,7 +4053,13 @@ def main() -> None:
     # Comandos desconocidos
     application.add_handler(MessageHandler(filters.COMMAND, unknown_cmd))
 
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        bootstrap_retries=-1,
+        poll_interval=1.0,
+        timeout=10,
+        drop_pending_updates=False
+    )
 
 
 if __name__ == "__main__":

@@ -170,7 +170,7 @@ async def execute_monitoring(
                 f"━━━━━━━━━━━━━━━━━━━━\n"
                 + "\n".join(caidas_lines) + "\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"⚠️ *Revise la captura web adjunta o http://monitoreo-vs.local/*"
+                f"⚠️ *Revise la captura web adjunta.*"
             )
         else:
             report_servicios = (
@@ -201,6 +201,15 @@ async def execute_monitoring(
     elapsed_time = round(time.perf_counter() - t0, 2)
     log_file_path = write_consolidated_log(all_logs)
 
+    # Generar captura web panorámica (equivalente a la opción '/servicios web')
+    screenshot_file: Optional[Path] = None
+    if target_clean in ("servicios", "sedes", "completo", "monitoreo", "caidas", "incidentes", "fallas"):
+        try:
+            from monitor.web_screenshot import capture_web_dashboard
+            screenshot_file = await capture_web_dashboard(mode="full")
+        except Exception as e_sc:
+            logger.warning(f"No se pudo generar captura web panorámica ({e_sc})")
+
     try:
         LOCK_FILE.unlink(missing_ok=True)
     except Exception:
@@ -212,6 +221,7 @@ async def execute_monitoring(
         "report_servicios": report_servicios,
         "report_sedes": report_sedes,
         "report_network": report_network,
+        "screenshot_file": screenshot_file,
         "pcap_file": pcap_path,
         "log_file": log_file_path,
         "elapsed_seconds": elapsed_time,
@@ -252,6 +262,10 @@ def main():
         print(result["report_network"])
         print("-" * 65)
 
+    if result.get("screenshot_file"):
+        print(f"📸 Captura Web Panorámica generada en: {result['screenshot_file']}")
+        print("-" * 65)
+
     print(f"📁 Log consolidado guardado en: {result['log_file']}")
     print(f"⏱️ Tiempo de ejecución: {result['elapsed_seconds']}s")
     print("=" * 65)
@@ -269,6 +283,13 @@ def main():
                 asyncio.run(dispatcher.send_text(chat, result["report_sedes"]))
             if result.get("report_network"):
                 asyncio.run(dispatcher.send_text(chat, result["report_network"]))
+            if result.get("screenshot_file") and Path(result["screenshot_file"]).exists():
+                caption = (
+                    "📸 <b>Captura en Tiempo Real</b>\n"
+                    "🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
+                    "📌 <i>Vista Global</i>"
+                )
+                asyncio.run(dispatcher.send_photo(chat, result["screenshot_file"], caption=caption))
             if result.get("pcap_file") and Path(result["pcap_file"]).exists():
                 asyncio.run(dispatcher.send_document(chat, Path(result["pcap_file"]), caption="Captura de paquetes de red"))
             if args.debug and result["log_file"].exists():
@@ -279,3 +300,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

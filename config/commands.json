@@ -90,6 +90,13 @@
       "reply_header": "🌐 <b>Iniciando diagnóstico de internet y proxies...</b>",
       "reply_footer": "✅ Diagnóstico de internet finalizado.",
       "show_output": false
+    },
+    "reinicia": {
+      "description": "Reiniciar el servidor host (Exclusivo Owner)",
+      "help_text": "ℹ️ <b>Ayuda del comando /reinicia:</b>\n\nEste comando ejecuta el reinicio completo del sistema operativo en el servidor host (<code>sudo reboot</code>). Solo puede ser invocado por el Administrador Propietario (Owner).",
+      "reply_header": "🔄 <b>Iniciando reinicio del servidor...</b>",
+      "reply_footer": "✅ Instrucción de reinicio enviada.",
+      "show_output": false
     }
   }
 }
