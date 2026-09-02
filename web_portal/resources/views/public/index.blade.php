@@ -568,12 +568,12 @@
         </div>
     </div>
 
-    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD -->
+    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (12 HORAS) -->
     <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
         <div class="flex items-center justify-between mb-1">
             <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
                 <span class="material-symbols-outlined text-[12px]">ssid_chart</span>
-                Histórico de Latencia & Disponibilidad
+                Histórico (Últimas 12 Horas)
             </span>
             <span id="tt-uptime-badge" class="px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40">
                 100% Up
@@ -644,7 +644,7 @@
         const dataPoints = historyData.latencies || [];
         const uptime = historyData.uptime !== undefined ? historyData.uptime : (isUp ? 100 : 0);
 
-        uptimeBadge.innerText = `${uptime}% Up`;
+        uptimeBadge.innerText = `${uptime}% Up (12h)`;
         uptimeBadge.className = uptime >= 90 
             ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
             : (uptime >= 70 
@@ -673,9 +673,10 @@
                     borderWidth: 1.5,
                     backgroundColor: fillColor,
                     fill: true,
-                    tension: 0.35,
-                    pointRadius: 2,
+                    tension: 0.25,
+                    pointRadius: 0,
                     pointHoverRadius: 4,
+                    pointHitRadius: 8,
                     pointBackgroundColor: lineColor,
                 }]
             },
@@ -683,17 +684,20 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         enabled: true,
-                        mode: 'index',
-                        intersect: false,
                         displayColors: false,
-                        padding: 3,
+                        padding: 4,
                         bodyFont: { size: 9, family: 'monospace' },
                         callbacks: {
-                            label: (c) => `${c.parsed.y} ms`
+                            title: (items) => items.length ? `Hora: ${items[0].label}` : '',
+                            label: (c) => `Latencia: ${c.parsed.y} ms`
                         }
                     }
                 },
@@ -704,7 +708,7 @@
                         ticks: {
                             color: '#64748b',
                             font: { size: 7.5, family: 'monospace' },
-                            maxTicksLimit: 4
+                            maxTicksLimit: 5
                         }
                     },
                     y: {

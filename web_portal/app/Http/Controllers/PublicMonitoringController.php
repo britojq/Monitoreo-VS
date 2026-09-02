@@ -53,7 +53,7 @@ class PublicMonitoringController extends Controller
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotData = $latestSnapshot ? $latestSnapshot->payload_json : null;
 
-        // Cargar últimos 12 chequeos por servicio para gráficos en hover
+        // Cargar últimos 144 chequeos por servicio (12 horas completas a intervalos de 5 min)
         $serviceHistories = \App\Models\ServiceCheckHistory::whereIn('monitored_service_id', $services->pluck('id'))
             ->where('checked_at', '>=', now()->subHours(12))
             ->orderBy('id', 'desc')
@@ -62,7 +62,7 @@ class PublicMonitoringController extends Controller
 
         $serviceHistoryMap = [];
         foreach ($services as $s) {
-            $rows = ($serviceHistories->get($s->id) ?? collect())->take(12)->reverse()->values();
+            $rows = ($serviceHistories->get($s->id) ?? collect())->take(144)->reverse()->values();
             if ($rows->isEmpty()) {
                 $serviceHistoryMap[$s->id] = null;
             } else {
@@ -87,7 +87,7 @@ class PublicMonitoringController extends Controller
             }
         }
 
-        // Cargar últimos 12 chequeos por sede para gráficos en hover
+        // Cargar últimos 144 chequeos por sede (12 horas completas a intervalos de 5 min)
         $siteHistories = \App\Models\SiteCheckHistory::whereIn('monitored_site_id', $sites->pluck('id'))
             ->where('checked_at', '>=', now()->subHours(12))
             ->orderBy('id', 'desc')
@@ -96,7 +96,7 @@ class PublicMonitoringController extends Controller
 
         $siteHistoryMap = [];
         foreach ($sites as $st) {
-            $rows = ($siteHistories->get($st->id) ?? collect())->take(12)->reverse()->values();
+            $rows = ($siteHistories->get($st->id) ?? collect())->take(144)->reverse()->values();
             if ($rows->isEmpty()) {
                 $siteHistoryMap[$st->id] = null;
             } else {
