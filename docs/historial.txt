@@ -1162,9 +1162,27 @@ debe alterar su código, tiempos o configuración systemd.
    - Se verificaron las respuestas HTTP 200 OK en `http://monitoreo-vs.local/`, `http://localhost/` y la generación exitosa de capturas con Playwright.
 
 --------------------------------------------------------------------------------
-94. ESTADO FINAL DE VERIFICACIÓN
+94. NONAGÉSIMA CUARTA INTERVENCIÓN (2026-09-02): MIGRACIÓN A MONITOREO_VS, WEB_PORTAL EN GIT E INSTALADOR UNIFICADO
+--------------------------------------------------------------------------------
+1) Eliminación de 'testapp' y Migración a Base de Datos Corporativa 'monitoreo_vs':
+   - Se creó la base de datos `monitoreo_vs` y el usuario `monitoreo_user` con contraseña fuerte de alta entropía.
+   - Se transfirieron todas las tablas y datos desde `testapp` a `monitoreo_vs`.
+   - Se purgó por completo la base de datos y usuario antiguos `testapp`.
+   - Se actualizaron las credenciales en `/var/www/monitoreo/.env` y [`monitor/monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py).
+   - Se exportó la plantilla inicial limpia en [`database/schema_monitoreo.sql`](file:///scripts/telegram-admin-bot/database/schema_monitoreo.sql) (38 KB).
+
+2) Integración del Portal Web en el Repositorio Git:
+   - Se sincronizó la aplicación Laravel en `web_portal/` excluyendo dependencias pesadas (`vendor/`, `node_modules/`, cachés y logs) para mantener el repositorio ligero (2.5 MB).
+   - Se añadieron reglas de exclusión en `.gitignore` y plantilla `.env.example`.
+
+3) Instalador Maestro Unificado (0 a 100 en un comando):
+   - Se reestructuró por completo [`installer/install.sh`](file:///scripts/telegram-admin-bot/installer/install.sh) para desplegar desatendidamente la pila LAMP (Apache, MariaDB, PHP 8.2+), la base de datos `monitoreo_vs`, el portal web en `/var/www/monitoreo`, las capturas con Playwright Chromium, Ollama, CLI globales, notificadores `boot-alert`, alertas SSH por PAM y los servicios de ambos bots (`tg-admin-bot` y `tg-sentinel-bot`).
+
+--------------------------------------------------------------------------------
+95. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
+- Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).
 - Servicios systemd:
   • `tg-admin-bot.service`: Active (running) - Bot de Monitoreo (@IA_ValleSeco_bot).
   • `tg-sentinel-bot.service`: Active (running) - Bot Centinela (@nimda_control_bot).

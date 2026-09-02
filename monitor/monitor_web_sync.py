@@ -51,9 +51,9 @@ def load_env():
     env_vars = {
         "DB_HOST": "127.0.0.1",
         "DB_PORT": "3306",
-        "DB_DATABASE": "testapp",
-        "DB_USERNAME": "testapp",
-        "DB_PASSWORD": "12345678",
+        "DB_DATABASE": "monitoreo_vs",
+        "DB_USERNAME": "monitoreo_user",
+        "DB_PASSWORD": "VsMonit#2026!SecureKey",
     }
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
@@ -69,9 +69,9 @@ def get_db_connection():
     return pymysql.connect(
         host=ENV.get("DB_HOST", "127.0.0.1"),
         port=int(ENV.get("DB_PORT", 3306)),
-        user=ENV.get("DB_USERNAME", "testapp"),
-        password=ENV.get("DB_PASSWORD", "12345678"),
-        database=ENV.get("DB_DATABASE", "testapp"),
+        user=ENV.get("DB_USERNAME", "monitoreo_user"),
+        password=ENV.get("DB_PASSWORD", "VsMonit#2026!SecureKey"),
+        database=ENV.get("DB_DATABASE", "monitoreo_vs"),
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=True
     )

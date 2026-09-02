@@ -33,3 +33,15 @@ docs/*
 .agents/skills/*
 .agents/
 
+# Web Portal Laravel exclusions
+web_portal/vendor/
+web_portal/node_modules/
+web_portal/.env
+web_portal/storage/logs/*.log
+web_portal/storage/framework/cache/data/*
+web_portal/storage/framework/sessions/*
+web_portal/storage/framework/views/*
+web_portal/storage/app/public/*
+web_portal/bootstrap/cache/*.php
+!web_portal/bootstrap/cache/.gitignore
+
