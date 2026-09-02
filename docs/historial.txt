@@ -1127,7 +1127,14 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-admin-bot`.
 
 --------------------------------------------------------------------------------
-90. ESTADO FINAL DE VERIFICACIÓN
+90. NONAGÉSIMA INTERVENCIÓN (2026-09-02): ELIMINACIÓN DE URL EN CAPTIONS DE IMÁGENES
+--------------------------------------------------------------------------------
+1) Ajuste en Plantillas de Mensaje con Imagen:
+   - Se removió la línea `🌐 http://monitoreo-vs.local/` de las leyendas (*captions*) de fotos en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) y [`monitor_engine.py`](file:///scripts/telegram-admin-bot/monitor/monitor_engine.py).
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+91. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicio systemd: Active: active (running) con Centinela Autorreparable de 10 min.
