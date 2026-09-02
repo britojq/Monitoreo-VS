@@ -156,7 +156,8 @@
                          data-tech-protocol="{{ $s->type == 'WEB' ? 'HTTP/HTTPS GET Request' : ($s->type == 'DNS' ? 'DNS Query' : ($s->type == 'SMTP' ? 'SMTP Mail Handshake' : ($s->type == 'LDAP' ? 'LDAP Bind Handshake' : 'ICMP Ping'))) }}"
                          data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}"
                          data-tech-status="OPERATIVO (200 OK / Response)"
-                         data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Verificación por socket de transporte directo.' }}">
+                         data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Verificación por socket de transporte directo.' }}"
+                         data-tech-history="{{ json_encode($serviceHistoryMap[$s->id] ?? null) }}">
                         
                         <div class="flex items-center gap-2 min-w-0">
                             <!-- LED VERDE COMPACTO -->
@@ -226,7 +227,8 @@
                              data-tech-protocol="Enlace de Transporte WAN"
                              data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 20 ms' }}"
                              data-tech-status="ENLACE PRINCIPAL OPERATIVO"
-                             data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}">
+                             data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
+                             data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
                             
                             <div class="flex items-center space-x-2 min-w-0">
                                 <div class="w-2 h-2 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
@@ -274,7 +276,8 @@
                                                  data-tech-protocol="ICMP Echo Ping"
                                                  data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
                                                  data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
-                                                 data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}.">
+                                                 data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
+                                                 data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
                                                 <span class="text-white truncate max-w-[85px]">{{ $dev->name }}</span>
                                                 <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
                                             </div>
@@ -327,7 +330,8 @@
                              data-tech-protocol="{{ $s->type == 'WEB' ? 'HTTP/HTTPS GET' : ($s->type == 'DNS' ? 'DNS Query' : ($s->type == 'SMTP' ? 'SMTP Mail' : ($s->type == 'LDAP' ? 'LDAP Bind' : 'ICMP Ping'))) }}"
                              data-tech-latency="Timeout / Sin respuesta"
                              data-tech-status="APAGADO (Host / Puerto inalcanzable)"
-                             data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Sin respuesta de transporte de red.' }}">
+                             data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Sin respuesta de transporte de red.' }}"
+                             data-tech-history="{{ json_encode($serviceHistoryMap[$s->id] ?? null) }}">
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -382,7 +386,8 @@
                              data-tech-protocol="Enlace de Transporte WAN"
                              data-tech-latency="100% Packet Loss"
                              data-tech-status="ENLACE WAN CAÍDO"
-                             data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}">
+                             data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
+                             data-tech-history="{{ json_encode($siteHistoryMap[$site->id] ?? null) }}">
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -525,31 +530,33 @@
 </div>
 
 <!-- ========================================================================= -->
-<!-- VENTANA EMERGENTE HUD FLOTANTE (TOOLTIP DE DATOS TÉCNICOS)               -->
+<!-- VENTANA EMERGENTE HUD FLOTANTE (TOOLTIP DE DATOS TÉCNICOS & HISTÓRICO)    -->
 <!-- ========================================================================= -->
-<div id="tech-tooltip" class="glass-panel rounded-xl p-3.5 border border-obsidian-cyan/50 shadow-2xl w-72 text-xs font-mono text-white bg-[#051424]/95 backdrop-blur-xl">
-    <div class="flex items-center justify-between border-b border-obsidian-border pb-2 mb-2">
-        <div class="flex items-center gap-2">
+<div id="tech-tooltip" class="glass-panel rounded-xl p-3 border border-obsidian-cyan/50 shadow-2xl w-80 text-xs font-mono text-white bg-[#051424]/95 backdrop-blur-xl">
+    <!-- CABECERA (CONSERVADA INTACTA) -->
+    <div class="flex items-center justify-between border-b border-obsidian-border pb-1.5 mb-1.5">
+        <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-obsidian-cyan text-sm" id="tt-icon">terminal</span>
-            <span class="font-bold text-white truncate max-w-[150px]" id="tt-title">DATOS TÉCNICOS</span>
+            <span class="font-bold text-white truncate max-w-[170px]" id="tt-title">DATOS TÉCNICOS</span>
         </div>
         <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30" id="tt-type">
             PROTOCOL
         </span>
     </div>
 
-    <div class="space-y-1.5 text-[11px]">
+    <!-- DATOS TÉCNICOS (TODOS CONSERVADOS INTACTOS) -->
+    <div class="space-y-1 text-[11px]">
         <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
             <span class="text-obsidian-muted">Destino / IP:</span>
-            <span class="text-obsidian-cyan font-semibold truncate max-w-[140px]" id="tt-ip">10.0.0.1</span>
+            <span class="text-obsidian-cyan font-semibold truncate max-w-[160px]" id="tt-ip">10.0.0.1</span>
         </div>
         <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
             <span class="text-obsidian-muted">Puerto / Socket:</span>
-            <span class="text-white" id="tt-port">80 / 443</span>
+            <span class="text-white truncate max-w-[160px]" id="tt-port">80 / 443</span>
         </div>
         <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
             <span class="text-obsidian-muted">Protocolo / Check:</span>
-            <span class="text-obsidian-purple font-medium truncate max-w-[140px]" id="tt-protocol">HTTP GET</span>
+            <span class="text-obsidian-purple font-medium truncate max-w-[160px]" id="tt-protocol">HTTP GET</span>
         </div>
         <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
             <span class="text-obsidian-muted">Latencia Actual:</span>
@@ -557,11 +564,36 @@
         </div>
         <div class="flex justify-between py-0.5">
             <span class="text-obsidian-muted">Estado Reportado:</span>
-            <span class="font-bold text-emerald-400 truncate max-w-[140px]" id="tt-status">OPERATIVO</span>
+            <span class="font-bold text-emerald-400 truncate max-w-[160px]" id="tt-status">OPERATIVO</span>
         </div>
     </div>
 
-    <div class="mt-2 pt-2 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight" id="tt-details">
+    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD -->
+    <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
+                <span class="material-symbols-outlined text-[12px]">ssid_chart</span>
+                Histórico de Latencia & Disponibilidad
+            </span>
+            <span id="tt-uptime-badge" class="px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40">
+                100% Up
+            </span>
+        </div>
+
+        <div class="h-16 w-full relative bg-[#020b14]/70 rounded border border-obsidian-border/50 p-1 flex items-center justify-center">
+            <canvas id="tt-canvas" class="w-full h-full"></canvas>
+            <span id="tt-no-chart" class="text-[9px] text-obsidian-muted hidden">Sin histórico suficiente</span>
+        </div>
+
+        <div class="flex justify-between text-[9px] font-mono text-obsidian-muted mt-1 px-0.5">
+            <span>Mín: <strong id="tt-stat-min" class="text-white">--</strong></span>
+            <span>Prom: <strong id="tt-stat-avg" class="text-emerald-400">--</strong></span>
+            <span>Máx: <strong id="tt-stat-max" class="text-amber-400">--</strong></span>
+        </div>
+    </div>
+
+    <!-- DETALLES TÉCNICOS ADICIONALES (CONSERVADOS INTACTOS) -->
+    <div class="mt-1.5 pt-1.5 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight" id="tt-details">
         Verificación asíncrona de socket en tiempo real.
     </div>
 </div>
@@ -569,7 +601,7 @@
 
 @push('scripts')
 <script>
-    // --- 1. GESTIÓN DEL TOOLTIP HUD EMERGENTE AL POSAR EL MOUSE ---
+    // --- 1. GESTIÓN DEL TOOLTIP HUD EMERGENTE AL POSAR EL MOUSE CON CHART.JS ---
     const tooltip = document.getElementById('tech-tooltip');
     const ttTitle = document.getElementById('tt-title');
     const ttType = document.getElementById('tt-type');
@@ -579,6 +611,116 @@
     const ttLatency = document.getElementById('tt-latency');
     const ttStatus = document.getElementById('tt-status');
     const ttDetails = document.getElementById('tt-details');
+
+    let sparklineChart = null;
+
+    function renderSparklineChart(historyData, isUp) {
+        const canvas = document.getElementById('tt-canvas');
+        const noChartEl = document.getElementById('tt-no-chart');
+        const uptimeBadge = document.getElementById('tt-uptime-badge');
+        const statMin = document.getElementById('tt-stat-min');
+        const statAvg = document.getElementById('tt-stat-avg');
+        const statMax = document.getElementById('tt-stat-max');
+
+        if (!canvas) return;
+
+        if (!historyData || !historyData.latencies || historyData.latencies.length === 0) {
+            canvas.classList.add('hidden');
+            noChartEl.classList.remove('hidden');
+            uptimeBadge.innerText = isUp ? '100% Up' : '0% Down';
+            uptimeBadge.className = isUp 
+                ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
+                : 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40';
+            statMin.innerText = '--';
+            statAvg.innerText = '--';
+            statMax.innerText = '--';
+            return;
+        }
+
+        canvas.classList.remove('hidden');
+        noChartEl.classList.add('hidden');
+
+        const labels = historyData.labels || [];
+        const dataPoints = historyData.latencies || [];
+        const uptime = historyData.uptime !== undefined ? historyData.uptime : (isUp ? 100 : 0);
+
+        uptimeBadge.innerText = `${uptime}% Up`;
+        uptimeBadge.className = uptime >= 90 
+            ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
+            : (uptime >= 70 
+                ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-amber-950/90 text-amber-400 border border-amber-500/40'
+                : 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40');
+
+        statMin.innerText = `${historyData.min || 0}ms`;
+        statAvg.innerText = `${historyData.avg || 0}ms`;
+        statMax.innerText = `${historyData.max || 0}ms`;
+
+        const ctx = canvas.getContext('2d');
+        const lineColor = isUp ? '#00e5ff' : '#ef4444';
+        const fillColor = isUp ? 'rgba(0, 229, 255, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+
+        if (sparklineChart) {
+            sparklineChart.destroy();
+        }
+
+        sparklineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataPoints,
+                    borderColor: lineColor,
+                    borderWidth: 1.5,
+                    backgroundColor: fillColor,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    pointBackgroundColor: lineColor,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                        displayColors: false,
+                        padding: 3,
+                        bodyFont: { size: 9, family: 'monospace' },
+                        callbacks: {
+                            label: (c) => `${c.parsed.y} ms`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 7.5, family: 'monospace' },
+                            maxTicksLimit: 4
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 7.5, family: 'monospace' },
+                            maxTicksLimit: 3,
+                            callback: (v) => `${v}ms`
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     function attachTooltipEvents() {
         document.querySelectorAll('[data-tech-title]').forEach(el => {
@@ -595,11 +737,22 @@
                 
                 const status = el.getAttribute('data-tech-status') || 'ACTIVO';
                 ttStatus.innerText = status;
-                ttStatus.className = status.includes('OPERATIVO') || status.includes('ACTIVO') || status.includes('ONLINE') 
-                    ? 'font-bold text-emerald-400 truncate max-w-[140px]' 
-                    : 'font-bold text-red-400 truncate max-w-[140px]';
+                const isItemUp = status.includes('OPERATIVO') || status.includes('ACTIVO') || status.includes('ONLINE');
+                ttStatus.className = isItemUp 
+                    ? 'font-bold text-emerald-400 truncate max-w-[160px]' 
+                    : 'font-bold text-red-400 truncate max-w-[160px]';
 
                 ttDetails.innerText = el.getAttribute('data-tech-details') || 'Monitoreo continuo cada 5 min.';
+
+                // Parsear e inicializar gráfico de histórico temporal
+                let hist = null;
+                try {
+                    const rawHist = el.getAttribute('data-tech-history');
+                    if (rawHist) hist = JSON.parse(rawHist);
+                } catch(err) {
+                    hist = null;
+                }
+                renderSparklineChart(hist, isItemUp);
 
                 tooltip.classList.add('show');
                 positionTooltip(e);
@@ -620,8 +773,8 @@
         let x = e.clientX + padding;
         let y = e.clientY + padding;
 
-        const ttWidth = 290;
-        const ttHeight = 210;
+        const ttWidth = 330;
+        const ttHeight = 310;
 
         if (x + ttWidth > window.innerWidth) {
             x = e.clientX - ttWidth - padding;
