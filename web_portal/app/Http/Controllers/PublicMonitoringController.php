@@ -75,10 +75,17 @@ class PublicMonitoringController extends Controller
                 $max = count($validLats) > 0 ? max($validLats) : 0;
                 $uptime = count($ups) > 0 ? round((count(array_filter($ups)) / count($ups)) * 100) : 100;
 
+                $statuses = array_map(fn($u) => $u ? 1 : 0, $ups);
+                $downCount = count(array_filter($ups, fn($u) => !$u));
+                $isAllDown = empty(array_filter($ups));
+
                 $serviceHistoryMap[$s->id] = [
                     'labels' => $labels,
                     'latencies' => $latencies,
                     'ups' => $ups,
+                    'statuses' => $statuses,
+                    'down_count' => $downCount,
+                    'is_all_down' => $isAllDown,
                     'avg' => $avg,
                     'min' => $min,
                     'max' => $max,
@@ -108,11 +115,17 @@ class PublicMonitoringController extends Controller
                 $min = count($validLats) > 0 ? min($validLats) : 0;
                 $max = count($validLats) > 0 ? max($validLats) : 0;
                 $uptime = count($ups) > 0 ? round((count(array_filter($ups)) / count($ups)) * 100) : 100;
+                $statuses = array_map(fn($u) => $u ? 1 : 0, $ups);
+                $downCount = count(array_filter($ups, fn($u) => !$u));
+                $isAllDown = empty(array_filter($ups));
 
                 $siteHistoryMap[$st->id] = [
                     'labels' => $labels,
                     'latencies' => $latencies,
                     'ups' => $ups,
+                    'statuses' => $statuses,
+                    'down_count' => $downCount,
+                    'is_all_down' => $isAllDown,
                     'avg' => $avg,
                     'min' => $min,
                     'max' => $max,

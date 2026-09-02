@@ -624,40 +624,67 @@
 
         if (!canvas) return;
 
-        if (!historyData || !historyData.latencies || historyData.latencies.length === 0) {
-            canvas.classList.add('hidden');
-            noChartEl.classList.remove('hidden');
-            uptimeBadge.innerText = isUp ? '100% Up' : '0% Down';
-            uptimeBadge.className = isUp 
-                ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
-                : 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40';
+        // Caso 1: Servicio totalmente caído sin telemetría (100% caídas en 12h)
+        const isCompletelyDown = !historyData || historyData.is_all_down || (historyData.latencies && historyData.latencies.every(v => v === 0));
+
+        if (isCompletelyDown) {
+            if (sparklineChart) {
+                sparklineChart.destroy();
+                sparklineChart = null;
+            }
+            canvas.style.display = 'none';
+            noChartEl.style.display = 'flex';
+            noChartEl.innerHTML = '<div class="flex items-center justify-center gap-1.5 text-red-400 py-3"><span class="material-symbols-outlined text-base">cloud_off</span><span class="text-[9.5px] font-bold tracking-wide">ENLACE CAÍDO / SIN TELEMETRÍA (12H)</span></div>';
+            uptimeBadge.innerText = '0% Up (12h)';
+            uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/50';
             statMin.innerText = '--';
             statAvg.innerText = '--';
             statMax.innerText = '--';
             return;
         }
 
-        canvas.classList.remove('hidden');
-        noChartEl.classList.add('hidden');
+        canvas.style.display = 'block';
+        noChartEl.style.display = 'none';
 
         const labels = historyData.labels || [];
         const dataPoints = historyData.latencies || [];
+        const statuses = historyData.statuses || [];
         const uptime = historyData.uptime !== undefined ? historyData.uptime : (isUp ? 100 : 0);
+        const downCount = historyData.down_count || 0;
 
-        uptimeBadge.innerText = `${uptime}% Up (12h)`;
-        uptimeBadge.className = uptime >= 90 
-            ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40'
-            : (uptime >= 70 
-                ? 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-amber-950/90 text-amber-400 border border-amber-500/40'
-                : 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40');
+        // Badge de disponibilidad con conteo de caídas destacadas
+        if (downCount > 0) {
+            uptimeBadge.innerText = `${uptime}% Up (${downCount} Caídas)`;
+            uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-red-950/90 text-red-400 border border-red-500/40 glow-red';
+        } else {
+            uptimeBadge.innerText = `${uptime}% Up (12h)`;
+            uptimeBadge.className = 'px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40';
+        }
 
         statMin.innerText = `${historyData.min || 0}ms`;
         statAvg.innerText = `${historyData.avg || 0}ms`;
         statMax.innerText = `${historyData.max || 0}ms`;
 
+        // Marcadores: Los puntos operativos van sin radio (línea limpia), las caídas van con punto rojo grande
+        const pointRadiuses = statuses.map(s => s === 1 ? 0 : 4.5);
+        const pointHoverRadiuses = statuses.map(s => s === 1 ? 4 : 7);
+        const pointBgColors = statuses.map(s => s === 1 ? '#00e5ff' : '#ef4444');
+        const pointBorderColors = statuses.map(s => s === 1 ? '#00e5ff' : '#ffffff');
+        const pointBorderWidths = statuses.map(s => s === 1 ? 0 : 1.5);
+
         const ctx = canvas.getContext('2d');
         const lineColor = isUp ? '#00e5ff' : '#ef4444';
         const fillColor = isUp ? 'rgba(0, 229, 255, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+
+        // Escala vertical inteligente: si hay un pico anómalo (> 2.5x percentil 90), acotar el techo sugerido
+        const validLats = dataPoints.filter(v => v > 0).sort((a, b) => a - b);
+        let suggestedYMax = undefined;
+        if (validLats.length > 5) {
+            const p90 = validLats[Math.floor(validLats.length * 0.90)];
+            if (historyData.max > p90 * 2.5 && p90 > 25) {
+                suggestedYMax = Math.round(p90 * 2.2);
+            }
+        }
 
         if (sparklineChart) {
             sparklineChart.destroy();
@@ -674,10 +701,12 @@
                     backgroundColor: fillColor,
                     fill: true,
                     tension: 0.25,
-                    pointRadius: 0,
-                    pointHoverRadius: 4,
-                    pointHitRadius: 8,
-                    pointBackgroundColor: lineColor,
+                    pointRadius: pointRadiuses,
+                    pointHoverRadius: pointHoverRadiuses,
+                    pointHitRadius: 10,
+                    pointBackgroundColor: pointBgColors,
+                    pointBorderColor: pointBorderColors,
+                    pointBorderWidth: pointBorderWidths,
                 }]
             },
             options: {
@@ -697,7 +726,13 @@
                         bodyFont: { size: 9, family: 'monospace' },
                         callbacks: {
                             title: (items) => items.length ? `Hora: ${items[0].label}` : '',
-                            label: (c) => `Latencia: ${c.parsed.y} ms`
+                            label: (c) => {
+                                const idx = c.dataIndex;
+                                if (statuses[idx] === 0) {
+                                    return '🚨 CAÍDA / TIMEOUT (0 ms)';
+                                }
+                                return `Latencia: ${c.parsed.y} ms`;
+                            }
                         }
                     }
                 },
@@ -713,6 +748,7 @@
                     },
                     y: {
                         display: true,
+                        suggestedMax: suggestedYMax,
                         grid: { color: 'rgba(255,255,255,0.05)' },
                         ticks: {
                             color: '#64748b',
