@@ -1152,9 +1152,19 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reinició el servicio systemd `tg-sentinel-bot`.
 
 --------------------------------------------------------------------------------
-93. ESTADO FINAL DE VERIFICACIÓN
+93. NONAGÉSIMA TERCERA INTERVENCIÓN (2026-09-02): RENOMBRADO A /VAR/WWW/MONITOREO Y AJUSTE DE ECOSISTEMA
 --------------------------------------------------------------------------------
-- Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
+1) Migración de Ruta Web y Configuración de Servidores:
+   - Se renombró la carpeta `/var/www/testapp` a `/var/www/monitoreo`.
+   - Se actualizó el VirtualHost de Apache en `/etc/apache2/sites-available/laravel.conf` apuntando a `/var/www/monitoreo/public` y se recargó Apache (`systemctl reload apache2`).
+   - Se limpiaron las cachés de Laravel (`config:clear`, `cache:clear`, `route:clear`, `view:clear`) y se ajustaron permisos de lectura/escritura (777/775) para `www-data` y `britojab` en `storage/` y `bootstrap/cache/`.
+   - Se actualizó [`monitor/monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py) para sincronizar con la nueva ruta `/var/www/monitoreo`.
+   - Se verificaron las respuestas HTTP 200 OK en `http://monitoreo-vs.local/`, `http://localhost/` y la generación exitosa de capturas con Playwright.
+
+--------------------------------------------------------------------------------
+94. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+- Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicios systemd:
   • `tg-admin-bot.service`: Active (running) - Bot de Monitoreo (@IA_ValleSeco_bot).
   • `tg-sentinel-bot.service`: Active (running) - Bot Centinela (@nimda_control_bot).

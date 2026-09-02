@@ -25,7 +25,7 @@ import pymysql
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 BASE_DIR = Path("/scripts/telegram-admin-bot")
-APP_DIR = Path("/var/www/testapp")
+APP_DIR = Path("/var/www/monitoreo") if Path("/var/www/monitoreo").exists() else Path("/var/www/testapp")
 SNAPSHOT_FILE = APP_DIR / "storage" / "app" / "public" / "monitoring_snapshot.json"
 
 def create_permissive_ssl_context():
@@ -468,6 +468,7 @@ async def run_full_scan():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # 1. Snapshot global
             sql = """
                 INSERT INTO monitoring_snapshots 
                 (global_status, services_online, services_total, sites_online, sites_total, proxies_online, proxies_total, payload_json, created_at, updated_at)
@@ -485,6 +486,78 @@ async def run_full_scan():
             ))
             # Mantener solo los últimos 100 snapshots para ahorrar espacio
             cursor.execute("DELETE FROM monitoring_snapshots WHERE id NOT IN (SELECT id FROM (SELECT id FROM monitoring_snapshots ORDER BY id DESC LIMIT 100) AS t)")
+
+            # 2. Histórico de chequeos individuales por servicio
+            hist_sql = """
+                INSERT INTO service_check_histories 
+                (monitored_service_id, is_up, latency_ms, http_code, status_message, checked_at, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+            """
+            hist_records = []
+            for s in all_services:
+                if "id" in s and s["id"]:
+                    hist_records.append((
+                        s["id"],
+                        1 if s.get("is_up") else 0,
+                        float(s.get("latency_ms", 0.0) or 0.0),
+                        str(s.get("http_code") or "")[:10],
+                        str(s.get("status") or "")[:255]
+                    ))
+            if hist_records:
+                cursor.executemany(hist_sql, hist_records)
+
+            # Mantener retención de últimos 30 días de historial de servicios
+            cursor.execute("DELETE FROM service_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+            # 3. Histórico de chequeos individuales por sede
+            site_hist_sql = """
+                INSERT INTO site_check_histories 
+                (monitored_site_id, is_up, latency_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+            """
+            site_hist_records = []
+            for st in all_sites:
+                if "id" in st and st["id"]:
+                    devs = st.get("devices", [])
+                    devs_online = sum(1 for d in devs if d.get("is_up"))
+                    devs_total = len(devs)
+                    status_msg = "Enlace Operativo" if st.get("is_up") else "Enlace Caído / Timeout"
+                    site_hist_records.append((
+                        st["id"],
+                        1 if st.get("is_up") else 0,
+                        float(st.get("latency_ms", 0.0) or 0.0),
+                        devs_online,
+                        devs_total,
+                        status_msg
+                    ))
+            if site_hist_records:
+                cursor.executemany(site_hist_sql, site_hist_records)
+
+            # Mantener retención de últimos 30 días de historial de sedes
+            cursor.execute("DELETE FROM site_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+            # 4. Histórico de chequeos individuales por proxy
+            proxy_hist_sql = """
+                INSERT INTO proxy_check_histories 
+                (monitored_proxy_id, is_up, latency_ms, http_code, status_message, checked_at, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+            """
+            proxy_hist_records = []
+            for p in all_proxies:
+                if "id" in p and p["id"]:
+                    status_msg = "Proxy Operativo / Respondiendo" if p.get("is_up") else "Proxy Inaccesible / Falló Túnel"
+                    proxy_hist_records.append((
+                        p["id"],
+                        1 if p.get("is_up") else 0,
+                        float(p.get("latency_ms", 0.0) or 0.0),
+                        "200" if p.get("is_up") else None,
+                        status_msg
+                    ))
+            if proxy_hist_records:
+                cursor.executemany(proxy_hist_sql, proxy_hist_records)
+
+            # Mantener retención de últimos 30 días de historial de proxies
+            cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
     finally:
         conn.close()
 
