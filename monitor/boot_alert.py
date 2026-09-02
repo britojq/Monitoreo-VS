@@ -17,6 +17,7 @@ import html
 import json
 import logging
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -186,10 +187,8 @@ async def handle_start() -> int:
         logger.error("Configuración incompleta (bot_token u owner_id faltante).")
         return 0
 
-    # Esperar conectividad activa hasta 4 minutos (240 segundos)
-    connected = await wait_for_network_and_telegram(token, proxies, max_wait_seconds=240)
-    if not connected:
-        logger.warning("No se detectó salida a Internet tras 240s. Intentando envío final...")
+    # Esperar conectividad activa hasta 60 segundos
+    connected = await wait_for_network_and_telegram(token, proxies, max_wait_seconds=60)
 
     hostname = socket.gethostname()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -219,7 +218,22 @@ async def handle_start() -> int:
 
     # Exclusivo para el Owner
     recipients = [owner_id]
-    await send_telegram_alert(token, recipients, mensaje, proxies)
+    if connected:
+        await send_telegram_alert(token, recipients, mensaje, proxies)
+    else:
+        logger.warning("Red no disponible aún al inicio tras 60s. Delegando notificación a proceso en segundo plano...")
+        try:
+            cmd = [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "bg-start",
+                mensaje
+            ]
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        except Exception as e:
+            logger.error(f"Error lanzando envío diferido en segundo plano: {e}")
+
+    # Retornar SIEMPRE 0 para que systemd marque el servicio como active (exited) de forma garantizada
     return 0
 
 
@@ -299,12 +313,47 @@ async def handle_stop() -> int:
     return 0
 
 
+async def handle_background_start(mensaje: str) -> int:
+    """Reintenta enviar la alerta de arranque en segundo plano sin demorar systemd."""
+    config = load_config()
+    token = config.get("bot_token")
+    owner_id = config.get("owner_id")
+    proxies = config.get("proxies", [])
+
+    if not token or not owner_id:
+        return 0
+
+    # Reintentar hasta 10 minutos (600 segundos) en segundo plano
+    connected = await wait_for_network_and_telegram(token, proxies, max_wait_seconds=600)
+    if connected:
+        await send_telegram_alert(token, [owner_id], mensaje, proxies)
+        logger.info("Alerta de arranque diferida entregada con éxito en segundo plano.")
+    else:
+        logger.error("No se pudo entregar la alerta de arranque tras 10 minutos de espera en segundo plano.")
+    return 0
+
+
 def main():
+    def _graceful_exit(signum, frame):
+        logger.info(f"Señal {signum} recibida en boot_alert. Terminando limpiamente...")
+        sys.exit(0)
+
+    try:
+        signal.signal(signal.SIGTERM, _graceful_exit)
+        signal.signal(signal.SIGINT, _graceful_exit)
+    except Exception:
+        pass
+
     action = sys.argv[1].lower() if len(sys.argv) > 1 else "start"
     if action == "stop":
         sys.exit(asyncio.run(handle_stop()))
     elif action in ("start", "test"):
         sys.exit(asyncio.run(handle_start()))
+    elif action == "bg-start":
+        msg = sys.argv[2] if len(sys.argv) > 2 else ""
+        if msg:
+            sys.exit(asyncio.run(handle_background_start(msg)))
+        sys.exit(0)
     else:
         print(f"Uso: {sys.argv[0]} [start|stop|test]")
         sys.exit(1)

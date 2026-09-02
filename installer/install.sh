@@ -345,6 +345,7 @@ ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py start
 ExecStop=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/boot_alert.py stop
 TimeoutStartSec=180
 TimeoutStopSec=30
+SuccessExitStatus=0 1 2 15 SIGTERM SIGKILL
 
 [Install]
 WantedBy=multi-user.target
