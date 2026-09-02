@@ -18,6 +18,10 @@ class MonitoredProxy extends Model
         'is_active',
     ];
 
+    protected $hidden = [
+        'auth_userpass',
+    ];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];

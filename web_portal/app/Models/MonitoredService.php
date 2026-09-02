@@ -25,6 +25,10 @@ class MonitoredService extends Model
         'sort_order',
     ];
 
+    protected $hidden = [
+        'credentials',
+    ];
+
     protected function casts(): array
     {
         return [

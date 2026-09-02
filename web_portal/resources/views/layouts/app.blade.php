@@ -25,16 +25,11 @@
     <meta name="msapplication-TileImage" content="{{ asset('img/ico/ms-icon-144x144.png') }}">
     <meta name="theme-color" content="#051424">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <!-- Google Fonts: Inter & JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <!-- Chart.js 4.x -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Activos Locales 100% Autónomos (Cero CDNs Externos) -->
+    <link rel="stylesheet" href="{{ asset('vendor/fonts/fonts.css') }}"/>
+    <link rel="stylesheet" href="{{ asset('vendor/material-symbols/material-symbols.css') }}"/>
+    <script src="{{ asset('vendor/tailwindcss/tailwind.min.js') }}"></script>
+    <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 
     <script>
         tailwind.config = {
