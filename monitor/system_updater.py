@@ -342,15 +342,15 @@ async def execute_git_update(bot_instance=None) -> str:
 
 
 async def _restart_service_delayed():
-    """Espera 1.5 segundos para permitir el envío del mensaje de confirmación y reinicia el servicio."""
+    """Espera 1.5 segundos para permitir el envío del mensaje de confirmación y reinicia los servicios."""
     await asyncio.sleep(1.5)
     try:
         proc = await asyncio.create_subprocess_exec(
-            "sudo", "systemctl", "restart", "tg-admin-bot.service"
+            "sudo", "systemctl", "restart", "tg-admin-bot.service", "tg-sentinel-bot.service"
         )
         await proc.communicate()
     except Exception as e:
-        logger.error(f"Error al reiniciar servicio tras actualización: {e}")
+        logger.error(f"Error al reiniciar servicios tras actualización: {e}")
 
 
 

@@ -181,6 +181,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/activar &lt;SERIAL&gt;</code> - Validación manual de hardware.\n"
         "• <code>/migrar</code> - Asistente de migración en caliente.\n"
         "• <code>/reiniciar_bot</code> - Reiniciar servicio de monitoreo.\n"
+        "• <code>/actualizar</code> - Sincronización forzada con GitHub (Git Update).\n"
     )
 
     keyboard = [
@@ -189,7 +190,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             InlineKeyboardButton("🔄 Migrar Servidor", callback_data="sentinel:menu:migrar")
         ],
         [
-            InlineKeyboardButton("🛡️ Reiniciar Bot Principal", callback_data="sentinel:menu:restart_main")
+            InlineKeyboardButton("⚡ Forzar Git Update", callback_data="sentinel:git:force"),
+            InlineKeyboardButton("🛡️ Reiniciar Bot", callback_data="sentinel:menu:restart_main")
         ]
     ]
 
@@ -254,6 +256,102 @@ async def cmd_activar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text(f"❌ <b>Error de activación:</b> {msg}", parse_mode="HTML")
 
 
+async def cmd_reiniciar_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para reiniciar remotamente el servicio de monitoreo (tg-admin-bot)."""
+    if not await require_owner(update):
+        return
+
+    msg = await update.message.reply_text("🔄 <b>Reiniciando servicio de monitoreo (tg-admin-bot)...</b>", parse_mode="HTML")
+    try:
+        subprocess.run(["sudo", "systemctl", "restart", "tg-admin-bot"], check=False)
+        await msg.edit_text(
+            "✅ <b>Servicio de Monitoreo Reiniciado</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "El bot principal (<code>tg-admin-bot</code>) ha sido reiniciado exitosamente y se encuentra en línea.",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await msg.edit_text(f"❌ Error al reiniciar servicio: {e}")
+
+
+async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para forzar o verificar actualizaciones Git en los servidores."""
+    if not await require_owner(update):
+        return
+
+    from monitor.system_updater import check_updates, execute_git_update
+
+    args = [a.lower() for a in context.args] if context.args else []
+    if "force" in args or "forzar" in args or "ahora" in args:
+        status_msg = await update.message.reply_text(
+            "⏳ <b>Ejecutando sincronización forzada con GitHub (git reset --hard)...</b>\n"
+            "<i>Por favor espera mientras se descargan y verifican los archivos.</i>",
+            parse_mode="HTML"
+        )
+        report = await execute_git_update(bot_instance=context.bot)
+        await status_msg.edit_text(report, parse_mode="HTML")
+        return
+
+    status_msg = await update.message.reply_text("🔍 <b>Comprobando actualizaciones en GitHub...</b>", parse_mode="HTML")
+    res = await check_updates(bot_instance=context.bot)
+
+    if not res.get("success"):
+        err = res.get("error", "Error desconocido")
+        text = (
+            "❌ <b>Error al conectar con GitHub</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"<pre>{html.escape(err)}</pre>\n\n"
+            "<i>Puedes forzar la sincronización directamente con el botón:</i>"
+        )
+        keyboard = [
+            [InlineKeyboardButton("⚡ Forzar Actualización Git", callback_data="sentinel:git:force")]
+        ]
+        await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+        return
+
+    local_h = res.get("local_hash", "Desconocido")
+    remote_h = res.get("remote_hash", "Desconocido")
+    has_updates = res.get("has_updates", False)
+    commits = res.get("commits", [])
+
+    if not has_updates:
+        text = (
+            "✅ <b>EL SISTEMA ESTÁ ACTUALIZADO</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ <b>Versión Activa:</b> <code>{local_h}</code>\n"
+            f"🌿 <b>Rama:</b> <code>master</code>\n"
+            f"🖥️ <b>Servidor:</b> <code>{platform.node()}</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>El código local coincide exactamente con el repositorio oficial.</i>"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🔄 Recomprobar", callback_data="sentinel:git:check"),
+                InlineKeyboardButton("⚡ Forzar Sincronización", callback_data="sentinel:git:force")
+            ]
+        ]
+    else:
+        commits_preview = "\n".join(commits[:5])
+        text = (
+            "🚀 <b>NUEVA ACTUALIZACIÓN DISPONIBLE EN GITHUB</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ <b>Versión Local:</b> <code>{local_h}</code>\n"
+            f"📦 <b>Versión Remota:</b> <code>{remote_h}</code>\n\n"
+            f"<b>Últimos cambios ({len(commits)} commits):</b>\n"
+            f"{commits_preview}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Presione el botón para sincronizar forzadamente.</i>"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🚀 Actualizar Ahora (Forzar)", callback_data="sentinel:git:force"),
+                InlineKeyboardButton("🔄 Recomprobar", callback_data="sentinel:git:check")
+            ]
+        ]
+
+    await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+
+
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Manejador interactivo de botones del Bot Centinela."""
     query = update.callback_query
@@ -314,6 +412,43 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             await query.message.reply_text("✅ Servicio <code>tg-admin-bot</code> reiniciado correctamente.", parse_mode="HTML")
         except Exception as e:
             await query.message.reply_text(f"❌ Error al reiniciar servicio: {e}")
+
+    elif data == "sentinel:git:force":
+        await query.edit_message_text(
+            "⏳ <b>Ejecutando actualización forzada con GitHub (git reset --hard)...</b>\n"
+            "<i>Descargando archivos, validando sintaxis y reiniciando servicios...</i>",
+            parse_mode="HTML"
+        )
+        from monitor.system_updater import execute_git_update
+        report = await execute_git_update(bot_instance=context.bot)
+        await query.message.reply_text(report, parse_mode="HTML")
+
+    elif data == "sentinel:git:check":
+        await query.edit_message_text("🔍 <b>Comprobando actualizaciones en GitHub...</b>", parse_mode="HTML")
+        from monitor.system_updater import check_updates
+        res = await check_updates(bot_instance=context.bot)
+        if not res.get("success"):
+            err = res.get("error", "Error desconocido")
+            await query.edit_message_text(
+                f"❌ <b>Error al conectar con GitHub:</b>\n<pre>{html.escape(err)}</pre>",
+                parse_mode="HTML"
+            )
+        elif not res.get("has_updates"):
+            await query.edit_message_text(
+                f"✅ <b>El sistema está al día.</b>\n"
+                f"🏷️ Versión: <code>{res.get('local_hash')}</code>\n"
+                f"🖥️ Servidor: <code>{platform.node()}</code>",
+                parse_mode="HTML"
+            )
+        else:
+            await query.edit_message_text(
+                f"🚀 <b>Hay actualizaciones disponibles:</b> <code>{res.get('remote_hash')}</code>\n\n"
+                f"Use el botón para aplicar la sincronización forzada.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⚡ Forzar Actualización Ahora", callback_data="sentinel:git:force")]
+                ]),
+                parse_mode="HTML"
+            )
 
 
 # Conversación interactiva de migración de token
@@ -467,6 +602,8 @@ def main() -> None:
     application.add_handler(CommandHandler(["start", "help", "ayuda"], cmd_start))
     application.add_handler(CommandHandler(["status", "estado", "nodos", "telemetria"], cmd_status))
     application.add_handler(CommandHandler(["activar", "auth"], cmd_activar))
+    application.add_handler(CommandHandler(["reiniciar_bot", "restart_bot", "reiniciar_principal"], cmd_reiniciar_bot))
+    application.add_handler(CommandHandler(["actualizar", "update", "git_update", "forzar_actualizacion"], cmd_actualizar))
     application.add_handler(CallbackQueryHandler(handle_callback_query, pattern=r"^sentinel:"))
 
     logger.info(f"✅ Sentinel Bot iniciado y escuchando (Conexión: {_ACTIVE_CONNECTION_LABEL})")

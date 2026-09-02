@@ -1143,7 +1143,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Ambos servicios (`tg-admin-bot` y `tg-sentinel-bot`) se encuentran activos, verificados y monitoreados.
 
 --------------------------------------------------------------------------------
-92. ESTADO FINAL DE VERIFICACIÓN
+92. NONAGÉSIMA SEGUNDA INTERVENCIÓN (2026-09-02): COMANDOS DE ACTUALIZACIÓN GIT EN EL BOT CENTINELA
+--------------------------------------------------------------------------------
+1) Forzado de Sincronización Git desde el Bot Centinela:
+   - Se integraron los comandos `/actualizar`, `/actualizar_git` y `/forzar_actualizacion` en [`sentinel_bot.py`](file:///scripts/telegram-admin-bot/sentinel_bot.py).
+   - Se añadieron botones interactivos `[ ⚡ Forzar Git Update ]` y `[ 🔄 Recomprobar ]` en el menú principal (`/start`) y en las respuestas de actualización.
+   - El proceso ejecuta `git reset --hard origin/master`, preserva la configuración local, recompila el código y reinicia ambos servicios (`tg-admin-bot` y `tg-sentinel-bot`) de forma automática.
+   - Se reinició el servicio systemd `tg-sentinel-bot`.
+
+--------------------------------------------------------------------------------
+93. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache (`http://monitoreo-vs.local/`, `http://localhost/` y `http://testapp.local`).
 - Servicios systemd:
