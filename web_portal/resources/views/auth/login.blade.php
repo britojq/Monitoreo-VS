@@ -41,13 +41,13 @@
             <div>
                 <label for="login" class="block text-xs font-mono uppercase text-obsidian-muted mb-2 flex items-center justify-between">
                     <span>Usuario LDAP o Correo Admin</span>
-                    <span class="text-[10px] text-obsidian-cyan/70 font-normal lowercase">ej: A1746281 o correo</span>
+                    <span class="text-[10px] text-obsidian-cyan/70 font-normal lowercase">ej: usuario o correo</span>
                 </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-obsidian-muted">
                         <span class="material-symbols-outlined text-lg">badge</span>
                     </div>
-                    <input id="login" name="login" type="text" autocomplete="username" required value="{{ old('login', old('email')) }}" placeholder="A1746281 o admin@correo.com" class="block w-full pl-10 pr-4 py-2.5 bg-obsidian-panel/80 border border-obsidian-border rounded-lg text-sm text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan font-mono transition"/>
+                    <input id="login" name="login" type="text" autocomplete="username" required value="{{ old('login', old('email')) }}" placeholder="Ej: X1029384 o usuario@dominio.com" class="block w-full pl-10 pr-4 py-2.5 bg-obsidian-panel/80 border border-obsidian-border rounded-lg text-sm text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan font-mono transition"/>
                 </div>
             </div>
 
