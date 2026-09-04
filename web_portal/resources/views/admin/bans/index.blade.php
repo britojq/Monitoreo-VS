@@ -16,7 +16,7 @@
         <div class="flex items-center gap-2">
             <span class="px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-500/50 text-red-400 text-xs font-mono font-bold flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                Protección Activa de Backend
+                Protección Activa
             </span>
         </div>
     </div>
