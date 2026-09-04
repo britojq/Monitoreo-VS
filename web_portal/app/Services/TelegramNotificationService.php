@@ -18,14 +18,15 @@ class TelegramNotificationService
     }
 
     /**
-     * Cargar tokens, destinatarios y proxies desde la configuración del bot
+     * Cargar token y destinatario ÚNICAMENTE del Propietario / Administrador Privado.
+     * REGLA ESTRICTA: JAMÁS enviar al grupo general bajo ninguna circunstancia.
      */
     protected function loadConfig(): void
     {
         $jsonPath = '/scripts/telegram-admin-bot/config/config.json';
         $botConfPath = '/scripts/telegram-admin-bot/config/bot.conf';
 
-        // 1. Cargar desde config.json
+        // 1. Cargar exclusivamente el Owner ID privado desde config.json
         if (file_exists($jsonPath)) {
             $json = json_decode(@file_get_contents($jsonPath), true);
             if (is_array($json)) {
@@ -35,15 +36,10 @@ class TelegramNotificationService
                 if (!empty($json['owner_id'])) {
                     $this->targetChats[] = (string)$json['owner_id'];
                 }
-                if (!empty($json['allowed_group_ids']) && is_array($json['allowed_group_ids'])) {
-                    foreach ($json['allowed_group_ids'] as $gid) {
-                        $this->targetChats[] = (string)$gid;
-                    }
-                }
             }
         }
 
-        // 2. Cargar desde bot.conf (fallback y proxies)
+        // 2. Cargar desde bot.conf (IDC privado y proxies)
         if (file_exists($botConfPath)) {
             $confContent = @file_get_contents($botConfPath);
             if ($confContent) {
@@ -66,11 +62,9 @@ class TelegramNotificationService
                     $this->botToken = $conf['TOKENA'];
                 }
 
+                // IDC es el ID del propietario en bot.conf
                 if (!empty($conf['IDC']) && !in_array((string)$conf['IDC'], $this->targetChats)) {
                     $this->targetChats[] = (string)$conf['IDC'];
-                }
-                if (!empty($conf['IDA']) && !in_array((string)$conf['IDA'], $this->targetChats)) {
-                    $this->targetChats[] = (string)$conf['IDA'];
                 }
 
                 // Cargar proxies
@@ -90,16 +84,18 @@ class TelegramNotificationService
             }
         }
 
-        $this->targetChats = array_values(array_unique(array_filter($this->targetChats)));
+        // FILTRO DE SEGURIDAD ABSOLUTO: Excluir explícitamente cualquier Chat ID que empiece con "-" (grupos/supergrupos)
+        $this->targetChats = array_values(array_filter(array_unique($this->targetChats), function ($chatId) {
+            return !str_starts_with((string)$chatId, '-');
+        }));
     }
 
     /**
-     * Enviar mensaje HTML formateado a todos los destinatarios configurados
+     * Enviar mensaje HTML formateado únicamente a chats privados de administración
      */
     public function sendMessage(string $text, string $parseMode = 'HTML'): bool
     {
         if (empty($this->botToken) || empty($this->targetChats)) {
-            Log::warning('TelegramNotificationService: Bot token o destinatarios no configurados.');
             return false;
         }
 
@@ -107,6 +103,11 @@ class TelegramNotificationService
         $successCount = 0;
 
         foreach ($this->targetChats as $chatId) {
+            // Seguridad redundante: si por algún motivo llega un ID de grupo, abortar ese envío
+            if (str_starts_with((string)$chatId, '-')) {
+                continue;
+            }
+
             if ($this->sendToChat($url, $chatId, $text, $parseMode)) {
                 $successCount++;
             }
@@ -128,7 +129,7 @@ class TelegramNotificationService
 
         // 1. Probar conexión directa
         try {
-            $response = Http::timeout(5)->asForm()->post($url, $payload);
+            $response = Http::timeout(4)->asForm()->post($url, $payload);
             if ($response->successful() && ($response->json('ok') === true)) {
                 return true;
             }
@@ -140,7 +141,7 @@ class TelegramNotificationService
         foreach ($this->proxies as $proxyUrl) {
             try {
                 $response = Http::withOptions(['proxy' => $proxyUrl])
-                    ->timeout(6)
+                    ->timeout(5)
                     ->asForm()
                     ->post($url, $payload);
 
@@ -152,7 +153,6 @@ class TelegramNotificationService
             }
         }
 
-        Log::warning("TelegramNotificationService: No se pudo entregar mensaje al chat {$chatId}.");
         return false;
     }
 
@@ -174,10 +174,15 @@ class TelegramNotificationService
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                  . "ℹ️ <i>Registrado automáticamente al autenticar por primera vez con el Directorio Activo LDAP.</i>";
 
-            $this->sendMessage($msg);
-
-            // Registrar en auditoría
+            // Guardar siempre en auditoría
             $this->logAudit("AUTO-REGISTRO LDAP", $user, $ip, "Auto-registro exitoso como {$user->role}");
+
+            // Guardia de seguridad: no despachar a Telegram si proviene de loopback de pruebas (127.0.0.1)
+            if ($ip === '127.0.0.1' || $ip === '::1') {
+                return;
+            }
+
+            $this->sendMessage($msg);
         }, report: false);
     }
 
@@ -210,10 +215,15 @@ class TelegramNotificationService
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                  . "ℹ️ <i>{$methodDesc}</i>";
 
-            $this->sendMessage($msg);
-
-            // Registrar en auditoría
+            // Guardar siempre en auditoría
             $this->logAudit("INICIO DE SESIÓN", $user, $ip, "Login exitoso ({$authType})");
+
+            // Guardia de seguridad: no despachar a Telegram si proviene de loopback de pruebas (127.0.0.1)
+            if ($ip === '127.0.0.1' || $ip === '::1') {
+                return;
+            }
+
+            $this->sendMessage($msg);
         }, report: false);
     }
 
@@ -248,7 +258,7 @@ class TelegramNotificationService
     }
 
     /**
-     * Escribir línea en el archivo de auditoría
+     * Escribir línea en el archivo de auditoría local
      */
     protected function logAudit(string $action, User $user, string $ip, string $detail): void
     {
