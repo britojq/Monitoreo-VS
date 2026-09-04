@@ -899,7 +899,7 @@
             </form>
             <div class="flex items-center justify-between text-[10px] text-obsidian-muted mt-2 px-1 font-mono">
                 <span>Usuario: <strong class="text-white">@auth {{ Auth::user()->name }} ({{ strtoupper(Auth::user()->role) }}) @else Invitado @endauth</strong></span>
-                <span>Enter para enviar • Motor Local Ollama</span>
+                <span>Enter para enviar • Motor Local</span>
             </div>
         </div>
     </div>
