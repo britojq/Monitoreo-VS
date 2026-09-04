@@ -9,14 +9,16 @@ use App\Models\MonitoredSite;
 use App\Models\MonitoredSiteDevice;
 use App\Models\MonitoringSnapshot;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AdminDashboardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $isAdmin = $request->user() && $request->user()->isAdmin();
+
         $stats = [
-            'users_count' => User::count(),
             'services_count' => MonitoredService::count(),
             'services_active' => MonitoredService::where('is_active', true)->count(),
             'sites_count' => MonitoredSite::count(),
@@ -26,9 +28,12 @@ class AdminDashboardController extends Controller
             'proxies_active' => MonitoredProxy::where('is_active', true)->count(),
         ];
 
-        $latestSnapshot = MonitoringSnapshot::latest()->first();
-        $recentUsers = User::latest()->take(5)->get();
+        if ($isAdmin) {
+            $stats['users_count'] = User::count();
+        }
 
-        return view('admin.dashboard', compact('stats', 'latestSnapshot', 'recentUsers'));
+        $latestSnapshot = MonitoringSnapshot::latest()->first();
+
+        return view('admin.dashboard', compact('stats', 'latestSnapshot'));
     }
 }

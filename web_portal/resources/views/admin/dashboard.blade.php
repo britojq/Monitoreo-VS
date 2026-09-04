@@ -5,29 +5,25 @@
 @section('admin_content')
 <div class="space-y-6">
     <!-- STATS OVERVIEW -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <!-- USUARIOS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->isAdmin() ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5">
+        @if(auth()->user()->isAdmin())
+        <!-- USUARIOS (Exclusivo Administrador) -->
         <div class="glass-card rounded-xl p-5">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-mono uppercase text-obsidian-muted">Usuarios Registrados</span>
                 <span class="material-symbols-outlined text-obsidian-cyan">group</span>
             </div>
             <div class="mt-3 flex items-baseline gap-2">
-                <span class="text-3xl font-bold font-mono text-white">{{ $stats['users_count'] }}</span>
+                <span class="text-3xl font-bold font-mono text-white">{{ $stats['users_count'] ?? 0 }}</span>
                 <span class="text-xs font-mono text-obsidian-muted">activos</span>
             </div>
             <div class="mt-3">
-                @if(auth()->user()->isAdmin())
-                    <a href="{{ route('admin.users.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
-                        Gestionar usuarios &rarr;
-                    </a>
-                @else
-                    <span class="text-xs font-mono text-obsidian-muted">
-                        Solo consulta
-                    </span>
-                @endif
+                <a href="{{ route('admin.users.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
+                    Gestionar usuarios &rarr;
+                </a>
             </div>
         </div>
+        @endif
 
         <!-- SERVICIOS -->
         <div class="glass-card rounded-xl p-5">
