@@ -89,7 +89,11 @@ apt-get install -y --no-install-recommends \
     php-mbstring \
     php-curl \
     php-zip \
-    php-sqlite3
+    php-sqlite3 \
+    php-ldap \
+    novnc \
+    websockify \
+    python3-websockify
 
 echo -e "${GREEN}[+] Paquetes del sistema y pila LAMP instalados exitosamente.${NC}\n"
 
@@ -207,7 +211,7 @@ if ! grep -q "^APP_KEY=base64:" "$WEB_DIR/.env" 2>/dev/null; then
 fi
 
 # Crear estructura de carpetas de almacenamiento y asignar permisos
-mkdir -p "$WEB_DIR/storage/app/public" \
+mkdir -p "$WEB_DIR/storage/app/public/avatars" \
          "$WEB_DIR/storage/framework/cache/data" \
          "$WEB_DIR/storage/framework/sessions" \
          "$WEB_DIR/storage/framework/views" \
@@ -219,9 +223,13 @@ chown -R www-data:"$SYS_USER" "$WEB_DIR/storage" "$WEB_DIR/bootstrap/cache"
 chmod -R 775 "$WEB_DIR/storage" "$WEB_DIR/bootstrap/cache"
 chmod -R 777 "$WEB_DIR/storage/app/public" 2>/dev/null || true
 
+# Crear enlace simbólico para almacenamiento público de avatares y archivos
+php artisan storage:link --force || true
+
 # Limpiar y reconstruir cachés de Laravel
 php artisan config:clear || true
 php artisan cache:clear || true
+php artisan route:clear || true
 php artisan view:clear || true
 echo -e "${GREEN}[+] Portal Web configurado en ${WEB_DIR}.${NC}\n"
 
@@ -246,12 +254,27 @@ cat <<APACHE_EOF > /etc/apache2/sites-available/laravel.conf
         Require all granted
     </Directory>
 
+    # Proxy WebSocket hacia Websockify para noVNC (debe ir antes del Alias)
+    ProxyPreserveHost On
+    ProxyPass /novnc/websockify ws://127.0.0.1:6080/websockify retry=0 timeout=3600
+    ProxyPassReverse /novnc/websockify ws://127.0.0.1:6080/websockify
+    ProxyPass /websockify ws://127.0.0.1:6080/websockify retry=0 timeout=3600
+    ProxyPassReverse /websockify ws://127.0.0.1:6080/websockify
+
+    # Soporte noVNC HTML5 estático
+    Alias /novnc /usr/share/novnc
+    <Directory /usr/share/novnc>
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
     ErrorLog \${APACHE_LOG_DIR}/laravel_error.log
     CustomLog \${APACHE_LOG_DIR}/laravel_access.log combined
 </VirtualHost>
 APACHE_EOF
 
-a2enmod rewrite >/dev/null 2>&1 || true
+a2enmod rewrite proxy proxy_http proxy_wstunnel >/dev/null 2>&1 || true
 a2ensite laravel.conf >/dev/null 2>&1 || true
 a2dissite 000-default.conf >/dev/null 2>&1 || true
 systemctl reload apache2 || systemctl restart apache2
@@ -390,7 +413,31 @@ RestartSec=10
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 4. Cron de Escaneo Web cada 5 minutos
+# 4. Proxy WebSocket Websockify para noVNC
+mkdir -p /etc/websockify
+touch /etc/websockify/tokens.cfg
+chown -R www-data:www-data /etc/websockify
+chmod 755 /etc/websockify
+chmod 644 /etc/websockify/tokens.cfg
+
+cat <<SERVICE_EOF > /etc/systemd/system/websockify.service
+[Unit]
+Description=Websockify WebSocket Proxy for noVNC
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/websockify --token-plugin TokenFile --token-source /etc/websockify/tokens.cfg 127.0.0.1:6080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
+# 5. Cron de Escaneo Web cada 5 minutos
 cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 # /etc/cron.d/monitoreo_web - Sincronizacion Web de Monitoreo cada 5 minutos
 */5 * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
@@ -401,6 +448,8 @@ systemctl daemon-reload
 systemctl enable boot-alert.service
 systemctl enable tg-admin-bot.service
 systemctl enable tg-sentinel-bot.service
+systemctl enable websockify.service
+systemctl restart websockify.service || true
 systemctl restart tg-sentinel-bot.service || true
 echo -e "${GREEN}[+] Servicios Systemd y Cron configurados y habilitados.${NC}\n"
 
@@ -439,6 +488,7 @@ echo "======================================================================"
 echo -e "${NC}"
 echo -e "🌐 ${BOLD}Portal Web:${NC}              http://${DOMAIN_NAME}/"
 echo -e "🗄️ ${BOLD}Base de Datos:${NC}            ${DB_NAME} (Usuario: ${DB_USER})"
+echo -e "🖥️ ${BOLD}Escritorio Remoto VNC:${NC}   noVNC + Websockify activo (systemctl status websockify)"
 echo -e "🤖 ${BOLD}Bot Centinela:${NC}            Activo (systemctl status tg-sentinel-bot)"
 echo -e "📡 ${BOLD}Bot de Monitoreo:${NC}         Habilitado (systemctl status tg-admin-bot)"
 echo -e "🔔 ${BOLD}Notificador SSH & Boot:${NC}   Activos en PAM y systemd"
