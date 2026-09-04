@@ -240,6 +240,22 @@ async def evaluate_proxy(p: dict) -> dict:
         "latency_ms": latency
     }
 
+async def evaluate_network_device(d: dict) -> dict:
+    is_up, latency = await check_ping(d.get("ip"))
+    return {
+        "id": d["id"],
+        "device_number": d["device_number"],
+        "name": d["name"],
+        "ip": d["ip"],
+        "mac": d.get("mac") or "",
+        "vendor_data": d.get("vendor_data") or "",
+        "normal_state_msg": d.get("normal_state_msg") or "",
+        "error_state_msg": d.get("error_state_msg") or "",
+        "status": "ACTIVO" if is_up else "APAGADO",
+        "is_up": is_up,
+        "latency_ms": latency
+    }
+
 def sync_conf_to_db():
     """
     Sincroniza automáticamente /config/monitoreo.conf y bot.conf con MySQL.
@@ -376,6 +392,28 @@ def sync_conf_to_db():
                             name = VALUES(name), ip_port = VALUES(ip_port), auth_userpass = VALUES(auth_userpass), is_active = VALUES(is_active), updated_at = NOW()
                         """
                         cursor.execute(sql_p, (letter, pname, pipport, pauth, 'https://core.telegram.org/bots', 1 if is_p_active else 0))
+
+            # 4. DISPOSITIVOS EN RED VALLE SECO (monitoreo.conf DISPOSITIVO1..30)
+            for dev_num in range(1, 31):
+                dname = data.get(f"DISPOSITIVO{dev_num}_NAME")
+                dip = data.get(f"DISPOSITIVO{dev_num}_IP")
+                if not dname or not dip:
+                    continue
+                dmac = data.get(f"DISPOSITIVO{dev_num}_MAC") or ""
+                ddatos = data.get(f"DISPOSITIVO{dev_num}_DATOS") or ""
+                dnorm = data.get(f"DISPOSITIVO{dev_num}_NORMAL") or ""
+                derr = data.get(f"DISPOSITIVO{dev_num}_ERROR") or ""
+
+                is_dev_active = ("NO CONFIGURADO" not in dname.upper() and dip not in ("0.0.0.0", "127.0.0.1", ""))
+
+                sql_net = """
+                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE
+                    device_number = VALUES(device_number), name = VALUES(name), mac = VALUES(mac), vendor_data = VALUES(vendor_data),
+                    normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), sort_order = VALUES(sort_order), updated_at = NOW()
+                """
+                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, dnorm, derr, 1 if is_dev_active else 0, dev_num))
     finally:
         conn.close()
 
@@ -401,6 +439,9 @@ async def run_full_scan():
 
             cursor.execute("SELECT * FROM monitored_proxies WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND ip_port != '' ORDER BY letter")
             proxies_db = cursor.fetchall()
+
+            cursor.execute("SELECT * FROM monitored_network_devices WHERE is_active = 1 AND name NOT LIKE '%NO CONFIGURADO%' AND ip != '0.0.0.0' ORDER BY sort_order")
+            net_devices_db = cursor.fetchall()
     finally:
         conn.close()
 
@@ -413,11 +454,13 @@ async def run_full_scan():
     service_tasks = [evaluate_service(s) for s in services_db]
     site_tasks = [evaluate_site(st, devices_by_site.get(st["id"], [])) for st in sites_db]
     proxy_tasks = [evaluate_proxy(p) for p in proxies_db]
+    net_device_tasks = [evaluate_network_device(d) for d in net_devices_db]
 
-    all_services, all_sites, all_proxies = await asyncio.gather(
+    all_services, all_sites, all_proxies, all_net_devices = await asyncio.gather(
         asyncio.gather(*service_tasks),
         asyncio.gather(*site_tasks),
-        asyncio.gather(*proxy_tasks)
+        asyncio.gather(*proxy_tasks),
+        asyncio.gather(*net_device_tasks)
     )
 
     # Calcular métricas y estado global
@@ -429,6 +472,9 @@ async def run_full_scan():
 
     proxies_online = sum(1 for p in all_proxies if p["is_up"])
     proxies_total = len(all_proxies)
+
+    net_online = sum(1 for d in all_net_devices if d["is_up"])
+    net_total = len(all_net_devices)
 
     global_status = "OPERACIONAL"
     if serv_online < (serv_total * 0.7) or sites_online < (sites_total * 0.7):
@@ -450,10 +496,13 @@ async def run_full_scan():
             "sites_total": sites_total,
             "proxies_online": proxies_online,
             "proxies_total": proxies_total,
+            "network_devices_online": net_online,
+            "network_devices_total": net_total,
         },
         "services": all_services,
         "sites": all_sites,
-        "proxies": all_proxies
+        "proxies": all_proxies,
+        "network_devices": all_net_devices
     }
 
     # Guardar en archivo JSON estático de Laravel
@@ -561,7 +610,7 @@ async def run_full_scan():
     finally:
         conn.close()
 
-    print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total}")
+    print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total} | Disp. Valle Seco: {net_online}/{net_total}")
 
 if __name__ == "__main__":
     asyncio.run(run_full_scan())

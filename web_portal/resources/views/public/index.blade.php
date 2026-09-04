@@ -99,6 +99,7 @@
     @php
         $snapshotServices = ($snapshotData && isset($snapshotData['services'])) ? collect($snapshotData['services'])->keyBy('letter') : collect();
         $snapshotSites = ($snapshotData && isset($snapshotData['sites'])) ? collect($snapshotData['sites'])->keyBy('letter') : collect();
+        $snapshotNetDevices = ($snapshotData && isset($snapshotData['network_devices'])) ? collect($snapshotData['network_devices'])->keyBy('ip') : collect();
 
         // 1. Servicios Activos vs Caídos
         $activeServices = $services->filter(function($s) use ($snapshotServices) {
@@ -119,6 +120,15 @@
             $snap = $snapshotSites->get($st->letter);
             return $snap ? !($snap['is_up'] ?? false) : true;
         });
+
+        // 3. Dispositivos en Red Valle Seco
+        $activeNetDevices = ($networkDevices ?? collect())->map(function($d) use ($snapshotNetDevices) {
+            $snap = $snapshotNetDevices->get($d->ip);
+            $d->is_up_evaluated = $snap ? ($snap['is_up'] ?? false) : false;
+            $d->latency_evaluated = $snap ? ($snap['latency_ms'] ?? 0) : 0;
+            return $d;
+        });
+        $netDevicesOnlineCount = $activeNetDevices->where('is_up_evaluated', true)->count();
     @endphp
 
     <!-- CUERPO PRINCIPAL (3 COLUMNAS: ACTIVOS, SEDES Y BLOQUE DE CAÍDAS) -->
@@ -188,138 +198,231 @@
         </section>
 
         <!-- ========================================================================= -->
-        <!-- COLUMNA 2: SEDES REGIONALES OPERATIVAS (34% ANCHO)                       -->
+        <!-- COLUMNA 2: SEDES REGIONALES Y DISPOSITIVOS EN RED VALLE SECO (34% ANCHO) -->
         <!-- ========================================================================= -->
-        <section class="glass-panel rounded-xl flex flex-col w-full lg:w-[34%] h-full overflow-hidden border border-obsidian-border/80">
-            <!-- CABECERA -->
-            <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-obsidian-purple text-lg">domain</span>
-                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">Sedes Regionales Conectadas</h2>
+        <section class="flex flex-col w-full lg:w-[34%] h-full gap-3 overflow-hidden">
+
+            <!-- BLOQUE SUPERIOR: SEDES REGIONALES CONECTADAS (50% ALTURA) -->
+            <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-obsidian-border/80">
+                <!-- CABECERA -->
+                <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-obsidian-purple text-lg">domain</span>
+                        <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">Sedes Regionales Conectadas</h2>
+                    </div>
+                    <span id="badge-count-active-sites" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30">
+                        {{ $activeSites->count() }} Sedes Online
+                    </span>
                 </div>
-                <span id="badge-count-active-sites" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30">
-                    {{ $activeSites->count() }} Sedes Online
-                </span>
+
+                <!-- LISTA VERTICAL DE SEDES ACTIVAS (COMPACTA Y DESPLEGABLE) -->
+                <div class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scroll" id="active-sites-container">
+                    @forelse($activeSites as $site)
+                        @php
+                            $stData = $snapshotSites->get($site->letter);
+                            $latency = $stData ? ($stData['latency_ms'] ?? 0) : 0;
+                            $devicesSnapshot = ($stData && isset($stData['devices'])) ? collect($stData['devices'])->keyBy('device_number') : collect();
+                            $activeDevices = $site->devices->filter(function($d) {
+                                return $d->is_active && $d->name != 'NO CONFIGURADO' && !str_contains(strtoupper($d->name), 'NO CONFIGURADO') && $d->ip != '0.0.0.0';
+                            });
+                            $cleanAddress = ($site->address && !str_contains(strtoupper($site->address), 'NO CONFIGURADO')) ? $site->address : '';
+                            $cleanPhone = ($site->phone_1 && !str_contains(strtoupper($site->phone_1), 'NO CONFIGURADO')) ? $site->phone_1 : '';
+                        @endphp
+                        <div class="rounded-xl bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-purple/50 transition overflow-hidden group item-searchable"
+                             data-search="{{ strtolower($site->name . ' ' . $cleanAddress) }}">
+                            
+                            <!-- ENCABEZADO COMPACTO DE LA SEDE (CLICKEABLE Y CON TOOLTIP AL POSAR) -->
+                            <div class="p-2.5 flex items-center justify-between cursor-pointer select-none"
+                                 onclick="toggleSiteDetails('site-details-{{ $site->letter }}', this)"
+                                 data-tech-title="{{ $site->name }}"
+                                 data-tech-type="SEDE REGIONAL"
+                                 data-tech-ip="{{ $site->ip ?: '0.0.0.0' }}"
+                                 data-tech-port="Gateway PING / ICMP"
+                                 data-tech-protocol="Enlace de Transporte WAN"
+                                 data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 20 ms' }}"
+                                 data-tech-status="ENLACE PRINCIPAL OPERATIVO"
+                                 data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
+                                 data-tech-id="{{ $site->id }}"
+                                 data-tech-kind="site">
+                                
+                                <div class="flex items-center space-x-2 min-w-0">
+                                    <div class="w-2 h-2 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
+                                    <div class="truncate">
+                                        <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-purple transition-colors truncate">
+                                            {{ $site->name }}
+                                        </h3>
+                                        <p class="text-[9px] font-mono text-obsidian-muted truncate">{{ $site->letter == 'A' ? 'Centro de Telecomunicaciones' : 'Enlace Regional Activo' }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase {{ $site->letter == 'A' ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30' : 'bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30' }}">
+                                        {{ $site->letter == 'A' ? 'HUB' : 'SEDE' }}
+                                    </span>
+                                    <span class="material-symbols-outlined text-obsidian-muted text-sm transition-transform duration-200 chevron-icon">
+                                        expand_more
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- CONTENIDO DESPLEGABLE CON EQUIPOS EN SITIO (OCULTO POR DEFECTO) -->
+                            <div id="site-details-{{ $site->letter }}" class="hidden px-2.5 pb-2.5 pt-1 border-t border-obsidian-border/40 bg-obsidian-bg/40 space-y-2">
+                                <!-- METRICAS DE LATENCIA -->
+                                <div class="flex items-center justify-between text-[10px] font-mono bg-obsidian-bg/80 px-2 py-1 rounded-lg border border-obsidian-border/40">
+                                    <span class="text-[9px] text-obsidian-muted">Latencia Gateway:</span>
+                                    <span class="font-bold text-emerald-400 text-[10px]">{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}</span>
+                                </div>
+
+                                <!-- CUADRICULA DE EQUIPOS EN SITIO -->
+                                @if($activeDevices->count() > 0)
+                                    <div class="space-y-1">
+                                        <span class="text-[8.5px] uppercase font-mono tracking-wider text-obsidian-muted block">Equipos en Sitio ({{ $activeDevices->count() }})</span>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                            @foreach($activeDevices as $dev)
+                                                @php
+                                                    $dSnap = $devicesSnapshot->get($dev->device_number);
+                                                    $devUp = $dSnap ? ($dSnap['is_up'] ?? false) : false;
+                                                    $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
+                                                @endphp
+                                                <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
+                                                     data-tech-title="{{ $site->name }} - {{ $dev->name }}"
+                                                     data-tech-type="EQUIPO SECUNDARIO"
+                                                     data-tech-ip="{{ $dev->ip }}"
+                                                     data-tech-port="Slot #{{ $dev->device_number }}"
+                                                     data-tech-protocol="ICMP Echo Ping"
+                                                     data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
+                                                     data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
+                                                     data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
+                                                     data-tech-id="{{ $site->id }}"
+                                                     data-tech-kind="site">
+                                                    <div class="flex items-center space-x-1.5 min-w-0 pr-1 truncate">
+                                                        <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
+                                                        <span class="text-white truncate" title="{{ $dev->name }}">{{ $dev->name }}</span>
+                                                    </div>
+
+                                                    <!-- BOTÓN VNC CON CONDICIÓN DE ROL Y LOGIN -->
+                                                    @if($canVnc)
+                                                        <button type="button"
+                                                                onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', true)"
+                                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
+                                                                title="Conectar Escritorio Remoto VNC ({{ $dev->ip }})">
+                                                            <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
+                                                            <span>VNC</span>
+                                                        </button>
+                                                    @else
+                                                        <button type="button"
+                                                                onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                                title="Debe iniciar sesión para conectar por VNC">
+                                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                            <span>VNC</span>
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @else
+                                    <p class="text-[9px] font-mono text-obsidian-muted text-center py-1">Sin equipos secundarios registrados</p>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-8 text-center text-xs font-mono text-obsidian-muted">
+                            No hay sedes conectadas en este momento.
+                        </div>
+                    @endforelse
+                </div>
             </div>
 
-            <!-- LISTA VERTICAL DE SEDES ACTIVAS (COMPACTA Y DESPLEGABLE) -->
-            <div class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scroll" id="active-sites-container">
-                @forelse($activeSites as $site)
-                    @php
-                        $stData = $snapshotSites->get($site->letter);
-                        $latency = $stData ? ($stData['latency_ms'] ?? 0) : 0;
-                        $devicesSnapshot = ($stData && isset($stData['devices'])) ? collect($stData['devices'])->keyBy('device_number') : collect();
-                        $activeDevices = $site->devices->filter(function($d) {
-                            return $d->is_active && $d->name != 'NO CONFIGURADO' && !str_contains(strtoupper($d->name), 'NO CONFIGURADO') && $d->ip != '0.0.0.0';
-                        });
-                        $cleanAddress = ($site->address && !str_contains(strtoupper($site->address), 'NO CONFIGURADO')) ? $site->address : '';
-                        $cleanPhone = ($site->phone_1 && !str_contains(strtoupper($site->phone_1), 'NO CONFIGURADO')) ? $site->phone_1 : '';
-                    @endphp
-                    <div class="rounded-xl bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-purple/50 transition overflow-hidden group item-searchable"
-                         data-search="{{ strtolower($site->name . ' ' . $cleanAddress) }}">
-                        
-                        <!-- ENCABEZADO COMPACTO DE LA SEDE (CLICKEABLE Y CON TOOLTIP AL POSAR) -->
-                        <div class="p-2.5 flex items-center justify-between cursor-pointer select-none"
-                             onclick="toggleSiteDetails('site-details-{{ $site->letter }}', this)"
-                             data-tech-title="{{ $site->name }}"
-                             data-tech-type="SEDE REGIONAL"
-                             data-tech-ip="{{ $site->ip ?: '0.0.0.0' }}"
-                             data-tech-port="Gateway PING / ICMP"
-                             data-tech-protocol="Enlace de Transporte WAN"
-                             data-tech-latency="{{ $latency > 0 ? $latency . ' ms' : '< 20 ms' }}"
-                             data-tech-status="ENLACE PRINCIPAL OPERATIVO"
-                             data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
-                             data-tech-id="{{ $site->id }}"
-                             data-tech-kind="site">
+            <!-- BLOQUE INFERIOR: DISPOSITIVOS EN RED VALLE SECO (50% ALTURA) -->
+            <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-obsidian-border/80 bg-obsidian-panel/20">
+                <!-- CABECERA -->
+                <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-obsidian-cyan text-lg">lan</span>
+                        <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">DISPOSITIVOS EN RED VALLE SECO</h2>
+                    </div>
+                    <span id="badge-count-valle-seco-devices" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30">
+                        {{ $netDevicesOnlineCount }} / {{ $activeNetDevices->count() }} Online
+                    </span>
+                </div>
+
+                <!-- LISTA DE DISPOSITIVOS EN RED VALLE SECO -->
+                <div class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scroll" id="valle-seco-devices-container">
+                    @forelse($activeNetDevices as $netDev)
+                        @php
+                            $isUp = $netDev->is_up_evaluated ?? false;
+                            $latStr = ($netDev->latency_evaluated ?? 0) > 0 ? ($netDev->latency_evaluated . ' ms') : '< 1 ms';
+                            $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
+                            $isWorkstation = str_contains(strtoupper($netDev->name), 'EQUIPO') || str_contains(strtoupper($netDev->name), 'PRODUCION') || str_contains(strtoupper($netDev->name), 'PC');
+                        @endphp
+                        <div class="py-1.5 px-2.5 rounded-lg bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-cyan/50 transition cursor-pointer flex items-center justify-between group item-searchable select-none"
+                             data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '')) }}"
+                             data-tech-title="{{ $netDev->name }}"
+                             data-tech-type="DISPOSITIVO LAN VALLE SECO"
+                             data-tech-ip="{{ $netDev->ip }}"
+                             data-tech-port="MAC: {{ $netDev->mac ?: 'No disponible' }}"
+                             data-tech-protocol="ICMP Ping Directo"
+                             data-tech-latency="{{ $isUp ? $latStr : 'Timeout / Sin respuesta' }}"
+                             data-tech-status="{{ $isUp ? 'OPERATIVO (Enlace Local LAN Activo)' : 'OFFLINE (Dispositivo no responde en LAN)' }}"
+                             data-tech-details="{{ $netDev->vendor_data ? 'Fabricante / Info: ' . $netDev->vendor_data : 'Equipo de red local Valle Seco.' }}"
+                             data-tech-id="{{ $netDev->id }}"
+                             data-tech-kind="device">
                             
-                            <div class="flex items-center space-x-2 min-w-0">
-                                <div class="w-2 h-2 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
-                                <div class="truncate">
-                                    <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-purple transition-colors truncate">
-                                        {{ $site->name }}
-                                    </h3>
-                                    <p class="text-[9px] font-mono text-obsidian-muted truncate">{{ $site->letter == 'A' ? 'Centro de Telecomunicaciones' : 'Enlace Regional Activo' }}</p>
+                            <div class="flex items-center gap-2 min-w-0 pr-2">
+                                <div class="w-2 h-2 rounded-full shrink-0 {{ $isUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 truncate">
+                                        <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-cyan transition-colors truncate">
+                                            {{ $netDev->name }}
+                                        </h3>
+                                        @if($netDev->vendor_data)
+                                            <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-obsidian-muted bg-obsidian-bg/80 border border-obsidian-border/40 truncate shrink-0">
+                                                {{ $netDev->vendor_data }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <p class="text-[9px] font-mono text-obsidian-muted truncate">
+                                        IP: {{ $netDev->ip }} @if($netDev->mac) • MAC: <span class="text-obsidian-cyan/70">{{ $netDev->mac }}</span>@endif
+                                    </p>
                                 </div>
                             </div>
 
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase {{ $site->letter == 'A' ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30' : 'bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30' }}">
-                                    {{ $site->letter == 'A' ? 'HUB' : 'SEDE' }}
+                                <span class="text-[9px] font-mono {{ $isUp ? 'text-emerald-400/90' : 'text-red-400' }} font-medium">
+                                    {{ $isUp ? $latStr : 'Down' }}
                                 </span>
-                                <span class="material-symbols-outlined text-obsidian-muted text-sm transition-transform duration-200 chevron-icon">
-                                    expand_more
-                                </span>
+
+                                @if($isWorkstation)
+                                    @if($canVnc)
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openVncModal('{{ $netDev->ip }}', '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
+                                                title="Conectar Escritorio Remoto VNC ({{ $netDev->ip }})">
+                                            <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
+                                            <span>VNC</span>
+                                        </button>
+                                    @else
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openVncModal('{{ $netDev->ip }}', '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                title="Debe iniciar sesión para conectar por VNC">
+                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                            <span>VNC</span>
+                                        </button>
+                                    @endif
+                                @endif
                             </div>
                         </div>
-
-                        <!-- CONTENIDO DESPLEGABLE CON EQUIPOS EN SITIO (OCULTO POR DEFECTO) -->
-                        <div id="site-details-{{ $site->letter }}" class="hidden px-2.5 pb-2.5 pt-1 border-t border-obsidian-border/40 bg-obsidian-bg/40 space-y-2">
-                            <!-- METRICAS DE LATENCIA -->
-                            <div class="flex items-center justify-between text-[10px] font-mono bg-obsidian-bg/80 px-2 py-1 rounded-lg border border-obsidian-border/40">
-                                <span class="text-[9px] text-obsidian-muted">Latencia Gateway:</span>
-                                <span class="font-bold text-emerald-400 text-[10px]">{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}</span>
-                            </div>
-
-                            <!-- CUADRICULA DE EQUIPOS EN SITIO -->
-                            @if($activeDevices->count() > 0)
-                                <div class="space-y-1">
-                                    <span class="text-[8.5px] uppercase font-mono tracking-wider text-obsidian-muted block">Equipos en Sitio ({{ $activeDevices->count() }})</span>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                        @foreach($activeDevices as $dev)
-                                            @php
-                                                $dSnap = $devicesSnapshot->get($dev->device_number);
-                                                $devUp = $dSnap ? ($dSnap['is_up'] ?? false) : false;
-                                                $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
-                                            @endphp
-                                            <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
-                                                 data-tech-title="{{ $site->name }} - {{ $dev->name }}"
-                                                 data-tech-type="EQUIPO SECUNDARIO"
-                                                 data-tech-ip="{{ $dev->ip }}"
-                                                 data-tech-port="Slot #{{ $dev->device_number }}"
-                                                 data-tech-protocol="ICMP Echo Ping"
-                                                 data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
-                                                 data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
-                                                 data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
-                                                 data-tech-id="{{ $site->id }}"
-                                                 data-tech-kind="site">
-                                                <div class="flex items-center space-x-1.5 min-w-0 pr-1 truncate">
-                                                    <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
-                                                    <span class="text-white truncate" title="{{ $dev->name }}">{{ $dev->name }}</span>
-                                                </div>
-
-                                                <!-- BOTÓN VNC CON CONDICIÓN DE ROL Y LOGIN -->
-                                                @if($canVnc)
-                                                    <button type="button"
-                                                            onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', true)"
-                                                            class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
-                                                            title="Conectar Escritorio Remoto VNC ({{ $dev->ip }})">
-                                                        <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
-                                                        <span>VNC</span>
-                                                    </button>
-                                                @else
-                                                    <button type="button"
-                                                            onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
-                                                            class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                            title="Debe iniciar sesión para conectar por VNC">
-                                                        <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
-                                                        <span>VNC</span>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @else
-                                <p class="text-[9px] font-mono text-obsidian-muted text-center py-1">Sin equipos secundarios registrados</p>
-                            @endif
+                    @empty
+                        <div class="p-8 text-center text-xs font-mono text-obsidian-muted">
+                            No hay dispositivos registrados en red Valle Seco.
                         </div>
-                    </div>
-                @empty
-                    <div class="p-8 text-center text-xs font-mono text-obsidian-muted">
-                        No hay sedes conectadas en este momento.
-                    </div>
-                @endforelse
+                    @endforelse
+                </div>
             </div>
+
         </section>
 
         <!-- ========================================================================= -->

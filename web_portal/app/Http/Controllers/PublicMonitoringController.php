@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MonitoredNetworkDevice;
 use App\Models\MonitoredProxy;
 use App\Models\MonitoredService;
 use App\Models\MonitoredSite;
@@ -48,6 +49,14 @@ class PublicMonitoringController extends Controller
             ->where('name', 'not like', '%NO CONFIGURADO%')
             ->whereNotNull('ip_port')
             ->where('ip_port', '!=', '')
+            ->get();
+
+        // Dispositivos locales en red Valle Seco
+        $networkDevices = MonitoredNetworkDevice::where('is_active', true)
+            ->where('name', 'not like', '%NO CONFIGURADO%')
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '0.0.0.0')
+            ->orderBy('sort_order')
             ->get();
 
         $latestSnapshot = MonitoringSnapshot::latest()->first();
@@ -135,7 +144,7 @@ class PublicMonitoringController extends Controller
             ];
         }
 
-        return view('public.index', compact('services', 'sites', 'proxies', 'latestSnapshot', 'snapshotData', 'serviceHistoryMap', 'siteHistoryMap'));
+        return view('public.index', compact('services', 'sites', 'proxies', 'networkDevices', 'latestSnapshot', 'snapshotData', 'serviceHistoryMap', 'siteHistoryMap'));
     }
 
     public function apiStatus(): JsonResponse

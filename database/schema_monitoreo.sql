@@ -202,6 +202,31 @@ CREATE TABLE `monitored_site_devices` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `monitored_network_devices`
+--
+
+DROP TABLE IF EXISTS `monitored_network_devices`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `monitored_network_devices` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `device_number` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `ip` varchar(255) NOT NULL,
+  `mac` varchar(50) DEFAULT NULL,
+  `vendor_data` varchar(255) DEFAULT NULL,
+  `normal_state_msg` varchar(255) DEFAULT NULL,
+  `error_state_msg` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `monitored_network_devices_ip_unique` (`ip`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `monitored_sites`
 --
 
