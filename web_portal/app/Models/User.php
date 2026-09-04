@@ -45,6 +45,11 @@ class User extends Authenticatable
         return $this->role === 'admin' || $this->role === 'SuperAdmin';
     }
 
+    public function isLdapUser(): bool
+    {
+        return !empty($this->username);
+    }
+
     public function bannedIps()
     {
         return $this->hasMany(BannedIp::class, 'user_id');

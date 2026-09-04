@@ -33,11 +33,26 @@
                 <tbody class="divide-y divide-obsidian-border/60">
                     @foreach($users as $u)
                         <tr class="hover:bg-obsidian-panel/40 transition">
-                            <td class="px-6 py-4 font-sans font-semibold text-white flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-obsidian-cyan/20 border border-obsidian-cyan/40 text-obsidian-cyan flex items-center justify-center font-mono text-xs">
-                                    {{ strtoupper(substr($u->name, 0, 2)) }}
+                            <td class="px-6 py-4 font-sans font-semibold text-white">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-obsidian-cyan/20 border border-obsidian-cyan/40 text-obsidian-cyan flex items-center justify-center font-mono text-xs shrink-0">
+                                        {{ strtoupper(substr($u->name, 0, 2)) }}
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <div>{{ $u->name }}</div>
+                                        @if($u->username)
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                                                <span class="material-symbols-outlined text-[11px]">badge</span>
+                                                LDAP: {{ $u->username }}
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                                                <span class="material-symbols-outlined text-[11px]">vpn_key</span>
+                                                Cuenta Local
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <span>{{ $u->name }}</span>
                             </td>
                             <td class="px-6 py-4 text-obsidian-muted">{{ $u->email }}</td>
                             <td class="px-6 py-4">
@@ -134,9 +149,21 @@
                 <label class="block text-obsidian-muted mb-1">Correo Electrónico</label>
                 <input type="email" name="email" id="edit_email" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan"/>
             </div>
-            <div>
+            <!-- CONTENEDOR CONTRASEÑA CUENTA LOCAL -->
+            <div id="container-edit-password">
                 <label class="block text-obsidian-muted mb-1">Nueva Contraseña (Dejar en blanco para mantener la actual)</label>
-                <input type="password" name="password" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan" placeholder="••••••••"/>
+                <input type="password" name="password" id="edit_password" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan" placeholder="••••••••"/>
+            </div>
+
+            <!-- CONTENEDOR INFORMATIVO PARA USUARIOS LDAP -->
+            <div id="container-ldap-notice" class="hidden p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-xs font-mono text-cyan-300 space-y-1">
+                <div class="flex items-center gap-1.5 font-bold text-white">
+                    <span class="material-symbols-outlined text-base text-obsidian-cyan">lock_person</span>
+                    <span>Autenticación Centralizada (LDAP Corporativo)</span>
+                </div>
+                <p class="text-[11px] text-obsidian-muted leading-relaxed">
+                    Usuario federado: <code id="ldap-notice-username" class="text-obsidian-cyan font-bold"></code>. Su contraseña reside exclusivamente en el Directorio Activo de Corpoelec y no se administra en este portal.
+                </p>
             </div>
             <div>
                 <label class="block text-obsidian-muted mb-1">Rol de Acceso</label>
@@ -176,6 +203,17 @@
         document.getElementById('edit_email').value = user.email;
         document.getElementById('edit_role').value = user.role;
         document.getElementById('edit_is_active').checked = user.is_active;
+
+        if (user.username) {
+            document.getElementById('container-edit-password').classList.add('hidden');
+            document.getElementById('edit_password').value = '';
+            document.getElementById('ldap-notice-username').innerText = user.username;
+            document.getElementById('container-ldap-notice').classList.remove('hidden');
+        } else {
+            document.getElementById('container-ldap-notice').classList.add('hidden');
+            document.getElementById('container-edit-password').classList.remove('hidden');
+        }
+
         openModal('modal-edit-user');
     }
 </script>

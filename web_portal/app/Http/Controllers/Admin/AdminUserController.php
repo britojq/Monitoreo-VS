@@ -48,7 +48,10 @@ class AdminUserController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        if (!empty($validated['password'])) {
+        // Si el usuario es de origen LDAP, la contraseña NUNCA se modifica localmente
+        if ($user->isLdapUser()) {
+            unset($validated['password']);
+        } elseif (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
