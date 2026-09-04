@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminSiteController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SyncController;
+use App\Http\Controllers\Admin\TelnetSessionController;
 use App\Http\Controllers\Admin\VncSessionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicMonitoringController;
@@ -58,6 +59,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Control Remoto VNC (Accesible para Operadores y Administradores)
     Route::post('vnc/session', [VncSessionController::class, 'createSession'])->name('vnc.session');
     Route::get('vnc/viewer', [VncSessionController::class, 'viewer'])->name('vnc.viewer');
+
+    // Control Remoto Telnet (Accesible para Operadores y Administradores)
+    Route::post('telnet/session', [TelnetSessionController::class, 'createSession'])->name('telnet.session');
+    Route::get('telnet/terminal', [TelnetSessionController::class, 'terminal'])->name('telnet.terminal');
 
     // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN (Protegidas por Middleware 'admin')
     // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO

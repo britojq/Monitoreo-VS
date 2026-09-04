@@ -215,6 +215,8 @@ CREATE TABLE `monitored_network_devices` (
   `ip` varchar(255) NOT NULL,
   `mac` varchar(50) DEFAULT NULL,
   `vendor_data` varchar(255) DEFAULT NULL,
+  `access_type` varchar(20) NOT NULL DEFAULT 'SIN SOPORTE',
+  `access_port` int(11) DEFAULT NULL,
   `normal_state_msg` varchar(255) DEFAULT NULL,
   `error_state_msg` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,

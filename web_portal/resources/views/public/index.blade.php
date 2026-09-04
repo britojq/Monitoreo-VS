@@ -354,19 +354,20 @@
                         @php
                             $isUp = $netDev->is_up_evaluated ?? false;
                             $latStr = ($netDev->latency_evaluated ?? 0) > 0 ? ($netDev->latency_evaluated . ' ms') : '< 1 ms';
-                            $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
-                            $isWorkstation = str_contains(strtoupper($netDev->name), 'EQUIPO') || str_contains(strtoupper($netDev->name), 'PRODUCION') || str_contains(strtoupper($netDev->name), 'PC');
+                            $canRemote = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
+                            $accessType = strtoupper(trim($netDev->access_type ?? 'SIN SOPORTE'));
+                            $accessPort = $netDev->access_port ?: ($accessType === 'TELNET' ? 23 : ($accessType === 'WEB' ? 80 : 5900));
                         @endphp
                         <div class="py-1.5 px-2.5 rounded-lg bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-cyan/50 transition cursor-pointer flex items-center justify-between group item-searchable select-none"
                              data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '')) }}"
                              data-tech-title="{{ $netDev->name }}"
                              data-tech-type="DISPOSITIVO LAN VALLE SECO"
                              data-tech-ip="{{ $netDev->ip }}"
-                             data-tech-port="MAC: {{ $netDev->mac ?: 'No disponible' }}"
+                             data-tech-port="MAC: {{ $netDev->mac ?: 'No disponible' }}{{ $accessType !== 'SIN SOPORTE' ? ' • ' . $accessType . ':' . $accessPort : '' }}"
                              data-tech-protocol="ICMP Ping Directo"
                              data-tech-latency="{{ $isUp ? $latStr : 'Timeout / Sin respuesta' }}"
                              data-tech-status="{{ $isUp ? 'OPERATIVO (Enlace Local LAN Activo)' : 'OFFLINE (Dispositivo no responde en LAN)' }}"
-                             data-tech-details="{{ $netDev->vendor_data ? 'Fabricante / Info: ' . $netDev->vendor_data : 'Equipo de red local Valle Seco.' }}"
+                             data-tech-details="{{ $netDev->vendor_data ? 'Fabricante / Info: ' . $netDev->vendor_data : 'Equipo de red local Valle Seco.' }}{{ $accessType !== 'SIN SOPORTE' ? ' • Acceso: ' . $accessType : '' }}"
                              data-tech-id="{{ $netDev->id }}"
                              data-tech-kind="device">
                             
@@ -394,10 +395,46 @@
                                     {{ $isUp ? $latStr : 'Down' }}
                                 </span>
 
-                                @if($isWorkstation)
-                                    @if($canVnc)
+                                @if($accessType === 'TELNET')
+                                    @if($canRemote)
                                         <button type="button"
-                                                onclick="event.stopPropagation(); openVncModal('{{ $netDev->ip }}', '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
+                                                onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
+                                                title="Abrir Terminal Telnet ({{ $netDev->ip }}:{{ $accessPort }})">
+                                            <span class="material-symbols-outlined text-[10px]">terminal</span>
+                                            <span>TELNET</span>
+                                        </button>
+                                    @else
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                title="Debe iniciar sesión para acceder por Telnet">
+                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                            <span>TELNET</span>
+                                        </button>
+                                    @endif
+                                @elseif($accessType === 'WEB')
+                                    @if($canRemote)
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
+                                                title="Abrir Panel Web (http://{{ $netDev->ip }}:{{ $accessPort }})">
+                                            <span class="material-symbols-outlined text-[10px]">language</span>
+                                            <span>WEB</span>
+                                        </button>
+                                    @else
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
+                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                title="Debe iniciar sesión para acceder al panel web">
+                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                            <span>WEB</span>
+                                        </button>
+                                    @endif
+                                @elseif($accessType === 'VNC')
+                                    @if($canRemote)
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); openAccessModal('VNC', '{{ $netDev->ip }}', 5900, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
                                                 class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
                                                 title="Conectar Escritorio Remoto VNC ({{ $netDev->ip }})">
                                             <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
@@ -405,7 +442,7 @@
                                         </button>
                                     @else
                                         <button type="button"
-                                                onclick="event.stopPropagation(); openVncModal('{{ $netDev->ip }}', '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
+                                                onclick="event.stopPropagation(); openAccessModal('VNC', '{{ $netDev->ip }}', 5900, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
                                                 class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
                                                 title="Debe iniciar sesión para conectar por VNC">
                                             <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
@@ -729,9 +766,9 @@
 </div>
 
 <!-- ========================================================================= -->
-<!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO PARA VNC (USUARIO NO LOGUEADO) -->
+<!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO (USUARIO NO LOGUEADO)           -->
 <!-- ========================================================================= -->
-<div id="modal-vnc-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+<div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
             <div class="flex items-center gap-2.5">
@@ -740,10 +777,10 @@
                 </div>
                 <div>
                     <h3 class="text-xs font-bold text-white uppercase tracking-wider">Acceso Restringido</h3>
-                    <p class="text-[10px] text-obsidian-muted">Control Remoto VNC</p>
+                    <p class="text-[10px] text-obsidian-muted" id="access-prompt-service">Consola de Red y Monitoreo</p>
                 </div>
             </div>
-            <button onclick="closeVncPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+            <button onclick="closeAccessPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
         <div class="space-y-3 text-xs">
@@ -753,16 +790,16 @@
                     <span>Autenticación Requerida</span>
                 </p>
                 <p class="leading-relaxed">
-                    Para acceder al escritorio remoto VNC del equipo <strong id="vnc-prompt-device" class="text-white"></strong> (<code id="vnc-prompt-ip" class="text-obsidian-cyan"></code>) en <strong id="vnc-prompt-site" class="text-white"></strong>, debe iniciar sesión con una cuenta autorizada de <strong>Operador</strong> o <strong>Administrador</strong>.
+                    Para acceder <span id="access-prompt-action">al servicio</span> del equipo <strong id="access-prompt-device" class="text-white"></strong> (<code id="access-prompt-ip" class="text-obsidian-cyan"></code>) en <strong id="access-prompt-site" class="text-white"></strong>, debe iniciar sesión con una cuenta autorizada de <strong>Operador</strong> o <strong>Administrador</strong>.
                 </p>
             </div>
             <p class="text-[10px] text-obsidian-muted leading-relaxed">
-                🔒 El acceso a consolas remotas está reservado exclusivamente al personal técnico autorizado de Corpoelec para labores de soporte y monitoreo.
+                🔒 El acceso a consolas remotas (VNC, Telnet) y paneles de configuración web está reservado exclusivamente al personal técnico autorizado de Corpoelec para labores de soporte y monitoreo.
             </p>
         </div>
 
         <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
-            <button type="button" onclick="closeVncPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+            <button type="button" onclick="closeAccessPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                 Cancelar
             </button>
             <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
@@ -785,7 +822,7 @@
                 </div>
                 <div>
                     <h3 class="text-xs font-bold text-white uppercase tracking-wider">Escritorio Remoto VNC</h3>
-                    <p class="text-[10px] text-obsidian-cyan">Conexión de Soporte en Tiempo Real</p>
+                    <p class="text-[10px] text-obsidian-cyan">Conexión Gráfica en Tiempo Real (RFB)</p>
                 </div>
             </div>
             <button onclick="closeVncSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
@@ -840,42 +877,259 @@
     </div>
 </div>
 
+<!-- ========================================================================= -->
+<!-- MODAL LANZADOR DE TERMINAL TELNET (USUARIO CON ROL ADMIN U OPERADOR)      -->
+<!-- ========================================================================= -->
+<div id="modal-telnet-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
+                    <span class="material-symbols-outlined text-xl">terminal</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Terminal Telnet CLI</h3>
+                    <p class="text-[10px] text-obsidian-cyan">Consola de Red en Tiempo Real (RFC 854)</p>
+                </div>
+            </div>
+            <button onclick="closeTelnetSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Equipo Destino:</span>
+                    <strong id="telnet-session-device" class="text-cyan-300"></strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Sede / Ubicación:</span>
+                    <span id="telnet-session-site" class="text-white"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Dirección IP:</span>
+                    <code id="telnet-session-ip" class="text-obsidian-cyan font-bold"></code>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Puerto de Servicio:</span>
+                    <span id="telnet-session-port" class="text-white font-mono">23 (Telnet RFC 854)</span>
+                </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-obsidian-panel/60 border border-obsidian-border text-[11px] text-obsidian-muted space-y-1">
+                <p class="text-white font-semibold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-obsidian-cyan">verified_user</span>
+                    <span>Acceso Habilitado</span>
+                </p>
+                <p>
+                    Sesión autorizada para <strong class="text-white">{{ Auth::user() ? Auth::user()->name : 'Operador' }}</strong> (Rol: <code class="text-obsidian-cyan uppercase">{{ Auth::user() ? Auth::user()->role : 'operador' }}</code>).
+                </p>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between">
+            <a id="telnet-native-link" href="#" class="text-[11px] text-obsidian-muted hover:text-cyan-300 transition flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">open_in_new</span>
+                <span>Cliente Local (telnet://)</span>
+            </a>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeTelnetSessionModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                    Cerrar
+                </button>
+                <button id="btn-launch-telnet-web" type="button" onclick="launchWebTelnet()" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">terminal</span>
+                    <span>Abrir Terminal Web</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL LANZADOR DE PANEL WEB (USUARIO CON ROL ADMIN U OPERADOR)           -->
+<!-- ========================================================================= -->
+<div id="modal-web-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
+                    <span class="material-symbols-outlined text-xl">language</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Panel Web Administrativo</h3>
+                    <p class="text-[10px] text-obsidian-cyan">Interfaz de Configuración del Dispositivo</p>
+                </div>
+            </div>
+            <button onclick="closeWebSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Equipo Destino:</span>
+                    <strong id="web-session-device" class="text-cyan-300"></strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Sede / Ubicación:</span>
+                    <span id="web-session-site" class="text-white"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Dirección IP:</span>
+                    <code id="web-session-ip" class="text-obsidian-cyan font-bold"></code>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Puerto / Protocolo:</span>
+                    <span id="web-session-port" class="text-white font-mono">80 (HTTP)</span>
+                </div>
+                <div class="flex justify-between items-center pt-1 border-t border-cyan-500/20">
+                    <span class="text-obsidian-muted">URL Directa:</span>
+                    <a id="web-session-url" href="#" target="_blank" class="text-obsidian-cyan hover:underline truncate max-w-[280px]"></a>
+                </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-obsidian-panel/60 border border-obsidian-border text-[11px] text-obsidian-muted space-y-1">
+                <p class="text-white font-semibold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-obsidian-cyan">verified_user</span>
+                    <span>Acceso Habilitado</span>
+                </p>
+                <p>
+                    Sesión autorizada para <strong class="text-white">{{ Auth::user() ? Auth::user()->name : 'Operador' }}</strong> (Rol: <code class="text-obsidian-cyan uppercase">{{ Auth::user() ? Auth::user()->role : 'operador' }}</code>).
+                </p>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+            <button type="button" onclick="closeWebSessionModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                Cerrar
+            </button>
+            <button id="btn-launch-web-admin" type="button" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">open_in_new</span>
+                <span>Abrir Panel Web</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-    function openVncModal(ip, name, siteName, isAuth) {
+    function openAccessModal(type, ip, port, name, siteName, isAuth) {
         var tooltip = document.getElementById('tech-tooltip');
         if (tooltip) {
             tooltip.classList.remove('show');
         }
 
+        type = (type || 'VNC').toUpperCase();
+        port = port || (type === 'TELNET' ? 23 : (type === 'WEB' ? 80 : 5900));
+
         if (!isAuth) {
-            document.getElementById('vnc-prompt-device').innerText = name;
-            document.getElementById('vnc-prompt-site').innerText = siteName;
-            document.getElementById('vnc-prompt-ip').innerText = ip;
-            const m = document.getElementById('modal-vnc-login-prompt');
-            m.classList.remove('hidden');
-            m.classList.add('flex');
-        } else {
+            const svcTitle = type === 'TELNET' ? 'Terminal Telnet CLI' : (type === 'WEB' ? 'Panel Web Administrativo' : 'Control Remoto VNC');
+            const actionText = type === 'TELNET' ? 'a la consola de comandos Telnet' : (type === 'WEB' ? 'al panel de administración web' : 'al escritorio remoto VNC');
+            
+            const pSvc = document.getElementById('access-prompt-service');
+            if (pSvc) pSvc.innerText = svcTitle;
+            const pAct = document.getElementById('access-prompt-action');
+            if (pAct) pAct.innerText = actionText;
+            const pDev = document.getElementById('access-prompt-device');
+            if (pDev) pDev.innerText = name;
+            const pSite = document.getElementById('access-prompt-site');
+            if (pSite) pSite.innerText = siteName;
+            const pIp = document.getElementById('access-prompt-ip');
+            if (pIp) pIp.innerText = ip + (port ? ':' + port : '');
+
+            const m = document.getElementById('modal-access-login-prompt');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+            return;
+        }
+
+        if (type === 'TELNET') {
+            document.getElementById('telnet-session-device').innerText = name;
+            document.getElementById('telnet-session-site').innerText = siteName;
+            document.getElementById('telnet-session-ip').innerText = ip;
+            document.getElementById('telnet-session-port').innerText = port + ' (Telnet RFC 854)';
+            document.getElementById('telnet-native-link').href = 'telnet://' + ip + ':' + port;
+            window._currentTelnetTarget = { ip: ip, port: port, name: name, site: siteName };
+            const m = document.getElementById('modal-telnet-session');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+        } else if (type === 'WEB') {
+            const proto = (port === 443 || port === 8443) ? 'https' : 'http';
+            const url = proto + '://' + ip + ((port === 80 || port === 443) ? '' : ':' + port);
+            document.getElementById('web-session-device').innerText = name;
+            document.getElementById('web-session-site').innerText = siteName;
+            document.getElementById('web-session-ip').innerText = ip;
+            document.getElementById('web-session-port').innerText = port + ' (' + proto.toUpperCase() + ')';
+            const aUrl = document.getElementById('web-session-url');
+            if (aUrl) {
+                aUrl.innerText = url;
+                aUrl.href = url;
+            }
+            const btnWeb = document.getElementById('btn-launch-web-admin');
+            if (btnWeb) {
+                btnWeb.onclick = function() {
+                    window.open(url, '_blank');
+                    closeWebSessionModal();
+                };
+            }
+            const m = document.getElementById('modal-web-session');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+        } else { // VNC
             document.getElementById('vnc-session-device').innerText = name;
             document.getElementById('vnc-session-site').innerText = siteName;
             document.getElementById('vnc-session-ip').innerText = ip;
             document.getElementById('vnc-native-link').href = 'vnc://' + ip + ':5900';
-            window._currentVncTarget = { ip: ip, name: name, site: siteName };
+            window._currentVncTarget = { ip: ip, port: 5900, name: name, site: siteName };
             const m = document.getElementById('modal-vnc-session');
-            m.classList.remove('hidden');
-            m.classList.add('flex');
+            if (m) {
+                m.classList.remove('hidden');
+                m.classList.add('flex');
+            }
+        }
+    }
+
+    function openVncModal(ip, name, siteName, isAuth) {
+        openAccessModal('VNC', ip, 5900, name, siteName, isAuth);
+    }
+
+    function closeAccessPromptModal() {
+        const m = document.getElementById('modal-access-login-prompt');
+        if (m) {
+            m.classList.remove('flex');
+            m.classList.add('hidden');
         }
     }
 
     function closeVncPromptModal() {
-        const m = document.getElementById('modal-vnc-login-prompt');
-        m.classList.remove('flex');
-        m.classList.add('hidden');
+        closeAccessPromptModal();
     }
 
     function closeVncSessionModal() {
         const m = document.getElementById('modal-vnc-session');
-        m.classList.remove('flex');
-        m.classList.add('hidden');
+        if (m) {
+            m.classList.remove('flex');
+            m.classList.add('hidden');
+        }
+    }
+
+    function closeTelnetSessionModal() {
+        const m = document.getElementById('modal-telnet-session');
+        if (m) {
+            m.classList.remove('flex');
+            m.classList.add('hidden');
+        }
+    }
+
+    function closeWebSessionModal() {
+        const m = document.getElementById('modal-web-session');
+        if (m) {
+            m.classList.remove('flex');
+            m.classList.add('hidden');
+        }
     }
 
     async function launchWebVnc() {
@@ -920,12 +1174,57 @@
             }
         }
     }
+
+    async function launchWebTelnet() {
+        if (!window._currentTelnetTarget) return;
+
+        const btn = document.getElementById('btn-launch-telnet-web');
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> <span>Iniciando...</span>';
+        }
+
+        try {
+            const res = await fetch("{{ route('admin.telnet.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    ip: window._currentTelnetTarget.ip,
+                    port: window._currentTelnetTarget.port,
+                    name: window._currentTelnetTarget.name,
+                    site: window._currentTelnetTarget.site
+                })
+            });
+
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                closeTelnetSessionModal();
+                window.open(data.viewer_url, '_blank', 'width=1280,height=800,menubar=no,status=no,toolbar=no');
+            } else {
+                alert('No se pudo inicializar la sesión Telnet: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error iniciando sesión Telnet:', err);
+            alert('Error de red al intentar conectar con el proxy Telnet.');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    }
 </script>
 @endsection
 
 @push('scripts')
 <script>
-    window._userCanVnc = {{ (Auth::check() && in_array(Auth::user()->role, ['admin', 'operator'])) ? 'true' : 'false' }};
+    window._userCanRemote = {{ (Auth::check() && in_array(Auth::user()->role, ['admin', 'operator'])) ? 'true' : 'false' }};
+    window._userCanVnc = window._userCanRemote;
 </script>
 <script id="monit-payload" type="application/json">{"s":@json($serviceHistoryMap),"t":@json($siteHistoryMap)}</script>
 <script src="{{ asset('js/monitoring-app.min.js') }}" defer></script>

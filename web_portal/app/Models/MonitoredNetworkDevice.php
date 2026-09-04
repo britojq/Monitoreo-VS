@@ -15,6 +15,8 @@ class MonitoredNetworkDevice extends Model
         'ip',
         'mac',
         'vendor_data',
+        'access_type',
+        'access_port',
         'normal_state_msg',
         'error_state_msg',
         'is_active',
@@ -26,6 +28,7 @@ class MonitoredNetworkDevice extends Model
         return [
             'is_active' => 'boolean',
             'device_number' => 'integer',
+            'access_port' => 'integer',
             'sort_order' => 'integer',
         ];
     }

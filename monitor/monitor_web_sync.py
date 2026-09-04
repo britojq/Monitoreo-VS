@@ -249,6 +249,8 @@ async def evaluate_network_device(d: dict) -> dict:
         "ip": d["ip"],
         "mac": d.get("mac") or "",
         "vendor_data": d.get("vendor_data") or "",
+        "access_type": d.get("access_type") or "SIN SOPORTE",
+        "access_port": d.get("access_port"),
         "normal_state_msg": d.get("normal_state_msg") or "",
         "error_state_msg": d.get("error_state_msg") or "",
         "status": "ACTIVO" if is_up else "APAGADO",
@@ -401,19 +403,33 @@ def sync_conf_to_db():
                     continue
                 dmac = data.get(f"DISPOSITIVO{dev_num}_MAC") or ""
                 ddatos = data.get(f"DISPOSITIVO{dev_num}_DATOS") or ""
+                daccess = (data.get(f"DISPOSITIVO{dev_num}_ACCESS") or "SIN SOPORTE").upper()
+                dport_raw = data.get(f"DISPOSITIVO{dev_num}_PORT")
+                if dport_raw and str(dport_raw).strip().isdigit():
+                    dport = int(str(dport_raw).strip())
+                elif daccess == "TELNET":
+                    dport = 23
+                elif daccess == "WEB":
+                    dport = 80
+                elif daccess == "VNC":
+                    dport = 5900
+                else:
+                    dport = None
+
                 dnorm = data.get(f"DISPOSITIVO{dev_num}_NORMAL") or ""
                 derr = data.get(f"DISPOSITIVO{dev_num}_ERROR") or ""
 
                 is_dev_active = ("NO CONFIGURADO" not in dname.upper() and dip not in ("0.0.0.0", "127.0.0.1", ""))
 
                 sql_net = """
-                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, access_type, access_port, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                     ON DUPLICATE KEY UPDATE
                     device_number = VALUES(device_number), name = VALUES(name), mac = VALUES(mac), vendor_data = VALUES(vendor_data),
+                    access_type = VALUES(access_type), access_port = VALUES(access_port),
                     normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), sort_order = VALUES(sort_order), updated_at = NOW()
                 """
-                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, dnorm, derr, 1 if is_dev_active else 0, dev_num))
+                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, daccess, dport, dnorm, derr, 1 if is_dev_active else 0, dev_num))
     finally:
         conn.close()
 
