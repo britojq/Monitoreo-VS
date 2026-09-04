@@ -63,7 +63,21 @@
         </div>
 
         <!-- METRICAS & LOGIN -->
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3 sm:space-x-4">
+            <!-- BOTÓN ASISTENTE IA (UBICADO ANTES DEL BADGE INFORMATIVO) -->
+            <button type="button" 
+                    id="btn-open-ai-chat" 
+                    onclick="handleAiChatClick()" 
+                    title="Asistente Virtual IA - Sede Valle Seco" 
+                    class="flex items-center gap-1.5 px-3 py-1 rounded-full border border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-cyan-500/25 hover:scale-[1.02] cursor-pointer group">
+                <span class="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">smart_toy</span>
+                <span>IA</span>
+                <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+                </span>
+            </button>
+
             <!-- BADGE GLOBAL -->
             <div id="global-status-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono font-semibold {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 glow-green' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-950/60 text-amber-400 border-amber-500/50' : 'bg-red-950/60 text-red-400 border-red-500/50 glow-red') }}"
                  data-tech-title="ESTADO GLOBAL DE INFRAESTRUCTURA"
@@ -757,6 +771,141 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL AVISO DE INICIO DE SESIÓN PARA ASISTENTE IA                         -->
+<!-- ========================================================================= -->
+<div id="modal-ai-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-obsidian-cyan flex items-center justify-center shadow-lg shadow-cyan-950">
+                    <span class="material-symbols-outlined text-xl">smart_toy</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Asistente IA Corporativo</h3>
+                    <p class="text-[10px] text-obsidian-cyan">Monitor Valle Seco</p>
+                </div>
+            </div>
+            <button onclick="closeAiLoginPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px] space-y-1.5">
+                <p class="font-bold flex items-center gap-1.5 text-white">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">lock</span>
+                    <span>Debes estar logueado para usar el asistente IA</span>
+                </p>
+                <p class="leading-relaxed text-gray-300">
+                    El acceso al asistente virtual inteligente <strong>Monitor Valle Seco</strong> está restringido exclusivamente a usuarios autenticados de la Sede Valle Seco.
+                </p>
+            </div>
+            <p class="text-[10px] text-obsidian-muted leading-relaxed">
+                🔒 Por favor, inicia sesión con tus credenciales corporativas LDAP o con tu cuenta asignada por el Administrador para interactuar con la IA.
+            </p>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+            <button type="button" onclick="closeAiLoginPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                Cancelar
+            </button>
+            <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
+                <span class="material-symbols-outlined text-sm">login</span>
+                Iniciar Sesión
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- VENTANA EMERGENTE TIPO CHAT: ASISTENTE IA MONITOR VALLE SECO              -->
+<!-- ========================================================================= -->
+<div id="modal-ai-chat" class="fixed inset-0 z-[100000] bg-black/75 backdrop-blur-sm hidden items-center justify-center p-2 sm:p-4">
+    <div class="glass-panel w-full max-w-2xl h-[90vh] max-h-[700px] rounded-2xl border border-obsidian-cyan/50 flex flex-col overflow-hidden shadow-2xl bg-[#040d1a]/95">
+        
+        <!-- CABECERA DEL CHAT -->
+        <div class="p-3.5 px-5 border-b border-obsidian-border/80 flex items-center justify-between bg-[#061527]">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan shadow-md shadow-cyan-950">
+                    <span class="material-symbols-outlined text-2xl">smart_toy</span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-bold text-white font-mono tracking-wide">Monitor Valle Seco</h3>
+                        <span class="px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-500/30">IA Local Qwen 3B</span>
+                    </div>
+                    <p class="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5 mt-0.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        En Línea • Asistente de Infraestructura & Soporte
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="clearAiChatConversation()" title="Limpiar historial" class="p-2 rounded-lg text-obsidian-muted hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center">
+                    <span class="material-symbols-outlined text-lg">delete_sweep</span>
+                </button>
+                <button onclick="closeAiChatModal()" title="Cerrar ventana" class="p-2 rounded-lg text-obsidian-muted hover:text-white hover:bg-white/5 transition flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl">close</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- CUERPO DE MENSAJES CON SCROLL -->
+        <div id="ai-chat-messages-container" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 font-sans text-xs scrollbar-thin">
+            <!-- MENSAJE DE BIENVENIDA INICIAL -->
+            <div class="flex gap-3 items-start">
+                <div class="w-8 h-8 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-base">smart_toy</span>
+                </div>
+                <div class="bg-[#081b33] border border-obsidian-border/80 rounded-2xl rounded-tl-sm p-4 max-w-[88%] text-gray-200 leading-relaxed space-y-2">
+                    <p class="font-bold text-obsidian-cyan text-xs">
+                        ¡Hola @auth {{ Auth::user()->name }} @else Colega @endauth!
+                    </p>
+                    <p>
+                        Soy <strong>Monitor Valle Seco</strong>, el asistente virtual corporativo de la <strong>Sede Valle Seco</strong>. Estoy sincronizado con los servidores, servicios y políticas técnicas de nuestra infraestructura.
+                    </p>
+                    <p class="text-obsidian-muted text-[11px]">
+                        Puedes consultarme sobre diagnóstico de red, administración de servidores Linux, DNS BIND9, Proxy Squid, Zimbra, comandos de terminal o soporte técnico general.
+                    </p>
+                    <div class="pt-2 flex flex-wrap gap-1.5 font-mono text-[10px]">
+                        <button type="button" onclick="sendQuickPrompt('¿Cuáles son los comandos clave para diagnosticar DNS en Linux?')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-950/60 border border-obsidian-border hover:border-cyan-500/40 text-cyan-300 transition">
+                            🔍 Diagnóstico DNS
+                        </button>
+                        <button type="button" onclick="sendQuickPrompt('Explícame cómo verificar el estado de los servicios en systemd')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-950/60 border border-obsidian-border hover:border-cyan-500/40 text-cyan-300 transition">
+                            ⚙️ Chequeo systemd
+                        </button>
+                        <button type="button" onclick="sendQuickPrompt('¿Quién eres y qué puedes hacer en Sede Valle Seco?')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-950/60 border border-obsidian-border hover:border-cyan-500/40 text-cyan-300 transition">
+                            🤖 Identidad y alcance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INDICADOR DE PROCESAMIENTO / PENSANDO -->
+        <div id="ai-chat-typing-indicator" class="hidden px-5 py-2 text-[11px] text-obsidian-cyan font-mono flex items-center gap-2 bg-[#061527]/70 border-t border-obsidian-border/50">
+            <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+            <span>Monitor Valle Seco está pensando y redactando tu respuesta...</span>
+        </div>
+
+        <!-- BARRA INFERIOR DE ENTRADA -->
+        <div class="p-3 sm:p-4 bg-[#061527] border-t border-obsidian-border/80">
+            <form id="ai-chat-form" onsubmit="submitAiChat(event)" class="flex items-center gap-2">
+                <div class="flex-1 relative">
+                    <input type="text" id="ai-chat-input-text" placeholder="Escribe tu consulta técnica aquí..." autocomplete="off" class="w-full bg-[#040d1a] border border-obsidian-border rounded-xl pl-4 pr-3 py-2.5 text-xs text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan font-mono transition">
+                </div>
+                <button type="submit" id="btn-submit-ai-chat" class="px-4 py-2.5 rounded-xl bg-obsidian-cyan text-black font-bold flex items-center justify-center gap-1.5 transition hover:bg-cyan-300 hover:shadow-lg hover:shadow-cyan-500/30 shrink-0 text-xs font-mono">
+                    <span>Enviar</span>
+                    <span class="material-symbols-outlined text-base">send</span>
+                </button>
+            </form>
+            <div class="flex items-center justify-between text-[10px] text-obsidian-muted mt-2 px-1 font-mono">
+                <span>Usuario: <strong class="text-white">@auth {{ Auth::user()->name }} ({{ strtoupper(Auth::user()->role) }}) @else Invitado @endauth</strong></span>
+                <span>Enter para enviar • Motor Local Ollama</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO (USUARIO NO LOGUEADO)           -->
 <!-- ========================================================================= -->
 <div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
@@ -1207,6 +1356,219 @@
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
+        }
+    }
+
+    // =========================================================================
+    // GESTIÓN DEL ASISTENTE VIRTUAL IA (MONITOR VALLE SECO)
+    // =========================================================================
+    let aiChatHistory = [];
+    const isUserAuthenticated = {{ Auth::check() ? 'true' : 'false' }};
+
+    function handleAiChatClick() {
+        if (!isUserAuthenticated) {
+            const promptModal = document.getElementById('modal-ai-login-prompt');
+            if (promptModal) {
+                promptModal.classList.remove('hidden');
+                promptModal.classList.add('flex');
+            }
+        } else {
+            const chatModal = document.getElementById('modal-ai-chat');
+            if (chatModal) {
+                chatModal.classList.remove('hidden');
+                chatModal.classList.add('flex');
+                setTimeout(() => {
+                    const input = document.getElementById('ai-chat-input-text');
+                    if (input) input.focus();
+                }, 100);
+            }
+        }
+    }
+
+    function closeAiLoginPromptModal() {
+        const promptModal = document.getElementById('modal-ai-login-prompt');
+        if (promptModal) {
+            promptModal.classList.add('hidden');
+            promptModal.classList.remove('flex');
+        }
+    }
+
+    function closeAiChatModal() {
+        const chatModal = document.getElementById('modal-ai-chat');
+        if (chatModal) {
+            chatModal.classList.add('hidden');
+            chatModal.classList.remove('flex');
+        }
+    }
+
+    function clearAiChatConversation() {
+        aiChatHistory = [];
+        const container = document.getElementById('ai-chat-messages-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5">
+                        <span class="material-symbols-outlined text-base">smart_toy</span>
+                    </div>
+                    <div class="bg-[#081b33] border border-obsidian-border/80 rounded-2xl rounded-tl-sm p-4 max-w-[88%] text-gray-200 leading-relaxed space-y-2">
+                        <p class="font-bold text-obsidian-cyan text-xs">Conversación reiniciada</p>
+                        <p>Historial limpiado correctamente. ¿Sobre qué tema de infraestructura o soporte deseas consultar ahora?</p>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function sendQuickPrompt(promptText) {
+        const input = document.getElementById('ai-chat-input-text');
+        if (input) {
+            input.value = promptText;
+            submitAiChat(new Event('submit'));
+        }
+    }
+
+    function formatAiMarkdown(text) {
+        if (!text) return '';
+        let escaped = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        // Bloques de código con opción de copia
+        escaped = escaped.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, function(match, lang, code) {
+            const rawCode = code.trim();
+            return `<div class="my-2.5 rounded-xl bg-[#020914] border border-cyan-500/30 overflow-hidden shadow-inner font-mono text-[11px]">
+                <div class="flex items-center justify-between px-3 py-1.5 bg-cyan-950/40 border-b border-cyan-500/20 text-[10px] text-cyan-400">
+                    <span class="uppercase font-bold tracking-wider">${lang || 'TERMINAL'}</span>
+                    <button type="button" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(rawCode)}')); this.innerText='¡Copiado!'; setTimeout(()=>this.innerText='Copiar', 2000)" class="text-[10px] text-obsidian-cyan hover:text-white transition">Copiar</button>
+                </div>
+                <pre class="p-3 overflow-x-auto text-cyan-300 leading-relaxed"><code>${rawCode}</code></pre>
+            </div>`;
+        });
+
+        // Código en línea
+        escaped = escaped.replace(/`([^`]+)`/g, '<code class="bg-cyan-950/80 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/30 font-mono text-[11px]">$1</code>');
+
+        // Negrita
+        escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
+
+        // Cursiva
+        escaped = escaped.replace(/\*([^*]+)\*/g, '<em class="text-cyan-200/90">$1</em>');
+
+        // Saltos de línea
+        escaped = escaped.replace(/\n/g, '<br/>');
+
+        return escaped;
+    }
+
+    async function submitAiChat(e) {
+        if (e && e.preventDefault) e.preventDefault();
+
+        const input = document.getElementById('ai-chat-input-text');
+        const sendBtn = document.getElementById('btn-submit-ai-chat');
+        const container = document.getElementById('ai-chat-messages-container');
+        const typingIndicator = document.getElementById('ai-chat-typing-indicator');
+
+        if (!input) return;
+        const messageText = input.value.trim();
+        if (!messageText) return;
+
+        // 1. Renderizar burbuja del usuario
+        const userHtml = `
+            <div class="flex justify-end">
+                <div class="bg-gradient-to-r from-cyan-950 to-cyan-900 border border-cyan-500/40 rounded-2xl rounded-tr-sm p-3.5 max-w-[85%] text-white shadow-lg">
+                    <p class="leading-relaxed text-xs font-sans">${messageText.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>")}</p>
+                    <span class="block text-right text-[9px] text-cyan-300/60 font-mono mt-1">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', userHtml);
+        container.scrollTop = container.scrollHeight;
+
+        input.value = '';
+        input.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
+        if (typingIndicator) typingIndicator.classList.remove('hidden');
+
+        try {
+            const res = await fetch("{{ route('ai.chat') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: messageText,
+                    history: aiChatHistory.slice(-8)
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.status === 401 || data.require_login) {
+                closeAiChatModal();
+                closeAiLoginPromptModal();
+                const promptModal = document.getElementById('modal-ai-login-prompt');
+                if (promptModal) {
+                    promptModal.classList.remove('hidden');
+                    promptModal.classList.add('flex');
+                }
+                return;
+            }
+
+            if (data.success && data.reply) {
+                aiChatHistory.push({ role: 'user', content: messageText });
+                aiChatHistory.push({ role: 'assistant', content: data.reply });
+
+                const botFormatted = formatAiMarkdown(data.reply);
+                const botHtml = `
+                    <div class="flex gap-3 items-start">
+                        <div class="w-8 h-8 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5 shadow-md">
+                            <span class="material-symbols-outlined text-base">smart_toy</span>
+                        </div>
+                        <div class="bg-[#081b33] border border-obsidian-border/80 rounded-2xl rounded-tl-sm p-4 max-w-[88%] text-gray-200 leading-relaxed text-xs">
+                            ${botFormatted}
+                            <span class="block text-[9px] text-obsidian-muted font-mono mt-2">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • Monitor Valle Seco</span>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', botHtml);
+            } else {
+                const errorMsg = data.error || 'Ocurrió un error inesperado al procesar la respuesta con la IA.';
+                const errHtml = `
+                    <div class="flex gap-3 items-start">
+                        <div class="w-8 h-8 rounded-xl bg-red-950/80 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 mt-0.5">
+                            <span class="material-symbols-outlined text-base">error</span>
+                        </div>
+                        <div class="bg-red-950/30 border border-red-500/30 rounded-2xl rounded-tl-sm p-3.5 max-w-[85%] text-red-300 leading-relaxed text-xs">
+                            <p class="font-bold text-red-200">Aviso del Sistema</p>
+                            <p>${errorMsg}</p>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', errHtml);
+            }
+        } catch (err) {
+            console.error('Error comunicando con el asistente IA:', err);
+            const netErrHtml = `
+                <div class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-xl bg-red-950/80 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 mt-0.5">
+                        <span class="material-symbols-outlined text-base">cloud_off</span>
+                    </div>
+                    <div class="bg-red-950/30 border border-red-500/30 rounded-2xl rounded-tl-sm p-3.5 max-w-[85%] text-red-300 leading-relaxed text-xs">
+                        <p class="font-bold text-red-200">Falla de Conexión</p>
+                        <p>No se pudo establecer comunicación con el servidor web o el servicio de IA local. Por favor verifica tu conexión.</p>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', netErrHtml);
+        } finally {
+            if (typingIndicator) typingIndicator.classList.add('hidden');
+            input.disabled = false;
+            if (sendBtn) sendBtn.disabled = false;
+            input.focus();
+            container.scrollTop = container.scrollHeight;
         }
     }
 </script>

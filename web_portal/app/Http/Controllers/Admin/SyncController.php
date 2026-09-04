@@ -80,6 +80,30 @@ class SyncController extends Controller
                 $lines[] = "";
             }
 
+            // 3. Sección Dispositivos Sede Valle Seco
+            $lines[] = "################################################################################";
+            $lines[] = "################### SECCION DISPOSITIVOS SEDE VALLE SECO ####################";
+            $lines[] = "################################################################################";
+            $lines[] = "# DISPOSITIVOS LOCALES DE LA SEDE VALLE SECO (10.20.23.0/24)";
+            $lines[] = "# CHEQUEO MEDIANTE PING ICMP (FUNCIONES DE VERIFICACION UNIFICADAS)";
+            $lines[] = "#";
+            $lines[] = "";
+
+            $netDevices = \App\Models\MonitoredNetworkDevice::orderBy('sort_order')->get();
+            foreach ($netDevices as $nd) {
+                $num = $nd->device_number;
+                $lines[] = "## DISPOSITIVO {$num}";
+                $lines[] = "DISPOSITIVO{$num}_NAME=\"" . addslashes($nd->name) . "\"";
+                $lines[] = "DISPOSITIVO{$num}_IP=\"" . addslashes($nd->ip) . "\"";
+                $lines[] = "DISPOSITIVO{$num}_MAC=\"" . addslashes($nd->mac ?? '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_DATOS=\"" . addslashes($nd->vendor_data ?? '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_ACCESS=\"" . addslashes($nd->access_type ?? 'SIN SOPORTE') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_PORT=\"" . addslashes($nd->access_port ? (string)$nd->access_port : '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_NORMAL=\"✅ \$DISPOSITIVO{$num}_NAME\"";
+                $lines[] = "DISPOSITIVO{$num}_ERROR=\"❌ \$DISPOSITIVO{$num}_NAME\"";
+                $lines[] = "";
+            }
+
             @file_put_contents($confPath, implode("\n", $lines) . "\n");
 
             // 2. Construir bot.conf proxies

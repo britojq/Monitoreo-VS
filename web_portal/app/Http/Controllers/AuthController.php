@@ -71,6 +71,11 @@ class AuthController extends Controller
                     'last_login_ip' => $request->ip(),
                 ]);
 
+                // Notificar acceso a Telegram
+                /** @var \App\Services\TelegramNotificationService $telegramService */
+                $telegramService = app(\App\Services\TelegramNotificationService::class);
+                $telegramService->notifyUserLogin($user, $request->ip(), 'local');
+
                 $request->session()->regenerate();
                 return redirect()->intended(route('admin.dashboard'));
             }
@@ -106,7 +111,9 @@ class AuthController extends Controller
             ->orWhere('email', $cleanEmail)
             ->first();
 
+        $isNewJitUser = false;
         if (!$user) {
+            $isNewJitUser = true;
             // AUTO-REGISTRO JIT (Just-In-Time) como Operador
             $user = \App\Models\User::create([
                 'name' => $ldapData['name'],
@@ -140,6 +147,15 @@ class AuthController extends Controller
         Auth::login($user, $remember);
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
+
+        // Notificar a Telegram
+        /** @var \App\Services\TelegramNotificationService $telegramService */
+        $telegramService = app(\App\Services\TelegramNotificationService::class);
+        if ($isNewJitUser) {
+            $telegramService->notifyLdapAutoRegistered($user, $request->ip());
+        } else {
+            $telegramService->notifyUserLogin($user, $request->ip(), 'ldap');
+        }
 
         return redirect()->intended(route('admin.dashboard'));
     }

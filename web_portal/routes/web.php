@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Admin\TelnetSessionController;
 use App\Http\Controllers\Admin\VncSessionController;
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicMonitoringController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,11 @@ Route::get('/preview-403', function () {
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// --- ASISTENTE IA (Estrictamente Protegido por Autenticación) ---
+Route::middleware(['auth'])->group(function () {
+    Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
+});
 
 // --- PANEL ADMINISTRATIVO (Requiere Autenticación) ---
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {

@@ -133,6 +133,11 @@ class AdminUserController extends Controller
         );
         @file_put_contents('/scripts/telegram-admin-bot/audit/intentos_acceso.log', $logLine, FILE_APPEND | LOCK_EX);
 
+        // Notificar por Telegram
+        /** @var \App\Services\TelegramNotificationService $telegramService */
+        $telegramService = app(\App\Services\TelegramNotificationService::class);
+        $telegramService->notifyUserCreatedOrAuthorized($user, $adminName, 'ldap_preauth');
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -157,7 +162,13 @@ class AdminUserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        User::create($validated);
+        $user = User::create($validated);
+
+        // Notificar por Telegram
+        $adminName = Auth::user() ? Auth::user()->name : 'Admin';
+        /** @var \App\Services\TelegramNotificationService $telegramService */
+        $telegramService = app(\App\Services\TelegramNotificationService::class);
+        $telegramService->notifyUserCreatedOrAuthorized($user, $adminName, 'manual');
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado exitosamente.');
     }
