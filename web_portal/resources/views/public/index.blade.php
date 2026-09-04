@@ -264,11 +264,12 @@
                             @if($activeDevices->count() > 0)
                                 <div class="space-y-1">
                                     <span class="text-[8.5px] uppercase font-mono tracking-wider text-obsidian-muted block">Equipos en Sitio ({{ $activeDevices->count() }})</span>
-                                    <div class="grid grid-cols-2 gap-1">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                         @foreach($activeDevices as $dev)
                                             @php
                                                 $dSnap = $devicesSnapshot->get($dev->device_number);
                                                 $devUp = $dSnap ? ($dSnap['is_up'] ?? false) : false;
+                                                $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
                                             @endphp
                                             <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
                                                  data-tech-title="{{ $site->name }} - {{ $dev->name }}"
@@ -281,8 +282,29 @@
                                                  data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
                                                  data-tech-id="{{ $site->id }}"
                                                  data-tech-kind="site">
-                                                <span class="text-white truncate max-w-[85px]">{{ $dev->name }}</span>
-                                                <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
+                                                <div class="flex items-center space-x-1.5 min-w-0 pr-1 truncate">
+                                                    <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
+                                                    <span class="text-white truncate" title="{{ $dev->name }}">{{ $dev->name }}</span>
+                                                </div>
+
+                                                <!-- BOTÓN VNC CON CONDICIÓN DE ROL Y LOGIN -->
+                                                @if($canVnc)
+                                                    <button type="button"
+                                                            onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', true)"
+                                                            class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
+                                                            title="Conectar Escritorio Remoto VNC ({{ $dev->ip }})">
+                                                        <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
+                                                        <span>VNC</span>
+                                                    </button>
+                                                @else
+                                                    <button type="button"
+                                                            onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                            class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                            title="Debe iniciar sesión para conectar por VNC">
+                                                        <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                        <span>VNC</span>
+                                                    </button>
+                                                @endif
                                             </div>
                                         @endforeach
                                     </div>
@@ -602,9 +624,169 @@
         Verificación asíncrona de socket en tiempo real.
     </div>
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO PARA VNC (USUARIO NO LOGUEADO) -->
+<!-- ========================================================================= -->
+<div id="modal-vnc-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
+                    <span class="material-symbols-outlined text-xl">lock</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Acceso Restringido</h3>
+                    <p class="text-[10px] text-obsidian-muted">Control Remoto VNC</p>
+                </div>
+            </div>
+            <button onclick="closeVncPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-1.5">
+                <p class="font-bold flex items-center gap-1.5 text-white">
+                    <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
+                    <span>Autenticación Requerida</span>
+                </p>
+                <p class="leading-relaxed">
+                    Para acceder al escritorio remoto VNC del equipo <strong id="vnc-prompt-device" class="text-white"></strong> (<code id="vnc-prompt-ip" class="text-obsidian-cyan"></code>) en <strong id="vnc-prompt-site" class="text-white"></strong>, debe iniciar sesión con una cuenta autorizada de <strong>Operador</strong> o <strong>Administrador</strong>.
+                </p>
+            </div>
+            <p class="text-[10px] text-obsidian-muted leading-relaxed">
+                🔒 El acceso a consolas remotas está reservado exclusivamente al personal técnico autorizado de Corpoelec para labores de soporte y monitoreo.
+            </p>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+            <button type="button" onclick="closeVncPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                Cancelar
+            </button>
+            <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
+                <span class="material-symbols-outlined text-sm">login</span>
+                Iniciar Sesión
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL LANZADOR DE SESIÓN VNC (USUARIO CON ROL ADMINISTRADOR U OPERADOR)   -->
+<!-- ========================================================================= -->
+<div id="modal-vnc-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
+                    <span class="material-symbols-outlined text-xl">desktop_windows</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Escritorio Remoto VNC</h3>
+                    <p class="text-[10px] text-obsidian-cyan">Conexión de Soporte en Tiempo Real</p>
+                </div>
+            </div>
+            <button onclick="closeVncSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Equipo Destino:</span>
+                    <strong id="vnc-session-device" class="text-cyan-300"></strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Sede / Ubicación:</span>
+                    <span id="vnc-session-site" class="text-white"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Dirección IP:</span>
+                    <code id="vnc-session-ip" class="text-obsidian-cyan font-bold"></code>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-obsidian-muted">Puerto de Servicio:</span>
+                    <span class="text-white font-mono">5900 (VNC RFB)</span>
+                </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-obsidian-panel/60 border border-obsidian-border text-[11px] text-obsidian-muted space-y-1">
+                <p class="text-white font-semibold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-obsidian-cyan">verified_user</span>
+                    <span>Acceso Habilitado</span>
+                </p>
+                <p>
+                    Sesión autorizada para <strong class="text-white">{{ Auth::user() ? Auth::user()->name : 'Operador' }}</strong> (Rol: <code class="text-obsidian-cyan uppercase">{{ Auth::user() ? Auth::user()->role : 'operador' }}</code>).
+                </p>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between">
+            <a id="vnc-native-link" href="#" class="text-[11px] text-obsidian-muted hover:text-cyan-300 transition flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">open_in_new</span>
+                <span>Visor Local (vnc://)</span>
+            </a>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeVncSessionModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                    Cerrar
+                </button>
+                <button type="button" onclick="launchWebVnc()" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
+                    <span class="material-symbols-outlined text-sm">tv</span>
+                    Abrir Visor Web
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openVncModal(ip, name, siteName, isAuth) {
+        var tooltip = document.getElementById('tech-tooltip');
+        if (tooltip) {
+            tooltip.classList.remove('show');
+        }
+
+        if (!isAuth) {
+            document.getElementById('vnc-prompt-device').innerText = name;
+            document.getElementById('vnc-prompt-site').innerText = siteName;
+            document.getElementById('vnc-prompt-ip').innerText = ip;
+            const m = document.getElementById('modal-vnc-login-prompt');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        } else {
+            document.getElementById('vnc-session-device').innerText = name;
+            document.getElementById('vnc-session-site').innerText = siteName;
+            document.getElementById('vnc-session-ip').innerText = ip;
+            document.getElementById('vnc-native-link').href = 'vnc://' + ip + ':5900';
+            window._currentVncTarget = { ip: ip, name: name, site: siteName };
+            const m = document.getElementById('modal-vnc-session');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+    }
+
+    function closeVncPromptModal() {
+        const m = document.getElementById('modal-vnc-login-prompt');
+        m.classList.remove('flex');
+        m.classList.add('hidden');
+    }
+
+    function closeVncSessionModal() {
+        const m = document.getElementById('modal-vnc-session');
+        m.classList.remove('flex');
+        m.classList.add('hidden');
+    }
+
+    function launchWebVnc() {
+        if (window._currentVncTarget) {
+            alert('Preparando conexión con visor noVNC para: ' + window._currentVncTarget.name + ' (' + window._currentVncTarget.ip + ':5900)');
+        }
+    }
+</script>
 @endsection
 
 @push('scripts')
+<script>
+    window._userCanVnc = {{ (Auth::check() && in_array(Auth::user()->role, ['admin', 'operator'])) ? 'true' : 'false' }};
+</script>
 <script id="monit-payload" type="application/json">{"s":@json($serviceHistoryMap),"t":@json($siteHistoryMap)}</script>
 <script src="{{ asset('js/monitoring-app.min.js') }}" defer></script>
 @endpush
