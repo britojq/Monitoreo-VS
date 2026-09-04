@@ -17,6 +17,8 @@ class User extends Authenticatable
         'password',
         'role',
         'is_active',
+        'ban_reason',
+        'banned_at',
         'last_login_at',
         'last_login_ip',
     ];
@@ -32,6 +34,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'banned_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
     }
@@ -39,5 +42,10 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin' || $this->role === 'SuperAdmin';
+    }
+
+    public function bannedIps()
+    {
+        return $this->hasMany(BannedIp::class, 'user_id');
     }
 }

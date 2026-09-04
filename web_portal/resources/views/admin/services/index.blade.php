@@ -51,23 +51,32 @@
                                 {{ $s->port ?: '--' }}
                             </td>
                             <td class="px-5 py-4">
-                                <form action="{{ route('admin.services.toggle', $s->id) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $s->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                @if(auth()->user()->isAdmin())
+                                    <form action="{{ route('admin.services.toggle', $s->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $s->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $s->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
+                                            {{ $s->is_active ? 'Activo' : 'Desactivado' }}
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold {{ $s->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
                                         <span class="w-1.5 h-1.5 rounded-full {{ $s->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
                                         {{ $s->is_active ? 'Activo' : 'Desactivado' }}
-                                    </button>
-                                </form>
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-5 py-4 text-right space-x-1.5">
                                 <button onclick="openServiceHistoryModal({{ $s->id }}, '{{ addslashes($s->name) }}', '{{ $s->letter }}', '{{ $s->type }}')" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition flex items-center gap-1 inline-flex" title="Ver Gráfico e Histórico">
                                     <span class="material-symbols-outlined text-sm">show_chart</span>
                                     <span>Histórico</span>
                                 </button>
-                                <button onclick="openEditServiceModal({{ json_encode($s) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
-                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                    <span>Modificar</span>
-                                </button>
+                                @if(auth()->user()->isAdmin())
+                                    <button onclick="openEditServiceModal({{ json_encode($s) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
+                                        <span class="material-symbols-outlined text-sm">edit</span>
+                                        <span>Modificar</span>
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -77,7 +86,8 @@
     </div>
 </div>
 
-<!-- MODAL EDITAR SERVICIO -->
+@if(auth()->user()->isAdmin())
+<!-- MODAL EDITAR SERVICIO (Solo Administrador) -->
 <div id="modal-edit-service" onclick="if(event.target === this) closeModal('modal-edit-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
@@ -89,55 +99,55 @@
             @method('PUT')
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-obsidian-muted mb-1">Letra Clave</label>
-                    <input type="text" name="letter" id="edit_s_letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white uppercase"/>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Letra / Identificador:</label>
+                    <input type="text" id="edit-service-letter" name="letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                 </div>
                 <div>
-                    <label class="block text-obsidian-muted mb-1">Tipo de Chequeo</label>
-                    <select name="type" id="edit_s_type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
+                    <select id="edit-service-type" name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
                         <option value="WEB">WEB (HTTP/HTTPS)</option>
                         <option value="PING">PING (ICMP)</option>
-                        <option value="DNS">DNS (Puerto 53)</option>
-                        <option value="SMTP">SMTP (Correo P25)</option>
-                        <option value="LDAP">LDAP (Directorio P389)</option>
-                        <option value="CUPS">CUPS (Impresión P631)</option>
-                        <option value="PROXY">PROXY (Squid/pfSense)</option>
+                        <option value="PORT">PORT (TCP)</option>
+                        <option value="DNS">DNS</option>
+                        <option value="SMTP">SMTP</option>
                     </select>
                 </div>
             </div>
+
             <div>
-                <label class="block text-obsidian-muted mb-1">Nombre Descriptivo</label>
-                <input type="text" name="name" id="edit_s_name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
+                <input type="text" id="edit-service-name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
+
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-obsidian-muted mb-1">Dirección IP</label>
-                    <input type="text" name="host_ip" id="edit_s_ip" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
+                    <input type="text" id="edit-service-host" name="host_ip" placeholder="ej. 10.0.0.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                 </div>
                 <div>
-                    <label class="block text-obsidian-muted mb-1">Puerto</label>
-                    <input type="number" name="port" id="edit_s_port" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
+                    <input type="number" id="edit-service-port" name="port" placeholder="ej. 80, 443" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                 </div>
             </div>
+
             <div>
-                <label class="block text-obsidian-muted mb-1">URL Web</label>
-                <input type="url" name="web_url" id="edit_s_web" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para servicios WEB):</label>
+                <input type="url" id="edit-service-url" name="web_url" placeholder="https://ejemplo.com/salud" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
+
             <div>
-                <label class="block text-obsidian-muted mb-1">Credenciales Proxy</label>
-                <input type="text" name="credentials" id="edit_s_cred" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
+                <input type="text" id="edit-service-credentials" name="credentials" placeholder="user:pass o token" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
-            <div class="flex items-center gap-2">
-                <input type="checkbox" name="is_active" value="1" id="edit_s_active" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="edit_s_active" class="text-white">Servicio Habilitado en Monitoreo</label>
-            </div>
-            <div class="pt-3 border-t border-obsidian-border flex justify-end gap-2">
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
                 <button type="button" onclick="closeModal('modal-edit-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold">Actualizar Servicio</button>
             </div>
         </form>
     </div>
 </div>
+@endif
 
 <!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL -->
 <div id="modal-service-history" onclick="if(event.target === this) closeModal('modal-service-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">

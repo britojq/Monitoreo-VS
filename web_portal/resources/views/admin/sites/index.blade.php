@@ -28,21 +28,30 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <form action="{{ route('admin.sites.toggle', $site->id) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition {{ $site->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                        @if(auth()->user()->isAdmin())
+                            <form action="{{ route('admin.sites.toggle', $site->id) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition {{ $site->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $site->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
+                                    {{ $site->is_active ? 'Activa' : 'Desactivada' }}
+                                </button>
+                            </form>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono {{ $site->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $site->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
                                 {{ $site->is_active ? 'Activa' : 'Desactivada' }}
-                            </button>
-                        </form>
+                            </span>
+                        @endif
                         <button onclick="openSiteHistoryModal({{ $site->id }}, '{{ addslashes($site->name) }}', '{{ $site->letter }}', '{{ $site->ip }}')" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white font-mono text-xs transition flex items-center gap-1 shadow-sm" title="Ver Gráficos y Métricas Temporales">
                             <span class="material-symbols-outlined text-sm">show_chart</span>
                             <span>Histórico</span>
                         </button>
-                        <button onclick="openEditSiteModal({{ json_encode($site) }})" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs transition flex items-center gap-1" title="Configurar Parámetros">
-                            <span class="material-symbols-outlined text-sm">tune</span>
-                            <span>Modificar</span>
-                        </button>
+                        @if(auth()->user()->isAdmin())
+                            <button onclick="openEditSiteModal({{ json_encode($site) }})" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs transition flex items-center gap-1" title="Configurar Parámetros">
+                                <span class="material-symbols-outlined text-sm">tune</span>
+                                <span>Modificar</span>
+                            </button>
+                        @endif
                     </div>
                 </div>
 
@@ -79,7 +88,8 @@
     </div>
 </div>
 
-<!-- MODAL EDITAR SEDE & EQUIPOS -->
+@if(auth()->user()->isAdmin())
+<!-- MODAL EDITAR SEDE & EQUIPOS (Solo Administrador) -->
 <div id="modal-edit-site" onclick="if(event.target === this) closeModal('modal-edit-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-2xl w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
@@ -92,56 +102,78 @@
             
             <!-- DATOS BÁSICOS DE LA SEDE -->
             <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
-                <h4 class="text-xs font-bold text-obsidian-cyan uppercase">1. Información del Enlace Principal</h4>
-                <div class="grid grid-cols-2 gap-3">
+                <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block border-b border-obsidian-border/40 pb-1">1. Parámetros Principales de la Sede</span>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-obsidian-muted mb-1">Letra Clave</label>
-                        <input type="text" name="letter" id="edit_st_letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white uppercase"/>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Letra Clave:</label>
+                        <input type="text" id="edit-site-letter" name="letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                     </div>
-                    <div>
-                        <label class="block text-obsidian-muted mb-1">Nombre de la Sede</label>
-                        <input type="text" name="name" id="edit_st_name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1">IP Gateway Principal</label>
-                    <input type="text" name="ip" id="edit_st_ip" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-obsidian-muted mb-1">Teléfono 1</label>
-                        <input type="text" name="phone_1" id="edit_st_phone_1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                    </div>
-                    <div>
-                        <label class="block text-obsidian-muted mb-1">Teléfono 2</label>
-                        <input type="text" name="phone_2" id="edit_st_phone_2" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    <div class="sm:col-span-2">
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre de la Sede:</label>
+                        <input type="text" id="edit-site-name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1">Dirección Física</label>
-                    <textarea name="address" id="edit_st_address" rows="2" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"></textarea>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">IP Gateway / Enlace:</label>
+                        <input type="text" id="edit-site-ip" name="ip" placeholder="ej. 192.168.1.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Dirección Física:</label>
+                        <input type="text" id="edit-site-address" name="address" placeholder="Ubicación o Edificio" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" name="is_active" value="1" id="edit_st_active" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                    <label for="edit_st_active" class="text-white">Sede Habilitada en Monitoreo</label>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Principal:</label>
+                        <input type="text" id="edit-site-phone1" name="phone_1" placeholder="ej. 0241-1234567" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Secundario:</label>
+                        <input type="text" id="edit-site-phone2" name="phone_2" placeholder="ej. 0414-7654321" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
                 </div>
             </div>
 
             <!-- EQUIPOS ASOCIADOS (1..8) -->
             <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
-                <h4 class="text-xs font-bold text-obsidian-purple uppercase">2. Equipos de Infraestructura Asociados (Slots 1 al 8)</h4>
-                <div id="devices-edit-container" class="space-y-2.5">
-                    <!-- Rellenado dinámicamente con JS -->
+                <div class="flex items-center justify-between border-b border-obsidian-border/40 pb-1">
+                    <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block">2. Equipos Secundarios de Red (1..8)</span>
+                    <span class="text-[10px] text-obsidian-muted">Dejar IP vacía para omitir monitoreo</span>
+                </div>
+                
+                <div class="space-y-2.5 max-h-60 overflow-y-auto custom-scroll pr-1">
+                    @for($i = 1; $i <= 8; $i++)
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded-lg bg-obsidian-panel/80 border border-obsidian-border/40 text-[11px]">
+                            <div class="sm:col-span-1 text-center font-bold text-obsidian-cyan">
+                                #{{ $i }}
+                                <input type="hidden" name="devices[{{ $i }}][number]" value="{{ $i }}"/>
+                            </div>
+                            <div class="sm:col-span-4">
+                                <input type="text" id="edit-site-dev-name-{{ $i }}" name="devices[{{ $i }}][name]" placeholder="Nombre Equipo {{ $i }}" class="w-full bg-obsidian-panel border border-obsidian-border rounded p-1.5 text-white text-[11px]"/>
+                            </div>
+                            <div class="sm:col-span-4">
+                                <input type="text" id="edit-site-dev-ip-{{ $i }}" name="devices[{{ $i }}][ip]" placeholder="IP (ej. 192.168.1.{{ 10 + $i }})" class="w-full bg-obsidian-panel border border-obsidian-border rounded p-1.5 text-white text-[11px]"/>
+                            </div>
+                            <div class="sm:col-span-3 flex items-center justify-end gap-1.5">
+                                <input type="checkbox" id="edit-site-dev-active-{{ $i }}" name="devices[{{ $i }}][is_active]" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                                <label for="edit-site-dev-active-{{ $i }}" class="text-[10px] text-obsidian-muted cursor-pointer select-none">Habilitar</label>
+                            </div>
+                        </div>
+                    @endfor
                 </div>
             </div>
 
-            <div class="pt-3 border-t border-obsidian-border flex justify-end gap-2">
+            <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
                 <button type="button" onclick="closeModal('modal-edit-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold">Actualizar Sede y Equipos</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold">Guardar Cambios de Sede</button>
             </div>
         </form>
     </div>
 </div>
+@endif
 
 <!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL PARA SEDES -->
 <div id="modal-site-history" onclick="if(event.target === this) closeModal('modal-site-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">

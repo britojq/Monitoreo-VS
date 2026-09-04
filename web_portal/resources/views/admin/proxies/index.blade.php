@@ -45,23 +45,32 @@
                                 {{ $p->auth_userpass ? '••••••••:••••' : 'Sin autenticación' }}
                             </td>
                             <td class="px-6 py-4">
-                                <form action="{{ route('admin.proxies.toggle', $p->id) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $p->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                @if(auth()->user()->isAdmin())
+                                    <form action="{{ route('admin.proxies.toggle', $p->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $p->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $p->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
+                                            {{ $p->is_active ? 'Activo' : 'Desactivado' }}
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold {{ $p->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
                                         <span class="w-1.5 h-1.5 rounded-full {{ $p->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
                                         {{ $p->is_active ? 'Activo' : 'Desactivado' }}
-                                    </button>
-                                </form>
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-right space-x-1.5">
                                 <button onclick="openProxyHistoryModal({{ $p->id }}, '{{ addslashes($p->name) }}', '{{ $p->letter }}', '{{ $p->ip_port }}')" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-400 hover:bg-amber-500 hover:text-black font-mono text-xs transition flex items-center gap-1 inline-flex shadow-sm" title="Ver Gráficos y Métricas Temporales">
                                     <span class="material-symbols-outlined text-sm">show_chart</span>
                                     <span>Histórico</span>
                                 </button>
-                                <button onclick="openEditProxyModal({{ json_encode($p) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
-                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                    <span>Modificar</span>
-                                </button>
+                                @if(auth()->user()->isAdmin())
+                                    <button onclick="openEditProxyModal({{ json_encode($p) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
+                                        <span class="material-symbols-outlined text-sm">edit</span>
+                                        <span>Modificar</span>
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -71,7 +80,8 @@
     </div>
 </div>
 
-<!-- MODAL EDITAR PROXY -->
+@if(auth()->user()->isAdmin())
+<!-- MODAL EDITAR PROXY (Solo Administrador) -->
 <div id="modal-edit-proxy" onclick="if(event.target === this) closeModal('modal-edit-proxy')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
@@ -92,11 +102,11 @@
                 </div>
             </div>
             <div>
-                <label class="block text-obsidian-muted mb-1">IP y Puerto (IP:PUERTO)</label>
+                <label class="block text-obsidian-muted mb-1">IP y Puerto (ej. 10.20.0.1:8080)</label>
                 <input type="text" name="ip_port" id="edit_p_ip_port" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
             <div>
-                <label class="block text-obsidian-muted mb-1">Credenciales (usuario:clave)</label>
+                <label class="block text-obsidian-muted mb-1">Credenciales (usuario:clave o vacío)</label>
                 <input type="text" name="auth_userpass" id="edit_p_auth" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
             <div class="flex items-center gap-2">
@@ -110,6 +120,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL PARA PROXIES -->
 <div id="modal-proxy-history" onclick="if(event.target === this) closeModal('modal-proxy-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">

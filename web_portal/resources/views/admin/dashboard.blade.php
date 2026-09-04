@@ -17,9 +17,15 @@
                 <span class="text-xs font-mono text-obsidian-muted">activos</span>
             </div>
             <div class="mt-3">
-                <a href="{{ route('admin.users.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
-                    Gestionar usuarios &rarr;
-                </a>
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('admin.users.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
+                        Gestionar usuarios &rarr;
+                    </a>
+                @else
+                    <span class="text-xs font-mono text-obsidian-muted">
+                        Solo consulta
+                    </span>
+                @endif
             </div>
         </div>
 
@@ -35,7 +41,7 @@
             </div>
             <div class="mt-3">
                 <a href="{{ route('admin.services.index') }}" class="text-xs font-mono text-blue-400 hover:underline flex items-center gap-1">
-                    Configurar servicios &rarr;
+                    {{ auth()->user()->isAdmin() ? 'Configurar servicios' : 'Ver servicios' }} &rarr;
                 </a>
             </div>
         </div>
@@ -52,7 +58,7 @@
             </div>
             <div class="mt-3">
                 <a href="{{ route('admin.sites.index') }}" class="text-xs font-mono text-purple-400 hover:underline flex items-center gap-1">
-                    Configurar sedes &rarr;
+                    {{ auth()->user()->isAdmin() ? 'Configurar sedes' : 'Ver sedes' }} &rarr;
                 </a>
             </div>
         </div>
@@ -69,7 +75,7 @@
             </div>
             <div class="mt-3">
                 <a href="{{ route('admin.proxies.index') }}" class="text-xs font-mono text-emerald-400 hover:underline flex items-center gap-1">
-                    Configurar proxies &rarr;
+                    {{ auth()->user()->isAdmin() ? 'Configurar proxies' : 'Ver proxies' }} &rarr;
                 </a>
             </div>
         </div>
@@ -77,7 +83,8 @@
 
     <!-- ACCIONES RÁPIDAS & ESTADO DE CONFIGURACIÓN -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- SINCRONIZACIÓN Y ARCHIVOS -->
+        @if(auth()->user()->isAdmin())
+        <!-- SINCRONIZACIÓN Y ARCHIVOS (Solo Administrador) -->
         <div class="glass-card rounded-xl p-6 lg:col-span-2 space-y-4">
             <h2 class="text-base font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan">sync</span>
@@ -100,6 +107,21 @@
                 </button>
             </div>
         </div>
+        @else
+        <div class="glass-card rounded-xl p-6 lg:col-span-2 space-y-4">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-400">verified_user</span>
+                Consola de Operador
+            </h2>
+            <p class="text-xs text-obsidian-muted leading-relaxed">
+                Su cuenta posee el rol de <strong class="text-obsidian-cyan">Operador</strong>. Tiene acceso en tiempo real a la supervisión, telemetría y consulta de métricas de conectividad de los servicios, sedes y proxies de la corporación.
+            </p>
+            <div class="p-3 rounded-lg bg-obsidian-panel border border-obsidian-border/60 text-xs font-mono text-obsidian-muted flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm text-obsidian-cyan">info</span>
+                <span>Los parámetros de configuración son administrados centralmente por el Administrador.</span>
+            </div>
+        </div>
+        @endif
 
         <!-- ÚLTIMO REPORTE DE TELEMETRÍA -->
         <div class="glass-card rounded-xl p-6 space-y-4">

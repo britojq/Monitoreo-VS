@@ -33,11 +33,19 @@
                     Dashboard
                 </a>
 
-                <!-- GESTIÓN DE USUARIOS -->
+                @if(auth()->user()->isAdmin())
+                <!-- GESTIÓN DE USUARIOS (Solo Administrador) -->
                 <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
                     <span class="material-symbols-outlined text-lg">group</span>
                     Usuarios
                 </a>
+
+                <!-- BANEOS & SEGURIDAD (Solo Administrador) -->
+                <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}">
+                    <span class="material-symbols-outlined text-lg">gavel</span>
+                    Baneos & Seguridad
+                </a>
+                @endif
 
                 <div class="pt-4 pb-1 px-4 text-[10px] uppercase tracking-wider text-obsidian-muted/60">
                     Infraestructura Monitoreada
@@ -65,11 +73,13 @@
 
         <!-- PIE DE SIDEBAR -->
         <div class="p-4 border-t border-obsidian-border space-y-2">
-            <!-- BOTÓN ESCANEAR AHORA -->
+            @if(auth()->user()->isAdmin())
+            <!-- BOTÓN ESCANEAR AHORA (Solo Administrador) -->
             <button onclick="triggerImmediateScan()" id="btn-scan-now" class="w-full py-2.5 px-3 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-bold transition flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-base" id="icon-scan-now">bolt</span>
                 <span id="text-scan-now">Escanear Ahora</span>
             </button>
+            @endif
 
             <!-- VER SITIO PÚBLICO -->
             <a href="{{ route('home') }}" target="_blank" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition">

@@ -382,6 +382,8 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `role` varchar(255) NOT NULL DEFAULT 'admin',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `ban_reason` varchar(255) DEFAULT NULL,
+  `banned_at` timestamp NULL DEFAULT NULL,
   `last_login_at` timestamp NULL DEFAULT NULL,
   `last_login_ip` varchar(255) DEFAULT NULL,
   `remember_token` varchar(100) DEFAULT NULL,
@@ -390,6 +392,27 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_email_unique` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `banned_ips`
+--
+
+DROP TABLE IF EXISTS `banned_ips`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `banned_ips` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `ip_address` varchar(45) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `banned_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `banned_ips_ip_address_unique` (`ip_address`),
+  KEY `idx_banned_ip` (`ip_address`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
