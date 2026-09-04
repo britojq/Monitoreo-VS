@@ -40,7 +40,7 @@
             <!-- USUARIO LDAP O CORREO ADMINISTRADOR -->
             <div>
                 <label for="login" class="block text-xs font-mono uppercase text-obsidian-muted mb-2 flex items-center justify-between">
-                    <span>Usuario LDAP o Correo Admin</span>
+                    <span>Usuario LDAP o Correo</span>
                     <span class="text-[10px] text-obsidian-cyan/70 font-normal lowercase">ej: usuario o correo</span>
                 </label>
                 <div class="relative">

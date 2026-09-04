@@ -31,7 +31,7 @@ class AuthController extends Controller
             'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ], [
-            'login.required' => 'Debe ingresar su usuario LDAP o correo de administrador.',
+            'login.required' => 'Debe ingresar su usuario LDAP o correo.',
             'password.required' => 'La contraseña es obligatoria.',
         ]);
 
