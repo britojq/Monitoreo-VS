@@ -54,15 +54,20 @@ class AiChatController extends Controller
         }
         RateLimiter::hit($throttleKey, 60);
 
-        // 4. Construcción del Prompt del Sistema (Idéntico al bot de Telegram)
-        $systemPrompt = $this->buildSystemPrompt($user);
+        // Prevenir corte de ejecución en PHP durante inferencia CPU intensiva
+        @set_time_limit(240);
 
-        // 5. Ensamblar historial de mensajes
+        // 4. Ensamblar historial de mensajes
+        // Nota: qwen-empresa ya tiene el System Prompt corporativo y reglas de seguridad
+        // precompiladas e integradas en su Modelfile (al igual que en el bot de Telegram).
         $messages = [];
-        $messages[] = [
-            'role' => 'system',
-            'content' => $systemPrompt,
-        ];
+
+        if (config('services.ollama.include_system_prompt', false)) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => $this->buildSystemPrompt($user),
+            ];
+        }
 
         // Añadir historial previo si se proporciona
         if (!empty($validated['history'])) {
@@ -81,12 +86,13 @@ class AiChatController extends Controller
             'content' => $sanitizedUserText,
         ];
 
-        // 6. Enviar petición a Ollama local
+        // 5. Enviar petición a Ollama local
         try {
             $ollamaUrl = config('services.ollama.url', 'http://127.0.0.1:11434/api/chat');
             $ollamaModel = config('services.ollama.model', 'qwen-empresa');
+            $timeout = (int) config('services.ollama.timeout', 180);
 
-            $response = Http::timeout(120)->post($ollamaUrl, [
+            $response = Http::timeout($timeout)->post($ollamaUrl, [
                 'model' => $ollamaModel,
                 'messages' => $messages,
                 'stream' => false,
@@ -114,6 +120,16 @@ class AiChatController extends Controller
                 'error' => 'El servicio de IA local reportó un error al procesar tu consulta.',
             ], 502);
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Ollama connection timeout or network error', ['error' => $e->getMessage()]);
+            $isTimeout = str_contains(strtolower($e->getMessage()), 'timeout') || str_contains(strtolower($e->getMessage()), 'timed out');
+            $msg = $isTimeout
+                ? 'El motor local de IA se encuentra ocupado procesando otra solicitud o tardó más de lo esperado. Por favor reintenta tu pregunta en unos momentos.'
+                : 'No fue posible conectar con el motor local de IA (Ollama). Por favor verifica que el servicio esté activo.';
+            return response()->json([
+                'success' => false,
+                'error' => $msg,
+            ], 504);
         } catch (\Throwable $e) {
             Log::error('Ollama connection exception', ['error' => $e->getMessage()]);
             return response()->json([

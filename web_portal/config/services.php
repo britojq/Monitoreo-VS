@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'ollama' => [
+        'url' => env('OLLAMA_URL', 'http://127.0.0.1:11434/api/chat'),
+        'model' => env('OLLAMA_MODEL', 'qwen-empresa'),
+        'timeout' => (int) env('OLLAMA_TIMEOUT', 180),
+        'include_system_prompt' => (bool) env('OLLAMA_INCLUDE_SYSTEM_PROMPT', false),
+    ],
+
 ];
