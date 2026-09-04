@@ -728,9 +728,9 @@
                 <button type="button" onclick="closeVncSessionModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                     Cerrar
                 </button>
-                <button type="button" onclick="launchWebVnc()" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
+                <button id="btn-launch-vnc-web" type="button" onclick="launchWebVnc()" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">tv</span>
-                    Abrir Visor Web
+                    <span>Abrir Visor Web</span>
                 </button>
             </div>
         </div>
@@ -775,9 +775,46 @@
         m.classList.add('hidden');
     }
 
-    function launchWebVnc() {
-        if (window._currentVncTarget) {
-            alert('Preparando conexión con visor noVNC para: ' + window._currentVncTarget.name + ' (' + window._currentVncTarget.ip + ':5900)');
+    async function launchWebVnc() {
+        if (!window._currentVncTarget) return;
+
+        const btn = document.getElementById('btn-launch-vnc-web');
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> <span>Iniciando...</span>';
+        }
+
+        try {
+            const res = await fetch("{{ route('admin.vnc.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    ip: window._currentVncTarget.ip,
+                    name: window._currentVncTarget.name,
+                    site: window._currentVncTarget.site
+                })
+            });
+
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                closeVncSessionModal();
+                window.open(data.viewer_url, '_blank', 'width=1280,height=800,menubar=no,status=no,toolbar=no');
+            } else {
+                alert('No se pudo inicializar la sesión VNC: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error iniciando sesión VNC:', err);
+            alert('Error de red al intentar conectar con el proxy VNC.');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
     }
 </script>
