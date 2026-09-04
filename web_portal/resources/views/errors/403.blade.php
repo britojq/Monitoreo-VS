@@ -67,7 +67,7 @@
                             <span class="material-symbols-outlined text-red-400 text-2xl">lock</span>
                         </h1>
                         <p class="text-xs font-mono text-obsidian-muted">
-                            La solicitud fue interceptada y neutralizada por el middleware de seguridad RBAC.
+                            La solicitud fue interceptada y neutralizada por el sistema de seguridad.
                         </p>
                     </div>
                 </div>
