@@ -386,10 +386,6 @@
                             </div>
 
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="text-[9px] font-mono {{ $isUp ? 'text-emerald-400/90' : 'text-red-400' }} font-medium">
-                                    {{ $isUp ? $latStr : 'Down' }}
-                                </span>
-
                                 @if($accessType === 'TELNET')
                                     @if($canRemote)
                                         <button type="button"
