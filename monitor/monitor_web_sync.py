@@ -623,6 +623,28 @@ async def run_full_scan():
 
             # Mantener retención de últimos 30 días de historial de proxies
             cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+            # 5. Histórico de chequeos individuales por dispositivo de red Valle Seco
+            net_hist_sql = """
+                INSERT INTO network_device_check_histories 
+                (monitored_network_device_id, is_up, latency_ms, status_message, checked_at, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, NOW(), NOW(), NOW())
+            """
+            net_hist_records = []
+            for nd in all_net_devices:
+                if "id" in nd and nd["id"]:
+                    status_msg = "Dispositivo Operativo / Enlace Activo" if nd.get("is_up") else "Dispositivo Caído / Inalcanzable"
+                    net_hist_records.append((
+                        nd["id"],
+                        1 if nd.get("is_up") else 0,
+                        float(nd.get("latency_ms", 0.0) or 0.0),
+                        status_msg
+                    ))
+            if net_hist_records:
+                cursor.executemany(net_hist_sql, net_hist_records)
+
+            # Mantener retención de últimos 30 días de historial de dispositivos de red
+            cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
     finally:
         conn.close()
 

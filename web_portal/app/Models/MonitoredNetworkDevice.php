@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MonitoredNetworkDevice extends Model
 {
@@ -31,5 +32,10 @@ class MonitoredNetworkDevice extends Model
             'access_port' => 'integer',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(NetworkDeviceCheckHistory::class, 'monitored_network_device_id');
     }
 }

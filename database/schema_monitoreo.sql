@@ -229,6 +229,29 @@ CREATE TABLE `monitored_network_devices` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `network_device_check_histories`
+--
+
+DROP TABLE IF EXISTS `network_device_check_histories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `network_device_check_histories` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `monitored_network_device_id` bigint(20) unsigned NOT NULL,
+  `is_up` tinyint(1) NOT NULL DEFAULT 1,
+  `latency_ms` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `status_message` varchar(255) DEFAULT NULL,
+  `checked_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ndch_device_id_idx` (`monitored_network_device_id`),
+  KEY `ndch_checked_at_idx` (`checked_at`),
+  CONSTRAINT `ndch_device_fk` FOREIGN KEY (`monitored_network_device_id`) REFERENCES `monitored_network_devices` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `monitored_sites`
 --
 

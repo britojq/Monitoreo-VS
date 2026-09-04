@@ -1226,6 +1226,6 @@
     window._userCanRemote = {{ (Auth::check() && in_array(Auth::user()->role, ['admin', 'operator'])) ? 'true' : 'false' }};
     window._userCanVnc = window._userCanRemote;
 </script>
-<script id="monit-payload" type="application/json">{"s":@json($serviceHistoryMap),"t":@json($siteHistoryMap)}</script>
+<script id="monit-payload" type="application/json">{"s":@json($serviceHistoryMap),"t":@json($siteHistoryMap),"d":@json($deviceHistoryMap)}</script>
 <script src="{{ asset('js/monitoring-app.min.js') }}" defer></script>
 @endpush
