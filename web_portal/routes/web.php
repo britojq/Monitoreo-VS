@@ -53,6 +53,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO
     Route::middleware(['admin'])->group(function () {
 
+        // Búsqueda y Autorización Manual de Usuarios LDAP
+        Route::get('users/ldap/search', [AdminUserController::class, 'searchLdapUsers'])->name('users.ldap.search');
+        Route::post('users/ldap/authorize', [AdminUserController::class, 'authorizeLdapUser'])->name('users.ldap.authorize');
+
         // Gestión de Usuarios (CRUD)
         Route::resource('users', AdminUserController::class)->except(['create', 'show', 'edit']);
 
