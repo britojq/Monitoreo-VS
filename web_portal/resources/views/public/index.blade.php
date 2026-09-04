@@ -373,20 +373,15 @@
                             
                             <div class="flex items-center gap-2 min-w-0 pr-2">
                                 <div class="w-2 h-2 rounded-full shrink-0 {{ $isUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></div>
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-1.5 truncate">
-                                        <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-cyan transition-colors truncate">
-                                            {{ $netDev->name }}
-                                        </h3>
-                                        @if($netDev->vendor_data)
-                                            <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-obsidian-muted bg-obsidian-bg/80 border border-obsidian-border/40 truncate shrink-0">
-                                                {{ $netDev->vendor_data }}
-                                            </span>
-                                        @endif
-                                    </div>
-                                    <p class="text-[9px] font-mono text-obsidian-muted truncate">
-                                        IP: {{ $netDev->ip }} @if($netDev->mac) • MAC: <span class="text-obsidian-cyan/70">{{ $netDev->mac }}</span>@endif
-                                    </p>
+                                <div class="flex items-center gap-1.5 min-w-0 truncate">
+                                    <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-cyan transition-colors truncate">
+                                        {{ $netDev->name }}
+                                    </h3>
+                                    @if($netDev->vendor_data)
+                                        <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-obsidian-muted bg-obsidian-bg/80 border border-obsidian-border/40 truncate shrink-0">
+                                            {{ $netDev->vendor_data }}
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
 
