@@ -68,6 +68,11 @@ class AdminBanController extends Controller
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
+        if (in_array($validated['ip_address'], ['127.0.0.1', '::1'], true)) {
+            return redirect()->route('admin.bans.index')
+                ->with('error', 'No se permite banear direcciones IP de bucle local (127.0.0.1 / ::1).');
+        }
+
         BannedIp::firstOrCreate(
             ['ip_address' => $validated['ip_address']],
             [

@@ -29,6 +29,13 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="p-3.5 rounded-xl bg-red-950/80 border border-red-500/50 text-red-300 text-xs font-mono flex items-center gap-2">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
     @if($errors->any())
         <div class="p-3.5 rounded-xl bg-red-950/80 border border-red-500/50 text-red-300 text-xs font-mono space-y-1">
             @foreach($errors->all() as $err)

@@ -40,8 +40,11 @@ class AuthController extends Controller
             $user = Auth::user();
             if (!$user->is_active) {
                 Auth::logout();
+                $banMsg = $user->ban_reason 
+                    ? "Esta cuenta ha sido suspendida. Motivo: {$user->ban_reason}"
+                    : 'Esta cuenta ha sido desactivada por la administración.';
                 return back()->withErrors([
-                    'email' => 'Esta cuenta ha sido desactivada por la administración.',
+                    'email' => $banMsg,
                 ]);
             }
 
