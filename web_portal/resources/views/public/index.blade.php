@@ -121,7 +121,7 @@
             return $snap ? !($snap['is_up'] ?? false) : true;
         });
 
-        // 3. Dispositivos en Red Valle Seco
+        // 3. Dispositivos Sede Valle Seco
         $activeNetDevices = ($networkDevices ?? collect())->map(function($d) use ($snapshotNetDevices) {
             $snap = $snapshotNetDevices->get($d->ip);
             $d->is_up_evaluated = $snap ? ($snap['is_up'] ?? false) : false;
@@ -198,7 +198,7 @@
         </section>
 
         <!-- ========================================================================= -->
-        <!-- COLUMNA 2: SEDES REGIONALES Y DISPOSITIVOS EN RED VALLE SECO (34% ANCHO) -->
+        <!-- COLUMNA 2: SEDES REGIONALES Y DISPOSITIVOS SEDE VALLE SECO (34% ANCHO) -->
         <!-- ========================================================================= -->
         <section class="flex flex-col w-full lg:w-[34%] h-full gap-3 overflow-hidden">
 
@@ -335,20 +335,20 @@
                 </div>
             </div>
 
-            <!-- BLOQUE INFERIOR: DISPOSITIVOS EN RED VALLE SECO (50% ALTURA) -->
+            <!-- BLOQUE INFERIOR: DISPOSITIVOS SEDE VALLE SECO (50% ALTURA) -->
             <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-obsidian-border/80 bg-obsidian-panel/20">
                 <!-- CABECERA -->
                 <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-obsidian-cyan text-lg">lan</span>
-                        <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">DISPOSITIVOS EN RED VALLE SECO</h2>
+                        <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">DISPOSITIVOS SEDE VALLE SECO</h2>
                     </div>
-                    <span id="badge-count-valle-seco-devices" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30">
+                    <span id="badge-count-valle-seco-devices" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-border/30">
                         {{ $netDevicesOnlineCount }} / {{ $activeNetDevices->count() }} Online
                     </span>
                 </div>
 
-                <!-- LISTA DE DISPOSITIVOS EN RED VALLE SECO -->
+                <!-- LISTA DE DISPOSITIVOS SEDE VALLE SECO -->
                 <div class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scroll" id="valle-seco-devices-container">
                     @forelse($activeNetDevices as $netDev)
                         @php

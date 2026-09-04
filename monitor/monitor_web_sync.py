@@ -395,7 +395,7 @@ def sync_conf_to_db():
                         """
                         cursor.execute(sql_p, (letter, pname, pipport, pauth, 'https://core.telegram.org/bots', 1 if is_p_active else 0))
 
-            # 4. DISPOSITIVOS EN RED VALLE SECO (monitoreo.conf DISPOSITIVO1..30)
+            # 4. DISPOSITIVOS SEDE VALLE SECO (monitoreo.conf DISPOSITIVO1..30)
             for dev_num in range(1, 31):
                 dname = data.get(f"DISPOSITIVO{dev_num}_NAME")
                 dip = data.get(f"DISPOSITIVO{dev_num}_IP")
