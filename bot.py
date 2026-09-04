@@ -1416,15 +1416,15 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     except requests.exceptions.ConnectionError:
         answer = (
-            "🔌 No pude conectar con Ollama.\n"
+            "🔌 No pude conectar con el motor local de IA.\n"
             "Verifica que el servicio esté activo en este equipo."
         )
 
     except requests.exceptions.RequestException as e:
-        logger.exception("Error HTTP/Request consultando Ollama")
+        logger.exception("Error HTTP/Request consultando servicio de IA")
         answer = (
-            "⚠️ Ocurrió un error de red o del servicio Ollama.\n"
-            "Revisa los logs del bot."
+            "⚠️ Ocurrió un error de red o del servicio local de IA.\n"
+            "Intenta nuevamente en unos momentos."
         )
 
     except Exception as e:

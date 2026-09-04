@@ -125,7 +125,7 @@ class AiChatController extends Controller
             $isTimeout = str_contains(strtolower($e->getMessage()), 'timeout') || str_contains(strtolower($e->getMessage()), 'timed out');
             $msg = $isTimeout
                 ? 'El motor local de IA se encuentra ocupado procesando otra solicitud o tardó más de lo esperado. Por favor reintenta tu pregunta en unos momentos.'
-                : 'No fue posible conectar con el motor local de IA (Ollama). Por favor verifica que el servicio esté activo.';
+                : 'No fue posible conectar con el motor local de IA. Por favor verifica que el servicio esté activo.';
             return response()->json([
                 'success' => false,
                 'error' => $msg,
@@ -134,7 +134,7 @@ class AiChatController extends Controller
             Log::error('Ollama connection exception', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'error' => 'No fue posible conectar con el motor local de IA (Ollama). Por favor verifica el servicio.',
+                'error' => 'No fue posible conectar con el motor local de IA. Por favor verifica el servicio.',
             ], 503);
         }
     }
