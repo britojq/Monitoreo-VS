@@ -41,8 +41,12 @@
                         <tr class="hover:bg-obsidian-panel/40 transition">
                             <td class="px-6 py-4 font-sans font-semibold text-white">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-obsidian-cyan/20 border border-obsidian-cyan/40 text-obsidian-cyan flex items-center justify-center font-mono text-xs shrink-0">
-                                        {{ strtoupper(substr($u->name, 0, 2)) }}
+                                    <div class="w-8 h-8 rounded-full bg-obsidian-cyan/20 border border-obsidian-cyan/40 text-obsidian-cyan flex items-center justify-center font-mono text-xs shrink-0 overflow-hidden">
+                                        @if($u->avatar_url)
+                                            <img src="{{ $u->avatar_url }}" alt="{{ $u->name }}" class="w-full h-full object-cover">
+                                        @else
+                                            {{ strtoupper(substr($u->name, 0, 2)) }}
+                                        @endif
                                     </div>
                                     <div class="space-y-0.5">
                                         <div>{{ $u->name }}</div>

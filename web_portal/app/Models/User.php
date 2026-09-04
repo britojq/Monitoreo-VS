@@ -15,6 +15,7 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'avatar',
         'password',
         'role',
         'is_active',
@@ -22,6 +23,10 @@ class User extends Authenticatable
         'banned_at',
         'last_login_at',
         'last_login_ip',
+    ];
+
+    protected $appends = [
+        'avatar_url',
     ];
 
     protected $hidden = [
@@ -48,6 +53,23 @@ class User extends Authenticatable
     public function isLdapUser(): bool
     {
         return !empty($this->username);
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!empty($this->avatar)) {
+            if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+                return $this->avatar;
+            }
+            if (file_exists(public_path('storage/' . $this->avatar))) {
+                return asset('storage/' . $this->avatar);
+            }
+            if (file_exists(public_path($this->avatar))) {
+                return asset($this->avatar);
+            }
+            return asset('storage/' . $this->avatar);
+        }
+        return null;
     }
 
     public function bannedIps()

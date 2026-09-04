@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminSiteController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicMonitoringController;
@@ -48,6 +49,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     Route::get('proxies', [AdminProxyController::class, 'index'])->name('proxies.index');
     Route::get('proxies/{proxy}/history', [AdminProxyController::class, 'history'])->name('proxies.history');
+
+    // Perfil de Usuario (Accesible para Administradores y Operadores)
+    Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
 
     // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN (Protegidas por Middleware 'admin')
     // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO

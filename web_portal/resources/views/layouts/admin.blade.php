@@ -33,6 +33,12 @@
                     Dashboard
                 </a>
 
+                <!-- MI PERFIL (Para Administradores y Operadores) -->
+                <a href="{{ route('admin.profile.show') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.profile.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                    <span class="material-symbols-outlined text-lg">account_circle</span>
+                    Mi Perfil
+                </a>
+
                 @if(auth()->user()->isAdmin())
                 <!-- GESTIÓN DE USUARIOS (Solo Administrador) -->
                 <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
@@ -119,16 +125,20 @@
                 </div>
             </div>
 
-            <!-- USUARIO EN SESIÓN -->
-            <div class="flex items-center space-x-4">
-                <div class="text-right">
-                    <span class="text-xs font-bold text-white block">{{ Auth::user()->name }}</span>
+            <!-- USUARIO EN SESIÓN (Click lleva a Perfil) -->
+            <a href="{{ route('admin.profile.show') }}" class="flex items-center space-x-3 hover:opacity-90 transition group" title="Ver Mi Perfil">
+                <div class="text-right hidden sm:block">
+                    <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition">{{ Auth::user()->name }}</span>
                     <span class="text-[10px] font-mono text-obsidian-cyan uppercase">{{ Auth::user()->role }}</span>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-obsidian-cyan to-obsidian-purple text-black font-bold flex items-center justify-center text-sm shadow-md">
-                    {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-sm shadow-md overflow-hidden shrink-0">
+                    @if(Auth::user()->avatar_url)
+                        <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
+                    @else
+                        {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                    @endif
                 </div>
-            </div>
+            </a>
         </header>
 
         <!-- CONTENIDO DE LA PÁGINA -->
