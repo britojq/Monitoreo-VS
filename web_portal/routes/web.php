@@ -15,6 +15,20 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicMonitoringController::class, 'index'])->name('home');
 Route::get('/api/status', [PublicMonitoringController::class, 'apiStatus'])->name('api.status');
 
+// --- PREVISUALIZACIÓN DE PANTALLA DE SEGURIDAD Y BANEO (Demostración) ---
+Route::get('/preview/banned', function () {
+    return response()->view('errors.403', [
+        'exception' => new \Symfony\Component\HttpKernel\Exception\HttpException(
+            403,
+            'Acceso Denegado: Su cuenta de usuario y su dirección IP han sido suspendidas por intentar manipular configuraciones administrativas críticas sin autorización.'
+        )
+    ], 403);
+})->name('preview.banned');
+
+Route::get('/preview-403', function () {
+    abort(403, 'Acceso Denegado: Su cuenta de usuario y su dirección IP han sido suspendidas por intentar manipular funciones administrativas no autorizadas.');
+});
+
 // --- AUTENTICACIÓN ---
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
