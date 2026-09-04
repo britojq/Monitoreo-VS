@@ -9,7 +9,7 @@
         <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-red-400">gavel</span>
-                Seguridad & Gestión de Baneos (C.R.U.D)
+                Seguridad & Gestión de Baneos
             </h2>
             <p class="text-xs font-mono text-obsidian-muted">Control de acceso, cuentas suspendidas y lista negra de direcciones IP</p>
         </div>
