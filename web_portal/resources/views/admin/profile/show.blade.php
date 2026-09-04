@@ -154,7 +154,7 @@
                             <span>Directorio Activo Corporativo (LDAP)</span>
                         </div>
                         <p class="text-[11px] leading-relaxed text-obsidian-muted">
-                            Su cuenta está asociada con los servidores de <strong class="text-white">Corpoelec</strong>. Por motivos de seguridad, la contraseña y la información personal (nombre, correo corporativo e identificador) se sincronizan de forma exclusiva desde el servidor central de Directorio Activo (<code class="text-obsidian-cyan">10.20.0.22</code>) y <strong class="text-white">no pueden ser modificadas directamente en este portal</strong>.
+                            Su cuenta está asociada con los servidores de <strong class="text-white">Corpoelec</strong>. Por motivos de seguridad, la contraseña y la información personal (nombre, correo corporativo e identificador) se sincronizan de forma exclusiva desde el servidor de Directorio Activo (<code class="text-obsidian-cyan">LDAP</code>) y <strong class="text-white">no pueden ser modificadas directamente en este portal</strong>.
                         </p>
                         <p class="text-[11px] text-obsidian-muted">
                             💡 En este portal, únicamente tiene permitido colocar o actualizar su <strong class="text-obsidian-cyan">fotografía de perfil</strong> en la sección izquierda.
