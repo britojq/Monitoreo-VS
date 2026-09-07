@@ -2,101 +2,96 @@
   "messages": {
     "start_header": "<b>═════════════════════════════════════</b>\n🤖 <b>BOT DE MONITOREO DE SEDE VALLE SECO</b>\n📍 <i>¡Bienvenido!</i>\n<b>═════════════════════════════════════</b>\n\nUtiliza los comandos listados a continuación para la gestión. Para ver detalles de un comando específico, envía:\n <code>/comando help</code> o <code>/ayuda comando</code>.\n\nEn caso contrario, siéntete libre de preguntarme sobre cualquier tema técnico ejemplo:\n <i>Cómo configurar un servidor web con apache2 en Debian</i>\nTambien puedes hacerme preguntas sobre cualquier tema que necesites información.",
     "unknown_command": "⚠️ Comando no reconocido. Utiliza <code>/start</code> o <code>/help</code> para ver los comandos disponibles.",
-    "help_general": "ℹ️ <b>Centro de Ayuda</b>\n\nEnvía <code>/start</code> para ver la lista rápida de comandos, o escribe <code>/help [comando]</code> (ejemplo: <code>/help status</code>) para ver información detallada de cada función."
+    "help_general": "ℹ️ <b>Centro de Ayuda</b>\n\nEnvía <code>/start</code> para ver la lista rápida de comandos, o escribe <code>/help [comando]</code> (ejemplo: <code>/help recursos</code>) para ver información detallada de cada función."
   },
   "commands": {
-    "status": {
-      "description": "Estado de servicios críticos del sistema",
-      "help_text": "ℹ️ <b>Ayuda del comando /status:</b>\n\nEste comando verifica en tiempo real el estado operativo de los servicios críticos (como SSH). Te permite saber si el servicio está activo, detenido o fallando.",
-      "reply_header": "🔍 <b>Consultando estado de servicios críticos...</b>",
-      "reply_footer": "✅ Consulta de servicios finalizada.",
-      "steps": [
-        {
-          "title": "Estado del Servicio SSH:",
-          "command": ["systemctl", "status", "ssh", "--no-pager"]
-        }
-      ]
-    },
-    "network": {
-      "description": "Análisis de red, interfaces y puertos escuchando",
-      "help_text": "ℹ️ <b>Ayuda del comando /network:</b>\n\nEste comando ejecuta un diagnóstico de red en dos pasos:\n1. Muestra la lista resumida de interfaces y direcciones IP configuradas (<code>ip -br addr</code>).\n2. Lista los puertos TCP y UDP que se encuentran escuchando en el servidor (<code>ss -tuln</code>).",
-      "reply_header": "🌐 <b>Iniciando diagnóstico de red...</b>",
-      "reply_footer": "✅ Diagnóstico de red completado.",
-      "steps": [
-        {
-          "title": "Interfaces de Red:",
-          "command": ["ip", "-br", "addr"]
-        },
-        {
-          "title": "Puertos Escuchando:",
-          "command": ["ss", "-tuln"]
-        }
-      ]
-    },
-    "disk": {
-      "description": "Uso de almacenamiento y espacio en disco",
-      "help_text": "ℹ️ <b>Ayuda del comando /disk:</b>\n\nEste comando consulta el espacio utilizado y disponible en todas las particiones del sistema (<code>df -h</code>), facilitando la prevención de problemas por disco lleno.",
-      "reply_header": "💾 <b>Consultando uso de disco y almacenamiento...</b>",
-      "reply_footer": "✅ Información de disco obtenida.",
-      "steps": [
-        {
-          "title": "Uso de Almacenamiento:",
-          "command": ["df", "-h"]
-        }
-      ]
-    },
     "servicios": {
-      "description": "Verificando el estatus de los servicios Corporativos",
-      "help_text": "ℹ️ <b>Ayuda del comando /servicios:</b>\n\nEste comando consulta el estatus de todos los servicios corporativos configurados en el sistema.",
-      "reply_header": "⏳ <b>Ejecutando verificación de servicios... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
-      "reply_footer": "✅ Verificación de servicios finalizada.",
-      "show_output": false,
-      "steps": [
-        {
-          "command": ["estatus", "servicios"],
-          "timeout": 300
-        }
-      ]
+      "description": "Verificar el estatus de los servicios corporativos",
+      "help_text": "ℹ️ <b>Ayuda del comando /servicios:</b>\n\n• <code>/servicios</code>: Genera el reporte textual con latencias y estado de todos los servicios corporativos.\n• <code>/servicios web</code>: Genera además la captura gráfica en alta definición de la columna de servicios."
     },
     "sedes": {
-      "description": "Verificando el estatus de las sedes Corporativas",
-      "help_text": "ℹ️ <b>Ayuda del comando /sedes:</b>\n\nEste comando consulta el estatus de conectividad de las sedes corporativas configuradas.",
-      "reply_header": "⏳ <b>Ejecutando verificación de sedes... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
-      "reply_footer": "✅ Verificación de sedes finalizada.",
-      "show_output": false,
-      "steps": [
-        {
-          "command": ["estatus", "sedes"],
-          "timeout": 300
-        }
-      ]
+      "description": "Verificar el estatus de las sedes y enlaces de comunicación",
+      "help_text": "ℹ️ <b>Ayuda del comando /sedes:</b>\n\n• <code>/sedes</code>: Reporte textual de conectividad en sedes regionales y equipos remotos.\n• <code>/sedes web</code>: Genera además la captura gráfica en alta definición con los acordeones de equipos desplegados."
     },
-    "analisisred": {
-      "description": "Ejecutando un análisis de la red",
-      "help_text": "ℹ️ <b>Ayuda del comando /red:</b>\n\nEste comando realiza un análisis detallado de la red corporativa configurada.",
-      "reply_header": "⏳ <b>Ejecutando análisis de la red... (Esto puede tardar más de 1 minuto, por favor espera)</b>",
-      "reply_footer": "✅ Análisis de red finalizado.",
-      "show_output": false,
-      "steps": [
-        {
-          "command": ["estatus", "red"],
-          "timeout": 300
-        }
-      ]
+    "caidas": {
+      "description": "Reporte enfocado en fallas, servicios caídos y sedes desconectadas",
+      "help_text": "ℹ️ <b>Ayuda del comando /caidas:</b>\n\n• <code>/caidas</code>: Filtra y muestra únicamente los incidentes activos, servicios en timeout o caídos y sedes sin conexión.\n• <code>/caidas web</code>: Adjunta la captura visual en alta definición de la columna de incidentes."
+    },
+    "web": {
+      "description": "Captura panorámica en alta definición del dashboard web en vivo",
+      "help_text": "ℹ️ <b>Ayuda del comando /web:</b>\n\n• <code>/web</code> o <code>/web full</code>: Captura panorámica HD (1920x1080 @2x) del tablero completo de monitoreo.\n• <code>/web servicios</code>: Captura aislada de la columna de servicios activos.\n• <code>/web sedes</code>: Captura aislada de la columna de sedes regionales con equipos expandidos.\n• <code>/web caidas</code>: Captura aislada de incidentes y servicios fuera de línea."
+    },
+    "monitoreo": {
+      "description": "Reporte unificado integral (Servicios + Sedes)",
+      "help_text": "ℹ️ <b>Ayuda del comando /monitoreo:</b>\n\nEjecuta una ronda integral de verificación combinada (Servicios Corporativos + Sedes Regionales + Dispositivos Locales) en un solo despacho consolidado."
+    },
+    "recursos": {
+      "description": "Diagnóstico de RAM, CPU y panel interactivo para liberar memoria",
+      "help_text": "ℹ️ <b>Ayuda del comando /recursos:</b>\n\n• Muestra el consumo detallado de memoria RAM, memoria Swap, uso de CPU y los procesos que más memoria consumen en el host.\n• Despliega un panel con botones interactivos para:\n  - 🧹 <b>Liberar Caché de RAM</b> (drop_caches).\n  - 🔄 <b>Reiniciar Plasma Shell</b> (recuperar memoria gráfica acumulada de KDE Plasma).\n  - ⚡ <b>Optimización Completa</b> (ambas acciones combinadas)."
+    },
+    "cron": {
+      "description": "Panel interactivo de programación y horarios de reportes automáticos",
+      "help_text": "ℹ️ <b>Ayuda del comando /cron:</b>\n\nPermite pausar o reanudar los reportes automáticos, así como configurar los horarios y la frecuencia de los despachos programados a los canales autorizados."
+    },
+    "permisos": {
+      "description": "Gestión interactiva de usuarios y grupos autorizados",
+      "help_text": "ℹ️ <b>Ayuda del comando /permisos:</b>\n\nPanel de administración de accesos para consultar, autorizar o revocar permisos a usuarios individuales (IDs de Telegram) y grupos de chat de operaciones."
+    },
+    "bloqueo_comandos": {
+      "description": "Bloquear o reactivar el uso de comandos para usuarios y grupos",
+      "help_text": "ℹ️ <b>Ayuda del comando /bloqueo_comandos:</b>\n\nInterruptor de seguridad para restringir el uso de comandos a usuarios no administradores durante tareas de mantenimiento o situaciones de contingencia."
+    },
+    "botstatus": {
+      "description": "Diagnóstico de conectividad del bot, proxies corporativos y accesos denegados",
+      "help_text": "ℹ️ <b>Ayuda del comando /botstatus:</b>\n\nAuditoría en tiempo real del estado de conexión del bot, proxy en uso, latencias de transporte hacia Telegram y registro de intentos de acceso denegados."
+    },
+    "limpiador": {
+      "description": "Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza",
+      "help_text": "ℹ️ <b>Ayuda del comando /limpiador:</b>\n\nHerramienta de mantenimiento para evaluar espacio libre en disco, inodos y purgar logs antiguos, temporales de capturas web y cachés del sistema."
+    },
+    "emergencia": {
+      "description": "Panel de contingencia y modo de mantenimiento",
+      "help_text": "ℹ️ <b>Ayuda del comando /emergencia:</b>\n\nPermite detener temporalmente servicios, activar el modo de mantenimiento institucional o restaurar archivos de configuración de respaldo."
+    },
+    "actualizar": {
+      "description": "Comprobar y aplicar actualizaciones desde GitHub",
+      "help_text": "ℹ️ <b>Ayuda del comando /actualizar:</b>\n\nCompara la versión local contra el repositorio remoto en GitHub, mostrando los commits pendientes y permitiendo aplicar la actualización en caliente."
+    },
+    "mensaje": {
+      "description": "Envío de comunicados y avisos masivos a usuarios autorizados",
+      "help_text": "ℹ️ <b>Ayuda del comando /mensaje [texto]:</b>\n\nDifunde un aviso administrativo oficial a todos los usuarios y canales autorizados registrados en la whitelist del bot."
     },
     "internet": {
       "description": "Diagnóstico de salidas a internet y proxies corporativos",
-      "help_text": "ℹ️ <b>Ayuda del comando /internet:</b>\n\nEste comando verifica en tiempo real la conectividad y latencia de todas las salidas a internet y proxies corporativos configurados (Squid, pfSense, Dansguardian).",
-      "reply_header": "🌐 <b>Iniciando diagnóstico de internet y proxies...</b>",
-      "reply_footer": "✅ Diagnóstico de internet finalizado.",
-      "show_output": false
+      "help_text": "ℹ️ <b>Ayuda del comando /internet:</b>\n\nVerifica la conectividad y latencia hacia internet a través de cada proxy corporativo configurado (Squid, pfSense, Dansguardian)."
+    },
+    "analisis_red": {
+      "description": "Captura de tráfico en vivo (tcpdump) y análisis profundo (tshark)",
+      "help_text": "ℹ️ <b>Ayuda del comando /analisis_red [segundos]:</b>\n\nCaptura paquetes en la interfaz de red local durante el intervalo especificado (por defecto 120s) y genera reportes detallados en formato Markdown y HTML con gráficos de protocolos y flujos sospechosos."
     },
     "reinicia": {
       "description": "Reiniciar el servidor host (Exclusivo Owner)",
-      "help_text": "ℹ️ <b>Ayuda del comando /reinicia:</b>\n\nEste comando ejecuta el reinicio completo del sistema operativo en el servidor host (<code>sudo reboot</code>). Solo puede ser invocado por el Administrador Propietario (Owner).",
-      "reply_header": "🔄 <b>Iniciando reinicio del servidor...</b>",
-      "reply_footer": "✅ Instrucción de reinicio enviada.",
-      "show_output": false
+      "help_text": "ℹ️ <b>Ayuda del comando /reinicia:</b>\n\nEjecuta el reinicio completo del sistema operativo del servidor (<code>sudo reboot</code>). Exclusivo para el Administrador Propietario (Owner)."
+    },
+    "reset_ia": {
+      "description": "Reiniciar la memoria y contexto de conversación con el asistente",
+      "help_text": "ℹ️ <b>Ayuda del comando /reset_ia:</b>\n\nLimpia el hilo histórico de la conversación con el asistente virtual corporativo para comenzar una nueva consulta técnica desde cero."
+    },
+    "info": {
+      "description": "Información legal, privacidad y políticas de seguridad",
+      "help_text": "ℹ️ <b>Ayuda del comando /info:</b>\n\nMuestra el marco legal de uso, directivas de confidencialidad y responsabilidades operativas del sistema de monitoreo institucional."
+    },
+    "status": {
+      "description": "Estado de servicios críticos del sistema (SSH, etc.)",
+      "help_text": "ℹ️ <b>Ayuda del comando /status:</b>\n\nVerifica el estado del servicio SSH y procesos básicos en el host local."
+    },
+    "network": {
+      "description": "Análisis rápido de interfaces y puertos escuchando",
+      "help_text": "ℹ️ <b>Ayuda del comando /network:</b>\n\nMuestra interfaces de red y puertos TCP/UDP escuchando en el servidor."
+    },
+    "disk": {
+      "description": "Uso de almacenamiento y particiones en disco",
+      "help_text": "ℹ️ <b>Ayuda del comando /disk:</b>\n\nConsulta el espacio utilizado y disponible en todas las particiones del sistema (df -h)."
     }
   }
 }

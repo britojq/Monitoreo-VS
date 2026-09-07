@@ -1111,6 +1111,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
             "• <code>/bloqueo_comandos</code> <i>(/bloquear_comandos)</i> - Bloquear o reactivar el uso de comandos para usuarios y grupos.",
             "• <code>/botstatus</code> <i>(/estatus, /status, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
+            "• <code>/mensaje [texto]</code> <i>(/broadcast, /comunicado)</i> - Envío de comunicados y avisos masivos a usuarios autorizados.",
+            "• <code>/migrar_token</code> - Migración guiada y segura del token del bot a un nuevo bot.",
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/recursos</code> <i>(/memoria, /optimizar, /plasma)</i> - Diagnóstico de RAM, Swap, CPU y panel interactivo para liberar memoria / reiniciar Plasma Shell.",
@@ -1118,6 +1120,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
+            "• <code>/reinicia</code> <i>(/reboot)</i> - Reinicio completo del servidor host del sistema.\n",
             "📊 <b>Monitoreo e Infraestructura de Red</b>",
             "• <code>/servicios [web]</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos (con captura web).",
             "• <code>/sedes [web]</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación (con captura web).",
@@ -1139,10 +1142,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         ]
 
         if commands_enabled and COMMANDS:
-            owner_menu.append("⚙️ <b>Comandos Adicionales del Sistema:</b>")
-            for cmd_name, cmd_info in COMMANDS.items():
-                desc = cmd_info.get("description", "Sin descripción")
-                owner_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
+            already_listed = {
+                "permisos", "bloqueo_comandos", "botstatus", "info", "mensaje", "migrar_token",
+                "recursos", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
+                "servicios", "sedes", "caidas", "web", "monitoreo", "internet", "analisis_red",
+                "analisisred", "debug_servicios", "debug_sedes", "debug_completo", "debug_monitor",
+                "reset_ia"
+            }
+            extra_cmds = [
+                f"• <code>/{cmd_name}</code> - {html.escape(cmd_info.get('description', 'Sin descripción'))}"
+                for cmd_name, cmd_info in COMMANDS.items()
+                if cmd_name.lower() not in already_listed
+            ]
+            if extra_cmds:
+                owner_menu.append("⚙️ <b>Comandos Adicionales del Sistema:</b>")
+                owner_menu.extend(extra_cmds)
 
         owner_menu.append("\n<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
 
@@ -4254,6 +4268,58 @@ def main() -> None:
                     logger.error(f"Error procesando notificación de auto-rollback: {err}")
 
         asyncio.create_task(_check_auto_rollback_notice())
+
+        # 4. Sincronizar dinámicamente el menú nativo de comandos en Telegram
+        async def _sync_telegram_commands():
+            try:
+                from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
+
+                default_commands = [
+                    BotCommand("start", "Menú principal y bienvenida"),
+                    BotCommand("servicios", "Consultar estado de servicios"),
+                    BotCommand("sedes", "Consultar estado de sedes y enlaces"),
+                    BotCommand("monitoreo", "Reporte de infraestructura unificado"),
+                    BotCommand("internet", "Diagnóstico de conectividad y proxies"),
+                    BotCommand("analisis_red", "Diagnóstico de red local"),
+                    BotCommand("reset_ia", "Reiniciar conversación con la IA"),
+                    BotCommand("info", "Información legal y aviso de seguridad"),
+                ]
+                await app.bot.set_my_commands(default_commands, scope=BotCommandScopeDefault())
+
+                owner_id = int(CONFIG.get("owner_id", 0))
+                if owner_id:
+                    owner_commands = [
+                        BotCommand("start", "Panel de control principal"),
+                        BotCommand("servicios", "Servicios corporativos (/servicios web)"),
+                        BotCommand("sedes", "Sedes y enlaces (/sedes web)"),
+                        BotCommand("caidas", "Servicios caídos e incidentes (/caidas web)"),
+                        BotCommand("web", "Captura HD del dashboard web en vivo"),
+                        BotCommand("monitoreo", "Reporte unificado (Servicios + Sedes)"),
+                        BotCommand("recursos", "Memoria RAM, CPU y optimización"),
+                        BotCommand("cron", "Panel de horarios y reportes automáticos"),
+                        BotCommand("permisos", "Gestión de usuarios y autorizaciones"),
+                        BotCommand("bloqueo_comandos", "Bloquear/activar comandos para usuarios"),
+                        BotCommand("botstatus", "Diagnóstico de conectividad y proxies"),
+                        BotCommand("limpiador", "Mantenimiento y limpieza de espacio"),
+                        BotCommand("emergencia", "Panel de contingencia y mantenimiento"),
+                        BotCommand("actualizar", "Comprobar y aplicar cambios Git"),
+                        BotCommand("internet", "Diagnóstico de internet y proxies"),
+                        BotCommand("analisis_red", "Captura y análisis profundo de red"),
+                        BotCommand("debug_servicios", "Diagnóstico exhaustivo servicios"),
+                        BotCommand("debug_sedes", "Diagnóstico exhaustivo sedes"),
+                        BotCommand("debug_completo", "Diagnóstico técnico integral"),
+                        BotCommand("debug_monitor", "Conmutar modo depuración global"),
+                        BotCommand("mensaje", "Difusión masiva a usuarios autorizados"),
+                        BotCommand("reinicia", "Reiniciar el servidor host del sistema"),
+                        BotCommand("reset_ia", "Reiniciar memoria del asistente IA"),
+                        BotCommand("info", "Términos y seguridad institucional"),
+                    ]
+                    await app.bot.set_my_commands(owner_commands, scope=BotCommandScopeChat(chat_id=owner_id))
+                    logger.info("Comandos nativos de Telegram sincronizados para Default y Owner.")
+            except Exception as err:
+                logger.warning(f"Error sincronizando comandos nativos con Telegram: {err}")
+
+        asyncio.create_task(_sync_telegram_commands())
 
     application = (
         Application.builder()
