@@ -152,6 +152,8 @@
                 <p class="text-xs font-mono text-obsidian-muted">No hay snapshots registrados todavía.</p>
             @endif
         </div>
+    </div>
+
     @if(auth()->user()->isAdmin() && isset($cronConfig))
     <!-- CONTROL DE ENVÍOS PROGRAMADOS A TELEGRAM (CRON) (Exclusivo Administrador) -->
     <div class="glass-card rounded-xl p-6 space-y-5 border {{ ($cronConfig['enabled'] ?? true) ? 'border-cyan-500/30' : 'border-amber-500/30' }}">
