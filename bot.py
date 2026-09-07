@@ -690,7 +690,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         last_name = ""
     name_parts = [p for p in [first_name, last_name] if p]
     full_name = " ".join(name_parts) or "(sin nombre)"
-    lang = user.language_code if user else "desconocido"
+    lang = (user.language_code or "desconocido") if (user and user.language_code) else "desconocido"
 
     # Guardar en caché de usuarios para el comando /permisos
     if user_id:
@@ -750,7 +750,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username)})\n"
             f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
             f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
-            f"🌐 <b>Idioma:</b> <code>{html.escape(lang)}</code>\n"
+            f"🌐 <b>Idioma:</b> <code>{html.escape(str(lang))}</code>\n"
             f"📝 <b>Mensaje enviado:</b>\n<pre>{html.escape(msg_text)}</pre>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>"
         )
@@ -4686,8 +4686,8 @@ def main() -> None:
     # Callback query handler para panel de control de emergencia
     application.add_handler(CallbackQueryHandler(handle_emergency_callback, pattern=r"^emergencia:"))
 
-    # Callback query handler para botones de autorización interactiva, revocación, debug toggle y bloqueo de comandos
-    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_(allow|deny|revoke_user|revoke_group|toggle_debug|toggle_cmd_lock):"))
+    # Callback query handler para botones de autorización interactiva, revocación, debug toggle, bloqueo de comandos y gestión de grupos
+    application.add_handler(CallbackQueryHandler(handle_auth_callback, pattern=r"^auth_"))
 
     # Callback query handler para botones del limpiador del sistema
     application.add_handler(CallbackQueryHandler(handle_cleaner_callback, pattern=r"^cleaner_act:"))
