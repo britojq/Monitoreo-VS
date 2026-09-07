@@ -1113,6 +1113,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/botstatus</code> <i>(/estatus, /status, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
+            "• <code>/recursos</code> <i>(/memoria, /optimizar, /plasma)</i> - Diagnóstico de RAM, Swap, CPU y panel interactivo para liberar memoria / reiniciar Plasma Shell.",
+            "• <code>/cron</code> <i>(/envios, /programacion)</i> - Panel interactivo para activar, pausar y configurar horarios de reportes automáticos.",
             "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
@@ -3081,6 +3083,154 @@ async def handle_cleaner_callback(update: Update, context: ContextTypes.DEFAULT_
             pass
 
 
+async def cmd_recursos_sistema(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para diagnóstico integral de recursos (RAM, Swap, CPU, I/O wait) y optimización de Plasma Shell (EXCLUSIVO OWNER en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    if user_id != owner_id:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/recursos"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] RECURSOS DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(
+            update.message,
+            MSG_UNAUTHORIZED_ADMIN_COMMAND
+        )
+
+        if owner_id and CONFIG.get("notify_unauthorized_to_owner", True):
+            owner_alert = (
+                "🚨 <b>Alerta: Intento de Acceso a Monitor de Recursos del Sistema</b>\n\n"
+                f"👤 <b>Usuario:</b> {html.escape(full_name)} ({html.escape(username_str)})\n"
+                f"🆔 <b>ID de Telegram:</b> <code>{user_id}</code>\n"
+                f"💬 <b>Origen:</b> {html.escape(chat_title)} (<code>{chat_id}</code>)\n"
+                f"📝 <b>Comando:</b> <code>{html.escape(msg_text)}</code>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>La solicitud fue bloqueada automáticamente porque este comando es exclusivo del Owner.</i>"
+            )
+            try:
+                await context.bot.send_message(
+                    chat_id=owner_id,
+                    text=owner_alert,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"No se pudo notificar al owner sobre intento de recursos: {e}")
+
+        return
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Analizando telemetría del servidor, memoria RAM, Swap y estado de Plasma Shell...</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        from monitor.system_optimizer import format_optimizer_dashboard_html
+        dashboard_text, keyboard = await asyncio.to_thread(format_optimizer_dashboard_html)
+
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        await update.message.reply_text(
+            dashboard_text,
+            parse_mode='HTML',
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.error(f"Error generando panel de recursos: {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error generando diagnóstico de recursos:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error: {e}")
+
+
+async def handle_optimizer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones interactivas del panel de optimización de recursos."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el creador del bot puede ejecutar acciones de optimización del sistema.", show_alert=True)
+        return
+
+    try:
+        action = query.data.split(":", 1)[1]
+    except IndexError:
+        await query.answer("⚠️ Solicitud inválida.")
+        return
+
+    from monitor.system_optimizer import execute_optimize_plasma, format_optimizer_dashboard_html
+
+    if action == "refresh":
+        await query.answer("🔄 Actualizando diagnóstico de recursos...")
+        dashboard_text, keyboard = await asyncio.to_thread(format_optimizer_dashboard_html)
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+    if action == "restart_plasma":
+        await query.answer("🧹 Optimizando y liberando memoria...")
+        try:
+            await query.edit_message_text(
+                "⏳ <b>Ejecutando optimización del entorno gráfico y memoria...</b>\n"
+                "<i>Por favor espera unos segundos mientras se liberan recursos y se reanuda Plasma Shell...</i>",
+                parse_mode='HTML'
+            )
+        except Exception:
+            pass
+
+        banner, stats = await asyncio.to_thread(execute_optimize_plasma)
+        dashboard_text, keyboard = await asyncio.to_thread(format_optimizer_dashboard_html)
+
+        full_message = f"{banner}\n\n═══════════════════════════════\n\n{dashboard_text}"
+
+        try:
+            await query.edit_message_text(
+                full_message,
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+        except Exception:
+            try:
+                await query.message.reply_text(full_message, parse_mode='HTML', reply_markup=keyboard)
+            except Exception:
+                pass
+
+
 async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión en privado)."""
     if not await require_private_chat(update, context):
@@ -4259,6 +4409,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner gestione los envíos programados por Cron
     application.add_handler(CommandHandler(["cron", "envios", "reportes_programados", "programacion"], cmd_cron_control))
 
+    # Comando exclusivo para que el Owner ejecute diagnóstico de recursos del sistema y optimización de Plasma Shell
+    application.add_handler(CommandHandler(["recursos", "memoria", "optimizar", "plasma"], cmd_recursos_sistema))
+
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
@@ -4293,6 +4446,9 @@ def main() -> None:
     # Callback query handler para botones del limpiador del sistema
     application.add_handler(CallbackQueryHandler(handle_cleaner_callback, pattern=r"^cleaner_act:"))
 
+    # Callback query handler para optimizador de recursos del sistema y Plasma Shell
+    application.add_handler(CallbackQueryHandler(handle_optimizer_callback, pattern=r"^sys_opt:"))
+
     # Callback query handler para botones del actualizador de sistema
     application.add_handler(CallbackQueryHandler(handle_update_callback, pattern=r"^update_act:"))
 
@@ -4306,11 +4462,11 @@ def main() -> None:
         for cmd_name in COMMANDS.keys():
             if cmd_name.lower() not in reserved_commands:
                 application.add_handler(CommandHandler(cmd_name, handle_dynamic_command))
-        logger.info("Bot iniciado con comandos dinámicos + asistente Ollama.")
+        logger.info("Bot iniciado con comandos dinámicos + asistente local de IA.")
     else:
         logger.info("Bot iniciado en MODO INTERACTIVO (comandos dinámicos deshabilitados).")
 
-    # Texto normal -> Ollama
+    # Texto normal -> Asistente local de IA
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message)
     )

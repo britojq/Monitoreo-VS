@@ -30,6 +30,9 @@ elif [ "${1:-}" = "web" ]; then
 elif [ "${1:-}" = "cron" ] || [ "${1:-}" = "cron-runner" ]; then
     shift
     exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/cron_runner.py" "$@"
+elif [ "${1:-}" = "recursos" ] || [ "${1:-}" = "optimizar" ] || [ "${1:-}" = "memoria" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/system_optimizer.py" "$@"
 fi
 
 # Pasar todos los argumentos al motor de Python
