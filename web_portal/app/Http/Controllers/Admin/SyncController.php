@@ -99,6 +99,10 @@ class SyncController extends Controller
                 $lines[] = "DISPOSITIVO{$num}_DATOS=\"" . addslashes($nd->vendor_data ?? '') . "\"";
                 $lines[] = "DISPOSITIVO{$num}_ACCESS=\"" . addslashes($nd->access_type ?? 'SIN SOPORTE') . "\"";
                 $lines[] = "DISPOSITIVO{$num}_PORT=\"" . addslashes($nd->access_port ? (string)$nd->access_port : '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_MODELO=\"" . addslashes($nd->model ?? '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_SERIAL=\"" . addslashes($nd->serial ?? '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_PUERTOS=\"" . addslashes($nd->ports ?? '') . "\"";
+                $lines[] = "DISPOSITIVO{$num}_NOTAS=\"" . addslashes($nd->notes ?? '') . "\"";
                 $lines[] = "DISPOSITIVO{$num}_NORMAL=\"✅ \$DISPOSITIVO{$num}_NAME\"";
                 $lines[] = "DISPOSITIVO{$num}_ERROR=\"❌ \$DISPOSITIVO{$num}_NAME\"";
                 $lines[] = "";

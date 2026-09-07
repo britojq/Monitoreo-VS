@@ -271,12 +271,12 @@ def sync_conf_to_db():
         return
 
     content = conf_path.read_text(encoding="utf-8", errors="ignore")
+    pattern = re.compile(r"^[ \t]*([A-Za-z0-9_]+)[ \t]*=[ \t]*(?:\"([^\"]*)\"|'([^']*)'|([^#\r\n]*))", re.MULTILINE)
     data = {}
-    for line in content.splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            data[k.strip()] = v.strip().strip("\"'").strip("'")
+    for m in pattern.finditer(content):
+        k = m.group(1).strip()
+        v = m.group(2) if m.group(2) is not None else (m.group(3) if m.group(3) is not None else m.group(4))
+        data[k] = (v or "").strip()
 
     conn = get_db_connection()
     try:
@@ -416,20 +416,26 @@ def sync_conf_to_db():
                 else:
                     dport = None
 
+                dmodelo = data.get(f"DISPOSITIVO{dev_num}_MODELO") or data.get(f"DISPOSITIVO{dev_num}_MODEL") or ""
+                dserial = data.get(f"DISPOSITIVO{dev_num}_SERIAL") or ""
+                dpuertos = data.get(f"DISPOSITIVO{dev_num}_PUERTOS") or data.get(f"DISPOSITIVO{dev_num}_PORTS") or ""
+                dnotas = data.get(f"DISPOSITIVO{dev_num}_NOTAS") or data.get(f"DISPOSITIVO{dev_num}_NOTA") or ""
+
                 dnorm = data.get(f"DISPOSITIVO{dev_num}_NORMAL") or ""
                 derr = data.get(f"DISPOSITIVO{dev_num}_ERROR") or ""
 
                 is_dev_active = ("NO CONFIGURADO" not in dname.upper() and dip not in ("0.0.0.0", "127.0.0.1", ""))
 
                 sql_net = """
-                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, access_type, access_port, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, access_type, access_port, model, serial, ports, notes, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                     ON DUPLICATE KEY UPDATE
                     device_number = VALUES(device_number), name = VALUES(name), mac = VALUES(mac), vendor_data = VALUES(vendor_data),
                     access_type = VALUES(access_type), access_port = VALUES(access_port),
+                    model = VALUES(model), serial = VALUES(serial), ports = VALUES(ports), notes = VALUES(notes),
                     normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), sort_order = VALUES(sort_order), updated_at = NOW()
                 """
-                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, daccess, dport, dnorm, derr, 1 if is_dev_active else 0, dev_num))
+                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, daccess, dport, dmodelo, dserial, dpuertos, dnotas, dnorm, derr, 1 if is_dev_active else 0, dev_num))
     finally:
         conn.close()
 

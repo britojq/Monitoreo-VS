@@ -291,9 +291,18 @@
                             $canRemote = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
                             $accessType = strtoupper(trim($netDev->access_type ?? 'SIN SOPORTE'));
                             $accessPort = $netDev->access_port ?: ($accessType === 'TELNET' ? 23 : ($accessType === 'WEB' ? 80 : 5900));
+
+                            $deviceDetailParts = [];
+                            if ($netDev->vendor_data) $deviceDetailParts[] = 'Fabricante / Info: ' . $netDev->vendor_data;
+                            if ($netDev->model) $deviceDetailParts[] = 'Modelo: ' . $netDev->model;
+                            if ($netDev->serial) $deviceDetailParts[] = 'Serial: ' . $netDev->serial;
+                            if ($netDev->ports) $deviceDetailParts[] = 'Puertos: ' . $netDev->ports;
+                            if ($netDev->notes) $deviceDetailParts[] = "Notas:\n" . $netDev->notes;
+                            if ($accessType !== 'SIN SOPORTE') $deviceDetailParts[] = 'Acceso: ' . $accessType;
+                            $deviceDetails = !empty($deviceDetailParts) ? implode("\n", $deviceDetailParts) : 'Equipo de red local Valle Seco.';
                         @endphp
                         <div class="py-1.5 px-2.5 rounded-lg bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-cyan/50 transition cursor-pointer flex items-center justify-between group item-searchable select-none"
-                             data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '')) }}"
+                             data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '') . ' ' . ($netDev->model ?? '') . ' ' . ($netDev->serial ?? '') . ' ' . ($netDev->ports ?? '') . ' ' . ($netDev->notes ?? '')) }}"
                              data-tech-title="{{ $netDev->name }}"
                              data-tech-type="DISPOSITIVO LAN VALLE SECO"
                              @if(Auth::check())
@@ -302,7 +311,7 @@
                              data-tech-protocol="ICMP Ping Directo"
                              data-tech-latency="{{ $isUp ? $latStr : 'Timeout / Sin respuesta' }}"
                              data-tech-status="{{ $isUp ? 'OPERATIVO (Enlace Local LAN Activo)' : 'OFFLINE (Dispositivo no responde en LAN)' }}"
-                             data-tech-details="{{ $netDev->vendor_data ? 'Fabricante / Info: ' . $netDev->vendor_data : 'Equipo de red local Valle Seco.' }}{{ $accessType !== 'SIN SOPORTE' ? ' • Acceso: ' . $accessType : '' }}"
+                             data-tech-details="{{ $deviceDetails }}"
                              data-tech-id="{{ $netDev->id }}"
                              data-tech-kind="device"
                              @else
@@ -316,7 +325,11 @@
                                     <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-cyan transition-colors truncate">
                                         {{ $netDev->name }}
                                     </h3>
-                                    @if($netDev->vendor_data)
+                                    @if($netDev->model)
+                                        <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 truncate shrink-0">
+                                            {{ $netDev->model }}
+                                        </span>
+                                    @elseif($netDev->vendor_data)
                                         <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-obsidian-muted bg-obsidian-bg/80 border border-obsidian-border/40 truncate shrink-0">
                                             {{ $netDev->vendor_data }}
                                         </span>
@@ -733,7 +746,7 @@
         </div>
 
         <!-- DETALLES TÉCNICOS ADICIONALES (CONSERVADOS INTACTOS) -->
-        <div class="mt-1.5 pt-1.5 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight" id="tt-details">
+        <div class="mt-1.5 pt-1.5 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight whitespace-pre-line break-words max-h-52 overflow-y-auto scrollbar-thin" id="tt-details">
             Verificación asíncrona de socket en tiempo real.
         </div>
     </div>

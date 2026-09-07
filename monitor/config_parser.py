@@ -18,7 +18,7 @@ import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -29,38 +29,19 @@ def get_config_path(filename: str) -> Path:
     return CONFIG_DIR / filename
 
 
-def parse_bash_config(filepath: Path) -> Dict[str, str]:
-    """Parsea archivos de configuración de Bash con formato CLAVE=VALOR."""
+def parse_bash_config(filepath: Union[Path, str]) -> Dict[str, str]:
+    """Parsea archivos de configuración de Bash con formato CLAVE=VALOR, soportando valores multilínea."""
     data: Dict[str, str] = {}
+    filepath = Path(filepath)
     if not filepath.exists():
         return data
 
     content = filepath.read_text(encoding="utf-8", errors="ignore")
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" in line:
-            k, v = line.split("=", 1)
-            k = k.strip()
-            v = v.strip()
-            # Si hay comentarios inline tras comillas o texto
-            if "#" in v:
-                if v.startswith('"') and '"' in v[1:]:
-                    last_quote = v.rfind('"')
-                    if last_quote != -1:
-                        v = v[:last_quote+1].strip()
-                elif v.startswith("'") and "'" in v[1:]:
-                    last_quote = v.rfind("'")
-                    if last_quote != -1:
-                        v = v[:last_quote+1].strip()
-                elif not v.startswith(('"', "'")):
-                    v = v.split("#", 1)[0].strip()
-
-            # Remover comillas simples o dobles envolventes
-            while (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-                v = v[1:-1].strip()
-            data[k] = v
+    pattern = re.compile(r"^[ \t]*([A-Za-z0-9_]+)[ \t]*=[ \t]*(?:\"([^\"]*)\"|'([^']*)'|([^#\r\n]*))", re.MULTILINE)
+    for m in pattern.finditer(content):
+        k = m.group(1).strip()
+        v = m.group(2) if m.group(2) is not None else (m.group(3) if m.group(3) is not None else m.group(4))
+        data[k] = (v or "").strip()
     return data
 
 

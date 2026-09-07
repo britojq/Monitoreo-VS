@@ -61,7 +61,7 @@ class PublicMonitoringController extends Controller
                 }
                 if (isset($payload['network_devices']) && is_array($payload['network_devices'])) {
                     foreach ($payload['network_devices'] as &$nd) {
-                        unset($nd['ip'], $nd['mac'], $nd['latency_ms'], $nd['vendor_data'], $nd['access_port']);
+                        unset($nd['ip'], $nd['mac'], $nd['latency_ms'], $nd['vendor_data'], $nd['access_port'], $nd['model'], $nd['serial'], $nd['ports'], $nd['notes']);
                     }
                 }
             }
