@@ -1203,10 +1203,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
 
     if commands_enabled and COMMANDS:
-        user_menu.append("⚙️ <b>Comandos del Sistema:</b>")
-        for cmd_name, cmd_info in COMMANDS.items():
-            desc = cmd_info.get("description", "Sin descripción")
-            user_menu.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
+        group_extra_cmds = []
+        for cmd_name in ["status", "network", "disk"]:
+            if cmd_name in COMMANDS:
+                desc = COMMANDS[cmd_name].get("description", "Sin descripción")
+                group_extra_cmds.append(f"• <code>/{cmd_name}</code> - {html.escape(desc)}")
+        if group_extra_cmds:
+            user_menu.append("⚙️ <b>Diagnósticos Básicos del Sistema:</b>")
+            user_menu.extend(group_extra_cmds)
 
     user_menu.append("\n<i>Sistema de Monitoreo operando en Debian GNU/Linux</i>")
 
