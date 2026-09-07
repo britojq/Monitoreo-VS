@@ -23,9 +23,30 @@ class PublicMonitoringController extends Controller
     {
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         if ($latestSnapshot) {
+            $payload = $latestSnapshot->payload_json;
+
+            // Sanitización estricta para usuarios NO AUTENTICADOS (GUEST)
+            if (!auth()->check()) {
+                if (isset($payload['services']) && is_array($payload['services'])) {
+                    foreach ($payload['services'] as &$s) {
+                        unset($s['host_ip'], $s['web_url'], $s['port'], $s['latency_ms']);
+                    }
+                }
+                if (isset($payload['sites']) && is_array($payload['sites'])) {
+                    foreach ($payload['sites'] as &$st) {
+                        unset($st['ip'], $st['latency_ms'], $st['phone_1'], $st['address'], $st['devices']);
+                    }
+                }
+                if (isset($payload['network_devices']) && is_array($payload['network_devices'])) {
+                    foreach ($payload['network_devices'] as &$nd) {
+                        unset($nd['ip'], $nd['mac'], $nd['latency_ms'], $nd['vendor_data'], $nd['access_port']);
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
-                'snapshot' => $latestSnapshot->payload_json,
+                'snapshot' => $payload,
                 'updated_at' => $latestSnapshot->created_at->format('Y-m-d H:i:s'),
                 'updated_at_human' => $latestSnapshot->created_at->diffForHumans(),
                 'global_status' => $latestSnapshot->global_status,

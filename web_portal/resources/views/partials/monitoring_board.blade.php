@@ -64,6 +64,7 @@
                          data-search="{{ strtolower($s->name . ' ' . $s->type) }}"
                          data-tech-title="{{ $s->name }}"
                          data-tech-type="{{ $s->type }}"
+                         @if(Auth::check())
                          data-tech-ip="{{ $targetHost }}"
                          data-tech-port="{{ $s->port ?: ($s->type == 'WEB' ? '80/443' : ($s->type == 'DNS' ? '53' : ($s->type == 'SMTP' ? '25' : ($s->type == 'LDAP' ? '389' : 'ICMP')))) }}"
                          data-tech-protocol="{{ $s->type == 'WEB' ? 'HTTP/HTTPS GET Request' : ($s->type == 'DNS' ? 'DNS Query' : ($s->type == 'SMTP' ? 'SMTP Mail Handshake' : ($s->type == 'LDAP' ? 'LDAP Bind Handshake' : 'ICMP Ping'))) }}"
@@ -71,7 +72,10 @@
                          data-tech-status="OPERATIVO (200 OK / Response)"
                          data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Verificación por socket de transporte directo.' }}"
                          data-tech-id="{{ $s->id }}"
-                         data-tech-kind="service">
+                         data-tech-kind="service"
+                         @else
+                         data-tech-auth-required="true"
+                         @endif>
                         
                         <div class="flex items-center gap-2 min-w-0">
                             <!-- LED VERDE COMPACTO -->
@@ -84,9 +88,15 @@
 
                         <!-- LATENCIA & BADGE DE PROTOCOLO -->
                         <div class="flex items-center gap-1.5 shrink-0">
+                            @if(Auth::check())
                             <span class="text-[9px] font-mono text-emerald-400/90 font-medium">
                                 {{ $latency > 0 ? $latency . 'ms' : '<15ms' }}
                             </span>
+                            @else
+                            <span class="text-[9px] font-mono text-amber-400/80 flex items-center gap-0.5" title="Inicie sesión para ver la latencia">
+                                <span class="material-symbols-outlined text-[11px]">lock</span>
+                            </span>
+                            @endif
                             <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-obsidian-bg/80 border border-emerald-500/30 text-emerald-300">
                                 {{ $s->type }}
                             </span>
@@ -137,8 +147,9 @@
                             <!-- ENCABEZADO COMPACTO DE LA SEDE (CLICKEABLE Y CON TOOLTIP AL POSAR) -->
                             <div class="p-2.5 flex items-center justify-between cursor-pointer select-none"
                                  onclick="toggleSiteDetails('site-details-{{ $site->letter }}', this)"
-                                 data-tech-title="{{ $site->name }}"
+                                     data-tech-title="{{ $site->name }}"
                                  data-tech-type="SEDE REGIONAL"
+                                 @if(Auth::check())
                                  data-tech-ip="{{ $site->ip ?: '0.0.0.0' }}"
                                  data-tech-port="Gateway PING / ICMP"
                                  data-tech-protocol="Enlace de Transporte WAN"
@@ -146,8 +157,11 @@
                                  data-tech-status="ENLACE PRINCIPAL OPERATIVO"
                                  data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
                                  data-tech-id="{{ $site->id }}"
-                                 data-tech-kind="site">
-                                
+                                 data-tech-kind="site"
+                                 @else
+                                 data-tech-auth-required="true"
+                                 @endif>
+                                 
                                 <div class="flex items-center space-x-2 min-w-0">
                                     <div class="w-2 h-2 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
                                     <div class="truncate">
@@ -170,6 +184,7 @@
 
                             <!-- CONTENIDO DESPLEGABLE CON EQUIPOS EN SITIO (OCULTO POR DEFECTO) -->
                             <div id="site-details-{{ $site->letter }}" class="hidden px-2.5 pb-2.5 pt-1 border-t border-obsidian-border/40 bg-obsidian-bg/40 space-y-2">
+                                @if(Auth::check())
                                 <!-- METRICAS DE LATENCIA -->
                                 <div class="flex items-center justify-between text-[10px] font-mono bg-obsidian-bg/80 px-2 py-1 rounded-lg border border-obsidian-border/40">
                                     <span class="text-[9px] text-obsidian-muted">Latencia Gateway:</span>
@@ -185,7 +200,7 @@
                                                 @php
                                                     $dSnap = $devicesSnapshot->get($dev->device_number);
                                                     $devUp = $dSnap ? ($dSnap['is_up'] ?? false) : false;
-                                                    $canVnc = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
+                                                    $canVnc = in_array(Auth::user()->role, ['admin', 'operator']);
                                                 @endphp
                                                 <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
                                                      data-tech-title="{{ $site->name }} - {{ $dev->name }}"
@@ -228,6 +243,15 @@
                                 @else
                                     <p class="text-[9px] font-mono text-obsidian-muted text-center py-1">Sin equipos secundarios registrados</p>
                                 @endif
+                                @else
+                                <div class="p-3 text-center text-xs font-mono text-amber-300 bg-amber-950/20 rounded-lg border border-amber-500/30 space-y-1.5">
+                                    <p class="font-bold flex items-center justify-center gap-1.5 text-white">
+                                        <span class="material-symbols-outlined text-sm text-amber-400">lock</span>
+                                        <span>Acceso Restringido</span>
+                                    </p>
+                                    <p class="text-[11px] font-sans text-amber-200">Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.</p>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     @empty
@@ -265,6 +289,7 @@
                              data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '')) }}"
                              data-tech-title="{{ $netDev->name }}"
                              data-tech-type="DISPOSITIVO LAN VALLE SECO"
+                             @if(Auth::check())
                              data-tech-ip="{{ $netDev->ip }}"
                              data-tech-port="MAC: {{ $netDev->mac ?: 'No disponible' }}{{ $accessType !== 'SIN SOPORTE' ? ' • ' . $accessType . ':' . $accessPort : '' }}"
                              data-tech-protocol="ICMP Ping Directo"
@@ -272,7 +297,10 @@
                              data-tech-status="{{ $isUp ? 'OPERATIVO (Enlace Local LAN Activo)' : 'OFFLINE (Dispositivo no responde en LAN)' }}"
                              data-tech-details="{{ $netDev->vendor_data ? 'Fabricante / Info: ' . $netDev->vendor_data : 'Equipo de red local Valle Seco.' }}{{ $accessType !== 'SIN SOPORTE' ? ' • Acceso: ' . $accessType : '' }}"
                              data-tech-id="{{ $netDev->id }}"
-                             data-tech-kind="device">
+                             data-tech-kind="device"
+                             @else
+                             data-tech-auth-required="true"
+                             @endif>
                             
                             <div class="flex items-center gap-2 min-w-0 pr-2">
                                 <div class="w-2 h-2 rounded-full shrink-0 {{ $isUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></div>
@@ -384,6 +412,7 @@
                              data-search="{{ strtolower($s->name . ' ' . $s->type) }}"
                              data-tech-title="{{ $s->name }}"
                              data-tech-type="{{ $s->type }}"
+                             @if(Auth::check())
                              data-tech-ip="{{ $targetHost }}"
                              data-tech-port="{{ $s->port ?: ($s->type == 'WEB' ? '80/443' : ($s->type == 'DNS' ? '53' : ($s->type == 'SMTP' ? '25' : ($s->type == 'LDAP' ? '389' : 'ICMP')))) }}"
                              data-tech-protocol="{{ $s->type == 'WEB' ? 'HTTP/HTTPS GET' : ($s->type == 'DNS' ? 'DNS Query' : ($s->type == 'SMTP' ? 'SMTP Mail' : ($s->type == 'LDAP' ? 'LDAP Bind' : 'ICMP Ping'))) }}"
@@ -391,7 +420,10 @@
                              data-tech-status="APAGADO (Host / Puerto inalcanzable)"
                              data-tech-details="{{ $s->web_url ? 'Endpoint: ' . $s->web_url : 'Sin respuesta de transporte de red.' }}"
                              data-tech-id="{{ $s->id }}"
-                             data-tech-kind="service">
+                             data-tech-kind="service"
+                             @else
+                             data-tech-auth-required="true"
+                             @endif>
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -441,6 +473,7 @@
                              data-search="{{ strtolower($site->name . ' ' . $cleanAddress) }}"
                              data-tech-title="{{ $site->name }}"
                              data-tech-type="SEDE REGIONAL"
+                             @if(Auth::check())
                              data-tech-ip="{{ $site->ip ?: '0.0.0.0' }}"
                              data-tech-port="Gateway PING / ICMP"
                              data-tech-protocol="Enlace de Transporte WAN"
@@ -448,7 +481,10 @@
                              data-tech-status="ENLACE WAN CAÍDO"
                              data-tech-details="{{ $cleanAddress ? 'Ubicación: ' . $cleanAddress : 'Sede Regional Corporativa' }}{{ $cleanPhone ? ' • Contacto: ' . $cleanPhone : '' }}"
                              data-tech-id="{{ $site->id }}"
-                             data-tech-kind="site">
+                             data-tech-kind="site"
+                             @else
+                             data-tech-auth-required="true"
+                             @endif>
                             
                             <div class="flex items-center gap-2 min-w-0">
                                 <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500 glow-red"></div>
@@ -490,11 +526,15 @@
                     <span id="telemetry-status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border flex items-center gap-1 {{ $badgeClass }}"
                           data-tech-title="DIAGNÓSTICO DE SALUD"
                           data-tech-type="ESTADO GLOBAL"
+                          @if(Auth::check())
                           data-tech-ip="Red Corporativa Nacional"
                           data-tech-protocol="Orquestador Asíncrono Python"
                           data-tech-latency="< 5.0s ciclo"
                           data-tech-status="{{ $gStatus }}"
-                          data-tech-details="{{ $gStatus == 'OPERACIONAL' ? '100% de la infraestructura respondiendo.' : ($gStatus == 'DEGRADADO' ? 'Plataforma disponible con incidentes parciales.' : 'Afectación severa de infraestructura.') }}">
+                          data-tech-details="{{ $gStatus == 'OPERACIONAL' ? '100% de la infraestructura respondiendo.' : ($gStatus == 'DEGRADADO' ? 'Plataforma disponible con incidentes parciales.' : 'Afectación severa de infraestructura.') }}"
+                          @else
+                          data-tech-auth-required="true"
+                          @endif>
                         <span class="w-1.5 h-1.5 rounded-full {{ $gStatus == 'OPERACIONAL' ? 'bg-emerald-400 pulse-dot' : ($gStatus == 'DEGRADADO' ? 'bg-amber-400 pulse-dot' : 'bg-red-400 pulse-dot') }}"></span>
                         {{ $gStatus }}
                     </span>
@@ -516,11 +556,15 @@
                     <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1.5 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
                          data-tech-title="DISPONIBILIDAD DE SERVICIOS"
                          data-tech-type="MÉTRICA"
+                         @if(Auth::check())
                          data-tech-ip="18 Hosts Registrados"
                          data-tech-protocol="HTTP / LDAP / SMTP / DNS"
                          data-tech-latency="{{ $servPct }}% Up"
                          data-tech-status="{{ $activeServices->count() }} de {{ $totServ }} Operativos"
-                         data-tech-details="{{ $downServices->count() }} servicios caídos detectados en el último ciclo de escaneo.">
+                         data-tech-details="{{ $downServices->count() }} servicios caídos detectados en el último ciclo de escaneo."
+                         @else
+                         data-tech-auth-required="true"
+                         @endif>
                         <span class="text-[8.5px] uppercase font-mono text-obsidian-muted block truncate">Servicios</span>
                         <div id="metric-services-count" class="mt-0.5 flex items-baseline justify-center gap-1 font-mono">
                             <span class="text-xs font-bold text-white">{{ $activeServices->count() }}</span>
@@ -535,11 +579,15 @@
                     <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1.5 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
                          data-tech-title="DISPONIBILIDAD DE SEDES REGIONALES"
                          data-tech-type="MÉTRICA"
+                         @if(Auth::check())
                          data-tech-ip="5 Nodos Regionales"
                          data-tech-protocol="ICMP Echo / Enlaces WAN"
                          data-tech-latency="{{ $sitesPct }}% Up"
                          data-tech-status="{{ $activeSites->count() }} de {{ $totSites }} Conectadas"
-                         data-tech-details="{{ $downSites->count() }} sedes sin conexión actualmente.">
+                         data-tech-details="{{ $downSites->count() }} sedes sin conexión actualmente."
+                         @else
+                         data-tech-auth-required="true"
+                         @endif>
                         <span class="text-[8.5px] uppercase font-mono text-obsidian-muted block truncate">Sedes</span>
                         <div id="metric-sites-count" class="mt-0.5 flex items-baseline justify-center gap-1 font-mono">
                             <span class="text-xs font-bold text-white">{{ $activeSites->count() }}</span>
@@ -554,11 +602,15 @@
                     <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1.5 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
                          data-tech-title="DISPONIBILIDAD DE PROXIES"
                          data-tech-type="MÉTRICA"
+                         @if(Auth::check())
                          data-tech-ip="Salidas PfSense + Directa"
                          data-tech-protocol="HTTP CONNECT (8080)"
                          data-tech-latency="100% Up"
                          data-tech-status="{{ $onlProxies }} de {{ $totProxies }} Operativos"
-                         data-tech-details="Todos los túneles proxy corporativos autentican con éxito.">
+                         data-tech-details="Todos los túneles proxy corporativos autentican con éxito."
+                         @else
+                         data-tech-auth-required="true"
+                         @endif>
                         <span class="text-[8.5px] uppercase font-mono text-obsidian-muted block truncate">Proxies</span>
                         <div id="metric-proxies-count" class="mt-0.5 flex items-baseline justify-center gap-1 font-mono">
                             <span class="text-xs font-bold text-white">{{ $onlProxies }}</span>
@@ -593,68 +645,91 @@
 <!-- VENTANA EMERGENTE HUD FLOTANTE (TOOLTIP DE DATOS TÉCNICOS & HISTÓRICO)    -->
 <!-- ========================================================================= -->
 <div id="tech-tooltip" class="glass-panel rounded-xl p-3 border border-obsidian-cyan/50 shadow-2xl w-80 text-xs font-mono text-white bg-[#051424]/95 backdrop-blur-xl">
-    <!-- CABECERA (CONSERVADA INTACTA) -->
-    <div class="flex items-center justify-between border-b border-obsidian-border pb-1.5 mb-1.5">
-        <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-obsidian-cyan text-sm" id="tt-icon">terminal</span>
-            <span class="font-bold text-white truncate max-w-[170px]" id="tt-title">DATOS TÉCNICOS</span>
+
+    <!-- BLOQUE 1: ALERTA DE AUTENTICACIÓN REQUERIDA (USUARIO NO REGISTRADO / GUEST) -->
+    <div id="tt-auth-required-block" class="hidden flex flex-col items-center text-center p-2 space-y-2.5">
+        <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
+            <span class="material-symbols-outlined text-xl">lock</span>
         </div>
-        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30" id="tt-type">
-            PROTOCOL
-        </span>
+        <div class="space-y-1">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider font-mono truncate max-w-[260px]" id="tt-auth-target-name">
+                Acceso Restringido
+            </h4>
+            <div class="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] font-sans leading-relaxed">
+                Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
+            </div>
+        </div>
+        <a href="{{ route('login') }}" class="w-full py-2 px-3 rounded-lg bg-obsidian-cyan hover:bg-cyan-300 text-black font-bold text-xs font-mono flex items-center justify-center gap-1.5 transition shadow-lg shadow-cyan-500/20">
+            <span class="material-symbols-outlined text-sm">login</span>
+            <span>Iniciar Sesión</span>
+        </a>
     </div>
 
-    <!-- DATOS TÉCNICOS (TODOS CONSERVADOS INTACTOS) -->
-    <div class="space-y-1 text-[11px]">
-        <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
-            <span class="text-obsidian-muted">Destino / IP:</span>
-            <span class="text-obsidian-cyan font-semibold truncate max-w-[160px]" id="tt-ip">10.0.0.1</span>
-        </div>
-        <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
-            <span class="text-obsidian-muted">Puerto / Socket:</span>
-            <span class="text-white truncate max-w-[160px]" id="tt-port">80 / 443</span>
-        </div>
-        <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
-            <span class="text-obsidian-muted">Protocolo / Check:</span>
-            <span class="text-obsidian-purple font-medium truncate max-w-[160px]" id="tt-protocol">HTTP GET</span>
-        </div>
-        <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
-            <span class="text-obsidian-muted">Latencia Actual:</span>
-            <span class="text-emerald-400 font-bold" id="tt-latency">12.4 ms</span>
-        </div>
-        <div class="flex justify-between py-0.5">
-            <span class="text-obsidian-muted">Estado Reportado:</span>
-            <span class="font-bold text-emerald-400 truncate max-w-[160px]" id="tt-status">OPERATIVO</span>
-        </div>
-    </div>
-
-    <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (24 HORAS) -->
-    <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
-        <div class="flex items-center justify-between mb-1">
-            <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
-                <span class="material-symbols-outlined text-[12px]">ssid_chart</span>
-                Histórico (Últimas 24 Horas)
-            </span>
-            <span id="tt-uptime-badge" class="px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40">
-                100% Up
+    <!-- BLOQUE 2: DATOS TÉCNICOS COMPLETOS (SOLO USUARIOS AUTENTICADOS) -->
+    <div id="tt-authenticated-block">
+        <!-- CABECERA (CONSERVADA INTACTA) -->
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-1.5 mb-1.5">
+            <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-obsidian-cyan text-sm" id="tt-icon">terminal</span>
+                <span class="font-bold text-white truncate max-w-[170px]" id="tt-title">DATOS TÉCNICOS</span>
+            </div>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30" id="tt-type">
+                PROTOCOL
             </span>
         </div>
 
-        <div class="h-16 w-full relative bg-[#020b14]/70 rounded border border-obsidian-border/50 p-1 flex items-center justify-center">
-            <canvas id="tt-canvas" class="w-full h-full"></canvas>
-            <span id="tt-no-chart" class="text-[9px] text-obsidian-muted hidden">Sin histórico suficiente</span>
+        <!-- DATOS TÉCNICOS (TODOS CONSERVADOS INTACTOS) -->
+        <div class="space-y-1 text-[11px]">
+            <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
+                <span class="text-obsidian-muted">Destino / IP:</span>
+                <span class="text-obsidian-cyan font-semibold truncate max-w-[160px]" id="tt-ip">10.0.0.1</span>
+            </div>
+            <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
+                <span class="text-obsidian-muted">Puerto / Socket:</span>
+                <span class="text-white truncate max-w-[160px]" id="tt-port">80 / 443</span>
+            </div>
+            <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
+                <span class="text-obsidian-muted">Protocolo / Check:</span>
+                <span class="text-obsidian-purple font-medium truncate max-w-[160px]" id="tt-protocol">HTTP GET</span>
+            </div>
+            <div class="flex justify-between py-0.5 border-b border-obsidian-border/40">
+                <span class="text-obsidian-muted">Latencia Actual:</span>
+                <span class="text-emerald-400 font-bold" id="tt-latency">12.4 ms</span>
+            </div>
+            <div class="flex justify-between py-0.5">
+                <span class="text-obsidian-muted">Estado Reportado:</span>
+                <span class="font-bold text-emerald-400 truncate max-w-[160px]" id="tt-status">OPERATIVO</span>
+            </div>
         </div>
 
-        <div class="flex justify-between text-[9px] font-mono text-obsidian-muted mt-1 px-0.5">
-            <span>Mín: <strong id="tt-stat-min" class="text-white">--</strong></span>
-            <span>Prom: <strong id="tt-stat-avg" class="text-emerald-400">--</strong></span>
-            <span>Máx: <strong id="tt-stat-max" class="text-amber-400">--</strong></span>
-        </div>
-    </div>
+        <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (24 HORAS) -->
+        <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[12px]">ssid_chart</span>
+                    Histórico (Últimas 24 Horas)
+                </span>
+                <span id="tt-uptime-badge" class="px-1.5 py-0.2 rounded text-[8.5px] font-bold font-mono bg-emerald-950/90 text-emerald-400 border border-emerald-500/40">
+                    100% Up
+                </span>
+            </div>
 
-    <!-- DETALLES TÉCNICOS ADICIONALES (CONSERVADOS INTACTOS) -->
-    <div class="mt-1.5 pt-1.5 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight" id="tt-details">
-        Verificación asíncrona de socket en tiempo real.
+            <div class="h-16 w-full relative bg-[#020b14]/70 rounded border border-obsidian-border/50 p-1 flex items-center justify-center">
+                <canvas id="tt-canvas" class="w-full h-full"></canvas>
+                <span id="tt-no-chart" class="text-[9px] text-obsidian-muted hidden">Sin histórico suficiente</span>
+            </div>
+
+            <div class="flex justify-between text-[9px] font-mono text-obsidian-muted mt-1 px-0.5">
+                <span>Mín: <strong id="tt-stat-min" class="text-white">--</strong></span>
+                <span>Prom: <strong id="tt-stat-avg" class="text-emerald-400">--</strong></span>
+                <span>Máx: <strong id="tt-stat-max" class="text-amber-400">--</strong></span>
+            </div>
+        </div>
+
+        <!-- DETALLES TÉCNICOS ADICIONALES (CONSERVADOS INTACTOS) -->
+        <div class="mt-1.5 pt-1.5 border-t border-obsidian-border/60 text-[10px] text-obsidian-muted leading-tight" id="tt-details">
+            Verificación asíncrona de socket en tiempo real.
+        </div>
     </div>
 </div>
 
@@ -680,14 +755,17 @@
             <div class="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px] space-y-1.5">
                 <p class="font-bold flex items-center gap-1.5 text-white">
                     <span class="material-symbols-outlined text-sm text-cyan-400">lock</span>
-                    <span>Debes estar logueado para usar el asistente IA</span>
+                    <span>Autenticación Requerida</span>
                 </p>
-                <p class="leading-relaxed text-gray-300">
+                <p class="leading-relaxed font-sans text-cyan-200">
+                    Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
+                </p>
+                <p class="leading-relaxed text-gray-300 text-[10.5px]">
                     El acceso al asistente virtual inteligente <strong>Monitor Valle Seco</strong> está restringido exclusivamente a usuarios autenticados de la Sede Valle Seco.
                 </p>
             </div>
             <p class="text-[10px] text-obsidian-muted leading-relaxed">
-                🔒 Por favor, inicia sesión con tus credenciales corporativas LDAP o con tu cuenta asignada por el Administrador para interactuar con la IA.
+                🔒 Por favor, inicia sesión con tus credenciales corporativas LDAP o con tu cuenta asignada por el Administrador para interactuar con el asistente virtual.
             </p>
         </div>
 
@@ -794,9 +872,54 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL AVISO DE AUTENTICACIÓN PARA VER DATOS DE SERVICIO O SEDE            -->
+<!-- ========================================================================= -->
+<div id="modal-item-auth-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target === this) closeItemAuthModal()">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
+                    <span class="material-symbols-outlined text-xl">lock</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Acceso Restringido</h3>
+                    <p class="text-[10px] text-obsidian-muted truncate max-w-[240px]" id="item-auth-prompt-target">Servicio / Sede de Red</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeItemAuthModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-2">
+                <p class="font-bold flex items-center gap-1.5 text-white">
+                    <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
+                    <span>Autenticación Requerida</span>
+                </p>
+                <p class="leading-relaxed font-sans text-amber-200">
+                    Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
+                </p>
+            </div>
+            <p class="text-[10px] text-obsidian-muted leading-relaxed">
+                🔒 El acceso a direcciones IP, puertos de servicio, métricas de latencia, consolas de diagnóstico y telemetría histórica está reservado exclusivamente para usuarios autorizados de Corpoelec.
+            </p>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+            <button type="button" onclick="closeItemAuthModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
+                Cerrar
+            </button>
+            <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
+                <span class="material-symbols-outlined text-sm">login</span>
+                <span>Iniciar Sesión</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO (USUARIO NO LOGUEADO)           -->
 <!-- ========================================================================= -->
-<div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+<div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target === this) closeAccessPromptModal()">
     <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
             <div class="flex items-center gap-2.5">
@@ -812,13 +935,16 @@
         </div>
 
         <div class="space-y-3 text-xs">
-            <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-1.5">
+            <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-2">
                 <p class="font-bold flex items-center gap-1.5 text-white">
                     <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
                     <span>Autenticación Requerida</span>
                 </p>
-                <p class="leading-relaxed">
-                    Para acceder <span id="access-prompt-action">al servicio</span> del equipo <strong id="access-prompt-device" class="text-white"></strong> (<code id="access-prompt-ip" class="text-obsidian-cyan"></code>) en <strong id="access-prompt-site" class="text-white"></strong>, debe iniciar sesión con una cuenta autorizada de <strong>Operador</strong> o <strong>Administrador</strong>.
+                <p class="leading-relaxed font-sans text-amber-200">
+                    Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
+                </p>
+                <p class="leading-relaxed text-[10.5px]">
+                    Para acceder <span id="access-prompt-action">al servicio</span> del equipo <strong id="access-prompt-device" class="text-white"></strong> en <strong id="access-prompt-site" class="text-white"></strong>, debe iniciar sesión con una cuenta autorizada de <strong>Operador</strong> o <strong>Administrador</strong>.
                 </p>
             </div>
             <p class="text-[10px] text-obsidian-muted leading-relaxed">
@@ -1059,8 +1185,6 @@
             if (pDev) pDev.innerText = name;
             const pSite = document.getElementById('access-prompt-site');
             if (pSite) pSite.innerText = siteName;
-            const pIp = document.getElementById('access-prompt-ip');
-            if (pIp) pIp.innerText = ip + (port ? ':' + port : '');
 
             const m = document.getElementById('modal-access-login-prompt');
             if (m) {
@@ -1123,6 +1247,31 @@
     function openVncModal(ip, name, siteName, isAuth) {
         openAccessModal('VNC', ip, 5900, name, siteName, isAuth);
     }
+
+    function showItemAuthModal(title) {
+        var tooltip = document.getElementById('tech-tooltip');
+        if (tooltip) tooltip.classList.remove('show');
+        var m = document.getElementById('modal-item-auth-prompt');
+        var t = document.getElementById('item-auth-prompt-target');
+        if (t && title) t.innerText = title;
+        if (m) {
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+    }
+
+    function closeItemAuthModal() {
+        var m = document.getElementById('modal-item-auth-prompt');
+        if (m) {
+            m.classList.remove('flex');
+            m.classList.add('hidden');
+        }
+    }
+
+    window.showItemAuthModal = showItemAuthModal;
+    window.closeItemAuthModal = closeItemAuthModal;
+    window.showAuthRequiredModal = showItemAuthModal;
+    window.closeAuthRequiredModal = closeItemAuthModal;
 
     function closeAccessPromptModal() {
         const m = document.getElementById('modal-access-login-prompt');
@@ -1463,9 +1612,10 @@
 
 @push('scripts')
 <script>
+    window._isAuth = {{ Auth::check() ? 'true' : 'false' }};
     window._userCanRemote = {{ (Auth::check() && in_array(Auth::user()->role, ['admin', 'operator'])) ? 'true' : 'false' }};
     window._userCanVnc = window._userCanRemote;
 </script>
-<script id="monit-payload" type="application/json">{"s":@json($serviceHistoryMap),"t":@json($siteHistoryMap),"d":@json($deviceHistoryMap)}</script>
+<script id="monit-payload" type="application/json">{"s":@json(Auth::check() ? $serviceHistoryMap : []),"t":@json(Auth::check() ? $siteHistoryMap : []),"d":@json(Auth::check() ? $deviceHistoryMap : [])}</script>
 <script src="{{ asset('js/monitoring-app.min.js') }}" defer></script>
 @endpush

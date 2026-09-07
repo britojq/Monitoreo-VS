@@ -50,11 +50,15 @@
             <div id="global-status-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono font-semibold {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 glow-green' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-950/60 text-amber-400 border-amber-500/50' : 'bg-red-950/60 text-red-400 border-red-500/50 glow-red') }}"
                  data-tech-title="ESTADO GLOBAL DE INFRAESTRUCTURA"
                  data-tech-type="SISTEMA"
+                 @if(Auth::check())
                  data-tech-ip="Red Corporativa Nacional"
                  data-tech-protocol="Orquestador Asíncrono Python"
                  data-tech-latency="< 2.5s ciclo"
                  data-tech-status="{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}"
-                 data-tech-details="Chequeo continuo en tiempo real de servicios y sedes regionales.">
+                 data-tech-details="Chequeo continuo en tiempo real de servicios y sedes regionales."
+                 @else
+                 data-tech-auth-required="true"
+                 @endif>
                 <span class="w-2 h-2 rounded-full {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-400 pulse-dot' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-400' : 'bg-red-400 pulse-dot') }}"></span>
                 <span id="global-status-text">{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}</span>
             </div>
