@@ -28,12 +28,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember, ChatMemberUpdated
 from telegram.constants import ChatAction
 from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
+    ChatMemberHandler,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -3778,6 +3779,181 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             except Exception:
                 pass
 
+    elif action == "auth_allow_group":
+        target_group_id = int(target_id_str)
+        allowed_groups = CONFIG.setdefault("allowed_group_ids", [])
+        if target_group_id not in allowed_groups:
+            allowed_groups.append(target_group_id)
+            save_config()
+            logger.info(f"Grupo {target_group_id} autorizado y guardado en config.json por el creador {clicker_id}")
+
+        await query.answer("✅ Grupo autorizado exitosamente.")
+
+        status_badge = (
+            f"\n\n═══════════════════════════════\n"
+            f"✅ <b>ESTADO: GRUPO AUTORIZADO Y ACTIVADO</b>\n"
+            f"👮 <b>Por:</b> {html.escape(admin_name)}\n"
+            f"⏰ <b>Fecha:</b> <code>{now_str}</code>"
+        )
+        try:
+            await query.edit_message_text(
+                text=original_text + status_badge,
+                parse_mode='HTML',
+                reply_markup=None
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+
+    elif action == "auth_leave_group":
+        target_group_id = int(target_id_str)
+        allowed_groups = CONFIG.setdefault("allowed_group_ids", [])
+        if target_group_id in allowed_groups:
+            allowed_groups.remove(target_group_id)
+            save_config()
+
+        # Salir del grupo
+        leave_ok = True
+        try:
+            await context.bot.leave_chat(chat_id=target_group_id)
+            logger.info(f"El bot ha abandonado el grupo {target_group_id} por instrucción del owner {clicker_id}")
+        except Exception as e:
+            logger.warning(f"No se pudo ejecutar leave_chat en {target_group_id}: {e}")
+            leave_ok = False
+
+        await query.answer("🚪 El bot ha salido del grupo.")
+
+        leave_label = "BOT HA ABANDONADO EL GRUPO" if leave_ok else "SOLICITUD PROCESADA (CHAT YA NO DISPONIBLE)"
+        status_badge = (
+            f"\n\n═══════════════════════════════\n"
+            f"🚪 <b>ESTADO: {leave_label}</b>\n"
+            f"👮 <b>Por:</b> {html.escape(admin_name)}\n"
+            f"⏰ <b>Fecha:</b> <code>{now_str}</code>"
+        )
+        try:
+            await query.edit_message_text(
+                text=original_text + status_badge,
+                parse_mode='HTML',
+                reply_markup=None
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+
+
+async def notify_owner_bot_added_to_group(
+    chat,
+    from_user,
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Notifica de inmediato al Owner cuando el bot es añadido a cualquier grupo."""
+    chat_id = chat.id
+    chat_title = chat.title or "Grupo Sin Título"
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    allowed_groups = set(CONFIG.get("allowed_group_ids", []))
+
+    CONFIG.setdefault("groups_cache", {})[str(chat_id)] = chat_title
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    adder_name = from_user.full_name if from_user else "Desconocido"
+    adder_username = f"@{from_user.username}" if (from_user and from_user.username) else "sin username"
+    adder_id = from_user.id if from_user else 0
+
+    is_authorized_group = (chat_id in allowed_groups)
+
+    audit_path = get_audit_log_path()
+    status_log = "GRUPO_AUTORIZADO" if is_authorized_group else "GRUPO_NO_AUTORIZADO"
+    log_line = (
+        f"[{now_str}] BOT AÑADIDO A {status_log} | Chat: {chat_title} (ID: {chat_id}) | "
+        f"Añadido por: {adder_name} ({adder_username}, ID: {adder_id})\n"
+    )
+    try:
+        with open(audit_path, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception as e:
+        logger.error(f"Error escribiendo en log de auditoría: {e}")
+
+    if not owner_id:
+        return
+
+    if is_authorized_group:
+        msg_owner = (
+            "ℹ️ <b>Notificación: Bot Añadido a Grupo Autorizado</b>\n\n"
+            f"👥 <b>Grupo:</b> {html.escape(chat_title)}\n"
+            f"🆔 <b>ID de Chat:</b> <code>{chat_id}</code>\n"
+            f"👤 <b>Añadido por:</b> {html.escape(adder_name)} ({html.escape(adder_username)})\n"
+            f"🆔 <b>ID de Usuario:</b> <code>{adder_id}</code>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            "<i>Este grupo ya se encuentra registrado en la lista de grupos autorizados.</i>"
+        )
+        try:
+            await context.bot.send_message(chat_id=owner_id, text=msg_owner, parse_mode='HTML')
+        except Exception as e:
+            logger.error(f"Error notificando al owner sobre adición a grupo autorizado: {e}")
+    else:
+        alert_text = (
+            "🚨 <b>ALERTA DE SEGURIDAD: BOT AÑADIDO A NUEVO GRUPO</b>\n\n"
+            "El bot ha sido agregado a un grupo que <b>NO está en la lista de autorizados</b>:\n\n"
+            f"👥 <b>Grupo:</b> {html.escape(chat_title)}\n"
+            f"🆔 <b>ID del Grupo:</b> <code>{chat_id}</code>\n"
+            f"👤 <b>Añadido por:</b> {html.escape(adder_name)} ({html.escape(adder_username)})\n"
+            f"🆔 <b>ID de Usuario:</b> <code>{adder_id}</code>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            "<i>¿Deseas autorizar las funciones del bot en este grupo o prefieres que el bot abandone el grupo inmediatamente?</i>"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🟢 Autorizar Grupo", callback_data=f"auth_allow_group:{chat_id}"),
+                InlineKeyboardButton("🚪 Salir del Grupo", callback_data=f"auth_leave_group:{chat_id}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        try:
+            await context.bot.send_message(
+                chat_id=owner_id,
+                text=alert_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            logger.error(f"Error enviando alerta al owner sobre nuevo grupo: {e}")
+
+
+async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manejador para eventos de membresía del propio bot (ChatMemberUpdated)."""
+    result = update.my_chat_member
+    if not result:
+        return
+
+    chat = result.chat
+    if chat.type not in ("group", "supergroup"):
+        return
+
+    from_user = result.from_user
+    old_status = result.old_chat_member.status if result.old_chat_member else None
+    new_status = result.new_chat_member.status if result.new_chat_member else None
+
+    was_member = old_status in (ChatMember.MEMBER, ChatMember.ADMINISTRATOR)
+    is_member = new_status in (ChatMember.MEMBER, ChatMember.ADMINISTRATOR)
+
+    if not was_member and is_member:
+        await notify_owner_bot_added_to_group(chat, from_user, context)
+
+
+async def on_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manejador para mensajes de servicio con nuevos miembros del chat (StatusUpdate.NEW_CHAT_MEMBERS)."""
+    msg = update.message
+    if not msg or not msg.new_chat_members or not msg.chat:
+        return
+
+    bot_id = context.bot.id
+    if any(m.id == bot_id for m in msg.new_chat_members):
+        await notify_owner_bot_added_to_group(msg.chat, msg.from_user, context)
+
 
 # =========================================================================
 # 🔄 MÓDULO DE MIGRACIÓN DINÁMICA DE TOKEN CON DRM (/migrar_token)
@@ -4540,6 +4716,12 @@ def main() -> None:
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message)
     )
+
+    # Detección y alerta en tiempo real cuando el bot es añadido a un grupo (ChatMemberUpdated)
+    application.add_handler(ChatMemberHandler(on_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
+
+    # Detección alternativa mediante mensajes de servicio de adición de miembros
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, on_new_chat_members))
 
     # Comandos desconocidos
     application.add_handler(MessageHandler(filters.COMMAND, unknown_cmd))
