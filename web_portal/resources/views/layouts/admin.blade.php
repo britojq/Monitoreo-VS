@@ -122,11 +122,11 @@
                 </button>
 
                 <!-- LOGO INSTITUCIONAL -->
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-1 shadow-md">
+                <a href="{{ route('admin.dashboard') }}" class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-1 shadow-md hover:scale-105 transition" title="Ir al Dashboard Principal">
                     <img src="{{ asset('img/logo.png') }}" alt="Logo CORPOELEC" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]">
-                </div>
+                </a>
 
-                <!-- TÍTULO INSTITUCIONAL (EN DASHBOARD) O BREADCRUMB (EN OTRAS VISTAS) -->
+                <!-- TÍTULO INSTITUCIONAL (EN DASHBOARD) O BREADCRUMB CON BOTÓN DE REGRESO (EN OTRAS VISTAS) -->
                 @if(request()->routeIs('admin.dashboard'))
                     <div class="hidden lg:block">
                         <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -138,10 +138,19 @@
                         </p>
                     </div>
                 @else
-                    <div class="flex items-center space-x-1.5">
-                        <span class="text-xs font-mono text-obsidian-muted hidden md:inline">Panel</span>
-                        <span class="text-obsidian-border hidden md:inline">/</span>
-                        <h1 class="text-xs sm:text-sm font-bold text-white">@yield('page_title', 'Admin')</h1>
+                    <div class="flex items-center space-x-2 sm:space-x-3">
+                        <!-- BOTÓN DIRECTO PARA REGRESAR AL DASHBOARD SIN ABRIR EL MENÚ LATERAL -->
+                        <a href="{{ route('admin.dashboard') }}" 
+                           class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-bold transition-all shadow-sm hover:shadow-cyan-500/20 group shrink-0" 
+                           title="Regresar al Dashboard Principal">
+                            <span class="material-symbols-outlined text-base group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                            <span>Dashboard</span>
+                        </a>
+
+                        <div class="flex items-center space-x-1.5 min-w-0">
+                            <span class="text-obsidian-border hidden sm:inline">/</span>
+                            <h1 class="text-xs sm:text-sm font-bold text-white truncate max-w-[140px] sm:max-w-[240px] md:max-w-none">@yield('page_title', 'Admin')</h1>
+                        </div>
                     </div>
                 @endif
             </div>

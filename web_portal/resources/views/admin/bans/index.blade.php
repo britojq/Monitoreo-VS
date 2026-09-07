@@ -7,6 +7,14 @@
     <!-- CABECERA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+            <div class="flex items-center gap-2 mb-1.5">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-xs font-mono font-semibold group shadow-sm">
+                    <span class="material-symbols-outlined text-sm group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-xs font-mono text-obsidian-muted">Baneos & Seguridad</span>
+            </div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-red-400">gavel</span>
                 Seguridad & Gestión de Baneos
