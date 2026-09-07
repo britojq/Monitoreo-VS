@@ -94,9 +94,8 @@
                                 {{ $latency > 0 ? $latency . 'ms' : '<15ms' }}
                             </span>
                             @else
-                            <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
-                                <span class="material-symbols-outlined text-[10px]">lock</span>
-                                <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                            <span class="text-amber-400/90 flex items-center justify-center p-0.5" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                <span class="material-symbols-outlined text-[13px]">lock</span>
                             </span>
                             @endif
                             <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-obsidian-bg/80 border border-emerald-500/30 text-emerald-300">
@@ -177,9 +176,8 @@
 
                                 <div class="flex items-center gap-1.5 shrink-0">
                                     @if(!Auth::check())
-                                    <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
-                                        <span class="material-symbols-outlined text-[10px]">lock</span>
-                                        <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                    <span class="text-amber-400/90 flex items-center justify-center p-0.5" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                        <span class="material-symbols-outlined text-[13px]">lock</span>
                                     </span>
                                     @endif
                                     <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase {{ $site->letter == 'A' ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30' : 'bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30' }}">
@@ -447,9 +445,8 @@
                                 @if(Auth::check())
                                 <span class="text-[9px] font-mono text-red-400/80 font-medium">Timeout</span>
                                 @else
-                                <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
-                                    <span class="material-symbols-outlined text-[10px]">lock</span>
-                                    <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                <span class="text-amber-400/90 flex items-center justify-center p-0.5" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                    <span class="material-symbols-outlined text-[13px]">lock</span>
                                 </span>
                                 @endif
                                 <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-red-950/80 border border-red-500/40 text-red-300">
@@ -514,9 +511,8 @@
 
                             <div class="flex items-center gap-1.5 shrink-0">
                                 @if(!Auth::check())
-                                <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
-                                    <span class="material-symbols-outlined text-[10px]">lock</span>
-                                    <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                <span class="text-amber-400/90 flex items-center justify-center p-0.5" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                    <span class="material-symbols-outlined text-[13px]">lock</span>
                                 </span>
                                 @endif
                                 <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-red-950/80 border border-red-500/40 text-red-300">
