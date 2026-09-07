@@ -9,12 +9,13 @@ use App\Models\MonitoredSite;
 use App\Models\MonitoredSiteDevice;
 use App\Models\MonitoringSnapshot;
 use App\Models\User;
+use App\Services\MonitoringDataService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AdminDashboardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, MonitoringDataService $monitoringService): View
     {
         $isAdmin = $request->user() && $request->user()->isAdmin();
 
@@ -32,9 +33,14 @@ class AdminDashboardController extends Controller
             $stats['users_count'] = User::count();
         }
 
-        $latestSnapshot = MonitoringSnapshot::latest()->first();
         $cronConfig = $isAdmin ? (new AdminCronController())->getCronConfig() : null;
+        $monitoringData = $monitoringService->getMonitoringBoardData();
 
-        return view('admin.dashboard', compact('stats', 'latestSnapshot', 'cronConfig'));
+        $viewData = array_merge($monitoringData, [
+            'stats' => $stats,
+            'cronConfig' => $cronConfig,
+        ]);
+
+        return view('admin.dashboard', $viewData);
     }
 }

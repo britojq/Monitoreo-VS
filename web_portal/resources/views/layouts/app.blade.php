@@ -99,6 +99,33 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .4; }
         }
+        /* Custom Scrollbar for sleek Obsidian panels */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(2, 6, 23, 0.4);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(34, 211, 238, 0.25);
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(34, 211, 238, 0.6);
+        }
+        /* Floating Tooltip HUD */
+        #tech-tooltip {
+            position: fixed;
+            z-index: 99999;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.95) translateY(5px);
+            transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #tech-tooltip.show {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
     </style>
     @stack('styles')
 </head>

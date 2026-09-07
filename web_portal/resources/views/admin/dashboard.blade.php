@@ -1,9 +1,36 @@
 @extends('layouts.admin')
 
-@section('page_title', 'Dashboard General')
+@section('page_title', 'Dashboard')
 
 @section('admin_content')
 <div class="space-y-6">
+    <!-- ========================================================================= -->
+    <!-- SECCIÓN SUPERIOR: SUPERVISIÓN EN VIVO (IDÉNTICA A LA VISTA PÚBLICA)       -->
+    <!-- ========================================================================= -->
+    @include('partials.monitoring_board', ['isDashboard' => true])
+
+    <!-- ========================================================================= -->
+    <!-- SECCIÓN INFERIOR: GESTIÓN ADMINISTRATIVA Y TELEMETRÍA                     -->
+    <!-- ========================================================================= -->
+    <div class="pt-6 pb-2 border-t border-obsidian-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan shadow-md">
+                <span class="material-symbols-outlined text-xl">admin_panel_settings</span>
+            </div>
+            <div>
+                <h2 class="text-sm sm:text-base font-bold text-white tracking-wide uppercase font-mono">
+                    Panel de Gestión & Telemetría Administrativa
+                </h2>
+                <p class="text-[11px] font-mono text-obsidian-muted">
+                    {{ auth()->user()->isAdmin() ? 'Herramientas de configuración, sincronización y control del sistema' : 'Consola de supervisión y consulta operativa' }}
+                </p>
+            </div>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-mono font-bold self-start sm:self-auto {{ auth()->user()->isAdmin() ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/40' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40' }}">
+            {{ auth()->user()->isAdmin() ? 'ROL: ADMINISTRADOR' : 'ROL: OPERADOR' }}
+        </span>
+    </div>
+
     <!-- STATS OVERVIEW -->
     <div class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->isAdmin() ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5">
         @if(auth()->user()->isAdmin())
@@ -92,12 +119,12 @@
             <div class="pt-2 flex flex-wrap gap-3">
                 <form action="{{ route('admin.sync.manual') }}" method="POST">
                     @csrf
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition">
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition cursor-pointer">
                         <span class="material-symbols-outlined text-base">save</span>
                         Forzar Exportación a .conf
                     </button>
                 </form>
-                <button onclick="triggerImmediateScan()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-obsidian-cyan hover:text-black transition">
+                <button onclick="triggerImmediateScan()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-obsidian-cyan hover:text-black transition cursor-pointer">
                     <span class="material-symbols-outlined text-base">play_arrow</span>
                     Ejecutar Escaneo Ahora
                 </button>
@@ -187,12 +214,12 @@
             <form action="{{ route('admin.cron.toggle') }}" method="POST" onsubmit="return confirm('¿Confirmas que deseas {{ ($cronConfig['enabled'] ?? true) ? 'PAUSAR' : 'REANUDAR' }} los envíos automáticos de reportes a Telegram?');">
                 @csrf
                 @if($cronConfig['enabled'] ?? true)
-                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/30">
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/30 cursor-pointer">
                         <span class="material-symbols-outlined text-base">pause_circle</span>
                         Pausar Envíos Automáticos
                     </button>
                 @else
-                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30">
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30 cursor-pointer">
                         <span class="material-symbols-outlined text-base">play_circle</span>
                         Reanudar Envíos Automáticos
                     </button>
@@ -225,7 +252,7 @@
                             <form action="{{ route('admin.cron.schedules.remove') }}" method="POST" class="inline" onsubmit="return confirm('¿Deseas eliminar el horario de las {{ $hour }}?');">
                                 @csrf
                                 <input type="hidden" name="time" value="{{ $hour }}">
-                                <button type="submit" class="text-obsidian-muted hover:text-red-400 transition ml-1 flex items-center" title="Eliminar este horario">
+                                <button type="submit" class="text-obsidian-muted hover:text-red-400 transition ml-1 flex items-center cursor-pointer" title="Eliminar este horario">
                                     <span class="material-symbols-outlined text-sm">close</span>
                                 </button>
                             </form>
@@ -241,7 +268,7 @@
                     <div class="relative">
                         <input type="time" name="time" required class="bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-obsidian-cyan">
                     </div>
-                    <button type="submit" class="px-3 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition">
+                    <button type="submit" class="px-3 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer">
                         <span class="material-symbols-outlined text-base">add</span>
                         Añadir Horario
                     </button>

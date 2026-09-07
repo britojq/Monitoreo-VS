@@ -9,18 +9,18 @@
     <aside id="admin-sidebar" class="w-64 sm:w-72 glass-panel border-r border-obsidian-border flex flex-col justify-between shrink-0 z-50 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl bg-[#07172b]/98">
         <div>
             <!-- CABECERA DE SIDEBAR -->
-            <div class="h-20 px-5 flex items-center justify-between border-b border-obsidian-border">
+            <div class="h-14 px-5 flex items-center justify-between border-b border-obsidian-border">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan p-1.5 shadow-lg shadow-cyan-500/20">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan p-1 shadow-lg shadow-cyan-500/20">
                         <img src="{{ asset('img/logo.png') }}" alt="Logo CORPOELEC" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]">
                     </div>
                     <div>
-                        <h2 class="text-sm font-bold text-white tracking-tight">PANEL DE CONTROL</h2>
+                        <h2 class="text-xs sm:text-sm font-bold text-white tracking-tight">PANEL DE CONTROL</h2>
                         <p class="text-[10px] font-mono text-obsidian-cyan">ATIT VALLE SECO</p>
                     </div>
                 </div>
                 <!-- BOTÓN CERRAR SIDEBAR -->
-                <button type="button" onclick="toggleAdminSidebar(false)" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition leading-none text-xl" title="Ocultar Menú">
+                <button type="button" onclick="toggleAdminSidebar(false)" class="p-1 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition leading-none text-xl" title="Ocultar Menú">
                     &times;
                 </button>
             </div>
@@ -110,18 +110,17 @@
     <!-- CONTENEDOR PRINCIPAL DERECHO (PANTALLA COMPLETA) -->
     <div class="flex-1 w-full flex flex-col min-w-0">
         <!-- TOPBAR ADMINISTRATIVA -->
-        <header class="h-20 glass-panel border-b border-obsidian-border sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
+        <header class="h-14 glass-panel border-b border-obsidian-border sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between shadow-md">
             <div class="flex items-center space-x-3 sm:space-x-4">
-                <!-- BOTÓN REFERENCIAL TOGGLE PARA DESPLEGAR EL MENÚ LATERAL -->
-                <button type="button" onclick="toggleAdminSidebar()" id="btn-toggle-sidebar" class="px-3 py-2 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/50 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-2 font-mono text-xs font-bold shadow-lg shadow-cyan-500/10 cursor-pointer" title="Desplegar Menú Lateral">
+                <!-- BOTÓN REFERENCIAL TOGGLE PARA DESPLEGAR EL MENÚ LATERAL (SOLO ÍCONO) -->
+                <button type="button" onclick="toggleAdminSidebar()" id="btn-toggle-sidebar" class="w-9 h-9 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/50 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center justify-center font-mono shadow-lg shadow-cyan-500/10 cursor-pointer" title="Desplegar Menú Lateral">
                     <span class="material-symbols-outlined text-lg" id="icon-toggle-sidebar">menu</span>
-                    <span class="hidden sm:inline">Menú</span>
                 </button>
 
                 <div class="flex items-center space-x-2">
                     <span class="text-xs font-mono text-obsidian-muted hidden md:inline">Panel Administrativo</span>
                     <span class="text-obsidian-border hidden md:inline">/</span>
-                    <h1 class="text-base font-bold text-white">@yield('page_title', 'Dashboard')</h1>
+                    <h1 class="text-sm sm:text-base font-bold text-white">@yield('page_title', 'Dashboard')</h1>
                 </div>
             </div>
 
@@ -131,7 +130,7 @@
                     <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition">{{ Auth::user()->name }}</span>
                     <span class="text-[10px] font-mono text-obsidian-cyan uppercase">{{ Auth::user()->role }}</span>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-sm shadow-md overflow-hidden shrink-0">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0">
                     @if(Auth::user()->avatar_url)
                         <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
                     @else
