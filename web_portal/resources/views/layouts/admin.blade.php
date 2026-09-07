@@ -109,35 +109,109 @@
 
     <!-- CONTENEDOR PRINCIPAL DERECHO (PANTALLA COMPLETA) -->
     <div class="flex-1 w-full flex flex-col min-w-0">
-        <!-- TOPBAR ADMINISTRATIVA -->
-        <header class="h-14 glass-panel border-b border-obsidian-border sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between shadow-md">
-            <div class="flex items-center space-x-3 sm:space-x-4">
+        @php
+            $latestSnapshot = $latestSnapshot ?? \App\Models\MonitoringSnapshot::latest()->first();
+        @endphp
+        <!-- TOPBAR ADMINISTRATIVA UNIFICADA -->
+        <header class="h-14 glass-panel border-b border-obsidian-border sticky top-0 z-30 px-3 sm:px-5 flex items-center justify-between shadow-md gap-2 sm:gap-4">
+            <!-- SECCIÓN IZQUIERDA: BOTÓN TOGGLE & MARCA INSTITUCIONAL -->
+            <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
                 <!-- BOTÓN REFERENCIAL TOGGLE PARA DESPLEGAR EL MENÚ LATERAL (SOLO ÍCONO) -->
-                <button type="button" onclick="toggleAdminSidebar()" id="btn-toggle-sidebar" class="w-9 h-9 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/50 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center justify-center font-mono shadow-lg shadow-cyan-500/10 cursor-pointer" title="Desplegar Menú Lateral">
+                <button type="button" onclick="toggleAdminSidebar()" id="btn-toggle-sidebar" class="w-9 h-9 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/50 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center justify-center font-mono shadow-lg shadow-cyan-500/10 cursor-pointer shrink-0" title="Desplegar Menú Lateral">
                     <span class="material-symbols-outlined text-lg" id="icon-toggle-sidebar">menu</span>
                 </button>
 
-                <div class="flex items-center space-x-2">
-                    <span class="text-xs font-mono text-obsidian-muted hidden md:inline">Panel Administrativo</span>
-                    <span class="text-obsidian-border hidden md:inline">/</span>
-                    <h1 class="text-sm sm:text-base font-bold text-white">@yield('page_title', 'Dashboard')</h1>
+                <!-- LOGO INSTITUCIONAL -->
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-1 shadow-md">
+                    <img src="{{ asset('img/logo.png') }}" alt="Logo CORPOELEC" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]">
                 </div>
+
+                <!-- TÍTULO INSTITUCIONAL (EN DASHBOARD) O BREADCRUMB (EN OTRAS VISTAS) -->
+                @if(request()->routeIs('admin.dashboard'))
+                    <div class="hidden lg:block">
+                        <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                            ATIT • Monitoreo Valle Seco
+                        </h1>
+                        <p class="text-[9px] font-mono text-obsidian-cyan flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-obsidian-cyan pulse-dot"></span>
+                            SUPERVISIÓN EN TIEMPO REAL
+                        </p>
+                    </div>
+                @else
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-xs font-mono text-obsidian-muted hidden md:inline">Panel</span>
+                        <span class="text-obsidian-border hidden md:inline">/</span>
+                        <h1 class="text-xs sm:text-sm font-bold text-white">@yield('page_title', 'Admin')</h1>
+                    </div>
+                @endif
             </div>
 
-            <!-- USUARIO EN SESIÓN (Click lleva a Perfil) -->
-            <a href="{{ route('admin.profile.show') }}" class="flex items-center space-x-3 hover:opacity-90 transition group" title="Ver Mi Perfil">
-                <div class="text-right hidden sm:block">
-                    <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition">{{ Auth::user()->name }}</span>
-                    <span class="text-[10px] font-mono text-obsidian-cyan uppercase">{{ Auth::user()->role }}</span>
+            <!-- SECCIÓN CENTRAL: BUSCADOR EN VIVO (EN DASHBOARD) O ESPACIADOR -->
+            @if(request()->routeIs('admin.dashboard'))
+                <div class="flex-1 max-w-xs md:max-w-md mx-1 sm:mx-4">
+                    <div class="relative w-full">
+                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">search</span>
+                        <input type="text" id="live-search-input" onkeyup="filterLiveItems()" placeholder="Buscar servicio o sede..." class="w-full bg-[#051424]/90 border border-obsidian-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan font-mono transition"/>
+                    </div>
                 </div>
-                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0">
-                    @if(Auth::user()->avatar_url)
-                        <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
-                    @else
-                        {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                    @endif
-                </div>
-            </a>
+            @else
+                <div class="flex-1"></div>
+            @endif
+
+            <!-- SECCIÓN DERECHA: ASISTENTE IA, BADGE GLOBAL, RELOJ & PERFIL -->
+            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                @if(request()->routeIs('admin.dashboard'))
+                    <!-- BOTÓN ASISTENTE IA -->
+                    <button type="button" 
+                            id="btn-open-ai-chat" 
+                            onclick="handleAiChatClick()" 
+                            title="Asistente Virtual IA - Sede Valle Seco" 
+                            class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-cyan-500/25 hover:scale-[1.02] cursor-pointer group">
+                        <span class="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">smart_toy</span>
+                        <span class="hidden sm:inline">IA</span>
+                        <span class="flex h-2 w-2 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+                        </span>
+                    </button>
+
+                    <!-- BADGE GLOBAL -->
+                    <div id="global-status-badge" class="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full border text-xs font-mono font-semibold {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 glow-green' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-950/60 text-amber-400 border-amber-500/50' : 'bg-red-950/60 text-red-400 border-red-500/50 glow-red') }}"
+                         data-tech-title="ESTADO GLOBAL DE INFRAESTRUCTURA"
+                         data-tech-type="SISTEMA"
+                         data-tech-ip="Red Corporativa Nacional"
+                         data-tech-protocol="Orquestador Asíncrono Python"
+                         data-tech-latency="< 2.5s ciclo"
+                         data-tech-status="{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}"
+                         data-tech-details="Chequeo continuo en tiempo real de servicios y sedes regionales.">
+                        <span class="w-2 h-2 rounded-full {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-400 pulse-dot' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-400' : 'bg-red-400 pulse-dot') }}"></span>
+                        <span id="global-status-text">{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}</span>
+                    </div>
+
+                    <!-- RELOJ & SINCRONIZACIÓN -->
+                    <div class="hidden xl:flex flex-col text-right font-mono text-[10px] text-obsidian-muted">
+                        <span class="text-[8px] uppercase tracking-wider text-obsidian-cyan">Último Escaneo</span>
+                        <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->format('H:i:s') : '--:--:--' }}</span>
+                    </div>
+
+                    <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>
+                @endif
+
+                <!-- USUARIO EN SESIÓN (Click lleva a Perfil) -->
+                <a href="{{ route('admin.profile.show') }}" class="flex items-center space-x-2 sm:space-x-2.5 hover:opacity-90 transition group shrink-0" title="Ver Mi Perfil">
+                    <div class="text-right hidden sm:block">
+                        <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition truncate max-w-[120px]">{{ Auth::user()->name }}</span>
+                        <span class="text-[9px] font-mono text-obsidian-cyan uppercase">{{ Auth::user()->role }}</span>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0">
+                        @if(Auth::user()->avatar_url)
+                            <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
+                        @else
+                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                        @endif
+                    </div>
+                </a>
+            </div>
         </header>
 
         <!-- CONTENIDO DE LA PÁGINA -->
