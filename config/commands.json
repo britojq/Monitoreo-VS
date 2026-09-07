@@ -37,6 +37,14 @@
       "description": "Gestión interactiva de usuarios y grupos autorizados",
       "help_text": "ℹ️ <b>Ayuda del comando /permisos:</b>\n\nPanel de administración de accesos para consultar, autorizar o revocar permisos a usuarios individuales (IDs de Telegram) y grupos de chat de operaciones."
     },
+    "grupos": {
+      "description": "Auditoría en tiempo real de grupos activos y forzar salida",
+      "help_text": "ℹ️ <b>Ayuda del comando /grupos:</b>\n\n• Consulta a Telegram en tiempo real para listar únicamente los grupos donde el bot está activo.\n• Muestra el estado de autorización oficial y el rol asignado al bot.\n• Dispone de botones directos para forzar la salida del bot de cualquier grupo seleccionado y actualizar la lista en caliente."
+    },
+    "salir_grupo": {
+      "description": "Forzar salida inmediata del bot de un grupo por ID",
+      "help_text": "ℹ️ <b>Ayuda del comando /salir_grupo [ID]:</b>\n\n• Obliga al bot a abandonar inmediatamente el grupo con el ID numérico proporcionado (ejemplo: <code>/salir_grupo -1001383163558</code>).\n• Si el grupo estaba autorizado, se elimina automáticamente de la configuración."
+    },
     "bloqueo_comandos": {
       "description": "Bloquear o reactivar el uso de comandos para usuarios y grupos",
       "help_text": "ℹ️ <b>Ayuda del comando /bloqueo_comandos:</b>\n\nInterruptor de seguridad para restringir el uso de comandos a usuarios no administradores durante tareas de mantenimiento o situaciones de contingencia."

@@ -1110,6 +1110,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
+            "• <code>/grupos</code> <i>(/mis_grupos, /chat_grupos)</i> - Auditoría en tiempo real de grupos activos y forzar salida.",
+            "• <code>/salir_grupo [ID]</code> <i>(/leave_group, /expulsar_grupo)</i> - Forzar salida del bot de un grupo específico.",
             "• <code>/bloqueo_comandos</code> <i>(/bloquear_comandos)</i> - Bloquear o reactivar el uso de comandos para usuarios y grupos.",
             "• <code>/botstatus</code> <i>(/estatus, /status, /estado_bot)</i> - Diagnóstico de conectividad, proxies corporativos y accesos denegados.",
             "• <code>/mensaje [texto]</code> <i>(/broadcast, /comunicado)</i> - Envío de comunicados y avisos masivos a usuarios autorizados.",
@@ -1144,7 +1146,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if commands_enabled and COMMANDS:
             already_listed = {
-                "permisos", "bloqueo_comandos", "botstatus", "info", "mensaje", "migrar_token",
+                "permisos", "grupos", "mis_grupos", "listar_grupos", "chat_grupos",
+                "salir_grupo", "leave_group", "expulsar_grupo", "abandonar_grupo",
+                "bloqueo_comandos", "botstatus", "info", "mensaje", "migrar_token",
                 "recursos", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
                 "servicios", "sedes", "caidas", "web", "monitoreo", "internet", "analisis_red",
                 "analisisred", "debug_servicios", "debug_sedes", "debug_completo", "debug_monitor",
@@ -1603,8 +1607,196 @@ async def _build_permissions_panel(bot) -> tuple[str, InlineKeyboardMarkup | Non
         text_lines.append("")
         text_lines.append("ℹ️ <i>Presiona un botón para revocar el acceso a un usuario o grupo.</i>")
 
+    keyboard.append([
+        InlineKeyboardButton("👥 Auditar Grupos Activos / Salir", callback_data="auth_open_groups")
+    ])
+
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     return "\n".join(text_lines), reply_markup
+
+
+def _get_known_group_candidates() -> set[int]:
+    """Recopila todos los IDs de grupos conocidos en config y logs de auditoría."""
+    candidates = set()
+    for gid in CONFIG.get("allowed_group_ids", []):
+        try:
+            candidates.add(int(gid))
+        except (ValueError, TypeError):
+            pass
+
+    for gid_str in CONFIG.get("groups_cache", {}).keys():
+        try:
+            gid = int(gid_str)
+            if gid < 0:
+                candidates.add(gid)
+        except (ValueError, TypeError):
+            pass
+
+    audit_path = get_audit_log_path()
+    if audit_path.exists():
+        try:
+            content = audit_path.read_text(encoding="utf-8", errors="ignore")
+            found_ids = re.findall(r"ID:\s*(-100\d+|-\d{7,})", content)
+            for fid in found_ids:
+                try:
+                    candidates.add(int(fid))
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+
+    return candidates
+
+
+async def _build_groups_audit_panel(bot) -> tuple[str, InlineKeyboardMarkup]:
+    """
+    Verifica en tiempo real con la API de Telegram en cuáles grupos está realmente el bot
+    y construye un panel interactivo para forzar la salida individual.
+    """
+    candidates = _get_known_group_candidates()
+    bot_user = await bot.get_me()
+    bot_id = bot_user.id
+    allowed_groups = set(CONFIG.get("allowed_group_ids", []))
+
+    active_groups = []
+
+    for gid in candidates:
+        try:
+            member = await bot.get_chat_member(chat_id=gid, user_id=bot_id)
+            status = member.status if member else None
+            if status in (ChatMember.MEMBER, ChatMember.ADMINISTRATOR, ChatMember.OWNER):
+                chat = await bot.get_chat(gid)
+                title = chat.title or CONFIG.get("groups_cache", {}).get(str(gid), "Grupo")
+                CONFIG.setdefault("groups_cache", {})[str(gid)] = title
+                role_label = "👑 Propietario" if status == ChatMember.OWNER else ("🛡️ Administrador" if status == ChatMember.ADMINISTRATOR else "👤 Miembro")
+                is_allowed = gid in allowed_groups
+                active_groups.append({
+                    "id": gid,
+                    "title": title,
+                    "status": status,
+                    "role_label": role_label,
+                    "is_allowed": is_allowed,
+                    "type": chat.type
+                })
+        except Exception:
+            pass
+
+    lines = [
+        "👥 <b>AUDITORÍA DE GRUPOS ACTIVOS • ADMINISTRACIÓN</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"Grupos donde el bot se encuentra activo: <b>{len(active_groups)}</b>\n"
+    ]
+
+    keyboard = []
+
+    if not active_groups:
+        lines.append("<i>ℹ️ El bot no se encuentra agregado activamente en ningún grupo en este momento.</i>\n")
+    else:
+        for idx, g in enumerate(active_groups, 1):
+            auth_badge = "🟢 <b>Autorizado Oficial</b>" if g["is_allowed"] else "⚠️ <b>NO Autorizado</b>"
+            lines.append(f"<b>{idx}. {html.escape(g['title'])}</b>")
+            lines.append(f"   🆔 <code>{g['id']}</code> | {auth_badge}")
+            lines.append(f"   🤖 <b>Rol del Bot:</b> {g['role_label']}\n")
+
+            btn_label = f"🚪 Salir de: {g['title'][:14]}… ({g['id']})" if len(g['title']) > 15 else f"🚪 Salir de: {g['title']} ({g['id']})"
+            keyboard.append([
+                InlineKeyboardButton(btn_label, callback_data=f"auth_force_leave:{g['id']}")
+            ])
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("<i>💡 Pulsa el botón de cualquier grupo para obligar al bot a abandonarlo al instante.</i>")
+
+    keyboard.append([
+        InlineKeyboardButton("🔄 Actualizar Lista", callback_data="auth_refresh_groups"),
+        InlineKeyboardButton("🔙 Volver a Permisos", callback_data="auth_back_to_permissions")
+    ])
+
+    return "\n".join(lines), InlineKeyboardMarkup(keyboard)
+
+
+async def cmd_grupos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo del Owner para auditar los grupos donde está el bot y forzar salidas (en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    user_id = update.effective_user.id if update.effective_user else 0
+
+    if user_id != owner_id:
+        if update.message:
+            await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    wait_msg = None
+    if update.message:
+        wait_msg = await update.message.reply_text(
+            "⏳ <i>Consultando en tiempo real con Telegram los grupos activos del bot...</i>",
+            parse_mode='HTML'
+        )
+
+    panel_text, reply_markup = await _build_groups_audit_panel(context.bot)
+
+    if wait_msg:
+        try:
+            await wait_msg.edit_text(panel_text, parse_mode='HTML', reply_markup=reply_markup)
+        except Exception:
+            await update.message.reply_text(panel_text, parse_mode='HTML', reply_markup=reply_markup)
+    elif update.message:
+        await update.message.reply_text(panel_text, parse_mode='HTML', reply_markup=reply_markup)
+
+
+async def cmd_salir_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo del Owner para forzar la salida del bot de un grupo específico por ID (/salir_grupo <id>)."""
+    if not await require_private_chat(update, context):
+        return
+
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    user_id = update.effective_user.id if update.effective_user else 0
+
+    if user_id != owner_id:
+        if update.message:
+            await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    if not context.args:
+        await safe_reply_html(
+            update.message,
+            "ℹ️ <b>Uso del comando /salir_grupo:</b>\n\n"
+            "Debes especificar el ID numérico del grupo del cual deseas que el bot salga.\n"
+            "Ejemplo: <code>/salir_grupo -1001383163558</code>\n\n"
+            "<i>También puedes usar <code>/grupos</code> para ver los grupos activos y tocar el botón de salida directamente.</i>"
+        )
+        return
+
+    target_str = context.args[0].strip()
+    try:
+        target_group_id = int(target_str)
+    except ValueError:
+        await safe_reply_html(update.message, f"❌ El identificador <code>{html.escape(target_str)}</code> no es un ID numérico válido.")
+        return
+
+    groups_cache = CONFIG.get("groups_cache", {})
+    group_name = groups_cache.get(str(target_group_id), f"Grupo {target_group_id}")
+
+    try:
+        await context.bot.leave_chat(chat_id=target_group_id)
+        allowed_groups = CONFIG.setdefault("allowed_group_ids", [])
+        if target_group_id in allowed_groups:
+            allowed_groups.remove(target_group_id)
+            save_config()
+
+        await safe_reply_html(
+            update.message,
+            f"✅ <b>Instrucción Ejecutada:</b>\n\n"
+            f"El bot ha abandonado forzosamente el grupo <b>{html.escape(group_name)}</b> (ID: <code>{target_group_id}</code>)."
+        )
+    except Exception as e:
+        await safe_reply_html(
+            update.message,
+            f"⚠️ <b>Aviso al intentar salir del grupo:</b>\n\n"
+            f"<code>{html.escape(str(e))}</code>\n\n"
+            f"<i>Es posible que el bot ya haya sido expulsado previamente o no sea miembro de ese grupo.</i>"
+        )
 
 
 async def require_private_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -3581,6 +3773,39 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.answer("⛔ Solo el creador del bot tiene permiso para gestionar accesos.", show_alert=True)
         return
 
+    # Callbacks de navegación y auditoría de grupos directos
+    if query.data in ("auth_open_groups", "auth_refresh_groups"):
+        await query.answer("🔍 Verificando grupos activos...")
+        panel_text, reply_markup = await _build_groups_audit_panel(context.bot)
+        try:
+            await query.edit_message_text(
+                text=panel_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass
+        return
+
+    if query.data == "auth_back_to_permissions":
+        await query.answer()
+        panel_text, reply_markup = await _build_permissions_panel(context.bot)
+        try:
+            await query.edit_message_text(
+                text=panel_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass
+        return
+
     try:
         action, target_id_str = query.data.split(":", 1)
     except (ValueError, IndexError):
@@ -3844,6 +4069,42 @@ async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             except Exception:
                 pass
 
+    elif action == "auth_force_leave":
+        target_group_id = int(target_id_str)
+        groups_cache = CONFIG.get("groups_cache", {})
+        group_name = groups_cache.get(str(target_group_id), f"Grupo {target_group_id}")
+        leave_ok = True
+        try:
+            await context.bot.leave_chat(chat_id=target_group_id)
+            logger.info(f"El bot ha forzado la salida del grupo {target_group_id} por instrucción del owner {clicker_id}")
+        except Exception as e:
+            logger.warning(f"No se pudo ejecutar leave_chat en {target_group_id}: {e}")
+            leave_ok = False
+
+        allowed_groups = CONFIG.setdefault("allowed_group_ids", [])
+        if target_group_id in allowed_groups:
+            allowed_groups.remove(target_group_id)
+            save_config()
+
+        if leave_ok:
+            await query.answer(f"🚪 El bot ha salido de: {group_name[:25]}", show_alert=True)
+        else:
+            await query.answer("⚠️ El bot ya no estaba en ese grupo o fue expulsado previamente.", show_alert=True)
+
+        panel_text, reply_markup = await _build_groups_audit_panel(context.bot)
+        try:
+            await query.edit_message_text(
+                text=panel_text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass
+        return
+
 
 async def notify_owner_bot_added_to_group(
     chat,
@@ -3857,6 +4118,7 @@ async def notify_owner_bot_added_to_group(
     allowed_groups = set(CONFIG.get("allowed_group_ids", []))
 
     CONFIG.setdefault("groups_cache", {})[str(chat_id)] = chat_title
+    save_config()
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     adder_name = from_user.full_name if from_user else "Desconocido"
@@ -4478,6 +4740,8 @@ def main() -> None:
                         BotCommand("recursos", "Memoria RAM, CPU y optimización"),
                         BotCommand("cron", "Panel de horarios y reportes automáticos"),
                         BotCommand("permisos", "Gestión de usuarios y autorizaciones"),
+                        BotCommand("grupos", "Auditar grupos activos y forzar salida"),
+                        BotCommand("salir_grupo", "Forzar salida de un grupo por ID"),
                         BotCommand("bloqueo_comandos", "Bloquear/activar comandos para usuarios"),
                         BotCommand("botstatus", "Diagnóstico de conectividad y proxies"),
                         BotCommand("limpiador", "Mantenimiento y limpieza de espacio"),
@@ -4529,6 +4793,14 @@ def main() -> None:
         "autorizados",
         "whitelist",
         "usuarios",
+        "grupos",
+        "mis_grupos",
+        "listar_grupos",
+        "chat_grupos",
+        "salir_grupo",
+        "leave_group",
+        "expulsar_grupo",
+        "abandonar_grupo",
         "botstatus",
         "statusbot",
         "estado_bot",
@@ -4637,6 +4909,10 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner gestione permisos
     application.add_handler(CommandHandler(["permisos", "autorizados", "whitelist", "usuarios"], manage_permissions))
+
+    # Comandos exclusivos para que el Owner audite grupos activos y fuerce la salida
+    application.add_handler(CommandHandler(["grupos", "mis_grupos", "listar_grupos", "chat_grupos"], cmd_grupos))
+    application.add_handler(CommandHandler(["salir_grupo", "leave_group", "expulsar_grupo", "abandonar_grupo"], cmd_salir_grupo))
 
     # Comando exclusivo para que el Owner verifique estado de red, proxies y accesos
     application.add_handler(CommandHandler(["botstatus", "statusbot", "estado_bot", "estatus", "status", "estado"], bot_status))
