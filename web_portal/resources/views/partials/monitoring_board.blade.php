@@ -75,6 +75,7 @@
                          data-tech-kind="service"
                          @else
                          data-tech-auth-required="true"
+                         title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                          @endif>
                         
                         <div class="flex items-center gap-2 min-w-0">
@@ -93,8 +94,9 @@
                                 {{ $latency > 0 ? $latency . 'ms' : '<15ms' }}
                             </span>
                             @else
-                            <span class="text-[9px] font-mono text-amber-400/80 flex items-center gap-0.5" title="Inicie sesión para ver la latencia">
-                                <span class="material-symbols-outlined text-[11px]">lock</span>
+                            <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                <span class="material-symbols-outlined text-[10px]">lock</span>
+                                <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
                             </span>
                             @endif
                             <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-obsidian-bg/80 border border-emerald-500/30 text-emerald-300">
@@ -160,6 +162,7 @@
                                  data-tech-kind="site"
                                  @else
                                  data-tech-auth-required="true"
+                                 title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                                  @endif>
                                  
                                 <div class="flex items-center space-x-2 min-w-0">
@@ -173,6 +176,12 @@
                                 </div>
 
                                 <div class="flex items-center gap-1.5 shrink-0">
+                                    @if(!Auth::check())
+                                    <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                        <span class="material-symbols-outlined text-[10px]">lock</span>
+                                        <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                    </span>
+                                    @endif
                                     <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase {{ $site->letter == 'A' ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/30' : 'bg-obsidian-purple/20 text-obsidian-purple border border-obsidian-purple/30' }}">
                                         {{ $site->letter == 'A' ? 'HUB' : 'SEDE' }}
                                     </span>
@@ -300,6 +309,7 @@
                              data-tech-kind="device"
                              @else
                              data-tech-auth-required="true"
+                             title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                              @endif>
                             
                             <div class="flex items-center gap-2 min-w-0 pr-2">
@@ -423,6 +433,7 @@
                              data-tech-kind="service"
                              @else
                              data-tech-auth-required="true"
+                             title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                              @endif>
                             
                             <div class="flex items-center gap-2 min-w-0">
@@ -433,7 +444,14 @@
                             </div>
 
                             <div class="flex items-center gap-1.5 shrink-0">
+                                @if(Auth::check())
                                 <span class="text-[9px] font-mono text-red-400/80 font-medium">Timeout</span>
+                                @else
+                                <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                    <span class="material-symbols-outlined text-[10px]">lock</span>
+                                    <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                </span>
+                                @endif
                                 <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-red-950/80 border border-red-500/40 text-red-300">
                                     {{ $s->type }}
                                 </span>
@@ -484,6 +502,7 @@
                              data-tech-kind="site"
                              @else
                              data-tech-auth-required="true"
+                             title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                              @endif>
                             
                             <div class="flex items-center gap-2 min-w-0">
@@ -493,9 +512,17 @@
                                 </span>
                             </div>
 
-                            <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-red-950/80 border border-red-500/40 text-red-300">
-                                OFFLINE
-                            </span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                @if(!Auth::check())
+                                <span class="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/70 border border-amber-500/30 text-amber-300 flex items-center gap-1" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
+                                    <span class="material-symbols-outlined text-[10px]">lock</span>
+                                    <span class="hidden sm:inline">DEBE INICIAR SESIÓN</span>
+                                </span>
+                                @endif
+                                <span class="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase bg-red-950/80 border border-red-500/40 text-red-300">
+                                    OFFLINE
+                                </span>
+                            </div>
                         </div>
                     @empty
                         <div class="h-full flex flex-col items-center justify-center p-4 text-center">
@@ -642,30 +669,13 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- ========================================================================= -->
 <!-- VENTANA EMERGENTE HUD FLOTANTE (TOOLTIP DE DATOS TÉCNICOS & HISTÓRICO)    -->
 <!-- ========================================================================= -->
-<div id="tech-tooltip" class="glass-panel rounded-xl p-3 border border-obsidian-cyan/50 shadow-2xl w-80 text-xs font-mono text-white bg-[#051424]/95 backdrop-blur-xl">
+<div id="tech-tooltip" class="glass-panel rounded-2xl p-4 border border-amber-500/50 shadow-2xl w-80 text-xs font-mono text-white bg-[#051424]/98 backdrop-blur-2xl">
 
-    <!-- BLOQUE 1: ALERTA DE AUTENTICACIÓN REQUERIDA (USUARIO NO REGISTRADO / GUEST) -->
-    <div id="tt-auth-required-block" class="hidden flex flex-col items-center text-center p-2 space-y-2.5">
-        <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
-            <span class="material-symbols-outlined text-xl">lock</span>
-        </div>
-        <div class="space-y-1">
-            <h4 class="text-xs font-bold text-white uppercase tracking-wider font-mono truncate max-w-[260px]" id="tt-auth-target-name">
-                Acceso Restringido
-            </h4>
-            <div class="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] font-sans leading-relaxed">
-                Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
-            </div>
-        </div>
-        <a href="{{ route('login') }}" class="w-full py-2 px-3 rounded-lg bg-obsidian-cyan hover:bg-cyan-300 text-black font-bold text-xs font-mono flex items-center justify-center gap-1.5 transition shadow-lg shadow-cyan-500/20">
-            <span class="material-symbols-outlined text-sm">login</span>
-            <span>Iniciar Sesión</span>
-        </a>
-    </div>
-
-    <!-- BLOQUE 2: DATOS TÉCNICOS COMPLETOS (SOLO USUARIOS AUTENTICADOS) -->
+    @if(Auth::check())
+    <!-- BLOQUE: DATOS TÉCNICOS COMPLETOS (SOLO USUARIOS AUTENTICADOS) -->
     <div id="tt-authenticated-block">
         <!-- CABECERA (CONSERVADA INTACTA) -->
         <div class="flex items-center justify-between border-b border-obsidian-border pb-1.5 mb-1.5">
@@ -702,7 +712,7 @@
             </div>
         </div>
 
-        <!-- NUEVO: CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (24 HORAS) -->
+        <!-- CUADRO CON GRÁFICO HISTÓRICO TEMPORAL DE LATENCIA & DISPONIBILIDAD (24 HORAS) -->
         <div id="tt-chart-container" class="mt-2 pt-1.5 border-t border-obsidian-border/60">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[9px] uppercase font-bold text-obsidian-cyan tracking-wider flex items-center gap-1">
@@ -731,6 +741,30 @@
             Verificación asíncrona de socket en tiempo real.
         </div>
     </div>
+    @else
+    <!-- BLOQUE: ALERTA DE AUTENTICACIÓN REQUERIDA (USUARIO NO REGISTRADO / GUEST) -->
+    <div id="tt-auth-required-block" class="flex flex-col items-center text-center space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
+            <span class="material-symbols-outlined text-2xl">lock</span>
+        </div>
+        <div class="space-y-1.5 w-full">
+            <div class="text-[10px] uppercase font-bold text-obsidian-muted font-mono tracking-wider truncate max-w-[260px] mx-auto" id="tt-auth-target-name">
+                Servicio o Sede
+            </div>
+            <h3 class="text-xs font-black text-amber-400 uppercase tracking-wide font-mono bg-amber-950/60 border border-amber-500/40 py-2 px-2.5 rounded-xl shadow-inner">
+                DEBE INICIAR SESIÓN PARA VER LOS DATOS
+            </h3>
+            <p class="text-[11px] font-sans text-amber-200/90 leading-relaxed font-normal pt-1">
+                Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
+            </p>
+        </div>
+        <a href="{{ route('login') }}" class="w-full py-2.5 px-4 rounded-xl bg-obsidian-cyan hover:bg-cyan-300 text-black font-black text-xs font-mono flex items-center justify-center gap-2 transition shadow-lg shadow-cyan-500/30">
+            <span class="material-symbols-outlined text-base">login</span>
+            <span>INICIAR SESIÓN</span>
+        </a>
+    </div>
+    @endif
+
 </div>
 
 <!-- ========================================================================= -->
@@ -753,9 +787,9 @@
 
         <div class="space-y-3 text-xs">
             <div class="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px] space-y-1.5">
-                <p class="font-bold flex items-center gap-1.5 text-white">
+                <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
                     <span class="material-symbols-outlined text-sm text-cyan-400">lock</span>
-                    <span>Autenticación Requerida</span>
+                    <span>DEBE INICIAR SESIÓN PARA VER LOS DATOS</span>
                 </p>
                 <p class="leading-relaxed font-sans text-cyan-200">
                     Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
@@ -882,8 +916,8 @@
                     <span class="material-symbols-outlined text-xl">lock</span>
                 </div>
                 <div>
-                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Acceso Restringido</h3>
-                    <p class="text-[10px] text-obsidian-muted truncate max-w-[240px]" id="item-auth-prompt-target">Servicio / Sede de Red</p>
+                    <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider font-mono">DEBE INICIAR SESIÓN PARA VER LOS DATOS</h3>
+                    <p class="text-[10.5px] text-white/80 truncate max-w-[240px]" id="item-auth-prompt-target">Servicio / Sede de Red</p>
                 </div>
             </div>
             <button type="button" onclick="closeItemAuthModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
@@ -927,7 +961,7 @@
                     <span class="material-symbols-outlined text-xl">lock</span>
                 </div>
                 <div>
-                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Acceso Restringido</h3>
+                    <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider font-mono">DEBE INICIAR SESIÓN PARA VER LOS DATOS</h3>
                     <p class="text-[10px] text-obsidian-muted" id="access-prompt-service">Consola de Red y Monitoreo</p>
                 </div>
             </div>
@@ -936,9 +970,9 @@
 
         <div class="space-y-3 text-xs">
             <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-2">
-                <p class="font-bold flex items-center gap-1.5 text-white">
+                <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
                     <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
-                    <span>Autenticación Requerida</span>
+                    <span>DEBE INICIAR SESIÓN PARA VER LOS DATOS</span>
                 </p>
                 <p class="leading-relaxed font-sans text-amber-200">
                     Debe iniciar sesión para ver los datos del servicio o la sede en su defecto.
@@ -1617,5 +1651,5 @@
     window._userCanVnc = window._userCanRemote;
 </script>
 <script id="monit-payload" type="application/json">{"s":@json(Auth::check() ? $serviceHistoryMap : []),"t":@json(Auth::check() ? $siteHistoryMap : []),"d":@json(Auth::check() ? $deviceHistoryMap : [])}</script>
-<script src="{{ asset('js/monitoring-app.min.js') }}" defer></script>
+<script src="{{ asset('js/monitoring-app.min.js') }}?v={{ time() }}" defer></script>
 @endpush

@@ -58,6 +58,7 @@
                  data-tech-details="Chequeo continuo en tiempo real de servicios y sedes regionales."
                  @else
                  data-tech-auth-required="true"
+                 title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
                  @endif>
                 <span class="w-2 h-2 rounded-full {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-400 pulse-dot' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-400' : 'bg-red-400 pulse-dot') }}"></span>
                 <span id="global-status-text">{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}</span>

@@ -126,6 +126,9 @@
             opacity: 1;
             transform: scale(1) translateY(0);
         }
+        #tech-tooltip a, #tech-tooltip button {
+            pointer-events: auto;
+        }
     </style>
     @stack('styles')
 </head>
