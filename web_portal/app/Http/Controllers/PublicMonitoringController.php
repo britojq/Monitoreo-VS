@@ -7,20 +7,42 @@ use App\Models\MonitoredProxy;
 use App\Models\MonitoredService;
 use App\Models\MonitoredSite;
 use App\Models\MonitoringSnapshot;
+use App\Models\User;
 use App\Services\MonitoringDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 class PublicMonitoringController extends Controller
 {
+    /**
+     * Autentica internamente las solicitudes locales originadas por el capturador
+     * automatizado del bot (Playwright) para generar reportes con datos operacionales completos.
+     */
+    private function authenticateInternalBot(): void
+    {
+        $ip = request()->ip();
+        if (in_array($ip, ['127.0.0.1', '::1', '10.20.23.221', '192.168.1.107'])) {
+            $secret = request()->header('X-Bot-Capture-Secret');
+            $appKey = config('app.key');
+            if (!empty($secret) && !empty($appKey) && hash_equals($appKey, $secret)) {
+                $admin = User::where('role', 'admin')->first();
+                if ($admin) {
+                    auth()->setUser($admin);
+                }
+            }
+        }
+    }
+
     public function index(MonitoringDataService $monitoringService): View
     {
+        $this->authenticateInternalBot();
         $data = $monitoringService->getMonitoringBoardData();
         return view('public.index', $data);
     }
 
     public function apiStatus(): JsonResponse
     {
+        $this->authenticateInternalBot();
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         if ($latestSnapshot) {
             $payload = $latestSnapshot->payload_json;

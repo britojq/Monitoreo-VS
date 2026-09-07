@@ -32,6 +32,24 @@ CACHE_TTL_SECONDS = 15.0  # Reutilizar capturas de los últimos 15s si hay solic
 DASHBOARD_URL = "http://monitoreo-vs.local/"
 
 
+def _get_bot_capture_secret() -> str:
+    """Obtiene el APP_KEY de Laravel para autenticar internamente las capturas del bot."""
+    env_paths = [
+        Path("/var/www/monitoreo/.env"),
+        Path("/scripts/telegram-admin-bot/web_portal/.env"),
+    ]
+    for env_file in env_paths:
+        if env_file.exists():
+            try:
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line.startswith("APP_KEY=") and "=" in line:
+                        return line.split("=", 1)[1].strip().strip("\"'").strip("'")
+            except Exception:
+                pass
+    return ""
+
+
 async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Optional[Path]:
     """
     Captura una imagen PNG en alta definición del dashboard web.
@@ -74,11 +92,18 @@ async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Op
                 ]
             )
             
+            # Encabezados de autenticación interna para el bot local
+            extra_headers = {}
+            secret = _get_bot_capture_secret()
+            if secret:
+                extra_headers["X-Bot-Capture-Secret"] = secret
+
             # Viewport 1920x1080 con escala 2x para nitidez cristalina en Telegram
             context = await browser.new_context(
                 viewport={"width": 1920, "height": 1080},
                 device_scale_factor=2,
-                color_scheme="dark"
+                color_scheme="dark",
+                extra_http_headers=extra_headers
             )
             page = await context.new_page()
             
@@ -87,7 +112,7 @@ async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Op
 
             if mode == "servicios":
                 # Captura de la Columna 1
-                sec = page.locator("main section").nth(0)
+                sec = page.locator("section").nth(0)
                 await sec.screenshot(path=str(target_file))
             elif mode == "sedes":
                 # Expandir todos los acordeones de equipos en sitio
@@ -97,11 +122,11 @@ async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Op
                 """)
                 await page.wait_for_timeout(250)
                 # Captura de la Columna 2
-                sec = page.locator("main section").nth(1)
+                sec = page.locator("section").nth(1)
                 await sec.screenshot(path=str(target_file))
             elif mode == "caidas":
                 # Captura de la Columna 3 (Incidentes)
-                sec = page.locator("main section").nth(2)
+                sec = page.locator("section").nth(2)
                 await sec.screenshot(path=str(target_file))
             else:
                 # Captura panorámica global (Full Dashboard)
