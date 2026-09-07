@@ -272,6 +272,17 @@ def main():
 
     # Envío a Telegram (activo por defecto para ejecuciones de cron a menos que se use --no-send)
     if not args.no_send:
+        # Si es un despacho programado desatendido (sin chat_id específico), validar si están activos
+        if not args.chat_id and CONFIG_PATH.exists():
+            try:
+                with open(CONFIG_PATH, "r", encoding="utf-8") as f_cfg:
+                    cfg_check = json.load(f_cfg)
+                    if not cfg_check.get("cron_reports_enabled", True):
+                        print("⏸️ [DESPACHO AUTOMÁTICO] Los envíos programados a Telegram están temporalmente desactivados.")
+                        return
+            except Exception:
+                pass
+
         dispatcher = TelegramDispatcher()
         target_chats = [args.chat_id] if args.chat_id else get_default_telegram_chats()
 

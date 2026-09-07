@@ -152,6 +152,121 @@
                 <p class="text-xs font-mono text-obsidian-muted">No hay snapshots registrados todavía.</p>
             @endif
         </div>
+    @if(auth()->user()->isAdmin() && isset($cronConfig))
+    <!-- CONTROL DE ENVÍOS PROGRAMADOS A TELEGRAM (CRON) (Exclusivo Administrador) -->
+    <div class="glass-card rounded-xl p-6 space-y-5 border {{ ($cronConfig['enabled'] ?? true) ? 'border-cyan-500/30' : 'border-amber-500/30' }}">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ ($cronConfig['enabled'] ?? true) ? 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40' : 'bg-amber-950/80 text-amber-400 border border-amber-500/40' }}">
+                    <span class="material-symbols-outlined text-xl">schedule_send</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        Envíos Programados a Telegram (Cron)
+                        @if($cronConfig['enabled'] ?? true)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                ACTIVO
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-950/80 text-red-400 border border-red-500/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                                PAUSADO
+                            </span>
+                        @endif
+                    </h2>
+                    <p class="text-xs text-obsidian-muted mt-0.5">
+                        Control del despacho desatendido de reportes de infraestructura a los canales oficiales y grupos autorizados.
+                    </p>
+                </div>
+            </div>
+
+            <!-- BOTÓN INTERRUPTOR (ACTIVAR / PAUSAR) -->
+            <form action="{{ route('admin.cron.toggle') }}" method="POST" onsubmit="return confirm('¿Confirmas que deseas {{ ($cronConfig['enabled'] ?? true) ? 'PAUSAR' : 'REANUDAR' }} los envíos automáticos de reportes a Telegram?');">
+                @csrf
+                @if($cronConfig['enabled'] ?? true)
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/30">
+                        <span class="material-symbols-outlined text-base">pause_circle</span>
+                        Pausar Envíos Automáticos
+                    </button>
+                @else
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30">
+                        <span class="material-symbols-outlined text-base">play_circle</span>
+                        Reanudar Envíos Automáticos
+                    </button>
+                @endif
+            </form>
+        </div>
+
+        <!-- CUADRÍCULA: HORARIOS PROGRAMADOS & AUDITORÍA -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+            <!-- LISTADO Y GESTOR DE HORARIOS (2 COLS) -->
+            <div class="lg:col-span-2 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-obsidian-cyan">alarm</span>
+                        Horarios Diarios de Despacho (24 horas)
+                    </span>
+                    @if(!empty($cronConfig['next_schedule']) && ($cronConfig['enabled'] ?? true))
+                        <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/50 px-2.5 py-0.5 rounded-md border border-cyan-500/30">
+                            Próximo: <strong>{{ $cronConfig['next_schedule'] }}</strong> ({{ $cronConfig['next_day'] }})
+                        </span>
+                    @endif
+                </div>
+
+                <!-- BADGES DE HORARIOS ACTIVOS -->
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    @forelse($cronConfig['schedules'] ?? [] as $hour)
+                        <div class="flex items-center gap-2 bg-[#040d1a] border border-obsidian-border/80 hover:border-obsidian-cyan/50 px-3 py-1.5 rounded-lg text-xs font-mono text-white transition group shadow-sm">
+                            <span class="material-symbols-outlined text-sm text-obsidian-cyan">schedule</span>
+                            <span class="font-bold tracking-wide">{{ $hour }}</span>
+                            <form action="{{ route('admin.cron.schedules.remove') }}" method="POST" class="inline" onsubmit="return confirm('¿Deseas eliminar el horario de las {{ $hour }}?');">
+                                @csrf
+                                <input type="hidden" name="time" value="{{ $hour }}">
+                                <button type="submit" class="text-obsidian-muted hover:text-red-400 transition ml-1 flex items-center" title="Eliminar este horario">
+                                    <span class="material-symbols-outlined text-sm">close</span>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <p class="text-xs font-mono text-amber-400/90 italic">No hay horarios de envío configurados.</p>
+                    @endforelse
+                </div>
+
+                <!-- FORMULARIO PARA AÑADIR NUEVO HORARIO -->
+                <form action="{{ route('admin.cron.schedules.add') }}" method="POST" class="pt-2 flex flex-wrap items-center gap-2">
+                    @csrf
+                    <div class="relative">
+                        <input type="time" name="time" required class="bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-obsidian-cyan">
+                    </div>
+                    <button type="submit" class="px-3 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition">
+                        <span class="material-symbols-outlined text-base">add</span>
+                        Añadir Horario
+                    </button>
+                </form>
+            </div>
+
+            <!-- DETALLES DE AUDITORÍA Y SINCRONIZACIÓN (1 COL) -->
+            <div class="bg-[#040d1a]/80 border border-obsidian-border/70 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div class="text-[11px] uppercase font-bold text-obsidian-muted flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">info</span>
+                    Auditoría y Sincronización
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Último cambio:</span>
+                    <span class="text-white">{{ $cronConfig['updated_at'] ?: 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Modificado por:</span>
+                    <span class="text-cyan-300 truncate max-w-[150px]" title="{{ $cronConfig['updated_by'] }}">{{ $cronConfig['updated_by'] ?: 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-obsidian-muted">Canal sincronizado:</span>
+                    <span class="text-emerald-400">Telegram Bot (/cron)</span>
+                </div>
+            </div>
+        </div>
     </div>
+    @endif
 </div>
 @endsection

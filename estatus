@@ -27,6 +27,9 @@ elif [ "${1:-}" = "checkpoint" ]; then
 elif [ "${1:-}" = "web" ]; then
     shift
     exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/monitor_web_sync.py" "$@"
+elif [ "${1:-}" = "cron" ] || [ "${1:-}" = "cron-runner" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/cron_runner.py" "$@"
 fi
 
 # Pasar todos los argumentos al motor de Python

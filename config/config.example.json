@@ -24,5 +24,11 @@
   "ollama_num_ctx": 4096,
   "ollama_max_history": 12,
   "ollama_include_system_prompt": false,
-  "ollama_system_prompt": ""
+  "ollama_system_prompt": "",
+
+  "cron_reports_enabled": true,
+  "cron_schedules": [
+    "07:30",
+    "16:00"
+  ]
 }

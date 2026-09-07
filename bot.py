@@ -2085,6 +2085,265 @@ async def toggle_commands_lock(update: Update, context: ContextTypes.DEFAULT_TYP
     await safe_reply_html(update.message, panel_msg, reply_markup=reply_markup)
 
 
+def _format_cron_panel_text() -> str:
+    """Genera el texto informativo del panel de control de cron."""
+    is_enabled = bool(CONFIG.get("cron_reports_enabled", True))
+    schedules = CONFIG.get("cron_schedules", ["07:30", "16:00"])
+    if not isinstance(schedules, list):
+        schedules = ["07:30", "16:00"]
+    schedules = sorted(list(set(schedules)))
+
+    updated_at = CONFIG.get("cron_reports_updated_at", "N/A")
+    updated_by = CONFIG.get("cron_reports_updated_by", "N/A")
+
+    # Calcular próximo envío
+    now = datetime.now()
+    now_hm = now.strftime("%H:%M")
+    next_sch = None
+    next_day = "hoy"
+    for s in schedules:
+        if s > now_hm:
+            next_sch = s
+            break
+    if not next_sch and schedules:
+        next_sch = schedules[0]
+        next_day = "mañana"
+
+    estado_label = "🟢 <b>ACTIVADOS (Operando)</b>" if is_enabled else "🔴 <b>PAUSADOS (Silenciados)</b>"
+    horarios_str = ", ".join([f"<code>{h}</code>" for h in schedules]) if schedules else "<i>Ninguno</i>"
+    proximo_str = f"<code>{next_sch}</code> ({next_day})" if (next_sch and is_enabled) else ("<i>En pausa</i>" if not is_enabled else "<i>Sin programar</i>")
+
+    return (
+        "⏰ <b>Control de Envíos Programados por Cron</b>\n\n"
+        f"• <b>Estado:</b> {estado_label}\n"
+        f"• <b>Horarios Diarios:</b> {horarios_str}\n"
+        f"• <b>Próximo Envío:</b> {proximo_str}\n\n"
+        f"👤 <b>Último Cambio:</b> {html.escape(str(updated_by))}\n"
+        f"📅 <b>Fecha:</b> <code>{updated_at}</code>\n\n"
+        "<b>Opciones de gestión por comando:</b>\n"
+        "• <code>/cron on</code> o <code>/cron off</code> (Activar / Pausar)\n"
+        "• <code>/cron horario 07:30, 16:00</code> (Asignar horarios)\n"
+        "• <code>/cron agregar 12:00</code> (Añadir un horario)\n"
+        "• <code>/cron quitar 16:00</code> (Eliminar un horario)"
+    )
+
+
+def _get_cron_keyboard():
+    """Genera el teclado interactivo con botones inline para el control de cron."""
+    is_enabled = bool(CONFIG.get("cron_reports_enabled", True))
+    btn_toggle = (
+        InlineKeyboardButton("🔴 Pausar Envíos Automáticos", callback_data="cron_act:pause")
+        if is_enabled else
+        InlineKeyboardButton("🟢 Reanudar Envíos Automáticos", callback_data="cron_act:resume")
+    )
+    return InlineKeyboardMarkup([
+        [btn_toggle],
+        [InlineKeyboardButton("🔄 Actualizar Estado", callback_data="cron_act:refresh")]
+    ])
+
+
+async def cmd_cron_control(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestiona la activación, pausa y horarios de los reportes programados por cron."""
+    if not update.effective_user or not update.message:
+        return
+
+    user_id = update.effective_user.id
+    owner_id = int(CONFIG.get("owner_id", 38914901))
+    is_owner = (user_id == owner_id)
+    is_private = (update.effective_chat and update.effective_chat.type == "private")
+
+    # Seguridad: Exclusivo Owner en chat privado
+    if not is_owner or not is_private:
+        if not is_owner:
+            logger.warning(f"Intento no autorizado de acceder a /cron por usuario {user_id}")
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            user_handle = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.full_name
+            owner_alert = (
+                "🚨 <b>ALERTA DE SEGURIDAD: INTENTO NO AUTORIZADO</b>\n\n"
+                f"El usuario <b>{html.escape(user_handle)}</b> (<code>{user_id}</code>) intentó manipular la configuración de <b>Envíos Programados (/cron)</b>.\n\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                f"<i>Acción bloqueada automáticamente.</i>"
+            )
+            try:
+                await context.bot.send_message(chat_id=owner_id, text=owner_alert, parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Error notificando al owner sobre intento /cron: {e}")
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    admin_name = f"{update.effective_user.full_name} [Telegram]"
+
+    # Procesar subcomandos si se pasan argumentos
+    if context.args:
+        subcmd = context.args[0].lower()
+
+        # 1. Activar
+        if subcmd in ("on", "activar", "activado", "enable", "start", "1", "si"):
+            CONFIG["cron_reports_enabled"] = True
+            CONFIG["cron_reports_updated_at"] = now_str
+            CONFIG["cron_reports_updated_by"] = admin_name
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "🟢 <b>Envíos Programados: ACTIVADOS</b>\n\n"
+                "Los reportes de monitoreo se despacharán puntualmente en los horarios configurados."
+            )
+            return
+
+        # 2. Pausar / Desactivar
+        elif subcmd in ("off", "desactivar", "desactivado", "pausar", "pause", "stop", "0", "no"):
+            CONFIG["cron_reports_enabled"] = False
+            CONFIG["cron_reports_updated_at"] = now_str
+            CONFIG["cron_reports_updated_by"] = admin_name
+            save_config()
+            await safe_reply_html(
+                update.message,
+                "🔴 <b>Envíos Programados: PAUSADOS</b>\n\n"
+                "Los despachos desatendidos a Telegram han sido temporalmente silenciados.\n"
+                "<i>Nota: Las consultas manuales directas (/servicios, /sedes) seguirán respondiendo normalmente.</i>"
+            )
+            return
+
+        # 3. Reemplazar lista de horarios
+        elif subcmd in ("horario", "horarios", "schedules", "set"):
+            raw_hours = " ".join(context.args[1:]).replace(",", " ").split()
+            valid_hours = []
+            time_regex = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+            for h in raw_hours:
+                h_clean = h.strip()
+                if time_regex.match(h_clean):
+                    valid_hours.append(h_clean)
+
+            if not valid_hours:
+                await safe_reply_html(
+                    update.message,
+                    "⚠️ <b>Formato inválido.</b>\n"
+                    "Debes especificar al menos una hora válida en formato 24h (HH:MM).\n"
+                    "<i>Ejemplo:</i> <code>/cron horario 07:30, 12:00, 16:00</code>"
+                )
+                return
+
+            CONFIG["cron_schedules"] = sorted(list(set(valid_hours)))
+            CONFIG["cron_reports_updated_at"] = now_str
+            CONFIG["cron_reports_updated_by"] = admin_name
+            save_config()
+
+            h_list = ", ".join([f"<code>{x}</code>" for x in CONFIG["cron_schedules"]])
+            await safe_reply_html(
+                update.message,
+                f"✅ <b>Nuevos horarios de envío asignados:</b>\n{h_list}\n\n"
+                f"Los cambios han sido guardados y sincronizados con el portal web."
+            )
+            return
+
+        # 4. Agregar un horario individual
+        elif subcmd in ("agregar", "add", "anadir", "+"):
+            if len(context.args) < 2:
+                await safe_reply_html(
+                    update.message,
+                    "⚠️ Debes indicar la hora a agregar en formato <code>HH:MM</code>.\n"
+                    "<i>Ejemplo:</i> <code>/cron agregar 13:15</code>"
+                )
+                return
+            new_time = context.args[1].strip()
+            if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", new_time):
+                await safe_reply_html(update.message, "⚠️ Hora inválida. Usa formato 24 horas <code>HH:MM</code> (ej: <code>08:15</code>).")
+                return
+
+            schedules = CONFIG.setdefault("cron_schedules", ["07:30", "16:00"])
+            if new_time not in schedules:
+                schedules.append(new_time)
+                CONFIG["cron_schedules"] = sorted(list(set(schedules)))
+                CONFIG["cron_reports_updated_at"] = now_str
+                CONFIG["cron_reports_updated_by"] = admin_name
+                save_config()
+
+            h_list = ", ".join([f"<code>{x}</code>" for x in CONFIG["cron_schedules"]])
+            await safe_reply_html(
+                update.message,
+                f"✅ <b>Horario <code>{new_time}</code> añadido exitosamente.</b>\n\n"
+                f"<b>Horarios activos:</b> {h_list}"
+            )
+            return
+
+        # 5. Quitar un horario individual
+        elif subcmd in ("quitar", "del", "eliminar", "remove", "-"):
+            if len(context.args) < 2:
+                await safe_reply_html(
+                    update.message,
+                    "⚠️ Debes indicar la hora a eliminar en formato <code>HH:MM</code>.\n"
+                    "<i>Ejemplo:</i> <code>/cron quitar 16:00</code>"
+                )
+                return
+            rem_time = context.args[1].strip()
+            schedules = CONFIG.setdefault("cron_schedules", ["07:30", "16:00"])
+            if rem_time in schedules:
+                schedules.remove(rem_time)
+                CONFIG["cron_schedules"] = sorted(schedules)
+                CONFIG["cron_reports_updated_at"] = now_str
+                CONFIG["cron_reports_updated_by"] = admin_name
+                save_config()
+                h_list = ", ".join([f"<code>{x}</code>" for x in CONFIG["cron_schedules"]]) if CONFIG["cron_schedules"] else "<i>Ninguno</i>"
+                await safe_reply_html(
+                    update.message,
+                    f"🗑️ <b>Horario <code>{rem_time}</code> eliminado.</b>\n\n"
+                    f"<b>Horarios activos restantes:</b> {h_list}"
+                )
+            else:
+                await safe_reply_html(update.message, f"⚠️ El horario <code>{rem_time}</code> no estaba en la lista de envíos programados.")
+            return
+
+        # 6. Consultar estado
+        elif subcmd in ("status", "estado", "ver", "info"):
+            pass
+
+    # Mostrar panel interactivo si no hubo subcomando terminal
+    panel_msg = _format_cron_panel_text()
+    reply_markup = _get_cron_keyboard()
+    await safe_reply_html(update.message, panel_msg, reply_markup=reply_markup)
+
+
+async def handle_cron_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las interacciones de botones del panel de control de cron."""
+    query = update.callback_query
+    if not query:
+        return
+
+    clicker_id = query.from_user.id
+    owner_id = int(CONFIG.get("owner_id", 38914901))
+
+    if clicker_id != owner_id:
+        await query.answer("⛔ Acción reservada para el Administrador Principal.", show_alert=True)
+        return
+
+    action = query.data.split(":", 1)[1] if ":" in query.data else ""
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    admin_name = f"{query.from_user.full_name} [Telegram]"
+
+    if action == "pause":
+        CONFIG["cron_reports_enabled"] = False
+        CONFIG["cron_reports_updated_at"] = now_str
+        CONFIG["cron_reports_updated_by"] = admin_name
+        save_config()
+        await query.answer("🔴 Envíos programados pausados exitosamente.")
+    elif action == "resume":
+        CONFIG["cron_reports_enabled"] = True
+        CONFIG["cron_reports_updated_at"] = now_str
+        CONFIG["cron_reports_updated_by"] = admin_name
+        save_config()
+        await query.answer("🟢 Envíos programados reactivados exitosamente.")
+    elif action == "refresh":
+        await query.answer("🔄 Panel actualizado.")
+
+    panel_text = _format_cron_panel_text()
+    markup = _get_cron_keyboard()
+    try:
+        await query.edit_message_text(panel_text, parse_mode='HTML', reply_markup=markup)
+    except Exception:
+        pass
+
+
 async def _run_and_send_monitoring_report(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -3997,6 +4256,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner bloquee/desbloquee comandos al resto de usuarios y grupos
     application.add_handler(CommandHandler(["bloqueo_comandos", "bloquear_comandos", "lock_commands", "pausar_comandos", "control_comandos"], toggle_commands_lock))
 
+    # Comando exclusivo para que el Owner gestione los envíos programados por Cron
+    application.add_handler(CommandHandler(["cron", "envios", "reportes_programados", "programacion"], cmd_cron_control))
+
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
@@ -4033,6 +4295,9 @@ def main() -> None:
 
     # Callback query handler para botones del actualizador de sistema
     application.add_handler(CallbackQueryHandler(handle_update_callback, pattern=r"^update_act:"))
+
+    # Callback query handler para control de reportes programados por cron
+    application.add_handler(CallbackQueryHandler(handle_cron_callback, pattern=r"^cron_act:"))
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 

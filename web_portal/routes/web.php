@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBanController;
+use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
@@ -109,5 +110,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         // Disparadores Operativos Manuales
         Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual');
         Route::post('scan-now', [SyncController::class, 'triggerScanNow'])->name('sync.scan');
+
+        // Control de Envíos Programados por Cron (Telegram)
+        Route::post('cron/toggle', [AdminCronController::class, 'toggle'])->name('cron.toggle');
+        Route::post('cron/schedules/add', [AdminCronController::class, 'addSchedule'])->name('cron.schedules.add');
+        Route::post('cron/schedules/remove', [AdminCronController::class, 'removeSchedule'])->name('cron.schedules.remove');
     });
 });

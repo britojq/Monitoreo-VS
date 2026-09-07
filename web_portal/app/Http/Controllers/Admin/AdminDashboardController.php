@@ -33,7 +33,8 @@ class AdminDashboardController extends Controller
         }
 
         $latestSnapshot = MonitoringSnapshot::latest()->first();
+        $cronConfig = $isAdmin ? (new AdminCronController())->getCronConfig() : null;
 
-        return view('admin.dashboard', compact('stats', 'latestSnapshot'));
+        return view('admin.dashboard', compact('stats', 'latestSnapshot', 'cronConfig'));
     }
 }

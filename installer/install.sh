@@ -444,6 +444,9 @@ cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
+# 6. Cron Runner Dinámico de Monitoreo cada minuto
+(crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1") | crontab -u "$SYS_USER" -
+
 systemctl daemon-reload
 systemctl enable boot-alert.service
 systemctl enable tg-admin-bot.service
