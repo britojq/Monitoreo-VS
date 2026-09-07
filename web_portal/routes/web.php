@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminBanController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminNetworkDeviceController;
 use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminSiteController;
@@ -56,6 +57,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('sites', [AdminSiteController::class, 'index'])->name('sites.index');
     Route::get('sites/{site}/history', [AdminSiteController::class, 'history'])->name('sites.history');
 
+    Route::get('devices', [AdminNetworkDeviceController::class, 'index'])->name('devices.index');
+    Route::get('devices/{device}/history', [AdminNetworkDeviceController::class, 'history'])->name('devices.history');
+
     Route::get('proxies', [AdminProxyController::class, 'index'])->name('proxies.index');
     Route::get('proxies/{proxy}/history', [AdminProxyController::class, 'history'])->name('proxies.history');
 
@@ -100,6 +104,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update');
         Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy');
         Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle');
+
+        // Modificaciones de Dispositivos de Red (Solo Administrador - No permite creación ni eliminación)
+        Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');
+        Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle');
 
         // Modificaciones de Proxies
         Route::post('proxies', [AdminProxyController::class, 'store'])->name('proxies.store');

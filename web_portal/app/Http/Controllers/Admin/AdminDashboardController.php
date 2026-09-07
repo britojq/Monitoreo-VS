@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MonitoredNetworkDevice;
 use App\Models\MonitoredProxy;
 use App\Models\MonitoredService;
 use App\Models\MonitoredSite;
@@ -25,6 +26,8 @@ class AdminDashboardController extends Controller
             'sites_count' => MonitoredSite::count(),
             'sites_active' => MonitoredSite::where('is_active', true)->count(),
             'devices_count' => MonitoredSiteDevice::count(),
+            'network_devices_count' => MonitoredNetworkDevice::count(),
+            'network_devices_active' => MonitoredNetworkDevice::where('is_active', true)->count(),
             'proxies_count' => MonitoredProxy::count(),
             'proxies_active' => MonitoredProxy::where('is_active', true)->count(),
         ];

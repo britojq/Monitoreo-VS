@@ -69,6 +69,12 @@
                     Sedes & Enlaces
                 </a>
 
+                <!-- DISPOSITIVOS DE RED -->
+                <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                    <span class="material-symbols-outlined text-lg">router</span>
+                    Dispositivos de Red
+                </a>
+
                 <!-- PROXIES -->
                 <a href="{{ route('admin.proxies.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.proxies.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
                     <span class="material-symbols-outlined text-lg">public</span>

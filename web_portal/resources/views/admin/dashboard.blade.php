@@ -32,7 +32,7 @@
     </div>
 
     <!-- STATS OVERVIEW -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->isAdmin() ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->isAdmin() ? 'lg:grid-cols-5' : 'lg:grid-cols-4' }} gap-5">
         @if(auth()->user()->isAdmin())
         <!-- USUARIOS (Exclusivo Administrador) -->
         <div class="glass-card rounded-xl p-5">
@@ -82,6 +82,23 @@
             <div class="mt-3">
                 <a href="{{ route('admin.sites.index') }}" class="text-xs font-mono text-purple-400 hover:underline flex items-center gap-1">
                     {{ auth()->user()->isAdmin() ? 'Configurar sedes' : 'Ver sedes' }} &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- DISPOSITIVOS DE RED (VALLE SECO) -->
+        <div class="glass-card rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-mono uppercase text-obsidian-muted">Dispositivos de Red</span>
+                <span class="material-symbols-outlined text-cyan-400">router</span>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+                <span class="text-3xl font-bold font-mono text-white">{{ $stats['network_devices_active'] ?? 0 }}</span>
+                <span class="text-xs font-mono text-obsidian-muted">/ {{ $stats['network_devices_count'] ?? 0 }} total</span>
+            </div>
+            <div class="mt-3">
+                <a href="{{ route('admin.devices.index') }}" class="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-1">
+                    {{ auth()->user()->isAdmin() ? 'Gestionar dispositivos' : 'Ver detalles' }} &rarr;
                 </a>
             </div>
         </div>
