@@ -78,18 +78,18 @@ def get_db_connection():
 
 # --- VERIFICADORES ASÍNCRONOS ULTRA-RÁPIDOS ---
 
-async def check_ping(host: str, timeout: float = 1.8) -> tuple[bool, float]:
-    """Realiza un ping ICMP asíncrono con timeout corto."""
+async def check_ping(host: str, count: int = 2, timeout: float = 2.5) -> tuple[bool, float]:
+    """Realiza un ping ICMP asíncrono con tolerancia ante fluctuaciones WAN (2 paquetes, timeout 2s)."""
     if not host or host in ("0.0.0.0", "127.0.0.1"):
         return False, 0.0
     start = time.perf_counter()
     proc = await asyncio.create_subprocess_exec(
-        "ping", "-c", "1", "-W", str(int(timeout)), host,
+        "ping", "-c", str(count), "-W", "2", host,
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.DEVNULL
     )
     try:
-        await asyncio.wait_for(proc.wait(), timeout=timeout + 0.5)
+        await asyncio.wait_for(proc.wait(), timeout=timeout + 1.0)
         elapsed = (time.perf_counter() - start) * 1000.0
         return (proc.returncode == 0), round(elapsed, 1)
     except asyncio.TimeoutError:
@@ -99,7 +99,7 @@ async def check_ping(host: str, timeout: float = 1.8) -> tuple[bool, float]:
             pass
         return False, 0.0
 
-async def check_tcp_port(host: str, port: int, timeout: float = 1.8) -> tuple[bool, float]:
+async def check_tcp_port(host: str, port: int, timeout: float = 2.5) -> tuple[bool, float]:
     """Comprueba conexión TCP a un puerto específico."""
     if not host or not port:
         return False, 0.0
@@ -116,7 +116,7 @@ async def check_tcp_port(host: str, port: int, timeout: float = 1.8) -> tuple[bo
     except Exception:
         return False, 0.0
 
-async def check_web_service(url: str, timeout: float = 3.0) -> tuple[bool, int, float]:
+async def check_web_service(url: str, timeout: float = 4.0) -> tuple[bool, int, float]:
     """Comprueba un aplicativo web vía HTTP/HTTPS con soporte TLS 1.0+ legacy."""
     if not url:
         return False, 0, 0.0
