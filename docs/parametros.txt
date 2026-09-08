@@ -1,0 +1,14 @@
+Descargue los siguientes modelos para ser usados con ollama:
+- deepseek-r1:1.5b
+- qwen2.5:1.5b
+- qwen2.5:3b
+
+necesito verificar cual tiene mejor rendimiento con el bot, verifica el que tiene configurado actualmente e iniciemos una prueba con cada uno y cuando te indique vas a cambiar al siguiente modelo pero antes verifica la existencia de esta configuracion en ollama:
+
+OLLAMA_FLASH_ATTENTION=1
+OLLAMA_KV_CACHE_TYPE=q8_0
+OLLAMA_NUM_PARALLEL=1
+OLLAMA_MAX_LOADED_MODELS=1
+
+esta ultiima verifica si es necesaria
+OLLAMA_KEEP_ALIVE=30m

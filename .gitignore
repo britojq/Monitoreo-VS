@@ -24,9 +24,7 @@ audit/.sys_anchor
 intentos_acceso.log
 !audit/.gitkeep
 
-# Documentación interna confidencial (Exclusiva del servidor local)
-docs/
-docs/*
+# Documentación interna (Se respalda en el repositorio privado)
 
 # Agentes y Habilidades Locales
 .agents/skills/

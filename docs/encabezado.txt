@@ -1,0 +1,45 @@
+Los scripts poseen un encabezado explicativo de esta forma:
+
+# ==============================================================================
+# 🚀 INSTALADOR MAESTRO: MONITOR VALLE SECO (@IA_ValleSeco_bot)
+# Ubicación: /scripts/telegram-admin-bot/installer/install.sh
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# ==============================================================================
+
+Requiero que ese encabezado de todos los que lo poseen lo ajustes de la siguiente manera 
+
+# ==============================================================================
+# 🚀 INSTALADOR MAESTRO: MONITOR VALLE SECO (@IA_ValleSeco_bot)
+#   Ubicación: /scripts/telegram-admin-bot/installer/install.sh
+#    Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+#     License: GNU Affero General Public License v3.0 
+#      Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+#	    Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+
+y los que no tengan este encabezado hazle una adaptacion te doy un ejemplo
+
+"""
+Módulo de Notificación de Accesos SSH en Tiempo Real.
+Ejecutado por PAM (pam_exec.so) al abrirse una sesión SSH.
+Extrae usuario, IP de origen, geolocalización pública y despacha alerta a Telegram.
+100% integrado dentro de /scripts/telegram-admin-bot.
+"""
+
+debe verse algo asi
+
+"""
+# ==============================================================================
+# Módulo de Notificación de Accesos SSH en Tiempo Real.
+# Ejecutado por PAM (pam_exec.so) al abrirse una sesión SSH.
+# Extrae usuario, IP de origen, geolocalización pública y despacha alerta a Telegram.
+# 100% integrado dentro de /scripts/telegram-admin-bot.
+# Ubicación: /scripts/telegram-admin-bot/monitor/ssh_alert.py
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+"""
+
+haz los ajustes necesarios en los encabezados de la manera como hago los ejemplos sin afectar el codigo funcional, si el codigo funcional es afectado por algun cambio no lo apliques y deja todo como esta, queda prohibido la modificacion del codigo funcional NO DEBES CAMBIAR BAJO NINGUNA CIRCUSTANCIA EL CODIGO FUNCIONAL NI SU OPERATIVIDAD, solo debes modificar el encabezado con la informacion como explico si tienes que hacer alguna adaptacion debes informarme antes de hacerla para yo decidir que hacer, pero repito bajo ninguna circustancia debes cambiar algo en el codigo fuente funcional del proyecto, al igual que en ningun sitio del proyecto en ningun archivo debe quedar visualmente expuesto el ID de telegram del owner haz mencion al usuario nada mas pero jamas a ningun ID de usuario ni ID de token como ejemplos

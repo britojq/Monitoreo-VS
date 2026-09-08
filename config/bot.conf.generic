@@ -1,0 +1,16 @@
+# ==============================================================================
+# 🌐 CONFIGURACIÓN DE PROXIES: bot.conf (PLANTILLA GENÉRICA)
+# Ubicación: config/bot.conf
+# ==============================================================================
+NAMEPROXYA="Proxy Primario Ejemplo"
+IPADDRPORTPROXYA=10.0.0.1:8080
+USERPASSWDPROXYA=usuario_proxy:clave_proxy
+NAMEPROXYB="Proxy Secundario Ejemplo"
+IPADDRPORTPROXYB=10.0.0.2:8080
+USERPASSWDPROXYB=usuario_proxy:clave_proxy
+NAMEPROXYC="Proxy Terciario Ejemplo"
+IPADDRPORTPROXYC=10.0.0.3:8080
+USERPASSWDPROXYC=usuario_proxy:clave_proxy
+NAMEPROXYD="Proxy Auxiliar Ejemplo"
+IPADDRPORTPROXYD=10.0.0.4:8080
+USERPASSWDPROXYD=usuario_proxy:clave_proxy

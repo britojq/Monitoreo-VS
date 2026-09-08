@@ -1,0 +1,1211 @@
+================================================================================
+HISTORIAL DE REGISTRO Y REPARACIÓN: BOT DE TELEGRAM + OLLAMA
+================================================================================
+Fecha de intervención: 2026-08-12 / 2026-08-13
+Ubicación del proyecto: /scripts/telegram-admin-bot
+
+--------------------------------------------------------------------------------
+1. PROBLEMA INICIAL REPORTADO (2026-08-12)
+--------------------------------------------------------------------------------
+El usuario intentó integrar el modelo de lenguaje Ollama en el bot de Telegram
+`bot.py` (basado en la guía `referencias-bot-telegram.txt`), pero el bot dejó de
+funcionar y no arrancaba como servicio en Debian 13.
+
+--------------------------------------------------------------------------------
+2. DIAGNÓSTICO Y CAUSAS RAÍZ ENCONTRADAS (2026-08-12)
+--------------------------------------------------------------------------------
+1) Token y credenciales en blanco (placeholders):
+   - El archivo `bot.py` contenía la plantilla genérica:
+     BOT_TOKEN = "TU_TOKEN_AQUI"
+     OWNER_ID = 123456789
+   - Al ejecutar `systemctl start tg-admin-bot.service`, Telegram rechazaba
+     la autenticación arrojando en los logs de journalctl:
+     "telegram.error.InvalidToken: The token 'TU_TOKEN_AQUI' was rejected by the server."
+   - El archivo `config.json` también tenía credenciales genéricas:
+     "bot_token": "TU_TOKEN_DE_TELEGRAM"
+
+2) Falta de código Ollama en `bot.py`:
+   - Se había creado un script secundario `NOOObot.py` con la lógica de Ollama,
+     pero el servicio de systemd (`tg-admin-bot.service`) seguía apuntando y
+     ejecutando `bot.py`, el cual carecía de las funciones e integración de IA.
+
+3) Librería de Python faltante (`requests`):
+   - El script con soporte para Ollama utiliza el paquete `requests` para
+     comunicarse con la API local de Ollama (http://localhost:11434/api/chat).
+   - Dicha librería no estaba instalada en el entorno virtual
+     `/scripts/telegram-admin-bot/venv`, produciendo el error:
+     "ModuleNotFoundError: No module named 'requests'"
+
+--------------------------------------------------------------------------------
+3. SEGUNDA INTERVENCIÓN (2026-08-13): USO DE `pkill` Y ETIQUETA HTML NO SOPORTADA
+--------------------------------------------------------------------------------
+El usuario reportó que al usar `pkill -f "python.*bot.py"` y modificar `commands.json`,
+el bot dejó de responder en Telegram.
+
+Causas identificadas:
+1) Efecto de `pkill`:
+   - Al matar el proceso con `pkill`, systemd reinició el servicio automáticamente
+     según la directiva `Restart=always`. Por ende, la razón por la que el bot
+     no respondía NO era que el proceso estuviera muerto, sino un error en tiempo
+     de ejecución.
+2) Etiqueta HTML no permitida (`<center>`):
+   - En `commands.json`, la clave `"start_header"` fue modificada incluyendo
+     etiquetas `<center>...</center>`.
+   - Telegram Bot API solo permite un subconjunto específico de HTML (`<b>`, `<i>`,
+     `<code>`, `<pre>`, `<a>`, etc.) y NO admite `<center>`.
+   - Cada vez que un usuario enviaba `/start`, la API de Telegram rechazaba la
+     respuesta con la excepción:
+     `telegram.error.BadRequest: Can't parse entities: unsupported start tag "center" at byte offset 0`
+   - Esto hacía que la ejecución fallara silenciosamente sin entregar respuesta.
+
+Soluciones aplicadas:
+1) Corrección en `commands.json`:
+   - Se eliminaron las etiquetas `<center>` no soportadas por la API de Telegram.
+2) Robustecimiento en `bot.py`:
+   - Se implementó la función auxiliar `safe_reply_html` que intenta responder
+     usando formato HTML, y en caso de que Telegram devuelva `BadRequest` por
+     marcado inválido, captura la excepción y reintenta el envío como texto plano.
+3) Reinicio de servicio:
+   - Se reinició `tg-admin-bot.service` y se comprobó respuesta limpia 200 OK.
+
+--------------------------------------------------------------------------------
+4. TERCERA INTERVENCIÓN (2026-08-13): CONTROL DE SALIDA DE SHELL (OCULTAR SALIDA)
+--------------------------------------------------------------------------------
+Requerimiento:
+Permitir que un comando o paso ejecute comandos en la shell sin mostrar el
+cuadro de código `<pre>salida del shell</pre>` en Telegram, pero detectando y
+confirmando si el comando se ejecutó satisfactoriamente (o mostrando error si falló).
+
+Implementación realizada en `bot.py`:
+1) Retorno estructurado en `_exec_system_command`:
+   - Devuelve dict con `{"success": bool, "returncode": int, "output": str}`.
+2) Lectura de propiedades en `commands.json`:
+   - Admite cualquiera de las claves: `"show_output": false`, `"hide_output": true`, o `"silent": true`
+     tanto a nivel de comando como a nivel de paso individual.
+3) Lógica de envío:
+   - Cuando `show_output` es `false` (o `hide_output: true` / `silent: true`): Se suprime de forma absoluta la emisión del cuadro de código `<pre>salida del shell</pre>`, incluso si el script devuelve un código de retorno interno diferente de 0 (como en scripts de bash que envían sus reportes directamente a Telegram).
+Configuración aplicada en `commands.json`:
+- Se configuró `"show_output": false` en `/servicios`, `/sedes` y `/red`.
+  Al ejecutarse, el bot muestra su encabezado de inicio (`reply_header`), ejecuta la tarea en la shell en segundo plano sin imprimir el cuadro de texto `<pre>`, y finaliza enviando la confirmación (`reply_footer`).
+
+--------------------------------------------------------------------------------
+5. CUARTA INTERVENCIÓN (2026-08-17): INICIALIZACIÓN Y SINCRONIZACIÓN CON GIT
+--------------------------------------------------------------------------------
+1) Inicialización del repositorio y seguridad:
+   - Se inicializó el repositorio Git en `/scripts/telegram-admin-bot`.
+   - Se configuró `.gitignore` para salvaguardar `config.json` y `OLD-config.json`
+     (evitando subir tokens de Telegram reales al repositorio público).
+   - Se creó la plantilla `config.example.json` para distribución pública.
+2) Configuración de usuario y credenciales:
+   - Autor: `Jose A. Brito H. <britojq@gmail.com>`
+   - Gestor de credenciales: `credential.helper = store` en `~/.gitconfig`.
+3) Vinculación remota y sincronización:
+   - Remoto: `https://github.com/britojq/tgbot-pyt-bashfull.git`
+   - Rama principal: `master`
+   - Se integró el archivo `LICENSE` del repositorio remoto y se sincronizaron
+     todos los cambios locales (`git push` completado exitosamente).
+
+--------------------------------------------------------------------------------
+6. QUINTA INTERVENCIÓN (2026-08-17): AUDITORÍA, LIMPIEZA Y OPTIMIZACIÓN
+--------------------------------------------------------------------------------
+1) Limpieza de archivos redundantes:
+   - Se eliminaron scripts antiguos e intermedios (`NOOObot.py`, `OLD-bot.py`, `OLD-config.json`).
+   - Se removieron los archivos de texto raíz `skill-bash.md` y `skill-python.md`
+     (quedando organizados exclusivamente en `.agents/skills/`).
+2) Creación de dependencias:
+   - Se creó `requirements.txt` (`python-telegram-bot>=22.0`, `requests>=2.31.0`).
+3) Actualización de documentación:
+   - Se reestructuró `README.md` documentando la arquitectura actual, soporte
+     Ollama, comandos desacoplados, control de salida y comandos `systemctl`.
+4) Robustecimiento del servicio Systemd:
+   - Se actualizó `/etc/systemd/system/tg-admin-bot.service` con
+     `Wants=network-online.target` y `After=network-online.target`.
+
+--------------------------------------------------------------------------------
+7. SEXTA INTERVENCIÓN (2026-08-17): MODELO DEFINITIVO Y MENSAJE DE ESPERA ANIMADO
+--------------------------------------------------------------------------------
+1) Selección definitiva del modelo:
+   - Se estableció `qwen-empresa` como modelo activo en `config.json`.
+2) Experiencia de usuario interactiva (Feedback de espera):
+   - Se implementó en `bot.py` la corrutina `_animate_waiting_message`:
+     a) Envía un mensaje temporal al usuario:
+        "⏳ Estoy haciendo un análisis de lo que indicas, espere por favor puedo tardar unos segundos..."
+     b) Hace rotar dinámicamente emojis de reloj (`🕐` -> `🕑` -> `🕒` -> ...) cada 2.5 segundos.
+     c) Mantiene activo el estado `ChatAction.TYPING` ("escribiendo...").
+     d) Al terminar la inferencia de Ollama, el mensaje temporal se elimina
+        automáticamente y se entrega la respuesta limpia.
+
+--------------------------------------------------------------------------------
+8. SÉPTIMA INTERVENCIÓN (2026-08-17): FORMATO DE CÓDIGO Y NEGRILLAS EN RESPUESTAS
+--------------------------------------------------------------------------------
+1) Actualización del System Prompt en Modelfile:
+   - Se ajustó `Modelfile.txt` para instruir a `qwen-empresa` a envolver siempre
+     comandos y scripts de terminal en bloques de código (```bash ... ``` o `cmd`)
+     y destacar títulos y subtítulos en negrita (**Título:**).
+   - Se recompiló el modelo en Ollama (`ollama create qwen-empresa`).
+2) Conversor Markdown a HTML en `bot.py`:
+   - Se implementó `markdown_to_telegram_html()` que convierte automáticamente
+     títulos `#`, negritas `**`, código en línea `<code>` y bloques multilínea
+     `<pre><code>` compatibles con Telegram para que el usuario pueda copiar
+     los comandos de terminal con un solo toque.
+
+--------------------------------------------------------------------------------
+9. OCTAVA INTERVENCIÓN (2026-08-17): SOPORTE PARA MODO INTERACTIVO (COMANDOS TOGGLE)
+--------------------------------------------------------------------------------
+1) Parámetro de configuración:
+   - Se añadió `"commands_enabled": true/false` en `config.json` y `config.example.json`.
+   - Se configuró `"commands_enabled": false` para dejar el bot operando en
+     modo 100% interactivo.
+2) Comportamiento adaptativo del bot:
+   - Al estar los comandos desactivados, el bot no expone los comandos del sistema.
+   - `/start` y `/help` muestran el mensaje de bienvenida interactiva al asistente IA.
+   - `/reset_ia` se mantiene activo para reiniciar el contexto conversacional.
+   - Cualquier mensaje de texto normal es procesado directamente por Ollama.
+
+--------------------------------------------------------------------------------
+10. NOVENA INTERVENCIÓN (2026-08-18): AUDITORÍA, RECHAZO Y ALERTAS DE SEGURIDAD
+--------------------------------------------------------------------------------
+1) Alertas en tiempo real al administrador (owner_id):
+   - Cada intento de interacción por parte de un usuario o grupo no autorizado
+     dispara una notificación inmediata al chat del owner con detalles completos:
+     nombre, @username, ID de Telegram, origen del chat, idioma y texto del mensaje.
+2) Registro de auditoría (intentos_acceso.log):
+   - Se implementó el archivo local de log para persistir cronológicamente cada
+     intento con marca de tiempo precisa.
+3) Respuesta de rechazo con ID del usuario:
+   - Se le responde educadamente al usuario no autorizado indicándole que el acceso
+     es restringido y facilitando su ID de Telegram copiable para solicitar acceso.
+4) Configuración y exclusión:
+   - Parámetros añadidos a `config.json` y `config.example.json` (`notify_unauthorized_to_owner`,
+     `reply_unauthorized_user`, `log_unauthorized_to_file`, `audit_log_file`).
+   - `.gitignore` actualizado para ignorar `*.log` y `intentos_acceso.log`.
+
+--------------------------------------------------------------------------------
+11. DÉCIMA INTERVENCIÓN (2026-08-21): BOTONES INTERACTIVOS DE AUTORIZACIÓN (ALLOW/DENY)
+--------------------------------------------------------------------------------
+1) Botones Inline en las alertas al creador:
+   - Se añadieron botones interactivos `[✅ Permitir / Autorizar]` y `[❌ Denegar]`
+     al mensaje de alerta enviado a `owner_id`.
+2) Autorización con un solo clic y persistencia:
+   - Al pulsar `Permitir`, el usuario es agregado en tiempo real a `allowed_user_ids`
+     en memoria y se persiste automáticamente en `config.json` mediante `save_config()`.
+   - Se actualiza el mensaje de alerta del creador mostrando el sello de estado
+     `✅ ESTADO: AUTORIZADO Y AGREGADO` y quién lo autorizó.
+   - Se notifica al usuario autorizado vía Telegram que su acceso ha sido aprobado.
+3) Denegación de acceso:
+   - Al pulsar `Denegar`, se retira al usuario si estuviera en la lista, se guarda
+     el cambio, se actualiza el mensaje de alerta y se notifica al usuario.
+4) Control de seguridad:
+   - Únicamente el creador (`owner_id`) tiene permiso para interactuar con los
+     botones de autorización; si otro usuario intenta pulsarlos, se emite una alerta.
+
+--------------------------------------------------------------------------------
+12. UNDÉCIMA INTERVENCIÓN (2026-08-21): COMANDO EXCLUSIVO /permisos Y REVOCACIÓN DE ACCESOS
+--------------------------------------------------------------------------------
+1) Comando exclusivo para el Creador (`/permisos` / `/autorizados`):
+   - Muestra un panel interactivo con la lista completa de usuarios y grupos
+     autorizados actualmente.
+   - Protegido por verificación de identidad (solo accesible por `owner_id`).
+2) Botones interactivos de Revocación (`❌ Revocar`):
+   - Cada usuario o grupo adicional en la lista cuenta con su propio botón inline
+     para ser retirado de forma instantánea.
+   - Al pulsar revocar, el ID es eliminado de `allowed_user_ids` o `allowed_group_ids`,
+     se persiste inmediatamente en `config.json` y se re-renderiza el panel en vivo.
+   - Se envía una notificación al usuario revocado informándole que su acceso
+     ha sido denegado.
+3) Datos enriquecidos de usuarios y grupos en el panel:
+   - Se implementó la resolución automática asíncrona (`_resolve_user_info`, `_resolve_group_info`)
+     mediante Telegram Bot API y caché local para mostrar nombre completo, @username
+     e ID de cada usuario, así como el título de cada grupo.
+   - Se eliminó cualquier aparición de textos "None" en nombres y apellidos.
+
+--------------------------------------------------------------------------------
+13. DUODÉCIMA INTERVENCIÓN (2026-08-21): CONMUTACIÓN AUTOMÁTICA DE PROXIES (FAILOVER)
+--------------------------------------------------------------------------------
+1) Detección de conectividad inteligente en el bot (`bot.py`):
+   - Al iniciar, el bot realiza una comprobación directa a Telegram Bot API con timeout corto.
+   - Si la conexión directa a internet no está disponible o falla, evalúa automáticamente
+     los proxies corporativos configurados (Squid / pfSense A, B, C, D) definidos
+     en `config.json` o en `/scripts/monitor/config/bot.conf`.
+   - Inicializa el cliente HTTP (`HTTPXRequest`) enlazado al proxy operativo (ej. Proxy B / C).
+2) Manejador de errores y alta disponibilidad:
+   - Se integró `bot_error_handler` para capturar incidencias de red en runtime y
+     coordinar con `systemd` (`Restart=always`, `RestartSec=10`) para auto-reconexión.
+3) Configuración:
+   - Añadidos `"auto_proxy_failover": true` y `"proxies": []` en `config.json` y `config.example.json`.
+
+--------------------------------------------------------------------------------
+14. DECIMOTERCERA INTERVENCIÓN (2026-08-21): COMANDO EXCLUSIVO /botstatus (DIAGNÓSTICO)
+--------------------------------------------------------------------------------
+1) Comando exclusivo para el Creador (`/botstatus` / `/statusbot`):
+   - Realiza diagnósticos en paralelo de la conexión directa a internet y de cada
+     proxy corporativo configurado (Squid / pfSense A, B, C, D) con medición de
+     latencia en milisegundos (`ms`) y código HTTP.
+   - Indica el canal activo utilizado por el bot (`Conexión Directa` o `Proxy`).
+   - Muestra la lista clasificada de usuarios y grupos permitidos (con nombres,
+     usernames e IDs).
+   - Analiza el log de auditoría (`intentos_acceso.log`) para mostrar los usuarios
+     negados / no autorizados con fecha y hora del último intento.
+
+--------------------------------------------------------------------------------
+15. DECIMOCUARTA INTERVENCIÓN (2026-08-24): MÓDULO DE MONITOREO PYTHON MODULAR (SERVICIOS Y SEDES)
+--------------------------------------------------------------------------------
+1) Arquitectura modular en Python con `asyncio`:
+   - Se migró y optimizó la lógica de `monitoreo.sh` a módulos Python nativos bajo `monitor/`:
+     * `monitor/config_parser.py`: Parser de `monitoreo.conf`, `mensajes.conf` y `bot.conf`.
+     * `monitor/checker_base.py`: Verificaciones asíncronas para WEB, DNS, PROXY, SMTP, DHCP, CUPS, LDAP y PING.
+     * `monitor/monitor_servicios.py` (Componente 1): Chequeo de Servicios Corporativos.
+     * `monitor/monitor_sedes.py` (Componente 2): Chequeo de Sedes y Equipos de Comunicación.
+     * `monitor/monitor_engine.py`: Orquestador unificado con soporte CLI y despacho.
+     * `monitor/telegram_dispatcher.py`: Despacho con failover automático de proxies.
+2) Rendimiento:
+   - Reducción del tiempo de chequeo completo de ~60s en Bash a solo ~4.6 segundos en Python.
+3) Control exclusivo del Creador para Modo Depuración:
+   - Comando `/debug_monitor` (o `/monitordebug`): Permite activar/desactivar el modo depuración
+     vía texto (`on`/`off`) o mediante botones inline interactivos.
+   - Cuando el modo depuración está activo, el creador recibe los reportes detallados y el
+     archivo de log consolidado `servicelog.txt` adjunto directamente a su chat privado.
+   - Las opciones de depuración y administración aparecen en `/start` y `/help` exclusivamente al creador.
+4) Control estricto de permisos para reportes:
+   - Los comandos `/reporte_servicios`, `/reporte_sedes` y `/reporte_completo` solo pueden ser
+     solicitados por el Owner o dentro de los grupos autorizados (`allowed_group_ids`).
+   - Cualquier intento de ejecución de un usuario no autorizado es bloqueado, auditado en
+     `intentos_acceso.log` y reportado al Owner con botones de autorización.
+
+--------------------------------------------------------------------------------
+16. DECIMOQUINTA INTERVENCIÓN (2026-08-24): REORGANIZACIÓN ESTRUCTURAL DEL PROYECTO
+--------------------------------------------------------------------------------
+1) Creación de carpetas temáticas y centralización:
+   - `config/`: Centraliza todas las configuraciones (`config.json`, `config.example.json`,
+     `commands.json`, `bot.conf`, `monitoreo.conf`, `mensajes.conf`).
+   - `audit/`: Almacena exclusivamente los logs de auditoría y seguridad (`intentos_acceso.log`).
+   - `ai/`: Agrupa archivos del modelo Ollama (`Modelfile.txt`, `parametros.txt`, `system_prompt.txt`).
+   - `docs/`: Centraliza bitácoras históricas y referencias técnicas (`historial.txt`, `referencias-bot-telegram.txt`).
+   - `monitor/`: Paquete modular de chequeo asíncrono en Python.
+2) Limpieza de la raíz del proyecto:
+   - En la raíz se preservan únicamente los archivos esenciales: `bot.py`, `requirements.txt`,
+     `README.md`, `LICENSE`, `.gitignore`.
+3) Compatibilidad y rutas:
+   - Se actualizaron `bot.py` y `monitor/config_parser.py` para resolver las rutas dentro de sus
+     respectivas carpetas con fallback automático a ubicaciones previas.
+   - Se ajustó `.gitignore` para proteger `config/config.json` y `audit/*.log`.
+
+--------------------------------------------------------------------------------
+17. DECIMOSEXTA INTERVENCIÓN (2026-08-24): MÓDULO DE ANÁLISIS DE RED Y ESCANEO 1:1 CON PCAP
+--------------------------------------------------------------------------------
+1) Refactorización 1:1 de `analisis_red_completo.sh`:
+   - Creación de `monitor/network_analyzer.py` para análisis y escaneo no bloqueante con `asyncio`.
+   - Captura de paquetes en tiempo real con `tcpdump` (120s por defecto o configurable).
+   - Inspección profunda con `tshark`: cálculo de paquetes TX (enviados) y RX (recibidos),
+     detección de tráfico sospechoso fuera de puertos comunes y detección de storm broadcast/multicast.
+   - Generación automática de resumen Telegram en HTML sanitizado, reporte Markdown (`.md`) y reporte Web (`.html`).
+2) Integración y Despacho en el Bot (`bot.py`):
+   - Registro del comando `/analisis_red` (alias `/red`, `/escaner_red`, `/network_scan`).
+   - Envío de archivos `.md` y `.html` tanto al Owner como al Grupo Autorizado.
+   - Seguridad y Auditoría: Intentos no autorizados son bloqueados, registrados en `audit/intentos_acceso.log`
+     y reportados en tiempo real al Owner.
+
+--------------------------------------------------------------------------------
+18. DECIMOSÉPTIMA INTERVENCIÓN (2026-08-24): MÓDULO INTERACTIVO DE LIMPIEZA Y DIAGNÓSTICO DEL SISTEMA
+--------------------------------------------------------------------------------
+1) Refactorización 1:1 de `limpiador.sh` (`monitor/system_cleaner.py`):
+   - Módulo asíncrono que realiza diagnóstico completo de almacenamiento (`df -h /`, inodos `df -i /`).
+   - Detección de directorios no estándar en `/`, archivos grandes (>100M) en zonas sensibles
+     y mayores archivos (>200M) en el sistema.
+   - Panel de control interactivo mediante botones inline (`InlineKeyboardMarkup`) en Telegram:
+     * 🧹 Limpiar Caché APT (`apt-get clean`)
+     * 🗑️ Autoremove Purge (`apt-get autoremove --purge -y`)
+     * 📜 Reducir Journal a 50M (`journalctl --vacuum-size=50M`)
+     * 🗄️ Borrar Logs Rotados en `/var/log` (`*.gz`, `*.[0-9]`, `*.old`)
+     * ⚡ Ejecutar Limpieza Total Segura (todas las rutinas simultáneas)
+     * 🔄 Actualizar Diagnóstico en tiempo real
+2) Control Exclusivo para el Propietario / Creador (`owner_id`):
+   - Comando `/limpiador` (alias `/limpieza`, `/cleaner`): Exclusivo del Owner.
+   - Bloqueo estricto si es invocado por cualquier otro usuario o desde grupos.
+   - Notificación de alerta al Owner y registro en `audit/intentos_acceso.log`.
+
+--------------------------------------------------------------------------------
+19. DECIMOCTAVA INTERVENCIÓN (2026-08-24): DIFUSIÓN MASIVA / BROADCAST Y CONTROL DE COMANDOS
+--------------------------------------------------------------------------------
+1) Función de Broadcast Institucional (`/mensaje` / `/broadcast` / `/difusion`):
+   - Exclusivo para el Owner para emitir comunicados oficiales a todos los usuarios y grupos autorizados.
+   - Formato formal con cabecera y firma de la administración.
+   - Reporte de entrega detallado e individual enviado al Owner.
+2) Control Global de Comandos (`/bloqueo_comandos`):
+   - Permite al Owner pausar temporalmente el uso de comandos a los usuarios y grupos mediante
+     parámetros (`on`/`off`) o botones interactivos inline, manteniendo acceso 100% para el Owner.
+
+--------------------------------------------------------------------------------
+20. DECIMONOVENA INTERVENCIÓN (2026-08-24): REESTRUCTURACIÓN DE MENÚS Y AVISO LEGAL/SEGURIDAD
+--------------------------------------------------------------------------------
+1) Separación de Menús por Privacidad:
+   - En chat privado con el Owner: Se despliega el panel administrativo completo.
+   - En grupos autorizados o para otros usuarios: Se muestra el panel funcional general (`COMANDOS FUNCIONALES DEL BOT`).
+2) Integración de Advertencia de Seguridad y Aviso Legal (`docs/texto-aviso.md`):
+   - Antepuesto a los mensajes de acceso denegado a usuarios no autorizados.
+   - Adjuntado como recordatorio legal al aprobar el acceso a nuevos usuarios.
+   - Comando público `/info` (alias `/aviso`, `/legal`, `/terminos`) para consultar términos y confidencialidad.
+
+--------------------------------------------------------------------------------
+21. VIGÉSIMA INTERVENCIÓN (2026-08-24): MÓDULO DE ACTUALIZACIÓN GIT Y SERVICIO AUTÓNOMO CADA 48H
+--------------------------------------------------------------------------------
+1) Actualizador Seguro desde Git (`monitor/system_updater.py` / `/actualizar`):
+   - Comprueba versión local contra `origin/master` e inspecciona commits/archivos pendientes.
+   - Protege y respalda la carpeta `config/` (blindando credenciales y listas de acceso).
+   - Valida sintaxis Python con `py_compile` y reinicia el servicio systemd en segundo plano.
+2) Verificador y Actualizador Autónomo Periódico (cada 48 horas):
+   - Tarea en segundo plano iniciada con `on_post_init` en `bot.py`.
+   - Consulta el repositorio remoto cada 48h (configurable en `config.json`).
+   - Aplica actualizaciones automáticamente y notifica al Owner con el reporte de novedades.
+
+--------------------------------------------------------------------------------
+22. VIGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-24): ESTILIZACIÓN DE REPORTES Y COMANDOS DIRECTOS DE DEBUG
+--------------------------------------------------------------------------------
+1) Refactorización y Estilización Visual de Reportes (`config/mensajes.conf`):
+   - Actualización de la convención de estatus con iconos limpios (✅ Operativo, ⚠️ Advertencia, 🚫 Falla).
+   - Incorporación de barras divisoras superior e inferior ajustadas al ancho de los títulos.
+   - Formateo de cabeceras institucionales, datos de contexto, impacto al SEN y lema en negrita.
+   - Sincronización homogénea de estilos para Servicios (`MENSAJEA`), Sedes (`MENSAJEC`) y depuración (`MENSAJEDEBUGA`, `MENSAJEDEBUGB`).
+2) Comandos Personales de Depuración Directa Exclusivos para el Owner:
+   - `/debug_servicios` - Reporte exhaustivo de todos los servicios (A a Z) con plantilla `MENSAJEDEBUGA` y adjunto técnico `servicelog.txt`.
+   - `/debug_sedes` - Reporte exhaustivo de todas las sedes y equipos (A a H) con plantilla `MENSAJEDEBUGB` y adjunto técnico `servicelog.txt`.
+   - `/debug_completo` - Reporte técnico integral exhaustivo (Servicios + Sedes) + `servicelog.txt`.
+   - Integración en el menú principal `/start`, `/help` y `/ayuda` en chat privado con el Owner.
+   - Blindaje de seguridad: Si un usuario no autorizado intenta ejecutarlos, la petición es bloqueada, registrada en `audit/intentos_acceso.log` y notificada en tiempo real al Owner.
+3) REGLA ARQUITECTÓNICA DE SEGURIDAD INAMOVIBLE E INCAMBIABLE:
+   - La ejecución de reportes de monitoreo (/servicios, /sedes, /monitoreo, /analisis_red) está estrictamente limitada a:
+     a) El Creador/Owner (user_id == owner_id) en cualquier canal (privado o grupo).
+     b) Usuarios autorizados ÚNICAMENTE dentro de los grupos oficiales de trabajo autorizados (chat_id in allowed_group_ids).
+   - Queda TERMINANTEMENTE PROHIBIDO que usuarios comunes autorizados ejecuten reportes de monitoreo en chats privados personales.
+   - Cualquier solicitud de monitoreo en chat privado por usuarios no administradores es rechazada con mensaje de acceso restringido, asentada en el log de auditoría (audit/intentos_acceso.log) y notificada en tiempo real con alerta roja al Owner.
+
+--------------------------------------------------------------------------------
+24. VIGÉSIMA CUARTA INTERVENCIÓN (2026-08-24): MIGRACIÓN DE BOT TELEGRAM (@IA_ValleSeco_bot)
+--------------------------------------------------------------------------------
+1) Actualización de Credenciales y Tokens:
+   - Migración al nuevo bot oficial: `@IA_ValleSeco_bot` (Token: `8791276974:AAH3dbTjj8T76tf_QAiPql1iWYsrd8NI3nU`).
+   - Actualización de `config/config.json` y `config/bot.conf`.
+   - Sincronización con el módulo de alertas de arranque y apagado (`monitor/boot_alert.py`).
+2) Verificación Operativa:
+   - Validación del token mediante llamada API a Telegram (`getMe`).
+   - Reinicio del servicio systemd `tg-admin-bot.service` con polling activo en el nuevo bot.
+
+--------------------------------------------------------------------------------
+25. VIGÉSIMA QUINTA INTERVENCIÓN (2026-08-25): BLINDAJE INMUTABLE DEL SISTEMA Y REGLAS DE SEGURIDAD GIT/OWNER
+--------------------------------------------------------------------------------
+1) Regla 1 - Auto-actualización Git Obligatoria y Notificación en Fallo:
+   - Parámetro `IMMUTABLE_AUTO_UPDATE_ENABLED = True` hardcoded e imposible de desactivar.
+   - En caso de fallo de red, DNS o error de sincronización, el bot envía inmediatamente una alerta crítica con el detalle técnico al Owner.
+2) Regla 2 - Forzado Estricto de Sincronización (Git Reset Hard):
+   - Al actualizar, el sistema ejecuta `git fetch origin master`, `git reset --hard origin/master` y `git clean -fd` protegiendo `config/`, `audit/`, `venv/`.
+3) Regla 3 - Repositorio Git Inmutable:
+   - Ruta oficial `https://github.com/britojq/tgbot-pyt-bashfull.git` y rama `master` hardcoded en código fuente (`IMMUTABLE_GIT_REPO_URL`). No puede ser modificada desde ningún archivo de configuración.
+4) Regla 4 - ID del Owner Inmutable:
+   - `IMMUTABLE_OWNER_ID = 38914901` fijado directamente en el código fuente de todos los módulos (`bot.py`, `system_updater.py`, `boot_alert.py`).
+   - Se muestra visualmente en `config/config.json`, pero el código ignora cualquier intento de manipulación externa en el archivo.
+
+--------------------------------------------------------------------------------
+26. VIGÉSIMA SEXTA INTERVENCIÓN (2026-08-25): IMPLEMENTACIÓN DE DRM DE ENTORNO, ANTI-TAMPER Y DEAD MAN'S SWITCH
+--------------------------------------------------------------------------------
+1) Desofuscación Vinculada Criptográficamente al Hardware (Environment-Bound DRM):
+   - Integración del módulo `SecureCore` en `monitor/core_shield.py`.
+   - Derivación matemática de clave con PBKDF2-HMAC (SHA-256) vinculada al hardware local (`/etc/machine-id`, MAC address via `uuid.getnode()`, hostname y semilla secreta en `audit/.sys_anchor`).
+   - Si el código es copiado o ejecutado en otro servidor, la derivación produce bytes de basura y el bot no puede autenticarse en Telegram.
+2) Detección de Manipulación (Anti-Tampering) con Fallo Silencioso:
+   - Validación de firma HMAC-SHA256 sobre cada payload cifrado.
+   - Ante cualquier intento de parcheo o modificación de strings, entra en fallo silencioso sin arrojar mensajes descriptivos.
+3) Dead Man's Switch por Aislamiento de Red / Git:
+   - Tarea `auto_update_worker` en `monitor/system_updater.py` monitorea fallos consecutivos de sincronización.
+   - Si ocurren 3 fallos consecutivos con el repositorio oficial, se activa `trip_deadman_switch()`, destruyendo de forma irreversible el anclaje criptográfico local (`audit/.sys_anchor`) y bloqueando permanentemente el bot.
+4) Ofuscación Avanzada Nativa:
+   - Control Flow Flattening (máquina de estados en el ciclo de decodificación).
+   - Predicados opacos matemáticos para camuflar bifurcaciones lógicas.
+   - Inyección de código muerto y camuflaje de rutinas internas.
+
+--------------------------------------------------------------------------------
+27. VIGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-25): PROTOCOLO DE ALERTA AL OWNER Y RE-VALIDACIÓN REMOTA (HUMAN-IN-THE-LOOP)
+--------------------------------------------------------------------------------
+1) Token Canario de Emergencia:
+   - Implementación de un despachador canario aislado e independiente cifrado con clave de respaldo en `monitor/core_shield.py`.
+   - Permite enviar alertas de emergencia al Owner (`38914901`) incluso cuando el hardware ha cambiado y la clave principal está bloqueada.
+2) Generación de Serial Challenge Antifalsificación (Anti-Replay):
+   - Al detectar una anomalía o migración, el sistema entra en estado `PENDING_VALIDATION` y genera un Serial antifalsificación con ventana de expiración de 10 minutos: `AUTH-XXXX-XXXX-XXXX-XXXX`.
+3) Listener Aislado de Re-Validación Remota:
+   - Escucha de forma aislada las respuestas exclusivas provenientes de `IMMUTABLE_OWNER_ID`.
+   - Si el Owner responde con el Serial exacto antes de 10 minutos, el sistema re-ancla la Master Key al nuevo hardware (`audit/.sys_anchor`), confirma la re-vinculación y reanuda operaciones normales.
+   - Si transcurren 10 minutos sin respuesta o se introduce un serial inválido, se ejecuta inmediatamente el Dead Man's Switch destruyendo el anclaje local.
+
+--------------------------------------------------------------------------------
+28. VIGÉSIMA OCTAVA INTERVENCIÓN (2026-08-25): INSTALADOR MAESTRO, ACTIVACIÓN INICIAL Y MIGRACIÓN DE TOKEN DRM
+--------------------------------------------------------------------------------
+1) Instalador Maestro Automatizado (`installer/install.sh`):
+   - Script Bash robusto (`set -e`, colores, chequeo root) para despliegue desatendido en nuevos servidores.
+   - Instalación de paquetes APT esenciales (Debian 12/13) con preconfiguración debconf para `wireshark-common`.
+   - Asignación de capabilities de red (`setcap`) para `tcpdump` y `arp-scan`.
+   - Instalación automatizada de Ollama, descarga del modelo base y compilación de `qwen-empresa`.
+   - Creación del entorno virtual `venv`, symlink global `/usr/local/bin/estatus -> /scripts/telegram-admin-bot/estatus`,
+     despliegue de servicios systemd (`tg-admin-bot.service`, `boot-alert.service`) y hook PAM para alertas SSH.
+   - Dejar el servicio `tg-admin-bot.service` habilitado pero detenido para que el protocolo de activación
+     tome el control en el primer arranque manual.
+2) Protocolo de Activación Inicial (First-Boot Handshake):
+   - Si `audit/.sys_anchor` no existe (servidor nuevo recién instalado), `core_shield.py` entra en estado `FIRST_BOOT_PENDING`.
+   - Genera el Serial Challenge (`AUTH-XXXX-XXXX-XXXX-XXXX`) y lo despacha al chat del Owner (`38914901`) vía Token Canario.
+   - En `bot.py`, `check_authorization` intercepta todas las peticiones bloqueando los comandos hasta que el Owner
+     envíe el Serial exacto (con ventana límite de 10 minutos).
+   - Al validarse, se deriva la Clave de Hardware, se genera `audit/.sys_anchor` y el bot pasa a modo `OPERATIONAL`.
+3) Módulo de Migración Dinámica de Token con DRM (`/migrar_token`):
+   - Comando exclusivo para el Owner (`38914901`) ejecutado mediante `ConversationHandler` interactivo en chat privado (timeout 2 min).
+   - Valida el nuevo token contra la API oficial de Telegram (`getMe`) antes de aplicar cambios para evitar desconexiones accidentales.
+   - Si es válido, lo cifra con la Clave de Hardware actual y lo persiste dentro del anclaje seguro (`audit/.sys_anchor`).
+   - Confirma al Owner y ejecuta un reinicio automático controlado de `tg-admin-bot.service` para arrancar con la nueva identidad.
+4) CLI Global `estatus` y Compatibilidad Nativa con CRON:
+   - Wrapper ejecutable en `/scripts/telegram-admin-bot/estatus` (enlazado en `/usr/local/bin/estatus`).
+   - Admite `estatus servicios`, `estatus sedes`, `estatus completo`, `estatus analisis_red`, `--no-send`, `--debug`.
+   - Protección anti-concurrencia mediante lockfile atómico (`/tmp/monitor_engine.lock`) para garantizar ejecución única en CRON (7:30 AM y 4:00 PM).
+
+--------------------------------------------------------------------------------
+29. VIGÉSIMA NOVENA INTERVENCIÓN (2026-08-26): BLINDAJE TOTAL DE HARDWARE Y CANAL DE VALIDACIÓN CANARIO RESILIENTE
+--------------------------------------------------------------------------------
+1) Estabilización Determinista de Huella de Hardware (`core_shield.py`):
+   - Sustituida la función volátil `uuid.getnode()` por la lectura directa de direcciones MAC permanentes del kernel en
+     `/sys/class/net/*/address` (`enp0s31f6`, `wlp2s0`) combinadas con `/etc/machine-id` y hostname.
+   - Elimina de raíz las falsas alertas de cambio de hardware al reiniciar el servidor en Debian/Ubuntu con nombres predictibles.
+2) Canal de Escucha Canario (Garantía Anti-Sordera):
+   - En `core_shield.py`, `get_core_bot_token()` suministra automáticamente el Token Canario si el bot se encuentra en estado
+     `PENDING_VALIDATION` o `FIRST_BOOT_PENDING`.
+   - Garantiza que `bot.py` NUNCA crashee por `InvalidToken` y permanezca 100% activo en Telegram escuchando el serial del Owner.
+3) Extracción Ultra-Flexible del Serial Challenge (`bot.py`):
+   - `check_authorization` incorpora expresión regular insensible a mayúsculas/minúsculas para capturar cualquier serial
+     en texto plano, mensajes citados, comandos directos (`/activar AUTH-...`) o enlaces profundos (`/start AUTH-...`).
+   - Creado el comando formal `/activar <SERIAL>` exclusivo para el Owner (`38914901`).
+4) Corrección de `boot-alert.service`:
+   - Agregado `sys.path.insert(0, str(BASE_DIR))` en `monitor/boot_alert.py`.
+   - Verificada la entrega inmediata de alertas de encendido limpio vs caída eléctrica y apagado ordenado.
+
+--------------------------------------------------------------------------------
+30. TRIGÉSIMA INTERVENCIÓN (2026-08-26): ESTABILIZACIÓN TOTAL DE SYSTEMD, DRM DE PLACA BASE Y ESTANDARIZACIÓN DE ENCABEZADOS
+--------------------------------------------------------------------------------
+1) Limpieza Visual de Mensajes y Plantillas:
+   - Eliminadas todas las líneas de separación horizontales (━━━━━━━━) de `config/mensajes.conf` (Servicios y Sedes), `bot.py`, `boot_alert.py`, `ssh_alert.py` y `system_updater.py`.
+2) Desacople Total de Tarjetas de Red en DRM de Hardware (`core_shield.py`):
+   - Eliminada la dependencia de `/sys/class/net` y direcciones MAC.
+   - Huella de hardware vinculada exclusivamente a la placa base Lenovo (`/etc/machine-id`, DMI `sys_vendor`, `product_name`, `board_name`, `bios_version`, `hostname`, `arch`), inmune a estados de red o Wi-Fi.
+3) Corrección de Dependencias en `boot-alert.service`:
+   - Eliminada dependencia circular de `systemd`, garantizando el arranque limpio de `NetworkManager` y el envío fiable de alertas de encendido y apagado (`sudo reboot`).
+4) Estandarización Universal de Encabezados (`encabezado.txt`):
+   - Implementados metadatos estandarizados (Ubicación, Sistema Objetivo, Licencia AGPLv3, Autor José A. Brito H. y Copyright 2026) en todos los scripts Bash y módulos Python sin alterar código funcional.
+   - Eliminada la exposición pública de IDs numéricos en documentación y archivos de configuración.
+
+--------------------------------------------------------------------------------
+31. TRIGÉSIMA PRIMERA INTERVENCIÓN (2026-08-26): PANEL DE CONTROL DE EMERGENCIA Y CONTINGENCIA (/emergencia)
+--------------------------------------------------------------------------------
+1) Comando Exclusivo de Emergencia (`/emergencia`, `/panico`, `/contingencia`):
+   - Restringido estrictamente al Administrador (`IMMUTABLE_OWNER_ID`) en chat privado.
+2) Funcionalidades Integradas:
+   - 🛑 **Detener Servicio del Bot:** Envía confirmación al chat privado del Administrador y ejecuta la parada inmediata y segura de `tg-admin-bot.service`.
+   - ⏸️ **Modo Mantenimiento Interactivo:** Bloquea el acceso a todos los usuarios y grupos sin apagar el proceso, respondiendo con aviso de mantenimiento, mientras el Owner conserva acceso pleno.
+   - 🔄 **Restauración de Configuración Segura (Rollback):** Crea y gestiona copias doradas (`config/.backup_golden`) para restaurar de inmediato `config/config.json`, `config/bot.conf`, `config/monitoreo.conf`, `config/mensajes.conf` en caso de fallos de edición.
+3) Preservación de Operatividad:
+   - Cero afectación a las alertas de arranque/apagado (`boot_alert.py`), DRM de hardware (`core_shield.py`) y monitoreo general.
+
+--------------------------------------------------------------------------------
+32. TRIGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-26): PROTECCIÓN DE COMANDOS ADMINISTRATIVOS EN GRUPOS Y MENÚS ADAPTATIVOS
+--------------------------------------------------------------------------------
+1) Aislamiento de Comandos Administrativos (`require_private_chat`):
+   - Restricción estricta de `/estatus`, `/permisos`, `/emergencia`, `/limpiador`, `/bloqueo_comandos`, `/debug_*`, `/actualizar`, `/mensaje`, `/migrar_token` al chat privado del Administrador.
+   - Auto-eliminación instantánea del mensaje si se ejecuta por error en un grupo público.
+   - Aviso temporal auto-destructivo (8 segundos) en el grupo y notificación privada al Administrador.
+2) Menús de Bienvenida Adaptativos (`start`):
+   - Owner en privado: Panel Maestro de Control.
+   - Usuario autorizado en privado: Mensaje corto enfocado en el Asistente IA.
+   - Grupos autorizados: Menú operativo de monitoreo de infraestructura.
+
+--------------------------------------------------------------------------------
+33. TRIGÉSIMA TERCERA INTERVENCIÓN (2026-08-26): SEGURIDAD DE LA IA, FILTRO PII Y RATE LIMITING ANTI-DOS
+--------------------------------------------------------------------------------
+1) Aislamiento Estricto de Contexto de Monitoreo:
+   - Los outputs de los scripts de monitoreo (`/servicios`, `/sedes`, `/monitoreo`, `/analisis_red`) no se anexan al búfer de contexto ni historial de Ollama.
+2) Filtro de PII y Anti-Fuga de Datos Sensibles (`sanitizar_pii`):
+   - Sanitización con expresiones regulares para cédulas venezolanas (7-8 dígitos -> `[C.I. OCULTA]`) y teléfonos locales (04XX-XXXXXXX, +584XX -> `[TLF. OCULTO]`) antes de la inyección a Ollama y al historial en memoria.
+3) Rate Limiting Anti-DoS en Memoria (`check_ai_rate_limit`):
+   - Límite por ventana deslizante de máximo 5 mensajes por minuto por usuario/chat para prevenir sobrecarga de CPU/GPU.
+
+--------------------------------------------------------------------------------
+34. TRIGÉSIMA CUARTA INTERVENCIÓN (2026-08-26): ENDURECIMIENTO DE ANÁLISIS DE RED (FORENSIA)
+--------------------------------------------------------------------------------
+1) Límite de Paquetes en `tcpdump` (`-c 5000`):
+   - Modificada la llamada a `tcpdump` en `capture_packets()` para añadir `-c 5000` evitando saturación de disco o RAM ante tormentas de broadcast o alta densidad de tráfico corporativo.
+2) Destrucción de Evidencia Cruda (Anti-Forensia):
+   - Inmediatamente después de que `tshark` procesa la captura en `execute_network_analysis()`, el archivo `.pcap` temporal es eliminado de forma segura del disco (`unlink()`) dentro de un bloque protegido.
+   - Solo se conservan y envían los resúmenes y reportes finales estructurados (`.md` y `.html`).
+
+--------------------------------------------------------------------------------
+35. TRIGÉSIMA QUINTA INTERVENCIÓN (2026-08-26): ESTABILIZACIÓN DEL HOOK PAM (ALERTAS SSH)
+--------------------------------------------------------------------------------
+1) Envoltura con Timeout Estricto (`ssh_alert.sh`):
+   - Integrado `/usr/bin/timeout --signal=SIGTERM 15s` en el hook de PAM para evitar bloqueos colgantes o procesos zombi si la API de Telegram o geolocalización experimentan caídas de red.
+2) Compatibilidad de Argumentos Posicionales (`ssh_alert.py`):
+   - Módulo adaptado para soportar tanto parámetros `$PAM_USER`, `$PAM_RHOST`, `$PAM_TTY` vía CLI como variables de entorno de sesión PAM.
+
+--------------------------------------------------------------------------------
+36. TRIGÉSIMA SEXTA INTERVENCIÓN (2026-08-26): BLINDAJE TOTAL DE APAGADO Y SYSTEMD ORDERING
+--------------------------------------------------------------------------------
+1) Conexiones Globales de NetworkManager (System-Wide):
+   - Se detectó que las conexiones de red (`Wired connection 1` y `CENCARCOM-90210`) tenían `connection.permissions: user:britojab`, desconectándose prematuramente al cerrar la sesión de usuario en un `sudo reboot`.
+   - Se convirtieron a conexiones globales del sistema (`connection.permissions: ""` / `--`), permaneciendo activas hasta la fase final del apagado.
+2) Envío Ultra-Rápido de Apagado (`send_shutdown_alert_fast`):
+   - Implementado envío atómico prioritario con timeout estricto por conexión sin bucles lentos de reintentos ni sleeps.
+   - Sincronización física de disco (`os.sync()`) y permisos `0o666` en `.clean_shutdown`.
+   - Tiempo de despacho verificado: ~760ms hacia Telegram.
+3) Ordenamiento Estricto y Aislamiento en Systemd (`boot-alert.service`):
+   - Servicio configurado en `Slice=system.slice` con `User=root` y `Group=root` para no ser afectado por la terminación de `user-1000.slice`.
+   - Añadido `Before=shutdown.target reboot.target halt.target poweroff.target` para forzar `ExecStop` antes de la secuencia de apagado.
+   - Añadido `After=network-online.target NetworkManager.service systemd-resolved.service networking.service`.
+   - Aumentado `TimeoutStopSec=30`.
+
+--------------------------------------------------------------------------------
+37. CONGELACIÓN INMUTABLE Y REGLA DE ORO DE ALERTAS DE ARRANQUE/APAGADO
+--------------------------------------------------------------------------------
+🔒 REGLA DE ORO INMUTABLE:
+Los archivos `monitor/boot_alert.py` y `/etc/systemd/system/boot-alert.service`
+quedan congelados de forma permanente e intocable. Ninguna modificación futura
+debe alterar su código, tiempos o configuración systemd.
+
+📋 HISTÓRICO DE FACTORES CLAVE QUE HACEN FUNCIONAR EL APAGADO:
+1. Conexiones NetworkManager globales:
+   `nmcli con mod <UUID> connection.permissions ""` (Evita que NetworkManager
+   apague la red al salir la sesión del usuario britojab en sudo reboot).
+2. Servicio ejecutado en system.slice como root:
+   `Slice=system.slice`, `User=root`, `Group=root` (Evita que systemd mate el
+   proceso al destruir user-1000.slice).
+3. Ordenamiento estricto en systemd:
+   `Before=shutdown.target reboot.target halt.target poweroff.target`
+   `After=network-online.target NetworkManager.service systemd-resolved.service networking.service`
+   `TimeoutStopSec=30`
+4. Despacho HTTP ultra-rápido:
+   `send_shutdown_alert_fast()` con timeout estricto de 4s directo prioritario
+   y creación atómica de `.clean_shutdown` con `os.chmod(..., 0o666)` y `os.sync()`.
+
+--------------------------------------------------------------------------------
+38. TRIGÉSIMA OCTAVA INTERVENCIÓN (2026-08-28): BARRAS DIVISORAS COMPACTAS EN REPORTES
+--------------------------------------------------------------------------------
+1) Estilización Visual de Plantillas (`config/mensajes.conf`):
+   - Se incorporaron barras horizontales compactas (`━━━━━━━━━━━━━━━`) arriba y abajo en los títulos de secciones de servicios:
+     - `*Servicios Corporativos Verificados:*`
+     - `*Servicios Regionales – Carabobo Verificados:*`
+   - Se añadieron barras arriba y abajo en cada una de las sedes CIAU en reportes estándar y debug (`MENSAJEC`, `MENSAJEDEBUGB`):
+     - `*$NAMESITEA*`, `*$NAMESITEC*`, `*$NAMESITED*`, `*$NAMESITEE*`, etc.
+
+--------------------------------------------------------------------------------
+39. TRIGÉSIMA NOVENA INTERVENCIÓN (2026-08-28): FORMATO ESTRICTO EN NEGRITA (**) EN PLANTILLAS
+--------------------------------------------------------------------------------
+1) Corrección de Marcado Markdown (`config/mensajes.conf`):
+   - Se ajustó el formateo de asteriscos simples (`*...*`, que se interpretaban como cursiva `<i>` en Telegram HTML) a doble asterisco (`**...**`, negrita `<b>`).
+   - Campos configurados en negrita estricta:
+     - `**GERENCIA DE ATIT REGIÓN CENTRAL**`
+     - `**DIVISIÓN DE ATIT CARABOBO**`
+     - `**DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA - SERVIDORES.**` / `**DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA**`
+     - `**Fecha:**`, `**Hora:**`, `**Lugar:**`, `**Coordinación:**`
+     - `**ESTATUS DE SERVICIOS CORPORATIVOS (CARABOBO - VALLE SECO)**`
+     - `**ESTATUS DE CIAU EJE COSTERO**`
+     - `**Leyenda:**`, `**Personal de  ATIT:**`
+     - Títulos de secciones de servicios y nombres de sedes CIAU.
+
+--------------------------------------------------------------------------------
+40. CUADRAGÉSIMA INTERVENCIÓN (2026-08-28): COMANDO /INTERNET (PROXIES Y LATENCIA)
+--------------------------------------------------------------------------------
+1) Diseño e Integración del Comando `/internet`:
+   - Implementado `cmd_internet()` en `bot.py` para diagnóstico concurrente en tiempo real de salidas a internet y proxies corporativos.
+   - Habilitado para el Owner (chat privado y grupos) y para miembros en grupos autorizados.
+   - Regla de visualización condicional de conexión directa:
+     - **Owner:** Muestra "Conexión Directa a Internet" junto a la lista completa de proxies.
+     - **Grupos / No-Owners:** Oculta automáticamente la conexión directa y reporta únicamente los proxies corporativos (Squid, pfSense, Dansguardian).
+2) Registro y Menús:
+   - Añadido a `config/commands.json`, menús de `/start` (Owner y Grupos) y conjunto `VALID_COMMAND_NAMES`.
+
+--------------------------------------------------------------------------------
+41. CUADRAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-28): MENSAJE GENÉRICO UNIFICADO DE ACCESO DENEGADO
+--------------------------------------------------------------------------------
+1) Unificación de Plantilla de Bloqueo de Comandos Fuera de Grupo:
+   - Se diseñó `MSG_UNAUTHORIZED_GROUP_COMMAND` en `bot.py` con estética de alto impacto (iconos STOP 🛑, Warning ⚠️, barra divisoria compacta y código monospace).
+   - Se integró de manera homogénea en todos los módulos de comandos grupales (`_run_and_send_monitoring_report`, `cmd_internet`, `cmd_analisis_red`).
+   - Se envió prueba en vivo de renderizado al Administrador (`Owner`).
+
+--------------------------------------------------------------------------------
+42. CUADRAGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-28): NEUTRALIZACIÓN DE MENSAJES DE PRIVILEGIOS
+--------------------------------------------------------------------------------
+1) Neutralización y Blindaje de Privilegios (`MSG_UNAUTHORIZED_ADMIN_COMMAND`):
+   - Se eliminaron todos los textos reveladores como "Este comando es exclusivo para el creador y administrador del bot".
+   - Se implementó la plantilla estándar `MSG_UNAUTHORIZED_ADMIN_COMMAND` basada en políticas de seguridad institucionales (STOP 🛑, Warning ⚠️, "Usted no posee los privilegios requeridos...", registro en auditoría e informe a ATIT).
+   - Se aplicó en todos los comandos y callbacks administrativos (`manage_permissions`, `bot_status`, `toggle_debug_monitor`, `toggle_commands_lock`, `_run_and_send_monitoring_report` (debug), `cmd_limpiador`, `cmd_broadcast_mensaje`, `cmd_actualizar`, `cmd_migrar_token_start`, `cmd_emergencia`, `handle_emergency_callback`).
+   - Se envió prueba en vivo de renderizado al Administrador (`Owner`).
+
+--------------------------------------------------------------------------------
+43. CUADRAGÉSIMA TERCERA INTERVENCIÓN (2026-08-28): AJUSTE DE TEXTOS EN /ANALISIS_RED
+--------------------------------------------------------------------------------
+1) Modificación de Textos de Envío de Documentos:
+   - Se removió la etiqueta explícita `(Markdown)` del pie de envío del reporte principal y de auditoría en `bot.py`.
+   - Quedando configurado formalmente como: `📄 Reporte estructurado de análisis de red`.
+
+--------------------------------------------------------------------------------
+44. CUADRAGÉSIMA CUARTA INTERVENCIÓN (2026-08-28): SISTEMA INTEGRAL DE RESILIENCIA Y ROLLBACK (SRR)
+--------------------------------------------------------------------------------
+1) Implementación de Puntos de Control (`checkpoint`):
+   - Creación del script ejecutable `/scripts/telegram-admin-bot/checkpoint` y symlink global `/usr/local/bin/checkpoint`.
+   - Generación de puntos con validación previa de integridad sintáctica, metadatos JSON y copia segura de archivos de configuración (`config/config.json`, `config/commands.json`, `config/mensajes.conf`, `.env`, DRM).
+   - Generación de etiquetas locales Git (`checkpoint-<TS>`).
+2) Implementación de Restauración y Rollback (`rollback`):
+   - Creación del script ejecutable `/scripts/telegram-admin-bot/rollback` y symlink global `/usr/local/bin/rollback`.
+   - Modos operativos: `rollback` (último estado seguro), `rollback --list` (historial), `rollback --to <ID>` (punto específico), `rollback --check` (diagnóstico sin cambios) y `rollback --git`.
+   - Limpieza automática de bloqueos huérfanos de Git (`.git/index.lock`) derivados de cortes de luz.
+3) Autorrecuperación Autónoma en Arranque (`ExecStartPre`):
+   - Configurado `ExecStartPre=/scripts/telegram-admin-bot/rollback --pre-start-check` en `/etc/systemd/system/tg-admin-bot.service`.
+   - Si la máquina reinicia tras un corte de luz con archivos corruptos o truncados a 0 bytes, el pre-arranque detecta la falla, ejecuta el auto-rollback en 2 segundos y levanta el servicio limpiamente.
+   - Notificación de contingencia en tiempo real al chat privado del Administrador en Telegram al encender.
+4) Integración con CLI `estatus` e `install.sh`:
+   - Vinculado `estatus rollback` y `estatus checkpoint`.
+   - Actualizado el instalador automatizado `installer/install.sh` y creada la guía operativa `docs/guia-resiliencia-rollback.md`.
+
+--------------------------------------------------------------------------------
+45. CUADRAGÉSIMA QUINTA INTERVENCIÓN (2026-08-28): CENTINELA DE CONMUTACIÓN DINÁMICA EN CALIENTE (FAILOVER WATCHDOG)
+--------------------------------------------------------------------------------
+1) Diagnóstico y Corrección de Conectividad en Tiempo de Ejecución:
+   - Se resolvió la limitación donde el bot solo evaluaba proxies al encender el proceso, quedando atrapado en errores si la salida directa fallaba en caliente.
+2) Implementación del Centinela Permanente (`runtime_connection_watchdog`):
+   - Tarea asíncrona dedicada que supervisa la salud del socket de Telegram cada 20 segundos y ante 2 fallos consecutivos de red.
+   - Evaluación en orden de prioridad: 1. Conexión Directa -> 2. Squid Carabobo (`10.20.0.89:8080`) -> 3. PFsense 119 (`10.20.0.119:8080`) -> 4. PFsense 89 -> 5. Squid Valle Seco (`10.20.23.65:8080`).
+3) Conmutación en Caliente sin Reiniciar (`hot_switch_connection`):
+   - Reemplazo y reconexión atómica del cliente HTTP interno (`HTTPXRequest`) de Telegram en tiempo real sin reiniciar el servicio ni interrumpir el estado de la aplicación.
+   - Auto-retorno inmediato a Conexión Directa en cuanto se restablece la conectividad a internet.
+
+--------------------------------------------------------------------------------
+46. CUADRAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): CENTINELA DE RED AUTORREPARABLE DE 10 MINUTOS
+--------------------------------------------------------------------------------
+1) Diagnóstico Forense de la Falla de Polling:
+   - Se analizó el incidente del 28 de agosto a las 16:58:15 donde la salida directa falló y la conmutación interna no restableció el ciclo de polling (`getUpdates`) debido a que la librería `python-telegram-bot` mantiene atado el socket original de red en su ciclo asíncrono.
+   - Mientras los reportes programados (`estatus` / cron) seguían despachando normalmente con conexiones cortas independientes, el daemon principal quedó sordo a los comandos entrantes.
+2) Implementación de Autoreparación Instantánea (`restart_bot_process`):
+   - Al detectarse pérdida de conexión, el bot ejecuta un reemplazo atómico de imagen de proceso (`os.execv`), liberando el 100% de los sockets colgados y arrancando limpiamente en menos de 1 segundo con el proxy o ruta operativa elegida.
+3) Configuración de Centinela cada 10 Minutos:
+   - Se fijó el intervalo del centinela de red en 600 segundos (10 minutos) para evitar saturación o ráfagas innecesarias en la red corporativa.
+   - Si tras 3 fallos consecutivos en `getUpdates` la conexión se pierde, o si en la revisión de 10 min no hay respuesta, el bot conmuta y se autorrepara de inmediato.
+   - Si el bot está operando por proxy y la Conexión Directa regresa, retorna de forma limpia e instantánea a la conexión directa.
+
+--------------------------------------------------------------------------------
+47. CUADRAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): REDISEÑO DE MONITOREO WEB, CRUD ADMINISTRATIVO Y AUTENTICACIÓN
+--------------------------------------------------------------------------------
+1) Modernización del Antiguo `pagina.sh`:
+   - Se reemplazó el flujo monolítico de 2.268 líneas en Bash por el motor asíncrono `/scripts/telegram-admin-bot/monitor/monitor_web_sync.py` y subcomando `estatus web`, logrando escaneos completos en menos de 2.5 segundos.
+2) Aplicación Web Laravel 11 (`/var/www/testapp`):
+   - Integrado el diseño futurista "Obsidian Nexus" (Tailwind CSS, Glassmorphism, Deep Navy, Electric Cyan) desde `/diseno-monitoreo/`.
+   - Página pública (`/`): Título institucional "ATIT • Monitoreo de Infraestructura - Valle Seco", sin menú lateral (sidebar oculto), barra superior con estado global, reloj y botón de inicio de sesión.
+   - Endpoint de tiempo real `GET /api/status` con auto-refresco asíncrono cada 30 segundos.
+3) Autenticación y Módulos Administrativos (CRUD):
+   - Creado usuario inicial SuperAdmin: `britojq@gmail.com` / `PeneloPe91*`.
+   - Sidebar visible y exclusivo tras autenticación (`/admin`).
+   - Módulo CRUD de Usuarios (`/admin/users`) con protección de cuenta SuperAdmin.
+   - Módulo CRUD de Servicios (`/admin/services`), Sedes y Equipos (`/admin/sites`), y Proxies (`/admin/proxies`).
+   - Sincronización bidireccional automática con `config/monitoreo.conf` y `config/bot.conf`.
+   - Cron de sincronización cada 5 minutos configurado en `/etc/cron.d/monitoreo_web`.
+
+--------------------------------------------------------------------------------
+48. CUADRAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): DISTRIBUCIÓN FIEL DE 3 COLUMNAS, MAPA INTERACTIVO Y TOOLTIPS HUD
+--------------------------------------------------------------------------------
+1) Filtrado Estricto de Infraestructura Limpia:
+   - Se eliminaron todos los slots vacíos y registros con "NO CONFIGURADO" / `0.0.0.0` de la vista pública, mostrando únicamente los 19 servicios y 6 sedes en monitoreo real.
+2) Layout Fiel de 3 Columnas:
+   - Columna 1 (24%): Lista vertical de Servicios con micro-sparklines de latencia.
+   - Columna 2 (34%): Sedes Regionales con estado de enlace WAN, latencias y equipos secundarios.
+   - Columna 3 (42%): Mapa interactivo de Topología Geográfica (Leaflet en modo oscuro) con nodos en Carabobo y enlaces vectoriales.
+3) Ventana Emergente Técnica Flotante (Tooltip HUD on Hover):
+   - Al posar el mouse sobre cualquier badge o elemento técnico, se despliega una ventana flotante con efecto Glassmorphism que detalla: Destino/IP, Puerto, Protocolo, Método de Check, Latencia en ms, Estado y Detalles operativos.
+
+--------------------------------------------------------------------------------
+49. CUADRAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): OCULTAMIENTO DE IPS CRUDAS Y REFINAMIENTO DE VENTANA HUD TOOLTIP
+--------------------------------------------------------------------------------
+1) Ajuste Estético de Tarjetas:
+   - Se removieron todas las direcciones IP y textos técnicos crudos visibles en la cara frontal de las tarjetas de servicios y sedes.
+   - En su lugar, se añadieron etiquetas estilizadas de estado operativo y rol de sede (`Operativo • Protocolo WEB`, `Centro de Telecomunicaciones`, etc.).
+2) Delegación Total de Datos Técnicos a la Ventana Emergente:
+   - Las direcciones IP, puertos, endpoints y detalles de transporte se consultan exclusivamente mediante la ventana emergente flotante (*Glassmorphism HUD Tooltip*) al posar el mouse sobre los badges o tarjetas.
+
+--------------------------------------------------------------------------------
+50. QUINCUAGÉSIMA INTERVENCIÓN (2026-08-31): DEPURACIÓN COMPLETA DE EQUIPOS Y SEDES NO CONFIGURADOS
+--------------------------------------------------------------------------------
+1) Filtrado Integral en Base de Datos y Motor:
+   - Se desactivaron y excluyeron todos los slots residuales con "NO CONFIGURADO" o `0.0.0.0` en la tabla `monitored_site_devices` (reduciendo de 64 a los 21 equipos secundarios reales en producción).
+   - Se sanearon los campos de direcciones físicas y teléfonos de contacto para eliminar cualquier texto de "NO CONFIGURADO" residual.
+   - El motor `monitor_web_sync.py` ahora reporta exactamente 19 servicios y 6 sedes activas reales, optimizando el ciclo de escaneo a 2.6 segundos.
+
+--------------------------------------------------------------------------------
+51. QUINCUAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): AUTO-SINCRONIZACIÓN FÍSICA MONITOREO.CONF -> MYSQL
+--------------------------------------------------------------------------------
+1) Auto-Sincronización Bidireccional en Tiempo Real:
+   - Se implementó la función `sync_conf_to_db()` en `/scripts/telegram-admin-bot/monitor/monitor_web_sync.py`.
+   - Cada vez que el motor de escaneo se ejecuta (por Cron cada 5 min o manualmente con `estatus web`), lee directamente los archivos físicos `/config/monitoreo.conf` y `bot.conf`.
+   - Cualquier cambio manual en los archivos de texto (como cambiar IPs, nombres o marcar sitios como "NO CONFIGURADO") se traslada e impacta de inmediato en MySQL y en el Dashboard Web sin intervención manual.
+2) Mapa de Topología Dinámico:
+   - El mapa Leaflet ahora dibuja marcadores y líneas de enlace exclusivamente para las sedes activas reportadas en la base de datos.
+
+--------------------------------------------------------------------------------
+52. QUINCUAGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): SOPORTE TLS 1.0 LEGACY PARA LDAPADMIN Y SERVICIOS WEB
+--------------------------------------------------------------------------------
+1) Diagnóstico de Incompatibilidad SSL:
+   - El servicio `LDAPADMIN Corporativo` (`https://ldapadmin.corpoelec.com.ve/htdocs/index.php` en IP `10.2.28.64`) opera sobre un servidor con Debian Lenny, Apache 2.2.9 y OpenSSL 0.9.8g usando TLS 1.0 (TLSv1) y suite de cifrado `DHE-RSA-AES256-SHA`.
+   - Python HTTPX y OpenSSL 3.0 por defecto rechazan conexiones con versiones menores a TLS 1.2 (`unsupported protocol`), marcando erróneamente el servicio como caído.
+2) Solución e Integración:
+   - Se configuró el contexto `SSL_PERMISSIVE_CTX` con `SECLEVEL=0` y `minimum_version=TLSv1` en `/scripts/telegram-admin-bot/monitor/monitor_web_sync.py`.
+   - `LDAPADMIN Corporativo` ahora responde exitosamente con `HTTP 200 OK` y latencia promedio de 138 ms, reportándose como OPERATIVO en verde.
+
+--------------------------------------------------------------------------------
+53. QUINCUAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE ASIGNACIÓN DE PUERTOS (LDAP 389, SMTP 25, CUPS 631)
+--------------------------------------------------------------------------------
+1) Diagnóstico de LDAP CARABOBO:
+   - `ldapr2-t4.corpoelec.com.ve` (`10.20.0.22`) tiene los puertos LDAP (389) y LDAPS (636) abiertos y funcionales.
+   - En la sincronización de `monitoreo.conf`, al leer `SMTPPORTL=25` y `LDAPPORTIPL=389`, la lógica anterior asignaba erróneamente el puerto 25 (SMTP de correo) al servicio de tipo `LDAP`.
+   - Como el puerto 25 está cerrado en el servidor LDAP (`Connection refused`), el monitor reportaba el servicio como inactivo.
+2) Solución Aplicada:
+   - Se ajustó el mapeo estricto por tipo de servicio: los servicios `LDAP` se verifican exclusivamente contra el puerto 389 (o `LDAPPORTIP`), `SMTP` contra el 25 y `CUPS` contra el 631.
+   - `LDAP CARABOBO` ahora responde exitosamente en 123 ms y se muestra como OPERATIVO en verde.
+
+--------------------------------------------------------------------------------
+54. QUINCUAGÉSIMA CUARTA INTERVENCIÓN (2026-08-31): REESTRUCTURACIÓN DEL LANDING PAGE (3 COLUMNAS: ACTIVOS, SEDES, CAÍDAS)
+--------------------------------------------------------------------------------
+1) Eliminación del Mapa:
+   - Se removió la integración de Leaflet y los contenedores de mapas satelitales/geográficos.
+2) Nueva Distribución Visual en 3 Columnas:
+   - Columna 1 (32%): Servicios Activos (`Active Services`) mostrando únicamente los servicios con respuesta exitosa (LED verde, micro-barras y badge).
+   - Columna 2 (34%): Sedes Regionales Conectadas (`Active Regional Sites`) mostrando únicamente las sedes con enlace WAN operativo y sus dispositivos locales.
+   - Columna 3 (34%): Panel de Incidentes y Caídas dividido en 2 bloques independientes:
+     * Bloque Superior (50%): Servicios Caídos / Inactivos (estilo rojo de alerta, motivo de fallo).
+     * Bloque Inferior (50%): Sedes sin Conexión / WAN Caída (estilo ámbar/rojo de alerta de enlace).
+3) HUD Tooltip Dinámico:
+   - Funcional en las 3 columnas y 4 subsecciones al posar el mouse sobre cualquier tarjeta o badge.
+
+--------------------------------------------------------------------------------
+55. QUINCUAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): VISTA COMPACTA Y ACORDEÓN INTERACTIVO DE SEDES
+--------------------------------------------------------------------------------
+1) Compactación de Sedes en Columna 2:
+   - Las tarjetas de sedes regionales se renderizan de forma ultra-compacta por defecto (mostrando solo el nombre principal, LED verde de estado, badge de rol y flecha interactiva).
+2) Comportamiento Hover vs Click:
+   - Al posar el mouse sobre el nombre/cabecera de la sede, se despliega la ventana emergente flotante (HUD Tooltip) con su IP, latencia, teléfonos y dirección.
+   - Al hacer clic sobre la tarjeta de la sede, se expande suavemente hacia abajo el panel con la latencia del gateway y la cuadrícula de equipos en sitio.
+3) Preservación de Tooltips en Equipos Secundarios:
+   - Al pasar el cursor sobre cada equipo secundario dentro del panel desplegado, se activa su propio HUD Tooltip técnico individual con IP, slot y latencia.
+
+--------------------------------------------------------------------------------
+56. QUINCUAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): COMPACTACIÓN INTEGRAL DE SERVICIOS ACTIVOS Y CAÍDOS
+--------------------------------------------------------------------------------
+1) Diseño Ultra-Compacto de Servicios Activos (Columna 1):
+   - Se transformaron las tarjetas en filas esbeltas de una sola línea (`py-1.5 px-2.5`), mostrando el LED verde pulsante, el nombre del servicio, la latencia en milisegundos y el badge de protocolo.
+   - Todo el detalle técnico completo (IP, puerto, endpoint, respuesta HTTP) se mantiene accesible de inmediato mediante la ventana emergente flotante (HUD Tooltip) al posar el mouse.
+2) Homogeneización de la Columna 3 (Incidentes):
+   - Se aplicó la misma estructura ultra-compacta en los bloques de Servicios Caídos y Sedes sin Conexión, logrando un aprovechamiento óptimo del espacio vertical.
+
+--------------------------------------------------------------------------------
+57. QUINCUAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE RESOLUCIÓN DE PUERTOS EN PROXIES (8080)
+--------------------------------------------------------------------------------
+1) Diagnóstico del Desfase de Proxies:
+   - En el Bot de Telegram (`bot.py`), el comando `/internet` evalúa la lista `bot.conf` donde los proxies incluyen explícitamente el puerto `:8080`.
+   - En `monitoreo.conf`, los servicios Q, R, S (`Pfsense`) tenían `IPSERVICE=10.20.0.89` (sin el puerto `:8080`), mientras que la variable con puerto estaba en `PROXYIPPORT=10.20.0.89:8080`.
+   - Como el evaluador del monitor web tomaba la IP sin puerto (`10.20.0.89`), el cliente HTTP intentaba conectarse al puerto 80 estándar en lugar del puerto 8080 del Squid/PfSense, retornando fallo o 400 Bad Request.
+2) Solución Aplicada:
+   - Se ajustó el evaluador asíncrono `evaluate_service` y el sincronizador `sync_conf_to_db` para forzar automáticamente el puerto de proxy (`:8080`) si no viene especificado en la IP.
+   - Tras el escaneo, los 3 proxies (`Pfsense CARABOBO 119`, `Pfsense CARABOBO 89` y `Pfsense Valle Seco 65`) responden con `HTTP 200 OK` y aparecen directamente en la columna de **Servicios Activos** en la página web.
+
+--------------------------------------------------------------------------------
+58. QUINCUAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): MIGRACIÓN DE DOMINIO LOCAL A monitoreo-vs.local
+--------------------------------------------------------------------------------
+1) Actualización en Sistema Operativo & Resolución Local:
+   - Se configuró `/etc/hosts` para mapear `monitoreo-vs.local` a `127.0.0.1`, `10.20.23.221` y `192.168.1.107` (preservando `testapp.local` y `localhost` como alias compatibles).
+2) Servidor Web Apache:
+   - Se actualizó el VirtualHost en `/etc/apache2/sites-available/laravel.conf` definiendo `ServerName monitoreo-vs.local` y `ServerAlias testapp.local localhost 127.0.0.1 *`.
+   - Se validó la sintaxis con `apache2ctl configtest` y se recargó el servicio `apache2`.
+3) Configuración de Aplicación Laravel:
+   - Se actualizó `APP_URL=http://monitoreo-vs.local` en `/var/www/testapp/.env` y se limpiaron las cachés del framework (`config:clear` y `cache:clear`).
+   - El portal responde con `HTTP 200 OK` en `http://monitoreo-vs.local/`.
+
+--------------------------------------------------------------------------------
+59. QUINCUAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): AJUSTE DE MICRO-TIPOGRAFÍA EN COLUMNAS
+--------------------------------------------------------------------------------
+1) Reducción de Fuentes en Tarjetas:
+   - Se ajustó el tamaño de los nombres de servicios y sedes principales a `text-[11px]` (`font-semibold` / `font-bold`), logrando mayor elegancia y menor ocupación de espacio horizontal.
+   - Se adaptaron los indicadores de latencia a `text-[9px]`, los badges de protocolo a `text-[8.5px]` y los subtítulos a `text-[9px]`.
+   - Los equipos en sitio dentro del acordeón de sedes se ajustaron a `text-[9px]`.
+2) Homogeneidad en todo el Dashboard:
+   - Aplicado tanto para Servicios Activos y Sedes Conectadas como para el bloque de Servicios Caídos y Sedes sin Conexión.
+
+--------------------------------------------------------------------------------
+60. SEXAGÉSIMA INTERVENCIÓN (2026-08-31): AJUSTE DE SUBTÍTULO INSTITUCIONAL DEL HEADER
+--------------------------------------------------------------------------------
+1) Actualización de Texto:
+   - Se modificó el subtítulo superior en la cabecera principal (`resources/views/public/index.blade.php`) de `"CENTRO DE COMANDO & TELECOMUNICACIONES"` a `"SISTEMA DE MONITOREO VALLE SECO"`.
+   - Se vació la caché de vistas compiladas de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+61. SEXAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE IP EN PROXYIPPORTQ (PROXY 119)
+--------------------------------------------------------------------------------
+1) Causa del Desfase entre /estatus y /servicios:
+   - El comando `/estatus` (o `/internet`) lee la lista de proxies directamente de `bot.conf`, donde el Proxy 119 tenía configurada la IP correcta `10.20.0.119:8080`.
+   - El reporte `/servicios` lee las definiciones en `monitoreo.conf` (Host Q); allí `PROXYIPPORTQ` tenía por error la dirección `10.20.23.25:8080` (una IP del segmento 23) en lugar de `10.20.0.119:8080`.
+   - Al ejecutar `/servicios`, el motor intentaba conectarse a `10.20.23.25:8080` (timeout), marcando el servicio como fallido.
+2) Corrección Aplicada:
+   - Se ajustó `PROXYIPPORTQ=10.20.0.119:8080` en `config/monitoreo.conf`.
+   - Al ejecutar `/servicios`, `Pfsense - CARABOBO (119)` responde exitosamente y se reporta como `✅ Operativo`.
+
+--------------------------------------------------------------------------------
+62. SEXAGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): INCORPORACIÓN DEL LOGO OFICIAL DE CORPOELEC
+--------------------------------------------------------------------------------
+1) Despliegue de Recursos Gráficos:
+   - Se copió el archivo `logo.png` a `/var/www/testapp/public/img/logo.png`.
+2) Integración en Vistas:
+   - Se reemplazó el icono Material Symbol por el logo oficial de CORPOELEC dentro del recuadro con efecto resplandor cian/azul degradado (`bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 glow-cyan`) en:
+     * Header de la Landing Page pública (`resources/views/public/index.blade.php`).
+     * Pantalla de Login Administrativo (`resources/views/auth/login.blade.php`).
+     * Sidebar del Panel de Control (`resources/views/layouts/admin.blade.php`).
+
+--------------------------------------------------------------------------------
+63. SEXAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): REUBICACIÓN DEFINITIVA DE logo.png
+--------------------------------------------------------------------------------
+1) Limpieza y Consolidación:
+   - Se eliminó el archivo residual en la raíz `/var/www/testapp/logo.png`.
+   - La ubicación canónica y definitiva del logo queda establecida exclusivamente en `/var/www/testapp/public/img/logo.png`.
+
+--------------------------------------------------------------------------------
+64. SEXAGÉSIMA CUARTA INTERVENCIÓN (2026-08-31): INTEGRACIÓN COMPLETA DE FAVICONS Y TOUCH ICONS
+--------------------------------------------------------------------------------
+1) Suite de Iconos Multiplataforma:
+   - Se integraron todos los formatos del directorio `/var/www/testapp/public/img/ico/` en el `<head>` del layout principal (`layouts/app.blade.php`):
+     * `favicon.ico` (32x32 / 16x16 / 96x96 / 192x192).
+     * Apple Touch Icons (57x57 hasta 180x180).
+     * Android Web App Manifest (`manifest.json`) y Tile Icons para Windows / Edge (`browserconfig.xml`).
+     * `theme-color` y `TileColor` en `#051424` para armonía con el tema Obsidian.
+   - Se duplicó `favicon.ico` en la raíz `/var/www/testapp/public/favicon.ico` para soporte nativo y directo de navegadores.
+
+--------------------------------------------------------------------------------
+65. SEXAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): CAPTURAS WEB AUTOMATIZADAS EN ALTA DEFINICIÓN
+--------------------------------------------------------------------------------
+1) Motor de Captura Web Headless (`monitor/web_screenshot.py`):
+   - Integración de Chromium Headless vía Playwright con renderizado @2x Retina (1920x1080).
+   - Soporte para 4 modos de captura:
+     * `full`: Vista panorámica global completa de las 3 columnas.
+     * `servicios`: Captura focalizada de la Columna 1 (Servicios Activos).
+     * `sedes`: Captura focalizada de la Columna 2 con apertura interactiva de acordeones de equipos.
+     * `caidas`: Captura focalizada de la Columna 3 (Incidentes y Servicios Caídos).
+   - Sistema de caché en memoria de 15 segundos para evitar sobrecarga de renderizado.
+2) Comandos e Interacción en Telegram:
+   - `/servicios`: Reporte textual + Captura focalizada de Servicios Activos.
+   - `/servicios web` o `/servicios full`: Reporte textual + Captura panorámica global (3 columnas).
+   - `/sedes`: Reporte textual + Captura focalizada de Sedes y Equipos en Sitio.
+   - `/sedes web`: Reporte textual + Captura panorámica global (3 columnas).
+   - `/caidas` / `/incidentes`: Reporte de fallas + Captura de la columna de incidentes.
+   - `/web` / `/pantalla`: Captura gráfica directa panorámica en HD.
+   - `/estatus`: Preservado de forma inmutable con su funcionalidad de diagnóstico original.
+
+--------------------------------------------------------------------------------
+66. SEXAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): MÓDULO DE TELEMETRÍA Y SALUD GLOBAL EN COLUMNA 3
+--------------------------------------------------------------------------------
+1) Integración Visual:
+   - Se añadió un panel de telemetría institucional en la base de la Columna 3 (debajo de "Sedes sin Conexión").
+   - Contiene:
+     * Badge reactivo de Estado Global con LED pulsante (`OPERACIONAL` / `DEGRADADO` / `CRÍTICO`).
+     * Cuadrícula de 3 micro-tarjetas glass con contadores y porcentajes de disponibilidad: Servicios (14/18 - 77.8%), Sedes (4/5 - 80%), Proxies (4/4 - 100%).
+     * Leyenda explicativa con los umbrales de cada estado.
+     * Integración con el sistema interactivo de HUD Tooltips flotantes.
+
+--------------------------------------------------------------------------------
+67. SEXAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE TÍTULO A "TELEMETRÍA Y ESTATUS GLOBAL"
+--------------------------------------------------------------------------------
+1) Actualización de Cabecera:
+   - Se renombró el título del bloque de telemetría de la Columna 3 a `"Telemetría y Estatus Global"`.
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+68. SEXAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): BOTÓN DE LOGIN EN MODO SÓLO ÍCONO
+--------------------------------------------------------------------------------
+1) Simplificación Visual:
+   - Se transformó el botón de acceso de la cabecera en un botón cuadrado minimalista (`w-9 h-9`) con el ícono centrado (`lock` para invitados y `admin_panel_settings` para administradores autenticados), eliminando el texto y ahorrando espacio horizontal en la barra superior.
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+69. SEXAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DINÁMICA DEL DOM EN VIVO (OPCIÓN B)
+--------------------------------------------------------------------------------
+1) Motor Reactivo Frontend (AJAX / JSON Snapshot):
+   - Se configuró el ciclo de sondeo reactivo cada 15 segundos hacia `/api/status`.
+   - Si un servicio o sede cambia de estado (se cae o se recupera), el DOM se reordena de forma instantánea sin recarga de página ni parpadeos:
+     * Traslado automático entre la Columna 1 (Activos), Columna 2 (Sedes) y Columna 3 (Caídos / Desconectadas).
+     * Preservación del estado abierto/cerrado de los acordeones de equipos en sitio que el usuario esté inspeccionando.
+     * Actualización en tiempo real de los porcentajes y métricas de telemetría (Servicios, Sedes, Proxies).
+     * Re-vinculación fluida del HUD Tooltip flotante e interactivo.
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+70. SEPTUAGÉSIMA INTERVENCIÓN (2026-08-31): RESTRICCIÓN DE ADMINISTRACIÓN A EDICIÓN DE SLOTS ESTRUCTURALES
+--------------------------------------------------------------------------------
+1) Blindaje de Integridad entre Panel Web y monitoreo.conf:
+   - Se removieron los botones de creación arbitraria ("Agregar Nuevo Servicio", "Agregar Nueva Sede", "Agregar Nuevo Proxy") y sus modales en el Panel de Administración (`admin/services`, `admin/sites`, `admin/proxies`).
+   - Se retiraron las acciones de eliminación directa, protegiendo la estructura base de slots (`A..Z` para Servicios, `A..H` para Sedes y `A..D` para Proxies).
+   - Se preservaron exclusivamente las funciones de **Modificar Parámetros** y **Habilitar/Deshabilitar**, asegurando la coherencia 1 a 1 con el archivo físico `monitoreo.conf` y el bot de Telegram.
+
+--------------------------------------------------------------------------------
+71. SEPTUAGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): HISTÓRICO TEMPORAL Y GRÁFICOS DE LÍNEA POR SERVICIO
+--------------------------------------------------------------------------------
+1) Base de Datos y Modelo:
+   - Se creó la tabla `service_check_histories` con campos `monitored_service_id`, `is_up`, `latency_ms`, `http_code`, `status_message` y `checked_at` (indexado).
+   - Se creó el modelo `App\Models\ServiceCheckHistory` y su relación `histories()` con `MonitoredService`.
+2) Registro de Chequeos en Escaneos Python:
+   - Se actualizó `monitor/monitor_web_sync.py` para registrar cada chequeo individual en `service_check_histories` con política de retención de 30 días.
+3) API y Gráficos Interactivos (Chart.js):
+   - Se añadió el endpoint `/admin/services/{service}/history` con soporte para rangos temporales (`6h`, `24h`, `7d`, `30d`) y cálculo de estadísticas clave (Uptime %, Latencia Media, Latencia Máxima, Caídas e Incidentes).
+   - Se integró un modal de telemetría e histórico temporal en `admin/services` con gráfico de líneas suave en degradado neón, puntos de detección de caídas en rojo y tabla de incidentes.
+
+--------------------------------------------------------------------------------
+72. SEPTUAGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): CONFIGURACIÓN DE ZONA HORARIA CARACAS - VENEZUELA
+--------------------------------------------------------------------------------
+1) Ajuste de Configuración y Localización:
+   - Se estableció `APP_TIMEZONE=America/Caracas` y `APP_LOCALE=es` en `.env`.
+   - Se actualizó `config/app.php` para utilizar `America/Caracas` (-04:00) y `es_VE` por defecto.
+   - Se limpiaron las cachés del framework (`config:clear`, `cache:clear`, `view:clear`).
+   - Se verificó que todas las fechas, timestamps de auditoría, gráficos y capturas reflejen con precisión la hora de Venezuela.
+
+--------------------------------------------------------------------------------
+73. SEPTUAGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): CIERRE DE MODALES AL CLIC EXTERIOR Y TECLA ESC
+--------------------------------------------------------------------------------
+1) Experiencia de Usuario (UX) en Modales Administrativos:
+   - Se implementó el cierre automático del modal de **Histórico y Telemetría** al hacer clic sobre el fondo oscuro/backdrop exterior.
+   - Se mantuvo el botón de cierre [×] interactivo y accesible.
+   - Se añadió un listener global para cerrar cualquier modal abierto mediante la tecla `Escape`.
+   - Se controló el bloqueo de scroll (`overflow-hidden`) del body mientras el modal permanezca abierto.
+
+--------------------------------------------------------------------------------
+74. SEPTUAGÉSIMA CUARTA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE INSIGNIA EN SERVICIOS ADMINISTRATIVOS
+--------------------------------------------------------------------------------
+1) Ajuste Visual de Cabecera:
+   - Se renombró el texto de la insignia superior derecha en `admin/services` a `"Datos de monitoreo.conf"`.
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+75. SEPTUAGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): MENÚ LATERAL RETRÁCTIL Y ACTUALIZACIÓN DE SUBTÍTULO
+--------------------------------------------------------------------------------
+1) Menú Lateral Auto-Escondido (Sidebar Retráctil):
+   - Se configuró el sidebar administrativo para permanecer oculto por defecto fuera de pantalla (`-translate-x-full`).
+   - Se integró un botón referencial de acceso directo en la barra superior con badge e icono reactivo (`menu` / `menu_open`).
+   - Se añadió animación suave de deslizamiento con fondo oscuro traslúcido (backdrop) y soporte de cierre automático con clic fuera o tecla `Escape`.
+   - Se expandió el área de contenido principal al 100% de la pantalla para máxima visibilidad de gráficos y tablas.
+2) Actualización de Subtítulo:
+   - Se cambió el subtítulo en `admin/services` a `"Datos del Historial de conexión"`.
+
+--------------------------------------------------------------------------------
+76. SEPTUAGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): HISTÓRICO TEMPORAL Y GRÁFICOS DE LÍNEA PARA SEDES Y ENLACES
+--------------------------------------------------------------------------------
+1) Base de Datos y Modelo:
+   - Se creó la migración y tabla `site_check_histories` con campos `monitored_site_id`, `is_up`, `latency_ms`, `devices_online`, `devices_total`, `status_message` y `checked_at` (indexado).
+   - Se creó el modelo `App\Models\SiteCheckHistory` y relación `histories()` en `MonitoredSite`.
+2) Registro de Chequeos en Escaneos Python:
+   - Se actualizó `monitor/monitor_web_sync.py` para registrar cada chequeo de enlace de sede y equipos en `site_check_histories` con política de retención de 30 días.
+3) API y Gráficos Interactivos (Chart.js):
+   - Se añadió el endpoint `/admin/sites/{site}/history` con soporte para rangos temporales (`6h`, `24h`, `7d`, `30d`) y cálculo de estadísticas clave (Disponibilidad %, Latencia Ping Media, Latencia Máxima, Equipos Promedio ON y Desconexiones).
+   - Se integró el modal de telemetría e histórico de sede en `admin/sites` con gráfico de líneas en degradado púrpura neón, puntos de desconexión en rojo, tabla de incidentes y soporte de cierre por clic exterior / tecla Escape.
+
+--------------------------------------------------------------------------------
+77. SEPTUAGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE TÍTULO EN SEDES ADMINISTRATIVAS
+--------------------------------------------------------------------------------
+1) Ajuste Visual de Cabecera:
+   - Se renombró el título principal en `admin/sites` a `"Sedes Regionales y Equipos de Red Monitoreados"`.
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+78. SEPTUAGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): HISTÓRICO TEMPORAL Y GRÁFICOS DE LÍNEA PARA PROXIES
+--------------------------------------------------------------------------------
+1) Base de Datos y Modelo:
+   - Se creó la migración y tabla `proxy_check_histories` con campos `monitored_proxy_id`, `is_up`, `latency_ms`, `http_code`, `status_message` y `checked_at` (indexado).
+   - Se creó el modelo `App\Models\ProxyCheckHistory` y relación `histories()` en `MonitoredProxy`.
+2) Registro de Chequeos en Escaneos Python:
+   - Se actualizó `monitor/monitor_web_sync.py` para registrar cada chequeo de túnel de proxy en `proxy_check_histories` con política de retención de 30 días.
+3) API y Gráficos Interactivos (Chart.js):
+   - Se añadió el endpoint `/admin/proxies/{proxy}/history` con soporte para rangos temporales (`6h`, `24h`, `7d`, `30d`) y cálculo de estadísticas clave (Disponibilidad %, Latencia Túnel Media, Latencia Máxima y Fallas).
+   - Se integró el modal de telemetría e histórico de proxies en `admin/proxies` con gráfico de líneas en degradado ámbar/dorado neón, puntos de fallo en rojo, tabla de incidentes y soporte de cierre por clic exterior / tecla Escape.
+
+--------------------------------------------------------------------------------
+79. SEPTUAGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): PURGA DE DATOS SINTÉTICOS Y REGISTRO 100% REAL EN VIVO
+--------------------------------------------------------------------------------
+1) Purga Completa (Truncate):
+   - Se vaciaron las tablas `service_check_histories`, `site_check_histories` y `proxy_check_histories`, eliminando todos los registros generados inicialmente.
+2) Inicio de Registro Auténtico:
+   - Se ejecutó un ciclo de escaneo en vivo con el motor en Python ([`monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py)) generando los primeros puntos auténticos con marcas de tiempo en hora oficial de Venezuela (`America/Caracas`).
+   - Cada ciclo programado (cada 5 minutos) continuará acumulando exclusivamente telemetría real y fidedigna.
+
+--------------------------------------------------------------------------------
+80. OCTOGÉSIMA INTERVENCIÓN (2026-08-31): CAPTURA PANORÁMICA WEB GLOBAL EN REPORTES DE SERVICIOS Y CRON
+--------------------------------------------------------------------------------
+1) Actualización del Motor de Reportes CLI y Cron (`monitor_engine.py`):
+   - Se añadió generación y despacho automático de la captura web panorámica en alta definición (vista de 3 columnas de `http://monitoreo-vs.local/`) en cada ejecución de `/usr/local/bin/estatus servicios` (7:30 AM y 4:00 PM).
+2) Incorporación de `send_photo` en `TelegramDispatcher`:
+   - Se implementó el método nativo `send_photo` en `TelegramDispatcher` con soporte de failover multiproxy y caption formateado en HTML.
+3) Comando Interactivo `/servicios`:
+   - Se unificó el comando `/servicios` para despachar por defecto la imagen panorámica global de 3 columnas (`mode="full"`), igual que la opción `/servicios web`.
+
+--------------------------------------------------------------------------------
+81. OCTOGÉSIMA PRIMERA INTERVENCIÓN (2026-08-31): AJUSTE PRECISO DE CAPTURAS: INTERACTIVAS VS AUTOMÁTICAS
+--------------------------------------------------------------------------------
+1) Restauración de Comandos Interactivos en `bot.py`:
+   - `/servicios`: Vuelve a enviar la captura focalizada de la columna de Servicios Corporativos (`mode="servicios"`).
+   - `/servicios web`: Se mantiene para solicitar explícitamente la panorámica completa de 3 columnas (`mode="full"`).
+   - `/sedes` y `/caidas`: Conservan sus capturas especializadas por columna.
+2) Reporte Automático Programado en Cron (`monitor_engine.py`):
+   - Se mantiene configurado exclusivamente para que a las 7:30 AM y 4:00 PM envíe el texto institucional junto con la **captura panorámica global de 3 columnas** (`mode="full"`).
+
+--------------------------------------------------------------------------------
+82. OCTOGÉSIMA SEGUNDA INTERVENCIÓN (2026-08-31): ACTUALIZACIÓN DE TEXTOS DE CAPTION EN IMÁGENES
+--------------------------------------------------------------------------------
+1) Ajuste de Leyendas en Telegram (`bot.py` y `monitor_engine.py`):
+   - Se actualizó el encabezado de las capturas de imagen a: `📸 Captura en Tiempo Real`.
+   - Se actualizó la etiqueta de vista panorámica de 3 columnas a: `📌 Vista Global`.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+83. OCTOGÉSIMA TERCERA INTERVENCIÓN (2026-08-31): VISUALIZACIÓN ACTIVA DE LÍNEA PARA ELEMENTOS CAÍDOS
+--------------------------------------------------------------------------------
+1) Ajuste en Endpoints de Historial (`AdminServiceController`, `AdminSiteController`, `AdminProxyController`):
+   - Se estableció la latencia en `0.0 ms` para chequeos no operativos (`is_up = false`) en lugar de `null`.
+   - Se forzó el ordenamiento cronológico ascendente estricto (`reorder('checked_at', 'asc')`).
+2) Mejoras Visuales en Chart.js (Servicios, Sedes y Proxies):
+   - Se activó `spanGaps: true` y trazado dinámico con curva y degradado rojo neón cuando el elemento está 100% caído.
+   - Se añadieron puntos circulares rojos visibles en cada evento de desconexión / servicio apagado con tooltips diagnósticos claros (`❌ SERVICIO CAÍDO / APAGADO`).
+   - Se limpió la caché compilada de Blade (`php artisan view:clear`).
+
+--------------------------------------------------------------------------------
+84. OCTOGÉSIMA CUARTA INTERVENCIÓN (2026-08-31): CORRECCIÓN DE IMPORT EN REINICIO AUTÓNOMO DE CONEXIÓN
+--------------------------------------------------------------------------------
+1) Corrección de Excepción en Conmutación:
+   - Se añadió el import faltante `import sys` en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) que impedía la ejecución de `restart_bot_process` (`python_bin = sys.executable` y `os.execv`) al dispararse el failover tras fallas de red en polling.
+   - Se verificó la compilación limpia del script y se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+85. OCTOGÉSIMA QUINTA INTERVENCIÓN (2026-08-31): RESOLUCIÓN DE BUCLE DE REINICIOS PREMATUROS EN PROXIES
+--------------------------------------------------------------------------------
+1) Diagnóstico y Corrección de Bucle de Failover:
+   - Se detectó que al conmutar a un proxy remoto (Carabobo), los primeros reintentos de handshake TLS activaban `trigger_connection_failover`, el cual volvía a reiniciar el bot cada 15 segundos antes de que pudiera completar la sesión de polling.
+   - En [`bot.py`](file:///scripts/telegram-admin-bot/bot.py), se ajustó `trigger_connection_failover` para que, si la ruta actual es saludable y operativa, no reinicie el proceso, sino que restablezca los contadores y continúe la escucha activa.
+   - Se aumentó el umbral de tolerancia a 8 fallos consecutivos en `bot_error_handler` y se optimizaron los timeouts de [`HTTPXRequest`](file:///scripts/telegram-admin-bot/bot.py#L3723) (`connect_timeout=15s`, `read_timeout=35s`).
+   - Se validó el polling real con `POST getUpdates` retornando `HTTP 200 OK` en todas las rutas de proxy.
+
+--------------------------------------------------------------------------------
+86. OCTOGÉSIMA SEXTA INTERVENCIÓN (2026-08-31): PARÁMETROS DE POLLING ROBUSTOS PARA CONEXIONES PROXY
+--------------------------------------------------------------------------------
+1) Ajuste en `run_polling` de [`bot.py`](file:///scripts/telegram-admin-bot/bot.py):
+   - Se configuró `bootstrap_retries=-1` para reintentos continuos y suaves durante la inicialización de sockets en túneles Squid.
+   - Se definió `poll_interval=1.0` y `drop_pending_updates=False` para evitar colisiones de conexión y preservar todos los mensajes enviados por los usuarios durante la conmutación.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+87. OCTOGÉSIMA SÉPTIMA INTERVENCIÓN (2026-08-31): CORRECCIÓN CRÍTICA DE PROXY EN GET_UPDATES_REQUEST
+--------------------------------------------------------------------------------
+1) Descubrimiento de Fallo de Arquitectura en `ApplicationBuilder`:
+   - En `python-telegram-bot`, la clase `ApplicationBuilder` gestiona dos instancias separadas de `HTTPXRequest`: una para operaciones regulares de la API (`_request`) y otra exclusiva para el ciclo de polling (`_get_updates_request`).
+   - Al configurar solo `.request(request)` con el proxy activo, el objeto `_get_updates_request` quedaba por defecto con `proxy=None` (conexión directa).
+   - Por esta razón, al caerse la WAN de Valle Seco, las funciones de inicio (`getMe`, `deleteWebhook`) usaban el proxy de Carabobo con éxito, pero el bucle continuo de `getUpdates` (escucha de mensajes) intentaba salir de forma directa a Internet sin proxy, generando los errores de red continuos.
+2) Solución Definitiva:
+   - Se instanció explícitamente `get_updates_request = HTTPXRequest(proxy=active_proxy, ...)` y se vinculó en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) mediante `.get_updates_request(get_updates_request)`.
+   - Se verificó mediante introspección que tanto `r0` (API) como `r1` (Polling) operan a través del proxy activo de forma simultánea.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+88. OCTOGÉSIMA OCTAVA INTERVENCIÓN (2026-08-31): IMPLEMENTACIÓN DEL COMANDO EXCLUSIVO /REINICIA
+--------------------------------------------------------------------------------
+1) Comando Exclusivo para el Owner:
+   - Se implementó el comando [`/reinicia`](file:///scripts/telegram-admin-bot/bot.py#L3556) (y alias `/reboot`) en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) para la ejecución de `sudo reboot`.
+   - Se blindó con verificación estricta de identidad: solo el Administrador Propietario (`IMMUTABLE_OWNER_ID`) puede invocarlo; cualquier intento de un tercero es rechazado, registrado en auditoría y notificado como violación de seguridad.
+   - Cuenta con confirmación visual en Telegram, sincronización de discos (`sync`) y temporizador de 2 segundos para asegurar la entrega de la confirmación antes del apagado.
+   - Se actualizó [`config/commands.json`](file:///scripts/telegram-admin-bot/config/commands.json) y se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+89. OCTOGÉSIMA NOVENA INTERVENCIÓN (2026-08-31): NOTIFICACIÓN PRIVADA EXCLUSIVA PARA /REINICIA
+--------------------------------------------------------------------------------
+1) Privacidad Estricta de Notificación de Reinicio:
+   - Se ajustó [`cmd_reinicia`](file:///scripts/telegram-admin-bot/bot.py#L3556) en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) para que el mensaje de alerta de reinicio se transmita única y exclusivamente al chat privado del Owner (`IMMUTABLE_OWNER_ID`), eliminando cualquier rastro en grupos públicos si fue invocado desde ellos.
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+90. NONAGÉSIMA INTERVENCIÓN (2026-09-02): ELIMINACIÓN DE URL EN CAPTIONS DE IMÁGENES
+--------------------------------------------------------------------------------
+1) Ajuste en Plantillas de Mensaje con Imagen:
+   - Se removió la línea `🌐 http://monitoreo-vs.local/` de las leyendas (*captions*) de fotos en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) y [`monitor_engine.py`](file:///scripts/telegram-admin-bot/monitor/monitor_engine.py).
+   - Se reinició el servicio systemd `tg-admin-bot`.
+
+--------------------------------------------------------------------------------
+91. NONAGÉSIMA PRIMERA INTERVENCIÓN (2026-09-02): INTEGRACIÓN DEL BOT CENTINELA DEDICADO
+--------------------------------------------------------------------------------
+1) Despliegue de Arquitectura Sentinel de Seguridad y Licenciamiento:
+   - Se integró y ofuscó de forma inmutable el Token del Bot Centinela (`8871359797:AAF9YY47kbA_X6WJw4Fwhubyqgt6ewBuM9A` - `@nimda_control_bot`) en [`monitor/core_shield.py`](file:///scripts/telegram-admin-bot/monitor/core_shield.py).
+   - Se implementó el servicio autónomo [`sentinel_bot.py`](file:///scripts/telegram-admin-bot/sentinel_bot.py) y el servicio systemd `tg-sentinel-bot.service` para la gestión centralizada de autorizaciones, auditoría forense y migración en caliente (*Zero-Downtime Hot Swap*).
+   - Las alertas de primer arranque y discrepancias de hardware ahora se transmiten al Bot Centinela con telemetría de Hostname, IPs locales (sin MAC) y botones interactivos de un clic para activación, migración asistida o bloqueo de clones no autorizados.
+   - Ambos servicios (`tg-admin-bot` y `tg-sentinel-bot`) se encuentran activos, verificados y monitoreados.
+
+--------------------------------------------------------------------------------
+92. NONAGÉSIMA SEGUNDA INTERVENCIÓN (2026-09-02): COMANDOS DE ACTUALIZACIÓN GIT EN EL BOT CENTINELA
+--------------------------------------------------------------------------------
+1) Forzado de Sincronización Git desde el Bot Centinela:
+   - Se integraron los comandos `/actualizar`, `/actualizar_git` y `/forzar_actualizacion` en [`sentinel_bot.py`](file:///scripts/telegram-admin-bot/sentinel_bot.py).
+   - Se añadieron botones interactivos `[ ⚡ Forzar Git Update ]` y `[ 🔄 Recomprobar ]` en el menú principal (`/start`) y en las respuestas de actualización.
+   - El proceso ejecuta `git reset --hard origin/master`, preserva la configuración local, recompila el código y reinicia ambos servicios (`tg-admin-bot` y `tg-sentinel-bot`) de forma automática.
+   - Se reinició el servicio systemd `tg-sentinel-bot`.
+
+--------------------------------------------------------------------------------
+93. NONAGÉSIMA TERCERA INTERVENCIÓN (2026-09-02): RENOMBRADO A /VAR/WWW/MONITOREO Y AJUSTE DE ECOSISTEMA
+--------------------------------------------------------------------------------
+1) Migración de Ruta Web y Configuración de Servidores:
+   - Se renombró la carpeta `/var/www/testapp` a `/var/www/monitoreo`.
+   - Se actualizó el VirtualHost de Apache en `/etc/apache2/sites-available/laravel.conf` apuntando a `/var/www/monitoreo/public` y se recargó Apache (`systemctl reload apache2`).
+   - Se limpiaron las cachés de Laravel (`config:clear`, `cache:clear`, `route:clear`, `view:clear`) y se ajustaron permisos de lectura/escritura (777/775) para `www-data` y `britojab` en `storage/` y `bootstrap/cache/`.
+   - Se actualizó [`monitor/monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py) para sincronizar con la nueva ruta `/var/www/monitoreo`.
+   - Se verificaron las respuestas HTTP 200 OK en `http://monitoreo-vs.local/`, `http://localhost/` y la generación exitosa de capturas con Playwright.
+
+--------------------------------------------------------------------------------
+94. NONAGÉSIMA CUARTA INTERVENCIÓN (2026-09-02): MIGRACIÓN A MONITOREO_VS, WEB_PORTAL EN GIT E INSTALADOR UNIFICADO
+--------------------------------------------------------------------------------
+1) Eliminación de 'testapp' y Migración a Base de Datos Corporativa 'monitoreo_vs':
+   - Se creó la base de datos `monitoreo_vs` y el usuario `monitoreo_user` con contraseña fuerte de alta entropía.
+   - Se transfirieron todas las tablas y datos desde `testapp` a `monitoreo_vs`.
+   - Se purgó por completo la base de datos y usuario antiguos `testapp`.
+   - Se actualizaron las credenciales en `/var/www/monitoreo/.env` y [`monitor/monitor_web_sync.py`](file:///scripts/telegram-admin-bot/monitor/monitor_web_sync.py).
+   - Se exportó la plantilla inicial limpia en [`database/schema_monitoreo.sql`](file:///scripts/telegram-admin-bot/database/schema_monitoreo.sql) (38 KB).
+
+2) Integración del Portal Web en el Repositorio Git:
+   - Se sincronizó la aplicación Laravel en `web_portal/` excluyendo dependencias pesadas (`vendor/`, `node_modules/`, cachés y logs) para mantener el repositorio ligero (2.5 MB).
+   - Se añadieron reglas de exclusión en `.gitignore` y plantilla `.env.example`.
+
+3) Instalador Maestro Unificado (0 a 100 en un comando):
+   - Se reestructuró por completo [`installer/install.sh`](file:///scripts/telegram-admin-bot/installer/install.sh) para desplegar desatendidamente la pila LAMP (Apache, MariaDB, PHP 8.2+), la base de datos `monitoreo_vs`, el portal web en `/var/www/monitoreo`, las capturas con Playwright Chromium, Ollama, CLI globales, notificadores `boot-alert`, alertas SSH por PAM y los servicios de ambos bots (`tg-admin-bot` y `tg-sentinel-bot`).
+
+--------------------------------------------------------------------------------
+95. ESTADO FINAL DE VERIFICACIÓN
+--------------------------------------------------------------------------------
+- Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
+- Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).
+- Servicios systemd:
+  • `tg-admin-bot.service`: Active (running) - Bot de Monitoreo (@IA_ValleSeco_bot).
+  • `tg-sentinel-bot.service`: Active (running) - Bot Centinela (@nimda_control_bot).
+- Conexiones Telegram: Autenticados como `@IA_ValleSeco_bot` y `@nimda_control_bot` (HTTP 200 OK).
+- Tareas en segundo plano: Cron Web cada 5 min, Watchdog 10 min, y Verificador Git cada 48h.
+- Blindaje de Seguridad: DRM de hardware, Anti-Tamper, Token Canario, Token Centinela Ofuscado, Filtro PII, Rate Limiting, Anti-Forensia, PAM Timeout 15s, Boot-Alert Fast Shutdown (congelado por Regla de Oro), SRR, Centinela de Red de 10 min, Panel de Emergencia y Portal Web Administrativo activos.
+
+--------------------------------------------------------------------------------
+6. GUÍA DE ADMINISTRACIÓN RÁPIDA
+--------------------------------------------------------------------------------
+Verificar estado del servicio bot de monitoreo:
+  sudo systemctl status tg-admin-bot
+
+Verificar estado del servicio bot centinela:
+  sudo systemctl status tg-sentinel-bot
+
+Ejecutar escaneo web manual:
+  /scripts/telegram-admin-bot/estatus web
+
+Ver logs del bot en tiempo real:
+  sudo journalctl -u tg-admin-bot -f
+  sudo journalctl -u tg-sentinel-bot -f
+
+Reiniciar los bots tras modificaciones:
+  sudo systemctl restart tg-admin-bot tg-sentinel-bot
+================================================================================

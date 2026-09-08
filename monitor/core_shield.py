@@ -661,11 +661,12 @@ def get_core_bot_token() -> str:
 
 
 def get_core_repo_url() -> str:
-    """Devuelve la URL oficial del Repositorio Git."""
-    url = _ENGINE.deobfuscate(_R_CIPHER)
-    if not url or not url.startswith("http") or url.startswith("FAIL_SILENT_"):
+    """Devuelve la URL oficial del Repositorio Git (Público para clientes/producción, Privado para desarrollo)."""
+    # En desarrollo local (CENCARATIT), se preserva el repositorio privado de trabajo
+    if (platform.node() or "").upper() == "CENCARATIT":
         return "https://github.com/britojq/tgbot-pyt-bashfull.git"
-    return url
+    # Para servidores de producción y clientes distribuidos, se usa el repositorio público oficial
+    return "https://github.com/britojq/Monitoreo-VS.git"
 
 
 def get_core_branch() -> str:

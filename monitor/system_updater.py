@@ -275,12 +275,24 @@ async def execute_git_update(bot_instance=None) -> str:
         # 0. Asegurar URL oficial del repositorio
         await _run_git_command(["remote", "set-url", "origin", IMMUTABLE_GIT_REPO_URL])
 
-        # 1. Respaldar config/
+        # 1. Respaldar config/ y archivos sensibles locales
         if CONFIG_DIR.exists():
             for item in CONFIG_DIR.iterdir():
                 if item.is_file():
                     shutil.copy2(item, temp_backup_dir / item.name)
             logs.append("🛡️ <i>Copia de seguridad local de configuración creada.</i>")
+
+        anchor_file = BASE_DIR / "audit" / ".sys_anchor"
+        if anchor_file.exists():
+            shutil.copy2(anchor_file, temp_backup_dir / ".sys_anchor")
+
+        portal_env = BASE_DIR / "web_portal" / ".env"
+        if portal_env.exists():
+            shutil.copy2(portal_env, temp_backup_dir / "web_portal.env")
+
+        portal_db = BASE_DIR / "web_portal" / "database" / "database.sqlite"
+        if portal_db.exists():
+            shutil.copy2(portal_db, temp_backup_dir / "database.sqlite")
 
         # 2. Descargar últimos cambios (fetch)
         rc_fetch, out_fetch, err_fetch = await _run_git_command(["fetch", "origin", IMMUTABLE_GIT_BRANCH], timeout=30.0)
@@ -301,13 +313,19 @@ async def execute_git_update(bot_instance=None) -> str:
             return "\n\n".join(logs)
 
         # Limpiar archivos no rastreados protegiendo directorios locales y documentación
-        await _run_git_command(["clean", "-fd", "-e", "config/", "-e", "audit/", "-e", "venv/", "-e", "logs/", "-e", "docs/"])
+        await _run_git_command(["clean", "-fd", "-e", "config/", "-e", "audit/", "-e", "venv/", "-e", "logs/", "-e", "docs/", "-e", "web_portal/.env", "-e", "web_portal/database/database.sqlite"])
         logs.append("⬇️ <i>Código y scripts sincronizados exactamente con el repositorio remoto.</i>")
 
         # 4. Restaurar archivos de configuración preservados
         if temp_backup_dir.exists():
             for item in temp_backup_dir.iterdir():
-                if item.is_file():
+                if item.name == ".sys_anchor":
+                    shutil.copy2(item, BASE_DIR / "audit" / ".sys_anchor")
+                elif item.name == "web_portal.env":
+                    shutil.copy2(item, BASE_DIR / "web_portal" / ".env")
+                elif item.name == "database.sqlite":
+                    shutil.copy2(item, BASE_DIR / "web_portal" / "database" / "database.sqlite")
+                elif item.is_file():
                     shutil.copy2(item, CONFIG_DIR / item.name)
             logs.append("🔒 <i>Archivos de configuración preservados intactos.</i>")
 
