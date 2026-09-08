@@ -4625,8 +4625,13 @@ async def cmd_ip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     import platform
     import socket
     import subprocess
-    import psutil
+    import re
     from datetime import datetime
+
+    try:
+        import psutil
+    except ImportError:
+        psutil = None
 
     hostname = platform.node() or "N/A"
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -4634,22 +4639,50 @@ async def cmd_ip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Obtener interfaces IPv4 excluyendo loopback y puentes virtuales
     ifaces_data = []
     primary_ip = None
-    try:
-        for iface, addrs in psutil.net_if_addrs().items():
-            if iface.lower() in ("lo", "docker0"):
-                continue
-            for a in addrs:
-                if a.family == socket.AF_INET and not a.address.startswith("127."):
-                    ifaces_data.append({
-                        "iface": iface,
-                        "ip": a.address,
-                        "netmask": a.netmask or "N/A",
-                        "broadcast": a.broadcast or "N/A"
-                    })
-                    if not primary_ip and not a.address.startswith("169.254."):
-                        primary_ip = a.address
-    except Exception as e:
-        logger.error(f"Error obteniendo interfaces con psutil: {e}")
+
+    if psutil:
+        try:
+            for iface, addrs in psutil.net_if_addrs().items():
+                if iface.lower() in ("lo", "docker0"):
+                    continue
+                for a in addrs:
+                    if a.family == socket.AF_INET and not a.address.startswith("127."):
+                        ifaces_data.append({
+                            "iface": iface,
+                            "ip": a.address,
+                            "netmask": a.netmask or "N/A",
+                            "broadcast": a.broadcast or "N/A"
+                        })
+                        if not primary_ip and not a.address.startswith("169.254."):
+                            primary_ip = a.address
+        except Exception as e:
+            logger.error(f"Error obteniendo interfaces con psutil: {e}")
+
+    # Fallback con comando nativo 'ip -4 addr show'
+    if not ifaces_data:
+        try:
+            res = subprocess.run(["ip", "-4", "addr", "show"], capture_output=True, text=True, timeout=2.0)
+            current_iface = None
+            for line in res.stdout.splitlines():
+                m_iface = re.match(r"^\d+:\s+([a-zA-Z0-9_\-]+):", line)
+                if m_iface:
+                    current_iface = m_iface.group(1)
+                    continue
+                m_inet = re.search(r"inet\s+([0-9.]+)/(\d+)", line)
+                if m_inet and current_iface and current_iface not in ("lo", "docker0"):
+                    ip_val = m_inet.group(1)
+                    prefix_val = m_inet.group(2)
+                    if not ip_val.startswith("127."):
+                        ifaces_data.append({
+                            "iface": current_iface,
+                            "ip": ip_val,
+                            "netmask": f"/{prefix_val}",
+                            "broadcast": "N/A"
+                        })
+                        if not primary_ip and not ip_val.startswith("169.254."):
+                            primary_ip = ip_val
+        except Exception as err:
+            logger.error(f"Error en fallback nativo de red ip addr: {err}")
 
     # Fallback con hostname -I si psutil no encontró interfaces
     if not ifaces_data:
