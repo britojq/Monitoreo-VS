@@ -120,12 +120,16 @@ systemd-machine-id-setup
 dbus-uuidgen --ensure=/var/lib/dbus/machine-id 2>/dev/null || true
 echo -e "${GREEN}✓ Nuevo Machine ID generado: $(cat /etc/machine-id)${NC}"
 
-echo -e "${BLUE}▶ 5. Limpiando anclaje anterior del Bot para arranque limpio...${NC}"
-rm -f /scripts/telegram-admin-bot/audit/.sys_anchor
-rm -f /scripts/telegram-admin-bot/audit/.active_challenge
+echo -e "${BLUE}▶ 5. Verificando anclaje criptográfico del Bot...${NC}"
+if /scripts/telegram-admin-bot/venv/bin/python3 -c "import sys; sys.path.insert(0, '/scripts/telegram-admin-bot'); from monitor.core_shield import is_core_operational; exit(0 if is_core_operational() else 1)" 2>/dev/null; then
+    echo -e "${GREEN}✓ Hardware ya anclado y validado en este servidor (Modo OPERATIONAL preservado).${NC}"
+else
+    rm -f /scripts/telegram-admin-bot/audit/.sys_anchor
+    rm -f /scripts/telegram-admin-bot/audit/.active_challenge
+    echo -e "${GREEN}✓ Anclaje reseteado a modo 'Primer Arranque' para nuevo hardware.${NC}"
+fi
 rm -f /tmp/.last_sentinel_*
 rm -f /tmp/.auto_rollback_occurred 2>/dev/null || true
-echo -e "${GREEN}✓ Anclaje criptográfico reseteado a modo 'Primer Arranque'.${NC}"
 
 echo -e "${BLUE}▶ 6. Habilitando servicio del Bot Centinela en producción...${NC}"
 systemctl enable --now tg-sentinel-bot.service 2>/dev/null || true
