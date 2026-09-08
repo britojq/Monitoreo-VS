@@ -1125,11 +1125,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
             "• <code>/reinicia</code> <i>(/reboot)</i> - Reinicio completo del servidor host del sistema.\n",
             "📊 <b>Monitoreo e Infraestructura de Red</b>",
-            "• <code>/servicios [web]</code> <i>(/reporte_servicios)</i> - Chequeo de Servicios Corporativos (con captura web).",
-            "• <code>/sedes [web]</code> <i>(/reporte_sedes, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación (con captura web).",
-            "• <code>/caidas [web]</code> <i>(/incidentes, /fallas)</i> - Reporte enfocado en fallas, servicios caídos y sedes desconectadas.",
+            "• <code>/servicios [web|grupo]</code> <i>(/reporte_servicios, /servicios_grupo)</i> - Chequeo de Servicios Corporativos (con captura web o despacho al grupo).",
+            "• <code>/sedes [web|grupo]</code> <i>(/reporte_sedes, /sedes_grupo, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación (con captura web o despacho al grupo).",
+            "• <code>/caidas [web|grupo]</code> <i>(/incidentes, /fallas, /caidas_grupo)</i> - Reporte enfocado en fallas, servicios caídos y sedes desconectadas.",
             "• <code>/web [modo]</code> <i>(/pantalla, /dashboard)</i> - Captura gráfica panorámica HD del portal en tiempo real.",
-            "• <code>/monitoreo</code> <i>(/reporte_completo)</i> - Reporte unificado integral (Servicios + Sedes).",
+            "• <code>/monitoreo [grupo]</code> <i>(/reporte_completo, /monitoreo_grupo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/internet</code> <i>(/proxy, /proxies)</i> - Diagnóstico de conectividad a internet y proxies corporativos.",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
             "🧪 <b>Diagnóstico Exhaustivo y Depuración (Exclusivo Owner)</b>",
@@ -2703,16 +2703,176 @@ async def _run_and_send_monitoring_report(
     else:
         is_debug = bool(CONFIG.get("monitor_debug_mode", False)) if is_owner else False
 
+    # Detectar si se solicitó despacho directo al grupo corporativo
+    args_lower = [a.lower() for a in (context.args or [])]
+    cmd_name = (update.message.text or "").split()[0].lower() if (update.message and update.message.text) else ""
+    send_to_group = ("grupo" in args_lower or "group" in args_lower or "_grupo" in cmd_name)
+
+    if send_to_group and not is_owner:
+        await safe_reply_html(
+            update.message,
+            MSG_UNAUTHORIZED_ADMIN_COMMAND
+        )
+        return
+
+    target_groups = []
+    if send_to_group:
+        for a in (context.args or []):
+            if (a.startswith("-100") or (a.startswith("-") and len(a) > 5)) and a.lstrip("-").isdigit():
+                try:
+                    target_groups.append(int(a))
+                except ValueError:
+                    pass
+
+        if not target_groups:
+            target_groups = list(allowed_groups)
+
+        if not target_groups:
+            await safe_reply_html(
+                update.message,
+                "❌ <b>No se encontraron grupos autorizados:</b>\n"
+                "No hay ningún grupo registrado en <code>allowed_group_ids</code> ni se indicó un ID de grupo válido.\n"
+                "<i>Use <code>/grupos</code> o autorice el grupo en el sistema.</i>"
+            )
+            return
+
     # Mensaje temporal de espera
-    wait_msg = await update.message.reply_text(
-        f"⏳ <i>Ejecutando chequeo concurrente de {target_name}... Por favor espere.</i>",
-        parse_mode='HTML'
-    )
+    if send_to_group:
+        wait_msg = await update.message.reply_text(
+            f"⏳ <i>Ejecutando chequeo de {target_name} y preparando despacho con captura web hacia el grupo corporativo...</i>",
+            parse_mode='HTML'
+        )
+    else:
+        wait_msg = await update.message.reply_text(
+            f"⏳ <i>Ejecutando chequeo concurrente de {target_name}... Por favor espere.</i>",
+            parse_mode='HTML'
+        )
 
     try:
         from monitor.monitor_engine import execute_monitoring
         result = await execute_monitoring(target=target, debug_mode=is_debug)
 
+        # Determinar modo de captura web (Playwright)
+        # Si send_to_group está activo o el usuario puso 'web', se comporta como '/servicios web' (Vista Global por defecto)
+        arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
+        if send_to_group or arg_first in ("web", "full", "pantalla", "todo", "global"):
+            capture_mode = "full"
+            mode_label = "Vista Global"
+        elif target == "servicios":
+            capture_mode = "servicios"
+            mode_label = "Servicios Activos"
+        elif target == "sedes":
+            capture_mode = "sedes"
+            mode_label = "Sedes Regionales y Equipos en Sitio"
+        elif target in ("caidas", "incidentes", "fallas"):
+            capture_mode = "caidas"
+            mode_label = "Incidentes y Servicios Caídos"
+        else:
+            capture_mode = "full"
+            mode_label = "Vista Global"
+
+        # Permitir sobreescribir el modo de captura si el owner lo especifica junto con grupo
+        for a in args_lower:
+            if a in ("full", "global", "todo", "pantalla"):
+                capture_mode = "full"
+                mode_label = "Vista Global"
+                break
+            elif a == "servicios":
+                capture_mode = "servicios"
+                mode_label = "Servicios Activos"
+                break
+            elif a == "sedes":
+                capture_mode = "sedes"
+                mode_label = "Sedes Regionales y Equipos en Sitio"
+                break
+            elif a in ("caidas", "fallas", "incidentes"):
+                capture_mode = "caidas"
+                mode_label = "Incidentes y Servicios Caídos"
+                break
+
+        screen_file = None
+        try:
+            from monitor.web_screenshot import capture_web_dashboard
+            screen_file = await capture_web_dashboard(mode=capture_mode)
+        except Exception as e_screen:
+            logger.warning(f"No se pudo generar captura web ({e_screen})")
+
+        # ---------------------------------------------------------------------
+        # CASO 1: Despacho exclusivo al Grupo Destinado (Solicitado por Owner)
+        # ---------------------------------------------------------------------
+        if send_to_group:
+            dispatched_groups = []
+            html_svc = markdown_to_telegram_html(result["report_servicios"]) if result.get("report_servicios") else None
+            html_sedes = markdown_to_telegram_html(result["report_sedes"]) if result.get("report_sedes") else None
+            photo_bytes = screen_file.read_bytes() if (screen_file and screen_file.exists()) else None
+
+            for gid in target_groups:
+                try:
+                    if html_svc:
+                        try:
+                            await context.bot.send_message(chat_id=gid, text=html_svc, parse_mode='HTML')
+                        except Exception as e_html:
+                            logger.warning(f"Fallo envío HTML a grupo {gid} ({e_html}). Enviando texto plano...")
+                            await context.bot.send_message(chat_id=gid, text=result["report_servicios"])
+
+                    if html_sedes:
+                        try:
+                            await context.bot.send_message(chat_id=gid, text=html_sedes, parse_mode='HTML')
+                        except Exception as e_html:
+                            logger.warning(f"Fallo envío HTML sedes a grupo {gid} ({e_html}). Enviando texto plano...")
+                            await context.bot.send_message(chat_id=gid, text=result["report_sedes"])
+
+                    if photo_bytes:
+                        caption = (
+                            f"📸 <b>Captura en Tiempo Real</b>\n"
+                            f"🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
+                            f"📌 <i>{mode_label}</i>"
+                        )
+                        await context.bot.send_photo(
+                            chat_id=gid,
+                            photo=photo_bytes,
+                            caption=caption,
+                            parse_mode='HTML'
+                        )
+
+                    gtitle, _ = await _resolve_group_info(context.bot, gid)
+                    dispatched_groups.append(f"• 👥 <b>{html.escape(gtitle)}</b> (<code>{gid}</code>)")
+                    logger.info(f"Reporte ({target}) despachado exitosamente al grupo {gid}")
+                except Exception as e_grp:
+                    logger.error(f"Error despachando reporte a grupo {gid}: {e_grp}")
+                    dispatched_groups.append(f"• ⚠️ <code>{gid}</code>: Error ({html.escape(str(e_grp))})")
+
+            # Notificar al Owner en su chat confirmando la entrega
+            try:
+                await wait_msg.delete()
+            except Exception:
+                pass
+
+            groups_summary = "\n".join(dispatched_groups) if dispatched_groups else "Sin destinatarios"
+            elapsed_sec = result.get("elapsed_seconds", 0)
+            confirm_text = (
+                "✅ <b>Reporte Despachado al Grupo Corporativo</b>\n\n"
+                f"📋 <b>Tipo de Reporte:</b> <code>{html.escape(target_name)}</code> ({mode_label})\n"
+                f"⏱️ <b>Tiempo de Chequeo:</b> <code>{elapsed_sec}s</code>\n\n"
+                f"<b>Destinatario(s):</b>\n{groups_summary}\n\n"
+                "<i>ℹ️ El reporte textual y la captura de pantalla fueron enviados directamente al grupo corporativo autorizado.</i>"
+            )
+            await safe_reply_html(update.message, confirm_text)
+
+            # Si está en modo depuración y fue solicitado por el Owner, adjuntar el archivo de log en su chat privado
+            if is_debug and is_owner and result.get("log_file") and result["log_file"].exists():
+                with open(result["log_file"], "rb") as doc:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=doc,
+                        filename="servicelog.txt",
+                        caption=f"📄 Registro técnico detallado de ejecución ({result['elapsed_seconds']}s)"
+                    )
+            return
+
+        # ---------------------------------------------------------------------
+        # CASO 2: Despacho normal (al chat donde se ejecutó la solicitud)
+        # ---------------------------------------------------------------------
         # Borrar mensaje temporal
         try:
             await wait_msg.delete()
@@ -2737,41 +2897,18 @@ async def _run_and_send_monitoring_report(
                 logger.warning(f"Fallo envío en HTML de sedes ({e_html}). Enviando en texto plano...")
                 await update.message.reply_text(result["report_sedes"])
 
-        # Generar y enviar Captura Web en Alta Definición (Playwright)
-        arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
-        if arg_first in ("web", "full", "pantalla", "todo", "global"):
-            capture_mode = "full"
-            mode_label = "Vista Global"
-        elif target == "servicios":
-            capture_mode = "servicios"
-            mode_label = "Servicios Activos"
-        elif target == "sedes":
-            capture_mode = "sedes"
-            mode_label = "Sedes Regionales y Equipos en Sitio"
-        elif target in ("caidas", "incidentes", "fallas"):
-            capture_mode = "caidas"
-            mode_label = "Incidentes y Servicios Caídos"
-        else:
-            capture_mode = "full"
-            mode_label = "Vista Global"
-
-        try:
-            from monitor.web_screenshot import capture_web_dashboard
-            screen_file = await capture_web_dashboard(mode=capture_mode)
-            if screen_file and screen_file.exists():
-                caption = (
-                    f"📸 <b>Captura en Tiempo Real</b>\n"
-                    f"🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
-                    f"📌 <i>{mode_label}</i>"
+        if screen_file and screen_file.exists():
+            caption = (
+                f"📸 <b>Captura en Tiempo Real</b>\n"
+                f"🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
+                f"📌 <i>{mode_label}</i>"
+            )
+            with open(screen_file, "rb") as photo_doc:
+                await update.message.reply_photo(
+                    photo=photo_doc,
+                    caption=caption,
+                    parse_mode='HTML'
                 )
-                with open(screen_file, "rb") as photo_doc:
-                    await update.message.reply_photo(
-                        photo=photo_doc,
-                        caption=caption,
-                        parse_mode='HTML'
-                    )
-        except Exception as e_screen:
-            logger.warning(f"No se pudo generar/enviar captura web ({e_screen})")
 
         # Si está en modo depuración y fue solicitado por el Owner, adjuntar el archivo de log
         if is_debug and is_owner and result.get("log_file") and result["log_file"].exists():
@@ -4732,7 +4869,7 @@ def main() -> None:
                 if owner_id:
                     owner_commands = [
                         BotCommand("start", "Panel de control principal"),
-                        BotCommand("servicios", "Servicios corporativos (/servicios web)"),
+                        BotCommand("servicios", "Servicios corporativos (/servicios web, grupo)"),
                         BotCommand("sedes", "Sedes y enlaces (/sedes web)"),
                         BotCommand("caidas", "Servicios caídos e incidentes (/caidas web)"),
                         BotCommand("web", "Captura HD del dashboard web en vivo"),
@@ -4824,11 +4961,17 @@ def main() -> None:
         "comunicado",
         "reporte_servicios",
         "servicios",
+        "servicios_grupo",
         "reporte_sedes",
         "sedes",
+        "sedes_grupo",
         "sitios",
+        "reporte_caidas",
+        "caidas",
+        "caidas_grupo",
         "reporte_completo",
         "monitoreo",
+        "monitoreo_grupo",
         "analisis_red",
         "red",
         "escaner_red",
@@ -4947,11 +5090,11 @@ def main() -> None:
     application.add_handler(CommandHandler(["reinicia", "reboot"], cmd_reinicia))
 
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
-    application.add_handler(CommandHandler(["reporte_servicios", "servicios"], cmd_reporte_servicios))
-    application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios"], cmd_reporte_sedes))
-    application.add_handler(CommandHandler(["reporte_caidas", "caidas", "incidentes", "fallas"], cmd_reporte_caidas))
+    application.add_handler(CommandHandler(["reporte_servicios", "servicios", "servicios_grupo"], cmd_reporte_servicios))
+    application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios", "sedes_grupo"], cmd_reporte_sedes))
+    application.add_handler(CommandHandler(["reporte_caidas", "caidas", "incidentes", "fallas", "caidas_grupo"], cmd_reporte_caidas))
     application.add_handler(CommandHandler(["web", "pantalla", "captura", "dashboard", "screenshot"], cmd_captura_web))
-    application.add_handler(CommandHandler(["reporte_completo", "monitoreo"], cmd_reporte_completo))
+    application.add_handler(CommandHandler(["reporte_completo", "monitoreo", "monitoreo_grupo"], cmd_reporte_completo))
 
     # Comando de Diagnóstico de Internet y Proxies (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["internet", "proxy", "proxies", "conectividad"], cmd_internet))

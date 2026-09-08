@@ -7,15 +7,15 @@
   "commands": {
     "servicios": {
       "description": "Verificar el estatus de los servicios corporativos",
-      "help_text": "ℹ️ <b>Ayuda del comando /servicios:</b>\n\n• <code>/servicios</code>: Genera el reporte textual con latencias y estado de todos los servicios corporativos.\n• <code>/servicios web</code>: Genera además la captura gráfica en alta definición de la columna de servicios."
+      "help_text": "ℹ️ <b>Ayuda del comando /servicios:</b>\n\n• <code>/servicios</code>: Genera el reporte textual con latencias y estado de todos los servicios corporativos.\n• <code>/servicios web</code>: Genera además la captura panorámica en alta definición del dashboard web.\n• <code>/servicios grupo</code>: (Exclusivo Owner) Ejecuta el chequeo con captura web y lo despacha directamente al grupo corporativo autorizado, confirmando la entrega al Administrador."
     },
     "sedes": {
       "description": "Verificar el estatus de las sedes y enlaces de comunicación",
-      "help_text": "ℹ️ <b>Ayuda del comando /sedes:</b>\n\n• <code>/sedes</code>: Reporte textual de conectividad en sedes regionales y equipos remotos.\n• <code>/sedes web</code>: Genera además la captura gráfica en alta definición con los acordeones de equipos desplegados."
+      "help_text": "ℹ️ <b>Ayuda del comando /sedes:</b>\n\n• <code>/sedes</code>: Reporte textual de conectividad en sedes regionales y equipos remotos.\n• <code>/sedes web</code>: Genera además la captura gráfica en alta definición con los acordeones de equipos desplegados.\n• <code>/sedes grupo</code>: (Exclusivo Owner) Ejecuta el chequeo con captura web y lo despacha directamente al grupo corporativo autorizado."
     },
     "caidas": {
       "description": "Reporte enfocado en fallas, servicios caídos y sedes desconectadas",
-      "help_text": "ℹ️ <b>Ayuda del comando /caidas:</b>\n\n• <code>/caidas</code>: Filtra y muestra únicamente los incidentes activos, servicios en timeout o caídos y sedes sin conexión.\n• <code>/caidas web</code>: Adjunta la captura visual en alta definición de la columna de incidentes."
+      "help_text": "ℹ️ <b>Ayuda del comando /caidas:</b>\n\n• <code>/caidas</code>: Filtra y muestra únicamente los incidentes activos, servicios en timeout o caídos y sedes sin conexión.\n• <code>/caidas web</code>: Adjunta la captura visual en alta definición de la columna de incidentes.\n• <code>/caidas grupo</code>: (Exclusivo Owner) Despacha los incidentes detectados con captura web directamente al grupo corporativo autorizado."
     },
     "web": {
       "description": "Captura panorámica en alta definición del dashboard web en vivo",
@@ -23,7 +23,7 @@
     },
     "monitoreo": {
       "description": "Reporte unificado integral (Servicios + Sedes)",
-      "help_text": "ℹ️ <b>Ayuda del comando /monitoreo:</b>\n\nEjecuta una ronda integral de verificación combinada (Servicios Corporativos + Sedes Regionales + Dispositivos Locales) en un solo despacho consolidado."
+      "help_text": "ℹ️ <b>Ayuda del comando /monitoreo:</b>\n\n• <code>/monitoreo</code>: Ejecuta una ronda integral de verificación combinada (Servicios Corporativos + Sedes Regionales + Dispositivos Locales).\n• <code>/monitoreo grupo</code>: (Exclusivo Owner) Ejecuta el reporte completo con captura web y lo envía directamente al grupo corporativo autorizado."
     },
     "recursos": {
       "description": "Diagnóstico de RAM, CPU y panel interactivo para liberar memoria",

@@ -38,15 +38,29 @@ class SyncController extends Controller
                 $lines[] = "TYPESERVICE{$L}=" . ($s->is_active ? $s->type : 'DESACTIVADO');
                 $lines[] = "NAMESERVICE{$L}=\"" . addslashes($s->name) . "\"";
                 $lines[] = "WEBSERVICE{$L}=" . ($s->web_url ?? 'http://127.0.0.1');
-                $lines[] = "IPSERVICE{$L}=" . ($s->host_ip ?? '127.0.0.1');
-                $lines[] = "CUPSPORTIP{$L}=" . ($s->host_ip ?? '127.0.0.1') . ":" . ($s->port ?? 631);
-                $lines[] = "LDAPPORTIP{$L}=" . ($s->port ?? 389);
-                $lines[] = "SMTPPORT{$L}=" . ($s->port ?? 25);
+                $rawHost = $s->host_ip ?? '127.0.0.1';
+                $cleanHost = explode(':', $rawHost)[0];
+                $servicePort = $s->port ?? (isset(explode(':', $rawHost)[1]) ? explode(':', $rawHost)[1] : null);
+
+                $lines[] = "IPSERVICE{$L}=" . $cleanHost;
+                $lines[] = "CUPSPORTIP{$L}=" . $cleanHost . ":" . ($servicePort ?? 631);
+                $lines[] = "LDAPPORTIP{$L}=" . ($servicePort ?? 389);
+                $lines[] = "SMTPPORT{$L}=" . ($servicePort ?? 25);
                 $lines[] = "NETINTERFACE{$L}=" . ($s->check_interface ?? 'eno1');
                 $lines[] = "TESTHOSTDNS{$L}=\"" . addslashes($s->dns_test_domain ?? 'intranet.corpoelec.com.ve') . "\"";
                 $lines[] = "PROXYUSERPASSW{$L}=" . ($s->credentials ?? 'USUARIO:CLAVE');
-                $lines[] = "PROXYIPPORT{$L}=" . ($s->host_ip ?? '127.0.0.1') . ":" . ($s->port ?? 8080);
-                $lines[] = "URLTESTSITE{$L}=" . ($s->web_url ?? 'https://google.com');
+                $lines[] = "PROXYIPPORT{$L}=" . $cleanHost . ":" . ($servicePort ?? 8080);
+                if ($s->type === 'PROXY') {
+                    $testUrl = $s->web_url ?? '';
+                    $low = strtolower($testUrl);
+                    if ($testUrl && filter_var($testUrl, FILTER_VALIDATE_URL) && !str_contains($low, 'pfsense') && !str_contains($low, 'proxyr2')) {
+                        $lines[] = "URLTESTSITE{$L}=" . $testUrl;
+                    } else {
+                        $lines[] = "URLTESTSITE{$L}=https://core.telegram.org/bots";
+                    }
+                } else {
+                    $lines[] = "URLTESTSITE{$L}=" . ($s->web_url ?? 'https://google.com');
+                }
                 $lines[] = "NORMALESTATEMSG{$L}=\"" . addslashes($s->normal_state_msg ?? "✅ - \$NAMESERVICE{$L}") . "\"";
                 $lines[] = "ERRORESTATEMSG{$L}=\"" . addslashes($s->error_state_msg ?? "❌ - \$NAMESERVICE{$L}") . "\"";
                 $lines[] = "################################ FIN HOST ({$L}) ##################################";
