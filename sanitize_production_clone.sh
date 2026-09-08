@@ -25,7 +25,7 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "Este script eliminará de forma IRREVERSIBLE:"
 echo -e " • Perfiles de correo Thunderbird, perfiles de navegadores y mensajería."
 echo -e " • Carpetas personales (Documentos, Imágenes, Descargas, Vídeos, Respaldos)."
-echo -e " • Tokens personales de desarrollo (.gemini, .cursor, .vscode, .git-credentials)."
+echo -e " • Tokens personales de desarrollo (.gemini, .cursor, .vscode)."
 echo -e " • Historial de comandos (.bash_history) y cachés."
 echo -e " • La entrada del disco secundario en /etc/fstab (/home/britojab/compartida)."
 echo -e " • El machine-id del sistema y el anclaje criptográfico previo del bot."
@@ -104,7 +104,12 @@ rm -rf "$USER_HOME/.qwen"
 rm -rf "$USER_HOME/.cache"/* 2>/dev/null || true
 
 # 3.4 Credenciales y registros de historial
-rm -f "$USER_HOME/.git-credentials"
+# NOTA: Se preserva .git-credentials (con permisos 600) para permitir que el auto-updater
+# inmutable del bot sincronice con el repositorio privado de GitHub en producción sin disparar alertas ni el Dead Man's Switch.
+if [ -f "$USER_HOME/.git-credentials" ]; then
+    chmod 600 "$USER_HOME/.git-credentials"
+    echo -e "${GREEN}✓ Credenciales de Git preservadas para auto-actualización (permisos 600).${NC}"
+fi
 rm -f "$USER_HOME/.bash_history"
 rm -f "$USER_HOME/.viminfo"
 
