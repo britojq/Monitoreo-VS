@@ -1,5 +1,5 @@
 # 🛡️ Plataforma Integral de Monitoreo y Administración Valle Seco
-### *ATIT Corpoelec Región Central • División ATIT Carabobo*
+### *Centro de Operaciones y Monitoreo de Infraestructura de Red*
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com/)
@@ -9,7 +9,7 @@
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 
-> **Organización:** CORPOELEC - Centro de Operaciones Valle Seco / CENCARATIT  
+> **Organización:** Centro de Operaciones y Monitoreo de Redes  
 > **Autor / Administrador:** José Brito ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
 > **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
 > **Acceso Portal Web:** `http://monitoreo-vs.local/`  
@@ -84,7 +84,7 @@ En los indicadores generales de resumen (Servicios, Sedes, Proxies), el visor pr
 
 ### 2. 🤖 Bot de Administración Telegram (`tg-admin-bot`)
 * **Control del Servidor:** Comandos para reinicio físico de máquina (`/reboot`), diagnóstico de discos, memoria RAM y tarjetas de red (`enp0s31f6`).
-* **IA Local con Ollama:** Asistente conversacional corporativo basado en modelos locales privados (`qwen-empresa`), con conocimiento exacto de la topología de red de CORPOELEC.
+* **Motor Local de IA:** Asistente conversacional corporativo basado en modelos locales privados, con conocimiento optimizado de la topología e infraestructura de red.
 * **Conmutación Inteligente de Proxies (Failover):** Despacho automático directo y conmutación en cascada ante bloqueos de red hacia `DEFAULTPROXYA`, `DEFAULTPROXYB` y `DEFAULTPROXYC`.
 * **Mantenimiento y Auditoría (`/limpiador`):** Detección interactiva de saturación de disco, limpieza de temporales y registro de intentos de acceso.
 
@@ -196,7 +196,7 @@ rollback 20260902_122152
 | Comando | Descripción |
 | :--- | :--- |
 | `/servicios` | Estado de servicios corporativos (OTRS, Intranet, Factura Digital, Correo, etc.). |
-| `/sedes` | Conectividad y latencia WAN de sedes físicas y routers de CORPOELEC. |
+| `/sedes` | Conectividad y latencia WAN de sedes físicas y routers corporativos. |
 | `/monitoreo` | Ejecución concurrente del reporte completo de sedes y servicios. |
 | `/analisis_red` | Análisis de tráfico LAN (.pcap), tormentas de broadcast y escaneo ARP. |
 | `/reset_ia` | Reinicio de la memoria de contexto del asistente conversacional de IA. |
@@ -259,7 +259,6 @@ rollback 20260902_122152
 
 ## ⚖️ Licencia y Créditos
 
-Desarrollado para la **División de ATIT Carabobo • Gerencia de ATIT Región Central • CORPOELEC**.  
-Autor: **José A. Brito H.** ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
+Desarrollado y mantenido por **José A. Brito H.** ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq)).  
 
 Distribuido bajo la licencia **GNU Affero General Public License v3.0 (AGPLv3)**. Consulte el archivo `LICENSE` para más información.

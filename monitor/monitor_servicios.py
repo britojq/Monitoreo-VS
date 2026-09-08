@@ -76,7 +76,7 @@ async def verify_single_service(svc: ServiceConfig) -> Tuple[str, bool, str, str
 
         # Determinar URL objetivo de prueba:
         # Los proxies corporativos deben comprobar navegación externa hacia internet/bots.
-        # Si url_test_site apunta al hostname local del firewall/proxy (ej. pfsense.corpoelec.com.ve / proxyr2)
+        # Si url_test_site apunta al hostname local del firewall/proxy (ej. pfsense.empresa.local / proxyr2)
         # o no es una URL externa navegable, usamos https://core.telegram.org/bots
         target_test_url = "https://core.telegram.org/bots"
         candidate_url = (svc.url_test_site or "").strip()

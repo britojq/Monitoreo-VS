@@ -943,7 +943,7 @@
                 </p>
             </div>
             <p class="text-[10px] text-obsidian-muted leading-relaxed">
-                🔒 El acceso a direcciones IP, puertos de servicio, métricas de latencia, consolas de diagnóstico y telemetría histórica está reservado exclusivamente para usuarios autorizados de Corpoelec.
+                🔒 El acceso a direcciones IP, puertos de servicio, métricas de latencia, consolas de diagnóstico y telemetría histórica está reservado exclusivamente para usuarios autorizados.
             </p>
         </div>
 
@@ -991,7 +991,7 @@
                 </p>
             </div>
             <p class="text-[10px] text-obsidian-muted leading-relaxed">
-                🔒 El acceso a consolas remotas (VNC, Telnet) y paneles de configuración web está reservado exclusivamente al personal técnico autorizado de Corpoelec para labores de soporte y monitoreo.
+                🔒 El acceso a consolas remotas (VNC, Telnet) y paneles de configuración web está reservado exclusivamente al personal técnico autorizado para labores de soporte y monitoreo.
             </p>
         </div>
 

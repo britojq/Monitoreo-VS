@@ -9,7 +9,7 @@ class LdapAuthService
 {
     protected string $host = '10.20.0.22';
     protected int $port = 389;
-    protected string $baseDn = 'dc=corpoelec,dc=gob,dc=ve';
+    protected string $baseDn = 'dc=empresa,dc=gob,dc=ve';
 
     /**
      * Unidades organizacionales y áreas estrictamente autorizadas para el auto-registro
@@ -51,7 +51,7 @@ class LdapAuthService
     /**
      * Autenticar usuario contra LDAP y validar pertenencia a área permitida o pre-autorizada.
      *
-     * @param string $username Código de empleado / UID (ej. A1746281)
+     * @param string $username Código de empleado / UID (ej. U1234567)
      * @param string $password Contraseña de red corporativa
      * @return array{success: bool, message: string, data: array|null, area_authorized: bool}
      */
@@ -160,7 +160,7 @@ class LdapAuthService
 
         // Extracción de datos del usuario
         $cn = $entry['cn'][0] ?? $cleanUsername;
-        $mail = $entry['mail'][0] ?? ($cleanUsername . '@corpoelec.gob.ve');
+        $mail = $entry['mail'][0] ?? ($cleanUsername . '@empresa.local');
         $givenName = $entry['givenname'][0] ?? '';
         $sn = $entry['sn'][0] ?? '';
         $telephone = $entry['telephonenumber'][0] ?? '';
@@ -190,7 +190,7 @@ class LdapAuthService
     /**
      * Buscar usuarios en LDAP por UID o correo para el módulo administrativo de autorización
      *
-     * @param string $term Término de búsqueda (ej. A1746281, 1746281, correo)
+     * @param string $term Término de búsqueda (ej. U1234567, 1234567, correo)
      * @return array Lista de usuarios encontrados con sus metadatos
      */
     public function searchUsers(string $term): array
@@ -216,7 +216,7 @@ class LdapAuthService
             $variants[] = 'V' . $cleanTerm;
             $variants[] = 'E' . $cleanTerm;
         } elseif (!str_contains($cleanTerm, '@')) {
-            $variants[] = strtolower($cleanTerm) . '@corpoelec.gob.ve';
+            $variants[] = strtolower($cleanTerm) . '@empresa.local';
         }
 
         $filterParts = [];
@@ -246,7 +246,7 @@ class LdapAuthService
                 if (!$uid) continue;
 
                 $cn = $e['cn'][0] ?? $uid;
-                $mail = $e['mail'][0] ?? ($uid . '@corpoelec.gob.ve');
+                $mail = $e['mail'][0] ?? ($uid . '@empresa.local');
                 $desc = $e['description'][0] ?? 'Sin descripción';
                 $sede = $e['o'][0] ?? 'No especificada';
                 $st = $e['st'][0] ?? '';
@@ -311,7 +311,7 @@ class LdapAuthService
         $e = $entries[0];
         $uidVal = $e['uid'][0] ?? $cleanUid;
         $cn = $e['cn'][0] ?? $uidVal;
-        $mail = $e['mail'][0] ?? ($uidVal . '@corpoelec.gob.ve');
+        $mail = $e['mail'][0] ?? ($uidVal . '@empresa.local');
         $desc = $e['description'][0] ?? 'Sin descripción';
         $sede = $e['o'][0] ?? 'No especificada';
         $st = $e['st'][0] ?? '';

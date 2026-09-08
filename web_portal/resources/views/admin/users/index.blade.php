@@ -124,7 +124,7 @@
             </div>
             <div>
                 <label class="block text-obsidian-muted mb-1">Correo Electrónico</label>
-                <input type="email" name="email" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan" placeholder="usuario@corpoelec.gob.ve"/>
+                <input type="email" name="email" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan" placeholder="usuario@empresa.local"/>
             </div>
             <div>
                 <label class="block text-obsidian-muted mb-1">Contraseña</label>
@@ -180,7 +180,7 @@
                     <span>Autenticación Centralizada (LDAP Corporativo)</span>
                 </div>
                 <p class="text-[11px] text-obsidian-muted leading-relaxed">
-                    Usuario federado: <code id="ldap-notice-username" class="text-obsidian-cyan font-bold"></code>. Su contraseña reside exclusivamente en el Directorio Activo de Corpoelec y no se administra en este portal.
+                    Usuario federado: <code id="ldap-notice-username" class="text-obsidian-cyan font-bold"></code>. Su contraseña reside exclusivamente en el Directorio Activo Corporativo y no se administra en este portal.
                 </p>
             </div>
             <div>
@@ -213,7 +213,7 @@
                 </div>
                 <div>
                     <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Directorio LDAP Corporativo • Búsqueda y Autorización</h3>
-                    <p class="text-[11px] font-mono text-obsidian-muted">Localice usuarios en el Directorio Activo de Corpoelec y concédales acceso manual con rol asignado</p>
+                    <p class="text-[11px] font-mono text-obsidian-muted">Localice usuarios en el Directorio Activo Corporativo y concédales acceso manual con rol asignado</p>
                 </div>
             </div>
             <button onclick="closeModal('modal-ldap-search')" class="text-obsidian-muted hover:text-white text-2xl leading-none transition">&times;</button>
@@ -224,7 +224,7 @@
             <form id="form-ldap-search" onsubmit="event.preventDefault(); executeLdapSearch();" class="flex gap-2">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-base">search</span>
-                    <input type="text" id="ldap_search_query" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg pl-9 pr-3 py-2.5 text-xs font-mono text-white placeholder-obsidian-muted/60 focus:outline-none focus:border-obsidian-cyan" placeholder="Buscar por UID / Cédula (ej. 1746281, A1746281) o Correo (ej. usuario@corpoelec.gob.ve)"/>
+                    <input type="text" id="ldap_search_query" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg pl-9 pr-3 py-2.5 text-xs font-mono text-white placeholder-obsidian-muted/60 focus:outline-none focus:border-obsidian-cyan" placeholder="Buscar por UID / Cédula (ej. 1234567, U1234567) o Correo (ej. usuario@empresa.local)"/>
                 </div>
                 <button type="submit" id="btn-search-ldap" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black font-mono font-bold text-xs uppercase flex items-center gap-2 hover:bg-cyan-300 transition shrink-0">
                     <span class="material-symbols-outlined text-base" id="icon-search-ldap">search</span>
@@ -262,7 +262,7 @@
 
         <!-- FOOTER MODAL -->
         <div class="shrink-0 pt-3 border-t border-obsidian-border flex items-center justify-between">
-            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">10.20.0.22:389</code> (Corpoelec AD)</span>
+            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">10.20.0.22:389</code> (Directorio Activo)</span>
             <button type="button" onclick="closeModal('modal-ldap-search')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs font-mono">Cerrar</button>
         </div>
     </div>

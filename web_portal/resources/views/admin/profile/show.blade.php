@@ -18,7 +18,7 @@
             <h2 class="text-xl font-bold text-white tracking-tight">Perfil de Usuario</h2>
             <p class="text-xs font-mono text-obsidian-muted">
                 @if($user->isLdapUser())
-                    Cuenta asociada mediante <span class="text-obsidian-cyan font-semibold">Directorio Activo Corporativo LDAP</span> (Corpoelec)
+                    Cuenta asociada mediante <span class="text-obsidian-cyan font-semibold">Directorio Activo Corporativo LDAP</span> (Corporativo)
                 @else
                     Cuenta administrada localmente en el portal de monitoreo
                 @endif
@@ -157,7 +157,7 @@
                             <span>Directorio Activo Corporativo (LDAP)</span>
                         </div>
                         <p class="text-[11px] leading-relaxed text-obsidian-muted">
-                            Su cuenta está asociada con los servidores de <strong class="text-white">Corpoelec</strong>. Por motivos de seguridad, la contraseña y la información personal (nombre, correo corporativo e identificador) se sincronizan de forma exclusiva desde el servidor de Directorio Activo (<code class="text-obsidian-cyan">LDAP</code>) y <strong class="text-white">no pueden ser modificadas directamente en este portal</strong>.
+                            Su cuenta está asociada con los servidores de <strong class="text-white">Corporativo</strong>. Por motivos de seguridad, la contraseña y la información personal (nombre, correo corporativo e identificador) se sincronizan de forma exclusiva desde el servidor de Directorio Activo (<code class="text-obsidian-cyan">LDAP</code>) y <strong class="text-white">no pueden ser modificadas directamente en este portal</strong>.
                         </p>
                         <p class="text-[11px] text-obsidian-muted">
                             💡 En este portal, únicamente tiene permitido colocar o actualizar su <strong class="text-obsidian-cyan">fotografía de perfil</strong> en la sección izquierda.
@@ -206,7 +206,7 @@
                                 <span>¿Requiere modificar su información o restablecer su clave corporativa?</span>
                             </div>
                             <p class="leading-relaxed">
-                                Comuníquese con la Dirección de Tecnología (ATIT) de Corpoelec o utilice las herramientas institucionales de autoservicio de contraseñas de la corporación.
+                                Comuníquese con la Dirección de Tecnología o utilice las herramientas institucionales de autoservicio de contraseñas de la corporación.
                             </p>
                         </div>
                     </div>

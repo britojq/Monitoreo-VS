@@ -74,8 +74,8 @@ fecha="${dia_nombre^}, $dia_numero de ${mes_nombre^} de $anio."
 ## SE PUEDE MODIFICAR EXCEPTO LAS VARIABLES, SE PUEDE CAMBIAR EL ORDEN DE LAS VARIABLES
 
 MENSAJEA="
-**GERENCIA DE ATIT REGIÓN CENTRAL**
-**DIVISIÓN DE ATIT CARABOBO**
+**GERENCIA DE TECNOLOGÍA E INFORMACIÓN**
+**DIVISIÓN DE INFRAESTRUCTURA TECNOLÓGICA**
 **DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA - SERVIDORES.**
 **Fecha:** $fecha
 **Hora:** $hora.
@@ -115,15 +115,15 @@ $STHOSTS
 $STHOSTR
 $STHOSTQ
 
-Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.
+Impacto Operativo: Monitorear los servidores del sistema, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos de la infraestructura.
 
-**Personal de  ATIT:**
+**Personal Responsable:**
 Administrador del Sistema
 C.I: 00000000
 N° Personal: 000000
 📱Tlf: 0000000000
 
-**⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️**
+**⚡️Monitoreo Continuo y Control de Operaciones ⚡️**
 
 "
 #$STHOSTS
@@ -138,8 +138,8 @@ N° Personal: 000000
 ## SE PUEDE MODIFICAR EXCEPTO LAS VARIABLES, SE PUEDE CAMBIAR EL ORDEN DE LAS VARIABLES
 
 MENSAJEC="
-**GERENCIA DE ATIT REGIÓN CENTRAL**
-**DIVISIÓN DE ATIT CARABOBO**
+**GERENCIA DE TECNOLOGÍA E INFORMACIÓN**
+**DIVISIÓN DE INFRAESTRUCTURA TECNOLÓGICA**
 **DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA**
 **Fecha:** $fecha
 **Hora:** $hora.
@@ -187,15 +187,15 @@ $STSITEEEQUIPO4
 $STSITEEEQUIPO5
 $STSITEEEQUIPO8
 
-Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.
+Impacto Operativo: Monitorear los servidores del sistema, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos de la infraestructura.
 
-**Personal de  ATIT:**
+**Personal Responsable:**
 Administrador del Sistema
 C.I: 00000000
 N° Personal: 000000
 📱Tlf: 0000000000
 
-**⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️**
+**⚡️Monitoreo Continuo y Control de Operaciones ⚡️**
 
 "
 

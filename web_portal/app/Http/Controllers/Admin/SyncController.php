@@ -47,7 +47,7 @@ class SyncController extends Controller
                 $lines[] = "LDAPPORTIP{$L}=" . ($servicePort ?? 389);
                 $lines[] = "SMTPPORT{$L}=" . ($servicePort ?? 25);
                 $lines[] = "NETINTERFACE{$L}=" . ($s->check_interface ?? 'eno1');
-                $lines[] = "TESTHOSTDNS{$L}=\"" . addslashes($s->dns_test_domain ?? 'intranet.corpoelec.com.ve') . "\"";
+                $lines[] = "TESTHOSTDNS{$L}=\"" . addslashes($s->dns_test_domain ?? 'intranet.empresa.local') . "\"";
                 $lines[] = "PROXYUSERPASSW{$L}=" . ($s->credentials ?? 'USUARIO:CLAVE');
                 $lines[] = "PROXYIPPORT{$L}=" . $cleanHost . ":" . ($servicePort ?? 8080);
                 if ($s->type === 'PROXY') {

@@ -113,7 +113,7 @@ async def check_dns(dns_server: str, test_host: str, timeout: float = 3.5) -> Tu
     if not dns_server or dns_server.startswith("0.0.0.0"):
         return False, "0", "Servidor DNS no configurado"
 
-    target_host = test_host if test_host else "corpoelec.gob.ve"
+    target_host = test_host if test_host else "1.1.1.1"
     try:
         proc = await asyncio.create_subprocess_exec(
             "dig", f"@{dns_server}", target_host, "+time=2", "+tries=1",
@@ -178,7 +178,7 @@ async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[b
             asyncio.open_connection(ip, port_int), timeout=timeout
         )
         banner = await asyncio.wait_for(reader.readline(), timeout=2.0)
-        writer.write(b"HELO mail.corpoelec.gob.ve\r\n")
+        writer.write(b"HELO mail.empresa.local\r\n")
         await writer.drain()
         reply = await asyncio.wait_for(reader.readline(), timeout=2.0)
         writer.write(b"QUIT\r\n")

@@ -153,7 +153,20 @@ GITIGNORE_EOF
 
 # 6. Escaneo de seguridad preventivo (Sanity Check)
 echo -e "${BLUE}▶ 4. Ejecutando auditoría de seguridad preventiva previa a la publicación...${NC}"
-FORBIDDEN_PATTERNS=("Abrito2026" "Carabobo01" "Octubre2022" "11746281" "1595888148:AAE" "8791276974:AAH")
+FORBIDDEN_PATTERNS=(
+    "Abrito2026"
+    "Carabobo01"
+    "Octubre2022"
+    "11746281"
+    "A1746281"
+    "1595888148:AAE"
+    "8791276974:AAH"
+    "CORPOELEC"
+    "Corpoelec"
+    "corpoelec"
+    "División de ATIT Carabobo"
+    "Gerencia de ATIT Región Central"
+)
 LEAKS_FOUND=0
 
 for pattern in "${FORBIDDEN_PATTERNS[@]}"; do

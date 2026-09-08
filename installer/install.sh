@@ -38,7 +38,7 @@ fi
 echo -e "${CYAN}${BOLD}"
 echo "======================================================================"
 echo "    🚀 INSTALADOR MAESTRO: SISTEMA DE MONITOREO & SEGURIDAD"
-echo "    CENTRO DE OPERACIONES VALLE SECO • CORPOELEC (CENCARATIT)"
+echo "    CENTRO DE OPERACIONES Y MONITOREO DE REDES VALLE SECO"
 echo "======================================================================"
 echo -e "${NC}"
 echo -e "${YELLOW}[*] Usuario objetivo del sistema detectado:${NC} ${BOLD}${SYS_USER}${NC}"

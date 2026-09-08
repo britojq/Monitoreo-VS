@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '403 Acceso Restringido • Seguridad ATIT CORPOELEC')
+@section('title', '403 Acceso Restringido • Seguridad del Sistema')
 
 @php
     $message = isset($exception) && $exception->getMessage() 
@@ -54,11 +54,11 @@
                 <!-- LOGO E ÍCONO DE ACCESO RESTRINGIDO -->
                 <div class="flex flex-col sm:flex-row sm:items-center gap-5">
                     <div class="w-18 h-18 sm:w-20 sm:h-20 shrink-0 rounded-2xl bg-gradient-to-br from-red-500/20 via-obsidian-card to-amber-500/10 border-2 border-red-500/50 flex items-center justify-center p-3 shadow-xl shadow-red-500/20">
-                        <img src="{{ asset('img/logo.png') }}" alt="CORPOELEC" class="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                        <img src="{{ asset('img/logo.png') }}" alt="Seguridad Corporativa" class="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(239,68,68,0.7)]">
                     </div>
                     <div class="space-y-1">
                         <div class="text-[11px] font-mono uppercase tracking-widest text-obsidian-muted flex items-center gap-1.5">
-                            <span class="text-red-400 font-bold">CORPOELEC</span>
+                            <span class="text-red-400 font-bold">ACCESO RESTRINGIDO</span>
                             <span>•</span>
                             <span>NODO VALLE SECO</span>
                         </div>
@@ -153,7 +153,7 @@
     <!-- PIE INSTITUCIONAL CORPORATIVO -->
     <footer class="relative z-10 text-center max-w-xl mx-auto space-y-1.5 pt-6 text-[10px] font-mono text-obsidian-muted/80">
         <p class="text-obsidian-text/80 font-semibold">
-            Corporación Eléctrica Nacional (CORPOELEC) • Gerencia General de Tecnología de la Información y Telecomunicaciones (ATIT)
+            Sistema de Monitoreo y Gestión de Red • División de Infraestructura Tecnológica
         </p>
         <p class="text-[9px] text-obsidian-muted/60">
             División de Operaciones y Redes • Nodo Valle Seco • Plataforma de Seguridad Perimetral v2.0
