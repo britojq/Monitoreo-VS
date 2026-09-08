@@ -4612,6 +4612,121 @@ async def cmd_reinicia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     asyncio.create_task(_execute_system_reboot())
 
 
+async def cmd_ip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Comando para consultar el Hostname, interfaces de red y direcciones IP del servidor host.
+    Disponible para el Owner y usuarios autorizados.
+    """
+    if not is_authorized(update):
+        if update.message and update.effective_chat and update.effective_chat.type == "private":
+            await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    import platform
+    import socket
+    import subprocess
+    import psutil
+    from datetime import datetime
+
+    hostname = platform.node() or "N/A"
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Obtener interfaces IPv4 excluyendo loopback y puentes virtuales
+    ifaces_data = []
+    primary_ip = None
+    try:
+        for iface, addrs in psutil.net_if_addrs().items():
+            if iface.lower() in ("lo", "docker0"):
+                continue
+            for a in addrs:
+                if a.family == socket.AF_INET and not a.address.startswith("127."):
+                    ifaces_data.append({
+                        "iface": iface,
+                        "ip": a.address,
+                        "netmask": a.netmask or "N/A",
+                        "broadcast": a.broadcast or "N/A"
+                    })
+                    if not primary_ip and not a.address.startswith("169.254."):
+                        primary_ip = a.address
+    except Exception as e:
+        logger.error(f"Error obteniendo interfaces con psutil: {e}")
+
+    # Fallback con hostname -I si psutil no encontró interfaces
+    if not ifaces_data:
+        try:
+            out = subprocess.check_output(["hostname", "-I"], text=True, timeout=2.0).strip()
+            for piece in out.split():
+                if piece and ":" not in piece and not piece.startswith("127."):
+                    ifaces_data.append({
+                        "iface": "eth",
+                        "ip": piece,
+                        "netmask": "255.255.255.0",
+                        "broadcast": "N/A"
+                    })
+                    if not primary_ip:
+                        primary_ip = piece
+        except Exception:
+            pass
+
+    # Puerta de enlace predeterminada (Gateway)
+    gw_info = "N/A"
+    try:
+        res = subprocess.run(["ip", "route"], capture_output=True, text=True, timeout=2.0)
+        for line in res.stdout.splitlines():
+            if line.startswith("default via"):
+                parts = line.split()
+                if len(parts) >= 5:
+                    gw_info = f"<code>{parts[2]}</code> (vía <i>{parts[4]}</i>)"
+                else:
+                    gw_info = f"<code>{parts[2]}</code>"
+                break
+    except Exception:
+        pass
+
+    # Servidores DNS activos
+    dns_servers = []
+    try:
+        with open("/etc/resolv.conf", "r") as rf:
+            for line in rf:
+                if line.strip().startswith("nameserver"):
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1] not in ("127.0.0.1", "::1"):
+                        dns_servers.append(parts[1])
+    except Exception:
+        pass
+    dns_str = ", ".join(f"<code>{d}</code>" for d in dns_servers[:3]) if dns_servers else "N/A"
+
+    # Construir listado de interfaces
+    ifaces_text_list = []
+    for item in ifaces_data:
+        ifaces_text_list.append(
+            f"🔹 <b>{item['iface']}:</b> <code>{item['ip']}</code>\n"
+            f"   └ <i>Máscara:</i> <code>{item['netmask']}</code>"
+        )
+    ifaces_formatted = "\n\n".join(ifaces_text_list) if ifaces_text_list else "<i>No se detectaron interfaces activas.</i>"
+
+    portal_url = f"http://{primary_ip}/" if primary_ip else "http://localhost/"
+    domain_url = "http://monitoreo-vs.local/"
+
+    msg = (
+        "🌐 <b>INFORMACIÓN DE RED DEL SERVIDOR</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🖥️ <b>Equipo:</b> <code>{hostname}</code>\n"
+        f"⏰ <b>Hora Servidor:</b> <code>{now_str}</code>\n\n"
+        "📡 <b>Direcciones IP Asignadas:</b>\n"
+        f"{ifaces_formatted}\n\n"
+        f"🚪 <b>Gateway (Puerta de Enlace):</b> {gw_info}\n"
+        f"🧭 <b>DNS Primarios:</b> {dns_str}\n\n"
+        "🔗 <b>Enlaces de Acceso al Portal:</b>\n"
+        f" • IP Directa: <a href=\"{portal_url}\">{portal_url}</a>\n"
+        f" • Dominio Local: <a href=\"{domain_url}\">{domain_url}</a>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+    if update.message:
+        await safe_reply_html(update.message, msg)
+
+
 async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja las acciones interactivas del panel de emergencia del Owner."""
     query = update.callback_query
@@ -4858,6 +4973,7 @@ def main() -> None:
                     BotCommand("servicios", "Consultar estado de servicios"),
                     BotCommand("sedes", "Consultar estado de sedes y enlaces"),
                     BotCommand("monitoreo", "Reporte de infraestructura unificado"),
+                    BotCommand("ip", "Dirección IP y parámetros de red"),
                     BotCommand("internet", "Diagnóstico de conectividad y proxies"),
                     BotCommand("analisis_red", "Diagnóstico de red local"),
                     BotCommand("reset_ia", "Reiniciar conversación con la IA"),
@@ -4869,6 +4985,7 @@ def main() -> None:
                 if owner_id:
                     owner_commands = [
                         BotCommand("start", "Panel de control principal"),
+                        BotCommand("ip", "Dirección IP y red del servidor"),
                         BotCommand("servicios", "Servicios corporativos (/servicios web, grupo)"),
                         BotCommand("sedes", "Sedes y enlaces (/sedes web)"),
                         BotCommand("caidas", "Servicios caídos e incidentes (/caidas web)"),
@@ -5101,6 +5218,9 @@ def main() -> None:
 
     # Comando de Análisis de Red Local (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["analisis_red", "red", "escaner_red", "network_scan"], cmd_analisis_red))
+
+    # Comando para consultar la dirección IP y red del servidor host (Owner y usuarios autorizados)
+    application.add_handler(CommandHandler(["ip", "mi_ip", "ip_servidor", "server_ip", "my_ip"], cmd_ip))
 
     # Callback query handler para panel de control de emergencia
     application.add_handler(CallbackQueryHandler(handle_emergency_callback, pattern=r"^emergencia:"))

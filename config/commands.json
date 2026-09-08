@@ -100,6 +100,10 @@
     "disk": {
       "description": "Uso de almacenamiento y particiones en disco",
       "help_text": "ℹ️ <b>Ayuda del comando /disk:</b>\n\nConsulta el espacio utilizado y disponible en todas las particiones del sistema (df -h)."
+    },
+    "ip": {
+      "description": "Consultar la dirección IP y parámetros de red del servidor",
+      "help_text": "ℹ️ <b>Ayuda del comando /ip:</b>\n\n• <code>/ip</code>: Muestra el nombre de host (hostname), las direcciones IPv4 asignadas a las interfaces de red físicas y lógicas, la puerta de enlace (Gateway), servidores DNS y los enlaces de acceso directo al portal web."
     }
   }
 }
