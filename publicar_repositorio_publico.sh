@@ -73,6 +73,13 @@ rsync -av --delete \
     --exclude=".env" \
     --exclude="web_portal/.env" \
     --exclude="web_portal/database/database.sqlite" \
+    --exclude="*.png" \
+    --exclude="*.jpg" \
+    --exclude="*.jpeg" \
+    --exclude="*.webp" \
+    --exclude="*.ico" \
+    --exclude="*.svg" \
+    --exclude="*.gif" \
     --exclude="web_portal/vendor/" \
     --exclude="web_portal/node_modules/" \
     --exclude="web_portal/storage/logs/*.log" \
@@ -81,6 +88,9 @@ rsync -av --delete \
     --exclude="web_portal/storage/framework/views/*" \
     --exclude="publicar_repositorio_publico.sh" \
     "$BASE_DIR/" "$BUILD_DIR/"
+
+# Purgar cualquier archivo de imagen residual en el directorio público
+find "$BUILD_DIR" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" -o -name "*.ico" -o -name "*.svg" -o -name "*.gif" \) -delete 2>/dev/null || true
 
 # 5. Inyectar plantillas de configuración genéricas
 echo -e "${BLUE}▶ 3. Inyectando plantillas de configuración genéricas...${NC}"
