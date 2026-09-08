@@ -2835,7 +2835,7 @@ async def _run_and_send_monitoring_report(
                             parse_mode='HTML'
                         )
 
-                    gtitle, _ = await _resolve_group_info(context.bot, gid)
+                    gtitle = await _resolve_group_info(context.bot, gid)
                     dispatched_groups.append(f"• 👥 <b>{html.escape(gtitle)}</b> (<code>{gid}</code>)")
                     logger.info(f"Reporte ({target}) despachado exitosamente al grupo {gid}")
                 except Exception as e_grp:
