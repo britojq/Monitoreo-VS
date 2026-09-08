@@ -122,9 +122,14 @@ echo -e "${GREEN}✓ Nuevo Machine ID generado: $(cat /etc/machine-id)${NC}"
 
 echo -e "${BLUE}▶ 5. Limpiando anclaje anterior del Bot para arranque limpio...${NC}"
 rm -f /scripts/telegram-admin-bot/audit/.sys_anchor
+rm -f /scripts/telegram-admin-bot/audit/.active_challenge
 rm -f /tmp/.last_sentinel_*
 rm -f /tmp/.auto_rollback_occurred 2>/dev/null || true
 echo -e "${GREEN}✓ Anclaje criptográfico reseteado a modo 'Primer Arranque'.${NC}"
+
+echo -e "${BLUE}▶ 6. Habilitando servicio del Bot Centinela en producción...${NC}"
+systemctl enable --now tg-sentinel-bot.service 2>/dev/null || true
+echo -e "${GREEN}✓ tg-sentinel-bot.service activado para monitoreo de seguridad en producción.${NC}"
 
 echo -e "${BLUE}▶ 6. Saneando logs del sistema...${NC}"
 journalctl --rotate --vacuum-time=1s 2>/dev/null || true

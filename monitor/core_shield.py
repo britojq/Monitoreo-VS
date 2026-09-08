@@ -33,6 +33,7 @@ logger = logging.getLogger("monitor.secure_core")
 BASE_DIR = Path(__file__).resolve().parent.parent
 AUDIT_DIR = BASE_DIR / "audit"
 ANCHOR_FILE = AUDIT_DIR / ".sys_anchor"
+CHALLENGE_FILE = AUDIT_DIR / ".active_challenge"
 
 AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -225,6 +226,15 @@ class SecureCore:
         else:
             # Anomalía o migración detectada -> Estado PENDING_VALIDATION
             self._state = "PENDING_VALIDATION"
+            cfg_path = BASE_DIR / "config" / "config.json"
+            if cfg_path.exists():
+                try:
+                    c_data = json.loads(cfg_path.read_text(encoding="utf-8"))
+                    c_tok = c_data.get("bot_token", "").strip()
+                    if c_tok and ":" in c_tok and len(c_tok) >= 30:
+                        self._custom_token = c_tok
+                except Exception:
+                    pass
             hw_fp = ":".join(self._hw_components)
             self._active_serial, self._serial_timestamp = self._generate_challenge(hw_fp)
             logger.warning("⚠️ SecureCore: Huella de hardware no coincide. Entrando en protocolo de re-validación...")
@@ -306,15 +316,39 @@ class SecureCore:
             return None, None
 
     def _generate_challenge(self, hw_fingerprint: str) -> Tuple[str, int]:
-        """Genera un Serial dinámico antifalsificación con ventana de tiempo de 10 min."""
-        ts = int(time.time())
+        """Genera o recupera un Serial dinámico antifalsificación con ventana de tiempo de 10 min."""
+        now = int(time.time())
+        if CHALLENGE_FILE.exists():
+            try:
+                c_data = json.loads(CHALLENGE_FILE.read_text(encoding="utf-8"))
+                c_serial = c_data.get("serial", "")
+                c_ts = int(c_data.get("ts", 0))
+                if 0 <= now - c_ts < 600 and c_serial:
+                    return c_serial, c_ts
+            except Exception:
+                pass
+
+        ts = now
         raw = f"{hw_fingerprint}:{ts}:{_CHALLENGE_SALT.hex()}".encode("utf-8")
         h = hashlib.sha256(raw).hexdigest()[:16].upper()
         serial = f"AUTH-{h[:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
+        try:
+            CHALLENGE_FILE.write_text(json.dumps({"serial": serial, "ts": ts}), encoding="utf-8")
+        except Exception:
+            pass
         return serial, ts
 
     def verify_challenge(self, entered_serial: str) -> bool:
-        """Verifica la validez y expiración del Serial de validación."""
+        """Verifica la validez y expiración del Serial de validación compartida entre procesos."""
+        if not self._active_serial or not self._serial_timestamp:
+            if CHALLENGE_FILE.exists():
+                try:
+                    c_data = json.loads(CHALLENGE_FILE.read_text(encoding="utf-8"))
+                    self._active_serial = c_data.get("serial", "")
+                    self._serial_timestamp = int(c_data.get("ts", 0))
+                except Exception:
+                    pass
+
         if not self._active_serial or not self._serial_timestamp:
             return False
         now = int(time.time())
@@ -471,6 +505,11 @@ class SecureCore:
             self._state = "OPERATIONAL"
             self._active_serial = None
             self._serial_timestamp = 0
+            if CHALLENGE_FILE.exists():
+                try:
+                    CHALLENGE_FILE.unlink()
+                except Exception:
+                    pass
             logger.info("✅ SecureCore: Anclaje de hardware exitoso. Bot activado en modo OPERATIONAL.")
             return True, "✅ [ACTIVACIÓN EXITOSA] Hardware anclado correctamente a la máquina local."
         return False, "Error al escribir el archivo de anclaje de hardware."

@@ -366,13 +366,13 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     data = query.data
     await query.answer()
 
-    if data.startswith("sentinel:activate:"):
-        serial = data.replace("sentinel:activate:", "").strip()
+    if data.startswith("sentinel:activate:") or data.startswith("sentinel:migrar:"):
+        serial = data.split(":")[-1].strip()
         ok, msg = activate_hardware_first_boot(serial)
         if ok:
             await query.edit_message_text(
                 f"🎉 <b>{msg}</b>\n\n"
-                "✅ <b>Hardware anclado exitosamente.</b> Reiniciando servicio de monitoreo en segundo plano...",
+                "✅ <b>Hardware anclado exitosamente en este servidor.</b> Reiniciando servicio de monitoreo en segundo plano...",
                 parse_mode="HTML"
             )
             try:
@@ -586,7 +586,7 @@ def main() -> None:
     migration_handler = ConversationHandler(
         entry_points=[
             CommandHandler(["migrar", "migracion", "cambiar_nodo"], start_migration_conversation),
-            CallbackQueryHandler(start_migration_conversation, pattern=r"^sentinel:(menu:migrar|migrar:)")
+            CallbackQueryHandler(start_migration_conversation, pattern=r"^sentinel:menu:migrar$")
         ],
         states={
             STATE_WAITING_MIGRATION_TOKEN: [
