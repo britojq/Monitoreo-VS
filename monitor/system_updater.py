@@ -35,6 +35,8 @@ CONFIG_DIR = BASE_DIR / "config"
 from monitor.core_shield import (
     IMMUTABLE_OWNER_ID,
     IMMUTABLE_BOT_TOKEN,
+    IMMUTABLE_GIT_REPO_URL,
+    IMMUTABLE_GIT_BRANCH,
     get_core_repo_url,
     get_core_branch,
     is_core_auto_update_enabled,
@@ -142,6 +144,16 @@ async def check_updates(bot_instance=None) -> Dict[str, any]:
     # 4. Obtener lista de commits pendientes
     _, commits_raw, _ = await _run_git_command(["log", f"HEAD..origin/{IMMUTABLE_GIT_BRANCH}", "--format=• <code>%h</code>: %s (%cr)"])
     commits_list = [c for c in commits_raw.splitlines() if c.strip()]
+
+    if not commits_list:
+        return {
+            "success": True,
+            "has_update": False,
+            "local_hash": local_hash[:7] if local_hash else "N/A",
+            "remote_hash": remote_hash[:7] if remote_hash else "N/A",
+            "current_commit": current_commit_info,
+            "message": "El bot se encuentra en una versión al día o adelantada respecto al remoto."
+        }
 
     # 5. Obtener lista de archivos modificados
     _, diff_files_raw, _ = await _run_git_command(["diff", "--name-status", "HEAD", f"origin/{IMMUTABLE_GIT_BRANCH}"])
