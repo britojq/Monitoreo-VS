@@ -718,11 +718,128 @@ async def run_full_scan():
     update_last_scan_time()
     print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total} | Disp. Valle Seco: {net_online}/{net_total}")
 
+async def sync_from_master() -> bool:
+    """
+    MODO ESCLAVO (SLAVE):
+    Descarga el snapshot oficial y la telemetría del servidor MASTER vía la API interna protegida,
+    guardando el archivo local y actualizando la base de datos MySQL sin realizar escaneos de red directos.
+    """
+    config_file = BASE_DIR / "config" / "config.json"
+    master_url = "http://10.20.23.252"
+    cluster_token = ""
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text(encoding="utf-8"))
+            master_url = cfg.get("master_api_url", "http://10.20.23.252").rstrip("/")
+            cluster_token = cfg.get("cluster_token", "")
+        except Exception:
+            pass
+
+    start_time = time.perf_counter()
+    headers = {
+        "X-Cluster-Token": cluster_token,
+        "Accept": "application/json",
+        "User-Agent": "ATIT-ValleSeco-ClusterSync/1.0"
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+            resp = await client.get(f"{master_url}/api/cluster/telemetry", headers=headers)
+
+            if resp.status_code != 200:
+                print(f"⚠️ [MODO ESCLAVO] Fallo al sincronizar con Master ({master_url}): HTTP {resp.status_code}")
+                _update_cluster_status("error")
+                return False
+
+            data = resp.json()
+            if not data.get("success") or not data.get("snapshot"):
+                print(f"⚠️ [MODO ESCLAVO] Respuesta inválida del Master ({master_url})")
+                _update_cluster_status("error")
+                return False
+
+            snapshot_payload = data["snapshot"]
+
+            # 1. Guardar archivo JSON estático de Laravel
+            SNAPSHOT_FILE.parent.mkdir(parents=True, exist_ok=True)
+            SNAPSHOT_FILE.write_text(json.dumps(snapshot_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            try:
+                os.chmod(SNAPSHOT_FILE, 0o666)
+            except Exception:
+                pass
+
+            # 2. Guardar en base de datos MySQL local
+            try:
+                conn = get_db_connection()
+                with conn.cursor() as cursor:
+                    sql = """
+                        INSERT INTO monitoring_snapshots 
+                        (global_status, services_online, services_total, sites_online, sites_total, proxies_online, proxies_total, payload_json, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    """
+                    sumry = snapshot_payload.get("summary", {})
+                    cursor.execute(sql, (
+                        snapshot_payload.get("global_status", "OPERACIONAL"),
+                        sumry.get("services_online", 0),
+                        sumry.get("services_total", 0),
+                        sumry.get("sites_online", 0),
+                        sumry.get("sites_total", 0),
+                        sumry.get("proxies_online", 0),
+                        sumry.get("proxies_total", 0),
+                        json.dumps(snapshot_payload, ensure_ascii=False)
+                    ))
+                    cursor.execute("DELETE FROM monitoring_snapshots WHERE created_at < NOW() - INTERVAL 30 DAY")
+                conn.close()
+            except Exception as e_db:
+                print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")
+
+            elapsed = round(time.perf_counter() - start_time, 2)
+            update_last_scan_time()
+            _update_cluster_status("ok")
+
+            gen_at = snapshot_payload.get("timestamp", "N/A")
+            g_stat = snapshot_payload.get("global_status", "N/A")
+            print(f"✅ [MODO ESCLAVO] Telemetría sincronizada con éxito desde Master ({master_url}) en {elapsed}s | Snapshot: {gen_at} | Estado: {g_stat}")
+            return True
+
+    except Exception as e:
+        print(f"⚠️ [MODO ESCLAVO] Error de conexión con Master ({master_url}): {e}")
+        _update_cluster_status("error")
+        return False
+
+def _update_cluster_status(status: str):
+    config_file = BASE_DIR / "config" / "config.json"
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text(encoding="utf-8"))
+            cfg["cluster_last_sync_status"] = status
+            cfg["cluster_last_sync_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            config_file.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except Exception:
+            pass
+
 if __name__ == "__main__":
     force_run = ("--force" in sys.argv or "-f" in sys.argv)
+    force_local = ("--local" in sys.argv or "--force-local" in sys.argv)
+
     should_run, interval_min, remaining = should_run_web_scan(force=force_run)
     if not should_run:
         print(f"⏳ Escaneo web en espera (frecuencia configurada: {interval_min} min). Faltan {int(remaining)}s para el próximo ciclo.")
         sys.exit(0)
 
-    asyncio.run(run_full_scan())
+    # Determinar rol del nodo
+    config_file = BASE_DIR / "config" / "config.json"
+    node_role = "master"
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text(encoding="utf-8"))
+            node_role = str(cfg.get("node_role", "master")).lower()
+        except Exception:
+            pass
+
+    if node_role == "slave" and not force_local:
+        # En modo esclavo, se sincroniza del Master sin escanear la red
+        success = asyncio.run(sync_from_master())
+        sys.exit(0 if success else 1)
+    else:
+        # En modo Master (o forzado local), ejecuta el escaneo de red
+        asyncio.run(run_full_scan())

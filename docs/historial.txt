@@ -1231,7 +1231,27 @@ debe alterar su código, tiempos o configuración systemd.
    - Automatización de sincronización hacia /var/www/monitoreo, permisos de almacenamiento 777, purga de cachés y actualización automática de /etc/cron.d/monitoreo_web.
 
 --------------------------------------------------------------------------------
-97. ESTADO FINAL DE VERIFICACIÓN
+99. NONAGÉSIMA NOVENA INTERVENCIÓN (2026-09-09): ARQUITECTURA CLÚSTER MASTER-SLAVE PARA PREVENCIÓN DE COLISIONES EN PFSENSE Y API INTERNA DE TELEMETRÍA
+--------------------------------------------------------------------------------
+1) Problema Resuelto:
+   - Se producían colisiones de concurrencia e inconsistencias en el firewall pfSense al recibir consultas simultáneas de monitoreo con las mismas credenciales desde múltiples direcciones IP (servidor de producción 10.20.23.252 y servidor de desarrollo 10.20.23.241), provocando bloqueos de acceso, caídas aparentes de proxies ("Inaccesible") y falsos positivos.
+2) Solución de Arquitectura Clúster Master/Slave:
+   - Servidor Maestro (Master - Producción MONITOREO-VS 10.20.23.252): Único nodo autorizado para ejecutar escaneos periódicos automáticos de red y pfSense en segundo plano (cada 10 min). Expone una API interna sigilosa y protegida para alimentar a los nodos réplica.
+   - Servidor Esclavo (Slave - Réplica / Desarrollo CENCARATIT 10.20.23.241): En modo esclavo, el motor de sincronización web (monitor/monitor_web_sync.py) no realiza escaneos directos de fondo ni toca pfSense; en su lugar, consume de forma instantánea el snapshot oficial del Master vía la API interna protegida.
+   - Autonomía Completa de Comandos en Telegram: Las solicitudes bajo demanda por Telegram (/servicios, /sedes, /caidas, /debug_servicios, etc.) en el nodo Slave se mantienen 100% activas y ejecutan diagnósticos locales in vivo e independientes a través de monitor_engine.py, garantizando una doble perspectiva ("dos vistas de la realidad") para detectar fallas locales de red o enrutamiento.
+3) API Sigilosa de Clúster (Stealth API) & Seguridad:
+   - Middleware ValidateClusterToken: Autentica peticiones mediante cabecera HTTP X-Cluster-Token o Bearer Token comparado con hash seguro.
+   - Diseño Sigiloso: Cualquier petición sin token válido o no autorizada retorna HTTP 404 Not Found (ocultando por completo la existencia de los endpoints a escáneres externos).
+   - Endpoints:
+     • GET /api/cluster/ping: Verificación de latencia y estado operativo entre nodos.
+     • GET /api/cluster/telemetry: Entrega el payload JSON del último snapshot de monitoreo y la configuración de infraestructura.
+4) Control de Acceso y Modo Solo Lectura en Slave:
+   - Middleware EnsureMasterNode: Bloquea mutaciones (POST, PUT, DELETE) en el nodo Slave para servicios, sedes, dispositivos y proxies (retornando HTTP 403 / alerta explicativa).
+   - Interfaz Web con bloqueo visual adaptativo: Reemplaza botones de modificación por badges "Solo Lectura", deshabilita exportaciones a .conf y presenta un banner ambarino de advertencia en el nodo réplica.
+   - Tarjeta de Administración de Clúster en el Dashboard: Permite alternar roles (Master / Slave), copiar o regenerar tokens criptográficos y probar la conectividad en tiempo real con el servidor Master vía AJAX.
+
+--------------------------------------------------------------------------------
+100. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
 - Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).

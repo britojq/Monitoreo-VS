@@ -1,0 +1,10 @@
+fijate, actualmente el servidor de desarroll y produccion entran en conflictos con el servidor PFsense porque el mismo bloquea los accesos del mismo usuario desde IP diferentes entonces para solucionar esto necesito crear una nueva forma de trabajo como a continuacion te explico:
+
+el servidor de produccion debe ser un servidor Master, sera el unico que realzara escaneos periodicos como se definio (cada 10 minutos)
+el servidor de desarrollo la vista web se conectara al servidor de produccion (master) para obtener los datos del escaneo
+
+me gustaria que exista un modo de trabajo master y esclavo, en donde al entrar al portal se le asigne este rol (Master o Slave) y que el slave no haga escaneo en intervalos de tiempo cuando este en modo (Slave) sino que se conecte  al servidor (Master) y obtenga toda la data
+teniendo en cuenta que si el servidor esta como (slave) no podra cambiar configuraciones del archivo "monitoreo.conf" ni otra configuraciones y debe indicar que se deben hacer esos cambios en el servidor master (solo cuando un usuario con rol administrador inicie sesion e intente hacerlo)
+me gustaria que diseñes algo con una api que este activa pero oculta al publico y que los servidores la usen para este fin exclusivamente y que solo validando credenciales puedan usar esa conexion de api
+
+basandote en esta idea dame una sugerencia de que hacer y como lo implementarias

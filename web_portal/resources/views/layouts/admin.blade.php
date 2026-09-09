@@ -212,6 +212,12 @@
                     <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>
                 @endif
 
+                <!-- BADGE DE ROL DE CLÚSTER (MASTER / SLAVE) -->
+                <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-bold {{ $isClusterSlave ? 'bg-amber-950/70 text-amber-300 border-amber-500/40' : 'bg-cyan-950/70 text-cyan-300 border-cyan-500/40' }}" title="Rol de arquitectura de monitoreo">
+                    <span class="material-symbols-outlined text-sm {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">{{ $isClusterSlave ? 'cloud_sync' : 'dns' }}</span>
+                    <span>{{ $isClusterSlave ? 'SLAVE' : 'MASTER' }}</span>
+                </div>
+
                 <!-- USUARIO EN SESIÓN (Click abre ventana para cerrar sesión y perfil) -->
                 <button type="button" 
                         onclick="openUserSessionModal()" 
@@ -236,6 +242,19 @@
                 </button>
             </div>
         </header>
+
+        @if($isClusterSlave)
+        <!-- BANNER DE ADVERTENCIA DE MODO ESCLAVO -->
+        <div class="bg-amber-950/90 border-b border-amber-500/50 px-4 py-2.5 text-xs font-mono text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
+            <div class="flex items-center gap-2.5">
+                <span class="material-symbols-outlined text-amber-400 text-base shrink-0">cloud_sync</span>
+                <span><strong>MODO ESCLAVO (RÉPLICA):</strong> Este servidor sincroniza su telemetría web desde el Master (<code>{{ $clusterConfig['master_api_url'] }}</code>). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 text-[10px] text-amber-300/80 self-end sm:self-auto">
+                <span class="bg-amber-900/60 px-2 py-0.5 rounded border border-amber-500/30">Última sinc: {{ $clusterConfig['cluster_last_sync_at'] ?: 'Pendiente' }}</span>
+            </div>
+        </div>
+        @endif
 
         <!-- CONTENIDO DE LA PÁGINA -->
         <main class="flex-1 p-4 sm:p-6 space-y-6">

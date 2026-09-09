@@ -80,10 +80,17 @@
                                     <span>Histórico</span>
                                 </button>
                                 @if(auth()->user()->isAdmin())
-                                    <button onclick="openEditServiceModal({{ json_encode($s) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
-                                        <span class="material-symbols-outlined text-sm">edit</span>
-                                        <span>Modificar</span>
-                                    </button>
+                                    @if($isClusterSlave)
+                                        <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
+                                            <span class="material-symbols-outlined text-xs">lock</span>
+                                            Solo Lectura
+                                        </span>
+                                    @else
+                                        <button onclick="openEditServiceModal({{ json_encode($s) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
+                                            <span class="material-symbols-outlined text-sm">edit</span>
+                                            <span>Modificar</span>
+                                        </button>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

@@ -134,16 +134,23 @@
                 Los cambios que realices en este panel (Servicios, Sedes, Dispositivos y Proxies) se guardan en la base de datos MySQL y se exportan automáticamente a los archivos oficiales <code class="text-obsidian-cyan font-mono">/scripts/telegram-admin-bot/config/monitoreo.conf</code> y <code class="text-obsidian-cyan font-mono">bot.conf</code> para que el motor asíncrono de Python y el bot de Telegram los utilicen según la frecuencia de chequeo establecida (actualmente cada {{ $cronConfig['web_check_interval'] ?? 10 }} minutos).
             </p>
             <div class="pt-2 flex flex-wrap gap-3">
-                <form action="{{ route('admin.sync.manual') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition cursor-pointer">
-                        <span class="material-symbols-outlined text-base">save</span>
-                        Forzar Exportación a .conf
+                @if($isClusterSlave)
+                    <button type="button" disabled class="px-4 py-2 rounded-lg bg-gray-800 text-gray-400 border border-gray-700 font-bold text-xs font-mono uppercase flex items-center gap-2 cursor-not-allowed opacity-60" title="Deshabilitado en Modo Esclavo">
+                        <span class="material-symbols-outlined text-base">lock</span>
+                        Solo Lectura (Modo Esclavo)
                     </button>
-                </form>
+                @else
+                    <form action="{{ route('admin.sync.manual') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition cursor-pointer">
+                            <span class="material-symbols-outlined text-base">save</span>
+                            Forzar Exportación a .conf
+                        </button>
+                    </form>
+                @endif
                 <button onclick="triggerImmediateScan()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-obsidian-cyan hover:text-black transition cursor-pointer">
                     <span class="material-symbols-outlined text-base">play_arrow</span>
-                    Ejecutar Escaneo Ahora
+                    {{ $isClusterSlave ? 'Sincronizar con Master Ahora' : 'Ejecutar Escaneo Ahora' }}
                 </button>
             </div>
         </div>
@@ -365,10 +372,17 @@
                                 class="w-full bg-[#040d1a] border border-obsidian-border text-white text-sm font-mono rounded-lg px-4 py-2.5 focus:outline-none focus:border-obsidian-cyan">
                             <span class="absolute right-3 top-2.5 text-xs font-mono text-obsidian-muted pointer-events-none">minutos</span>
                         </div>
-                        <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
-                            <span class="material-symbols-outlined text-base">save</span>
-                            Guardar Frecuencia
-                        </button>
+                        @if($isClusterSlave)
+                            <button type="button" disabled class="px-5 py-2.5 rounded-lg bg-gray-800 text-gray-400 font-bold text-xs font-mono uppercase flex items-center gap-2 cursor-not-allowed opacity-60" title="Configurado exclusivamente en el Servidor Master">
+                                <span class="material-symbols-outlined text-base">lock</span>
+                                Configurado en Master
+                            </button>
+                        @else
+                            <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
+                                <span class="material-symbols-outlined text-base">save</span>
+                                Guardar Frecuencia
+                            </button>
+                        @endif
                     </div>
 
                     <!-- PRESETS RÁPIDOS -->
@@ -411,6 +425,232 @@
             </div>
         </div>
     </div>
+
+    <!-- CONFIGURACIÓN DE CLÚSTER & ROL DEL SERVIDOR (MASTER / SLAVE) (Exclusivo Administrador) -->
+    <div class="glass-card rounded-xl p-6 space-y-5 border {{ $isClusterSlave ? 'border-amber-500/40' : 'border-cyan-500/30' }}">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40' }}">
+                    <span class="material-symbols-outlined text-xl">{{ $isClusterSlave ? 'cloud_sync' : 'hub' }}</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        Arquitectura de Clúster (Master / Slave)
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }}">
+                            {{ $isClusterSlave ? 'NODO RÉPLICA (SLAVE)' : 'NODO PRINCIPAL (MASTER)' }}
+                        </span>
+                    </h2>
+                    <p class="text-xs text-obsidian-muted mt-0.5">
+                        Define si este servidor actúa como nodo escaneador oficial (Master) o como nodo réplica de consulta (Slave) para prevenir colisiones en pfSense.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORMULARIO DE ROL Y CLÚSTER -->
+        <form action="{{ route('admin.cluster.update') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            @csrf
+            <!-- SELECTOR DE ROL Y PARÁMETROS (2 COLS) -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="space-y-2">
+                    <label class="text-xs font-mono font-bold text-gray-300 uppercase block">Seleccione el Rol de este Servidor:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- OPCIÓN MASTER -->
+                        <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ $isClusterMaster ? 'bg-cyan-950/40 border-cyan-500/60 text-white ring-1 ring-cyan-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-obsidian-cyan/40' }}">
+                            <input type="radio" name="node_role" value="master" {{ $isClusterMaster ? 'checked' : '' }} onchange="toggleClusterRoleFields('master')" class="mt-1 text-obsidian-cyan focus:ring-0">
+                            <div>
+                                <div class="font-bold text-xs font-mono flex items-center gap-1.5 text-white">
+                                    <span class="material-symbols-outlined text-sm text-cyan-400">dns</span>
+                                    Servidor Maestro (Master)
+                                </div>
+                                <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
+                                    Realiza los escaneos de red cada 10 min, gestiona las configuraciones oficiales y sirve la API de telemetría hacia los esclavos.
+                                </p>
+                            </div>
+                        </label>
+
+                        <!-- OPCIÓN SLAVE -->
+                        <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ $isClusterSlave ? 'bg-amber-950/40 border-amber-500/60 text-white ring-1 ring-amber-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-amber-500/40' }}">
+                            <input type="radio" name="node_role" value="slave" {{ $isClusterSlave ? 'checked' : '' }} onchange="toggleClusterRoleFields('slave')" class="mt-1 text-amber-400 focus:ring-0">
+                            <div>
+                                <div class="font-bold text-xs font-mono flex items-center gap-1.5 text-white">
+                                    <span class="material-symbols-outlined text-sm text-amber-400">cloud_sync</span>
+                                    Servidor Esclavo (Slave)
+                                </div>
+                                <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
+                                    No realiza escaneos automáticos de fondo a la red. Sincroniza su telemetría web desde el Master sin colisionar con pfSense.
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- CAMPO URL DEL MASTER (VISIBLE CUANDO ES SLAVE) -->
+                <div id="field_master_url" class="space-y-1.5 {{ $isClusterSlave ? '' : 'hidden' }}">
+                    <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-amber-400">link</span>
+                        URL / Dirección del Servidor Master
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="url" name="master_api_url" id="input_master_url" value="{{ $clusterConfig['master_api_url'] }}" placeholder="http://10.20.23.252"
+                            class="flex-1 bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan">
+                        <button type="button" onclick="testMasterConnection()" id="btn-test-connection" class="px-3 py-2.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap">
+                            <span class="material-symbols-outlined text-sm">wifi_tethering</span>
+                            Probar Conexión
+                        </button>
+                    </div>
+                    <div id="test-connection-feedback" class="hidden text-xs font-mono pt-1"></div>
+                </div>
+
+                <!-- CAMPO TOKEN DE CLÚSTER -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-obsidian-cyan">vpn_key</span>
+                            Token Secreto de Clúster (X-Cluster-Token)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="copyClusterToken()" class="text-[11px] font-mono text-obsidian-cyan hover:underline flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">content_copy</span>
+                                Copiar
+                            </button>
+                            <button type="button" onclick="generateNewClusterToken()" class="text-[11px] font-mono text-gray-400 hover:text-white flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">refresh</span>
+                                Regenerar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <input type="text" name="cluster_token" id="input_cluster_token" value="{{ $clusterConfig['cluster_token'] }}" required
+                            class="w-full bg-[#040d1a] border border-obsidian-border text-cyan-300 text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan pr-24">
+                        <span id="copy-token-badge" class="absolute right-2.5 top-2.5 text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 hidden">¡Copiado!</span>
+                    </div>
+                    <p class="text-[11px] text-obsidian-muted">
+                        Este token autentica las peticiones entre los servidores. Debe ser idéntico en el Master y en los Slaves.
+                    </p>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
+                        <span class="material-symbols-outlined text-base">save</span>
+                        Guardar Configuración de Clúster
+                    </button>
+                </div>
+            </div>
+
+            <!-- DETALLES DE ESTADO DEL CLÚSTER (1 COL) -->
+            <div class="bg-[#040d1a]/80 border border-obsidian-border/70 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div class="text-[11px] uppercase font-bold text-obsidian-muted flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">info</span>
+                    Estado del Clúster
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Rol actual:</span>
+                    <span class="text-white font-bold uppercase {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-300' }}">{{ $clusterConfig['node_role'] }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Última sinc:</span>
+                    <span class="text-white">{{ $clusterConfig['cluster_last_sync_at'] ?: 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Estado del enlace:</span>
+                    <span class="{{ $clusterConfig['cluster_last_sync_status'] === 'ok' || $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'text-emerald-400' : 'text-amber-400' }}">
+                        {{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente') }}
+                    </span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-obsidian-muted">API Oculta:</span>
+                    <span class="text-emerald-400">/api/cluster/*</span>
+                </div>
+            </div>
+        </form>
+    </div>
     @endif
 </div>
+
+<script>
+function toggleClusterRoleFields(role) {
+    const masterField = document.getElementById('field_master_url');
+    if (!masterField) return;
+    if (role === 'slave') {
+        masterField.classList.remove('hidden');
+    } else {
+        masterField.classList.add('hidden');
+    }
+}
+
+function copyClusterToken() {
+    const input = document.getElementById('input_cluster_token');
+    if (!input) return;
+    input.select();
+    navigator.clipboard.writeText(input.value);
+    const badge = document.getElementById('copy-token-badge');
+    if (badge) {
+        badge.classList.remove('hidden');
+        setTimeout(() => badge.classList.add('hidden'), 2500);
+    }
+}
+
+function generateNewClusterToken() {
+    if (!confirm('¿Desea generar un nuevo token de clúster? Si tiene nodos esclavos conectados, deberá actualizar el token en ellos.')) return;
+    fetch('{{ route('admin.cluster.generate-token') }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.token) {
+            document.getElementById('input_cluster_token').value = data.token;
+        }
+    });
+}
+
+function testMasterConnection() {
+    const url = document.getElementById('input_master_url').value;
+    const token = document.getElementById('input_cluster_token').value;
+    const btn = document.getElementById('btn-test-connection');
+    const feedback = document.getElementById('test-connection-feedback');
+
+    if (!btn || !feedback) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Probando...';
+    feedback.classList.remove('hidden', 'text-emerald-400', 'text-red-400');
+    feedback.classList.add('text-obsidian-muted');
+    feedback.textContent = 'Contactando servidor Master vía API...';
+
+    fetch('{{ route('admin.cluster.test') }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ master_api_url: url, cluster_token: token })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">wifi_tethering</span> Probar Conexión';
+        feedback.classList.remove('text-obsidian-muted');
+        if (data.success) {
+            feedback.classList.add('text-emerald-400');
+            feedback.textContent = '✅ ' + data.message;
+        } else {
+            feedback.classList.add('text-red-400');
+            feedback.textContent = '❌ ' + (data.message || 'Error al conectar con el Master.');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">wifi_tethering</span> Probar Conexión';
+        feedback.classList.remove('text-obsidian-muted');
+        feedback.classList.add('text-red-400');
+        feedback.textContent = '❌ Error de red al probar conexión: ' + err.message;
+    });
+}
+</script>
 @endsection

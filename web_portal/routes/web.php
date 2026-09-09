@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBanController;
+use App\Http\Controllers\Admin\AdminClusterController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminNetworkDeviceController;
@@ -93,36 +94,46 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('bans/unban/all/{userId}', [AdminBanController::class, 'unbanAll'])->name('bans.unban.all');
         Route::post('bans/ban-ip', [AdminBanController::class, 'banIp'])->name('bans.ban.ip');
 
-        // Modificaciones de Servicios
-        Route::post('services', [AdminServiceController::class, 'store'])->name('services.store');
-        Route::put('services/{service}', [AdminServiceController::class, 'update'])->name('services.update');
-        Route::delete('services/{service}', [AdminServiceController::class, 'destroy'])->name('services.destroy');
-        Route::post('services/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('services.toggle');
+        // Operaciones Mutantes de Infraestructura (Exclusivas del Servidor MASTER)
+        Route::middleware(['node.master'])->group(function () {
+            // Modificaciones de Servicios
+            Route::post('services', [AdminServiceController::class, 'store'])->name('services.store');
+            Route::put('services/{service}', [AdminServiceController::class, 'update'])->name('services.update');
+            Route::delete('services/{service}', [AdminServiceController::class, 'destroy'])->name('services.destroy');
+            Route::post('services/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('services.toggle');
 
-        // Modificaciones de Sedes
-        Route::post('sites', [AdminSiteController::class, 'store'])->name('sites.store');
-        Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update');
-        Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy');
-        Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle');
+            // Modificaciones de Sedes
+            Route::post('sites', [AdminSiteController::class, 'store'])->name('sites.store');
+            Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update');
+            Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy');
+            Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle');
 
-        // Modificaciones de Dispositivos de Red (Solo Administrador - No permite creación ni eliminación)
-        Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');
-        Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle');
+            // Modificaciones de Dispositivos de Red
+            Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');
+            Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle');
 
-        // Modificaciones de Proxies
-        Route::post('proxies', [AdminProxyController::class, 'store'])->name('proxies.store');
-        Route::put('proxies/{proxy}', [AdminProxyController::class, 'update'])->name('proxies.update');
-        Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy');
-        Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle');
+            // Modificaciones de Proxies
+            Route::post('proxies', [AdminProxyController::class, 'store'])->name('proxies.store');
+            Route::put('proxies/{proxy}', [AdminProxyController::class, 'update'])->name('proxies.update');
+            Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy');
+            Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle');
 
-        // Disparadores Operativos Manuales
-        Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual');
+            // Sincronización a .conf y frecuencia de monitoreo
+            Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual');
+            Route::post('cron/interval/update', [AdminCronController::class, 'updateWebCheckInterval'])->name('cron.interval.update');
+        });
+
+        // Disparador de Escaneo / Sincronización Manual (Disponible en Master y Slave)
         Route::post('scan-now', [SyncController::class, 'triggerScanNow'])->name('sync.scan');
 
         // Control de Envíos Programados por Cron (Telegram)
         Route::post('cron/toggle', [AdminCronController::class, 'toggle'])->name('cron.toggle');
         Route::post('cron/schedules/add', [AdminCronController::class, 'addSchedule'])->name('cron.schedules.add');
         Route::post('cron/schedules/remove', [AdminCronController::class, 'removeSchedule'])->name('cron.schedules.remove');
-        Route::post('cron/interval/update', [AdminCronController::class, 'updateWebCheckInterval'])->name('cron.interval.update');
+
+        // Configuración de Rol de Nodo & Clúster (Master / Slave)
+        Route::post('cluster/update', [AdminClusterController::class, 'update'])->name('cluster.update');
+        Route::post('cluster/test', [AdminClusterController::class, 'testConnection'])->name('cluster.test');
+        Route::post('cluster/generate-token', [AdminClusterController::class, 'generateToken'])->name('cluster.generate-token');
     });
 });

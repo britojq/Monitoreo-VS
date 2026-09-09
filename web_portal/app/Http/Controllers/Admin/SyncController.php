@@ -154,7 +154,10 @@ class SyncController extends Controller
 
     public function triggerScanNow(): JsonResponse
     {
-        $this->exportToConfigFiles();
+        $clusterService = new \App\Services\ClusterConfigService();
+        if (!$clusterService->isSlave()) {
+            $this->exportToConfigFiles();
+        }
         $pythonScript = '/scripts/telegram-admin-bot/monitor/monitor_web_sync.py';
         $pythonBin = '/scripts/telegram-admin-bot/venv/bin/python';
 

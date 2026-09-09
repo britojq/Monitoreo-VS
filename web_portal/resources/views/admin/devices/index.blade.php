@@ -113,7 +113,7 @@
                                 @endif
                             </td>
                             <td class="px-5 py-4">
-                                @if(auth()->user()->isAdmin())
+                                @if(auth()->user()->isAdmin() && !$isClusterSlave)
                                     <form action="{{ route('admin.devices.toggle', $d->id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $d->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}" title="Click para alternar estado">
@@ -122,40 +122,47 @@
                                         </button>
                                     </form>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold {{ $d->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold {{ $d->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}" title="{{ $isClusterSlave ? 'Solo lectura en Modo Esclavo' : '' }}">
                                         <span class="w-1.5 h-1.5 rounded-full {{ $d->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
                                         {{ $d->is_active ? 'Activo' : 'Inactivo' }}
                                     </span>
                                 @endif
                             </td>
                             <td class="px-5 py-4 text-right space-x-1.5 whitespace-nowrap">
-                                <!-- BOTÓN: VER INFORMACIÓN DETALLADA (OPERADORES Y ADMINS) -->
+                                <!-- BOTÓN: FICHA TÉCNICA DETALLADA (TODOS) -->
                                 <button type="button" 
                                         onclick="openDeviceDetailsModal({{ json_encode($d) }})" 
-                                        class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-obsidian-cyan hover:text-black transition inline-flex items-center gap-1 cursor-pointer" 
+                                        class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition inline-flex items-center gap-1 cursor-pointer" 
                                         title="Ver Ficha Técnica Completa">
                                     <span class="material-symbols-outlined text-sm">visibility</span>
                                     <span>Detalles</span>
                                 </button>
 
-                                <!-- BOTÓN: HISTÓRICO Y GRÁFICO (OPERADORES Y ADMINS) -->
+                                <!-- BOTÓN: HISTÓRICO DE LATENCIA Y UPTIME (TODOS) -->
                                 <button type="button" 
-                                        onclick="openDeviceHistoryModal({{ $d->id }}, '{{ addslashes($d->name) }}', {{ $d->device_number }}, '{{ $d->ip }}')" 
-                                        class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition inline-flex items-center gap-1 cursor-pointer" 
+                                        onclick="openDeviceHistoryModal({{ $d->id }}, '{{ addslashes($d->name) }}', '{{ $d->ip }}', '{{ $d->device_number }}')" 
+                                        class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition inline-flex items-center gap-1 cursor-pointer shadow-sm" 
                                         title="Ver Histórico de Conexión y Latencia">
                                     <span class="material-symbols-outlined text-sm">show_chart</span>
                                     <span>Histórico</span>
                                 </button>
 
                                 @if(auth()->user()->isAdmin())
-                                    <!-- BOTÓN: EDITAR DISPOSITIVO (SOLO ADMINISTRADORES) -->
-                                    <button type="button" 
-                                            onclick="openDeviceEditModal({{ json_encode($d) }})" 
-                                            class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition inline-flex items-center gap-1 cursor-pointer" 
-                                            title="Editar Parámetros Técnicos">
-                                        <span class="material-symbols-outlined text-sm">edit</span>
-                                        <span>Editar</span>
-                                    </button>
+                                    @if($isClusterSlave)
+                                        <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
+                                            <span class="material-symbols-outlined text-xs">lock</span>
+                                            Solo Lectura
+                                        </span>
+                                    @else
+                                        <!-- BOTÓN: EDITAR DISPOSITIVO (SOLO ADMINISTRADORES) -->
+                                        <button type="button" 
+                                                onclick="openDeviceEditModal({{ json_encode($d) }})" 
+                                                class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition inline-flex items-center gap-1 cursor-pointer" 
+                                                title="Editar Parámetros Técnicos">
+                                            <span class="material-symbols-outlined text-sm">edit</span>
+                                            <span>Editar</span>
+                                        </button>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

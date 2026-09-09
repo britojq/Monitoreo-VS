@@ -19,6 +19,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        view()->composer('*', function ($view) {
+            $clusterService = new \App\Services\ClusterConfigService();
+            $view->with('clusterConfig', $clusterService->getConfig());
+            $view->with('isClusterSlave', $clusterService->isSlave());
+            $view->with('isClusterMaster', $clusterService->isMaster());
+        });
     }
 }
