@@ -50,16 +50,28 @@ CHECK_INTERVAL_SECONDS = 5        # Intervalo de muestreo continuo en segundos
 AI_SERVICE_UNIT = "ollama.service"
 
 # Configuración de Logging
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
-AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
+log_handlers: List[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+try:
+    f_h = logging.FileHandler(LOGS_DIR / "thermal_guard.log", encoding="utf-8")
+    log_handlers.append(f_h)
+    # Asegurar permisos de lectura/escritura para usuarios no root
+    try:
+        os.chmod(LOGS_DIR / "thermal_guard.log", 0o666)
+    except Exception:
+        pass
+except Exception:
+    pass
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(LOGS_DIR / "thermal_guard.log", encoding="utf-8")
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger("thermal_guard")
 
