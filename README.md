@@ -12,7 +12,7 @@
 > **Organización:** Centro de Operaciones y Monitoreo de Redes  
 > **Autor / Administrador:** José A. Brito H. ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
 > **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
-> **Topología de Servidores:** Servidor Principal Master (`10.20.23.252`) / Servidor Réplica Slave (`10.20.23.241`)  
+> **Topología de Servidores:** Servidor Principal Master (`10.20.23.252`) / Servidor Réplica Slave (`10.20.23.221`)  
 > **Acceso Portal Web:** `http://monitoreo-vs.local/`  
 
 ---
@@ -31,7 +31,7 @@ El ecosistema integra de manera coordinada servicios web, bots de mensajería ci
                 ┌────────────────────────────────────────┴────────────────────────────────────────┐
                 ▼                                                                                 ▼
    ┌──────────────────────────────┐                                                  ┌──────────────────────────────┐
-   │    👑 NODO MASTER (252)       │                                                  │     🔗 NODO SLAVE (241)      │
+   │    👑 NODO MASTER (252)       │                                                  │     🔗 NODO SLAVE (221)      │
    │  • Escaneo oficial de red    │                                                  │  • Réplica de sólo lectura   │
    │  • Consultas hacia pfSense   │ ─── Telemetría Snapshot / API Cifrada ────────▶  │  • Sin colisión en pfSense   │
    │  • Configuración mutable     │       [X-CLUSTER-TOKEN /api/cluster/*]           │  • Comandos independientes   │
@@ -78,7 +78,7 @@ Para garantizar la continuidad operativa y evitar problemas de colisión de cred
                                                 ▼
                                    ┌─────────────────────────┐
                                    │    🔗 SERVIDOR SLAVE    │
-                                   │      (10.20.23.241)     │
+                                   │      (10.20.23.221)     │
                                    └─────────────────────────┘
 ```
 
@@ -87,7 +87,7 @@ Para garantizar la continuidad operativa y evitar problemas de colisión de cred
 - **Autoridad de Configuración:** Las adiciones, ediciones o eliminaciones de servicios, sedes y proxies se ejecutan exclusivamente en este nodo y se persisten en `monitoreo.conf`.
 - **Servidor de API de Clúster:** Expone el endpoint protegido `/api/cluster/snapshot`, que genera instantáneas completas de telemetría validadas criptográficamente mediante el encabezado `X-CLUSTER-TOKEN`.
 
-### 2. Rol Slave (Servidor Réplica - `10.20.23.241`):
+### 2. Rol Slave (Servidor Réplica - `10.20.23.221`):
 - **Cero Consultas Externas al Firewall:** No realiza escaneos directos a pfSense ni a la red WAN, eliminando riesgos de baneos o bloqueos por concurrencia de credenciales.
 - **Sincronización Asíncrona Ultraligera:** El demonio `monitor_web_sync.py` descarga automáticamente el snapshot del Master en intervalos ajustables (**1, 2, 5, 10 o 15 minutos**) con latencia interna inferior a 100 ms.
 - **Interfaz Adaptativa de Solo Lectura:** El portal web desactiva automáticamente los formularios de mutación de infraestructura, oculta botones de guardado a `.conf` y despliega avisos visuales explicativos.
