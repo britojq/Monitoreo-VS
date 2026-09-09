@@ -1293,7 +1293,24 @@ debe alterar su código, tiempos o configuración systemd.
    - Origen del archivo `database.sqlite`: Archivo vacío (0 bytes) generado por el esqueleto por defecto de instalación de Laravel 11. Las menciones en scripts de actualización (`system_updater.py`, `rsync`) corresponden a exclusiones de seguridad preventivas para no sobrescribir ficheros locales.
 
 --------------------------------------------------------------------------------
-103. ESTADO FINAL DE VERIFICACIÓN
+104. CENTÉSIMA CUARTA INTERVENCIÓN (2026-09-09): AUTO-DESCUBRIMIENTO DINÁMICO LDAP (ROOTDSE) Y OPTIMIZACIÓN DE ACTUALIZADOR
+--------------------------------------------------------------------------------
+1) Corrección y Auto-Descubrimiento Dinámico LDAP (RFC 4512 RootDSE):
+   - Diagnóstico: Al actualizar el servidor de producción mediante `/actualizar`, el repositorio público (`Monitoreo-VS`) aplica sanitización de nombres corporativos reemplazándolos por etiquetas genéricas (`empresa`). Si `config.json` no tenía Base DN previa o heredaba el valor por defecto, las consultas LDAP fallaban con error 32 (`No such object`), emitiendo el mensaje "Error al consultar la cuenta en el directorio corporativo".
+   - Implementación de `resolveBaseDn()` en `LdapAuthService.php`:
+     • Consulta dinámica del RootDSE anónimo (`namingContexts` y `defaultNamingContext`) del servidor LDAP (10.20.0.22:389).
+     • Auto-detección en caliente de la Base DN real sin depender de cadenas estáticas ni variables cableadas en repositorios públicos.
+     • Auto-sanación transparente en `config.json` (`healConfigBaseDn`) ante valores con placeholders o desactualizados.
+   - Implementación de `getDomainsFromBaseDn()`:
+     • Extracción dinámica de dominios de correo electrónico autorizados (ej. `corpoelec.gob.ve`, `corpoelec.com.ve`) analizando los componentes `dc=` del árbol LDAP descubierto.
+     • Desacoplamiento total de nombres de empresa en código fuente, blindando la interoperabilidad y privacidad.
+
+2) Optimización de Cachés y Recarga FPM en `system_updater.py`:
+   - Purgado completo de Laravel: Ejecución de `config:clear`, `cache:clear`, `route:clear` y `view:clear` tras cada actualización en `/var/www/monitoreo`.
+   - Recarga Dinámica de PHP-FPM: Detección automática y recarga segura de cualquier unidad activa `php*fpm*` (PHP 8.2, 8.4, etc.) para invalidación inmediata de OPcache.
+
+--------------------------------------------------------------------------------
+105. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
 - Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).

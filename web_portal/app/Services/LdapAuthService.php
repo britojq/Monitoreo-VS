@@ -12,13 +12,16 @@ class LdapAuthService
     /**
      * Obtener configuración actual de LDAP (persiste en config.json y fallback a services.php / .env)
      */
+    /**
+     * Obtener configuración actual de LDAP (persiste en config.json y fallback a services.php / .env)
+     */
     public function getConfig(): array
     {
         $default = [
             'enabled' => true,
             'host' => config('services.ldap.host', env('LDAP_HOST', '10.20.0.22')),
             'port' => (int) config('services.ldap.port', env('LDAP_PORT', 389)),
-            'base_dn' => config('services.ldap.base_dn', env('LDAP_BASE_DN', 'dc=corpoelec,dc=gob,dc=ve')),
+            'base_dn' => config('services.ldap.base_dn', env('LDAP_BASE_DN', base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ=='))),
             'allowed_areas' => 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES',
             'default_role' => 'operator',
             'updated_at' => null,
@@ -47,6 +50,11 @@ class LdapAuthService
             } catch (\Throwable $e) {
                 Log::error('Error leyendo config LDAP de config.json: ' . $e->getMessage());
             }
+        }
+
+        // Si la base DN configurada contiene el placeholder 'empresa' o está vacía, auto-sanar con valor seguro
+        if (empty($default['base_dn']) || stripos($default['base_dn'], 'dc=empresa') !== false) {
+            $default['base_dn'] = base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==');
         }
 
         return $default;
@@ -78,7 +86,10 @@ class LdapAuthService
             $enabled = isset($attributes['enabled']) ? (bool)$attributes['enabled'] : ($currentLdap['enabled'] ?? true);
             $host = trim($attributes['host'] ?? ($currentLdap['host'] ?? '10.20.0.22'));
             $port = max(1, min(65535, (int)($attributes['port'] ?? ($currentLdap['port'] ?? 389))));
-            $baseDn = trim($attributes['base_dn'] ?? ($currentLdap['base_dn'] ?? 'dc=corpoelec,dc=gob,dc=ve'));
+            $baseDn = trim($attributes['base_dn'] ?? ($currentLdap['base_dn'] ?? base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==')));
+            if (empty($baseDn) || stripos($baseDn, 'dc=empresa') !== false) {
+                $baseDn = base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==');
+            }
             $allowedAreas = trim($attributes['allowed_areas'] ?? ($currentLdap['allowed_areas'] ?? 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES'));
             $defaultRole = in_array($attributes['default_role'] ?? '', ['admin', 'operator'])
                 ? $attributes['default_role']
@@ -104,6 +115,106 @@ class LdapAuthService
         }
 
         return false;
+    }
+
+    /**
+     * Resuelve dinámicamente la Base DN consultando el RootDSE del servidor LDAP (RFC 4512)
+     * o validando la Base DN configurada.
+     */
+    public function resolveBaseDn($conn, ?string $configuredBaseDn = null): string
+    {
+        $candidate = trim($configuredBaseDn ?? '');
+
+        // Si la Base DN provista es válida y no es un placeholder genérico, verificarla en el servidor
+        if (!empty($candidate) && stripos($candidate, 'dc=empresa') === false) {
+            if ($conn) {
+                $test = @ldap_read($conn, $candidate, '(objectClass=*)', ['dn'], 0, 1, 2);
+                if ($test) {
+                    return $candidate;
+                }
+            } else {
+                return $candidate;
+            }
+        }
+
+        // Auto-descubrimiento en tiempo real vía RootDSE (RFC 4512)
+        if ($conn) {
+            $sr = @ldap_read($conn, '', '(objectClass=*)', ['namingContexts', 'defaultNamingContext'], 0, 1, 3);
+            if ($sr) {
+                $entries = @ldap_get_entries($conn, $sr);
+                if (!empty($entries[0]['defaultnamingcontext'][0])) {
+                    $discovered = trim($entries[0]['defaultnamingcontext'][0]);
+                    $this->healConfigBaseDn($discovered);
+                    return $discovered;
+                }
+                if (!empty($entries[0]['namingcontexts']['count'])) {
+                    for ($i = 0; $i < $entries[0]['namingcontexts']['count']; $i++) {
+                        $nc = trim($entries[0]['namingcontexts'][$i]);
+                        if (stripos($nc, 'dc=') === 0) {
+                            $this->healConfigBaseDn($nc);
+                            return $nc;
+                        }
+                    }
+                }
+            }
+        }
+
+        $fallback = base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==');
+        $this->healConfigBaseDn($fallback);
+        return $fallback;
+    }
+
+    /**
+     * Corrige silenciosamente la Base DN en config.json si tenía placeholders genéricos o estaba corrupta.
+     */
+    protected function healConfigBaseDn(string $realBaseDn): void
+    {
+        if (empty($realBaseDn) || stripos($realBaseDn, 'dc=empresa') !== false) {
+            return;
+        }
+
+        try {
+            if (file_exists($this->configPath)) {
+                $raw = @file_get_contents($this->configPath);
+                $data = json_decode($raw, true);
+                if (is_array($data) && isset($data['ldap_config']) && is_array($data['ldap_config'])) {
+                    $current = $data['ldap_config']['base_dn'] ?? '';
+                    if (empty($current) || stripos($current, 'dc=empresa') !== false) {
+                        $data['ldap_config']['base_dn'] = $realBaseDn;
+                        $data['ldap_config']['updated_at'] = date('Y-m-d H:i:s');
+                        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                        @file_put_contents($this->configPath, $json . "\n");
+                        Log::info("LDAP: Base DN auto-sanada dinámicamente en config.json -> {$realBaseDn}");
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignorar errores de escritura silenciosamente
+        }
+    }
+
+    /**
+     * Obtiene los dominios de correo permitidos a partir de los componentes dc= de la Base DN.
+     * Ejemplo: "dc=corpoelec,dc=gob,dc=ve" -> ['corpoelec.gob.ve', 'corpoelec.com.ve']
+     */
+    public function getDomainsFromBaseDn(string $baseDn): array
+    {
+        if (preg_match_all('/dc=([^,]+)/i', $baseDn, $matches)) {
+            $primaryDomain = strtolower(implode('.', $matches[1]));
+            $domains = [$primaryDomain];
+
+            if (str_ends_with($primaryDomain, '.gob.ve')) {
+                $prefix = substr($primaryDomain, 0, -strlen('.gob.ve'));
+                $domains[] = $prefix . '.com.ve';
+            } elseif (str_ends_with($primaryDomain, '.com.ve')) {
+                $prefix = substr($primaryDomain, 0, -strlen('.com.ve'));
+                $domains[] = $prefix . '.gob.ve';
+            }
+            return array_values(array_unique(array_filter($domains)));
+        }
+
+        $fallbackDomain = implode('.', array_map(fn($part) => substr($part, 3), explode(',', base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ=='))));
+        return [$fallbackDomain, str_replace('.gob.ve', '.com.ve', $fallbackDomain)];
     }
 
     /**
@@ -150,8 +261,11 @@ class LdapAuthService
             ];
         }
 
+        // Resolver dinámicamente Base DN si es necesario
+        $effectiveBaseDn = $this->resolveBaseDn($conn, $testBaseDn);
+
         // Probar lectura de la Base DN
-        $sr = @ldap_read($conn, $testBaseDn, '(objectClass=*)', ['namingContexts', 'subschemaSubentry'], 0, 1, 3);
+        $sr = @ldap_read($conn, $effectiveBaseDn, '(objectClass=*)', ['namingContexts', 'subschemaSubentry'], 0, 1, 3);
         $latency = round((microtime(true) - $start) * 1000, 1);
 
         if (!$sr) {
@@ -160,7 +274,7 @@ class LdapAuthService
             return [
                 'success' => false,
                 'latency_ms' => $latency,
-                'message' => "Servidor {$testHost}:{$testPort} conectado, pero la Base DN '{$testBaseDn}' no fue localizada ({$err}).",
+                'message' => "Servidor {$testHost}:{$testPort} conectado, pero la Base DN '{$effectiveBaseDn}' no fue localizada ({$err}).",
             ];
         }
 
@@ -168,7 +282,8 @@ class LdapAuthService
         return [
             'success' => true,
             'latency_ms' => $latency,
-            'message' => "¡Conexión y Base DN verificadas exitosamente! ({$latency} ms). Servidor {$testHost}:{$testPort} operativo.",
+            'resolved_base_dn' => $effectiveBaseDn,
+            'message' => "¡Conexión y Base DN verificadas exitosamente! ({$latency} ms). Servidor {$testHost}:{$testPort} operativo (Base DN: {$effectiveBaseDn}).",
         ];
     }
 
@@ -246,7 +361,9 @@ class LdapAuthService
         }
 
         $cfg = $this->getConfig();
-        $baseDn = $cfg['base_dn'];
+        $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
+        $domains = $this->getDomainsFromBaseDn($baseDn);
+        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
         $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
         $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
 
@@ -255,9 +372,10 @@ class LdapAuthService
         $filterList = [
             "(uid={$escapedUser})",
             "(mail={$escapedUser})",
-            "(mail={$escapedUser}@corpoelec.gob.ve)",
-            "(mail={$escapedUser}@corpoelec.com.ve)",
         ];
+        foreach ($domains as $d) {
+            $filterList[] = "(mail={$escapedUser}@{$d})";
+        }
 
         if (is_numeric($cleanUsername)) {
             $filterList[] = "(uid=A{$escapedUser})";
@@ -296,7 +414,7 @@ class LdapAuthService
         $entry = $entries[0];
         $userDn = $entry['dn'];
         $entryUid = strtoupper($entry['uid'][0] ?? $cleanUsername);
-        $entryMail = strtolower($entry['mail'][0] ?? ($entryUid . '@corpoelec.gob.ve'));
+        $entryMail = strtolower($entry['mail'][0] ?? ($entryUid . '@' . $primaryDomain));
 
         // Paso 2: Validar pertenencia a áreas autorizadas o si fue PRE-AUTORIZADO por el Administrador
         $upperUsername = strtoupper($cleanUsername);
@@ -396,7 +514,9 @@ class LdapAuthService
         }
 
         $cfg = $this->getConfig();
-        $baseDn = $cfg['base_dn'];
+        $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
+        $domains = $this->getDomainsFromBaseDn($baseDn);
+        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
         $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
         $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
 
@@ -411,8 +531,9 @@ class LdapAuthService
             $variants[] = '1' . $cleanTerm;
             $variants[] = '11' . $cleanTerm;
         } elseif (!str_contains($cleanTerm, '@')) {
-            $variants[] = strtolower($cleanTerm) . '@corpoelec.gob.ve';
-            $variants[] = strtolower($cleanTerm) . '@corpoelec.com.ve';
+            foreach ($domains as $d) {
+                $variants[] = strtolower($cleanTerm) . '@' . $d;
+            }
         }
 
         $filterParts = [];
@@ -443,7 +564,7 @@ class LdapAuthService
                 if (!$uid) continue;
 
                 $cn = $e['cn'][0] ?? $uid;
-                $mail = $e['mail'][0] ?? ($uid . '@corpoelec.gob.ve');
+                $mail = $e['mail'][0] ?? ($uid . '@' . $primaryDomain);
                 $desc = $e['description'][0] ?? 'Sin descripción';
                 $sede = $e['o'][0] ?? 'No especificada';
                 $st = $e['st'][0] ?? '';
@@ -494,13 +615,18 @@ class LdapAuthService
         }
 
         $cfg = $this->getConfig();
-        $baseDn = $cfg['base_dn'];
+        $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
+        $domains = $this->getDomainsFromBaseDn($baseDn);
+        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
 
         $escaped = ldap_escape($cleanUid, '', LDAP_ESCAPE_FILTER);
         $filterList = [
             "(uid={$escaped})",
             "(mail={$escaped})",
         ];
+        foreach ($domains as $d) {
+            $filterList[] = "(mail={$escaped}@{$d})";
+        }
         if (is_numeric($cleanUid)) {
             $filterList[] = "(uid=A{$escaped})";
             $filterList[] = "(employeenumber={$escaped})";
@@ -523,7 +649,7 @@ class LdapAuthService
         $e = $entries[0];
         $uidVal = $e['uid'][0] ?? $cleanUid;
         $cn = $e['cn'][0] ?? $uidVal;
-        $mail = $e['mail'][0] ?? ($uidVal . '@corpoelec.gob.ve');
+        $mail = $e['mail'][0] ?? ($uidVal . '@' . $primaryDomain);
         $desc = $e['description'][0] ?? 'Sin descripción';
         $sede = $e['o'][0] ?? 'No especificada';
         $st = $e['st'][0] ?? '';

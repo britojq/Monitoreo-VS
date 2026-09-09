@@ -364,41 +364,37 @@ async def execute_git_update(bot_instance=None) -> str:
                     p_boot = await asyncio.create_subprocess_exec(*chmod_boot, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                     await p_boot.communicate()
 
-                # 3. Purgar caché de vistas compiladas y rutas en Laravel
+                # 3. Purgar caché de configuración, rutas, vistas y aplicación en Laravel
                 artisan_bin = web_dir / "artisan"
                 if artisan_bin.exists():
-                    cmd_view = (sudo_prefix + ["-u", "www-data"]) if sudo_prefix else []
-                    cmd_view += ["php", str(artisan_bin), "view:clear"]
-                    p_view = await asyncio.create_subprocess_exec(
-                        *cmd_view,
-                        cwd=str(web_dir),
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
-                    await p_view.communicate()
-
-                    cmd_route = (sudo_prefix + ["-u", "www-data"]) if sudo_prefix else []
-                    cmd_route += ["php", str(artisan_bin), "route:clear"]
-                    p_route = await asyncio.create_subprocess_exec(
-                        *cmd_route,
-                        cwd=str(web_dir),
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
-                    await p_route.communicate()
+                    artisan_cmds = ["config:clear", "cache:clear", "route:clear", "view:clear"]
+                    for acmd in artisan_cmds:
+                        cmd_artisan = (sudo_prefix + ["-u", "www-data"]) if sudo_prefix else []
+                        cmd_artisan += ["php", str(artisan_bin), acmd]
+                        p_art = await asyncio.create_subprocess_exec(
+                            *cmd_artisan,
+                            cwd=str(web_dir),
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await p_art.communicate()
 
                 # 4. Recargar Apache y PHP-FPM para invalidar OPcache de PHP
                 cmd_reload = sudo_prefix + ["systemctl", "reload", "apache2"]
                 p_reload = await asyncio.create_subprocess_exec(*cmd_reload, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await p_reload.communicate()
 
-                # Recargar servicio php-fpm si está activo
+                # Recargar dinámicamente cualquier servicio php-fpm activo (php8.2-fpm, php8.4-fpm, etc.)
                 try:
-                    cmd_fpm = sudo_prefix + ["systemctl", "reload", "php8.4-fpm"]
+                    fpm_reload_cmd = (
+                        'for s in $(systemctl list-units --type=service --state=running "php*fpm*" --no-legend 2>/dev/null | awk "{print $1}"); do '
+                        'systemctl reload "$s" 2>/dev/null || systemctl restart "$s" 2>/dev/null || true; done'
+                    )
+                    cmd_fpm = sudo_prefix + ["bash", "-c", fpm_reload_cmd]
                     p_fpm = await asyncio.create_subprocess_exec(*cmd_fpm, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                     await p_fpm.communicate()
-                except Exception:
-                    pass
+                except Exception as e_fpm:
+                    logger.warning(f"Aviso al recargar PHP-FPM: {e_fpm}")
 
                 # 5. Asegurar cron de escaneo web dinámico en /etc/cron.d/monitoreo_web
                 cron_path = Path("/etc/cron.d/monitoreo_web")
