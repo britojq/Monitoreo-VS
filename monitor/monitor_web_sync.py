@@ -27,6 +27,67 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 BASE_DIR = Path("/scripts/telegram-admin-bot")
 APP_DIR = Path("/var/www/monitoreo") if Path("/var/www/monitoreo").exists() else Path("/var/www/testapp")
 SNAPSHOT_FILE = APP_DIR / "storage" / "app" / "public" / "monitoring_snapshot.json"
+LAST_SCAN_TIMESTAMP_FILE = Path("/tmp/last_web_sync_timestamp.txt")
+
+def get_last_scan_time() -> float:
+    """Obtiene la marca temporal de la última sincronización web ejecutada."""
+    if LAST_SCAN_TIMESTAMP_FILE.exists():
+        try:
+            val = float(LAST_SCAN_TIMESTAMP_FILE.read_text(encoding="utf-8").strip())
+            if val > 0:
+                return val
+        except Exception:
+            pass
+    if SNAPSHOT_FILE.exists():
+        try:
+            return SNAPSHOT_FILE.stat().st_mtime
+        except Exception:
+            pass
+    return 0.0
+
+def update_last_scan_time():
+    """Actualiza la marca temporal de la última sincronización web."""
+    try:
+        LAST_SCAN_TIMESTAMP_FILE.write_text(str(time.time()), encoding="utf-8")
+        try:
+            os.chmod(LAST_SCAN_TIMESTAMP_FILE, 0o666)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+def should_run_web_scan(force: bool = False) -> tuple[bool, int, float]:
+    """
+    Determina si debe ejecutarse el escaneo web respetando el intervalo dinámico configurado.
+    Retorna: (debe_ejecutar, intervalo_minutos, tiempo_restante_segundos)
+    """
+    if force:
+        return True, 0, 0.0
+
+    config_file = BASE_DIR / "config" / "config.json"
+    interval_minutes = 10
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text(encoding="utf-8"))
+            interval_minutes = int(cfg.get("web_check_interval_minutes", 10))
+            if interval_minutes < 1:
+                interval_minutes = 1
+        except Exception:
+            pass
+
+    interval_seconds = interval_minutes * 60
+    last_time = get_last_scan_time()
+    if last_time <= 0:
+        return True, interval_minutes, 0.0
+
+    elapsed = time.time() - last_time
+    # Margen de tolerancia de 5 segundos para sincronizar con cron de 1 minuto
+    if elapsed >= (interval_seconds - 5):
+        return True, interval_minutes, 0.0
+
+    remaining = interval_seconds - elapsed
+    return False, interval_minutes, max(0.0, remaining)
+
 
 def create_permissive_ssl_context():
     """Crea un contexto SSL permisivo compatible con servidores legacy (TLS 1.0+, ciphers antiguos, autofirmados)."""
@@ -654,7 +715,14 @@ async def run_full_scan():
     finally:
         conn.close()
 
+    update_last_scan_time()
     print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total} | Disp. Valle Seco: {net_online}/{net_total}")
 
 if __name__ == "__main__":
+    force_run = ("--force" in sys.argv or "-f" in sys.argv)
+    should_run, interval_min, remaining = should_run_web_scan(force=force_run)
+    if not should_run:
+        print(f"⏳ Escaneo web en espera (frecuencia configurada: {interval_min} min). Faltan {int(remaining)}s para el próximo ciclo.")
+        sys.exit(0)
+
     asyncio.run(run_full_scan())

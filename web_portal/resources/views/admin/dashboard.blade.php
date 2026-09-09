@@ -131,7 +131,7 @@
                 Sincronización Bidireccional de Archivos (.conf)
             </h2>
             <p class="text-xs text-obsidian-muted leading-relaxed">
-                Los cambios que realices en este panel (Servicios, Sedes, Dispositivos y Proxies) se guardan en la base de datos MySQL y se exportan automáticamente a los archivos oficiales <code class="text-obsidian-cyan font-mono">/scripts/telegram-admin-bot/config/monitoreo.conf</code> y <code class="text-obsidian-cyan font-mono">bot.conf</code> para que el motor asíncrono de Python y el bot de Telegram los utilicen en cada ciclo de 5 minutos.
+                Los cambios que realices en este panel (Servicios, Sedes, Dispositivos y Proxies) se guardan en la base de datos MySQL y se exportan automáticamente a los archivos oficiales <code class="text-obsidian-cyan font-mono">/scripts/telegram-admin-bot/config/monitoreo.conf</code> y <code class="text-obsidian-cyan font-mono">bot.conf</code> para que el motor asíncrono de Python y el bot de Telegram los utilicen según la frecuencia de chequeo establecida (actualmente cada {{ $cronConfig['web_check_interval'] ?? 10 }} minutos).
             </p>
             <div class="pt-2 flex flex-wrap gap-3">
                 <form action="{{ route('admin.sync.manual') }}" method="POST">
@@ -309,6 +309,104 @@
                 <div class="flex justify-between py-1">
                     <span class="text-obsidian-muted">Canal sincronizado:</span>
                     <span class="text-emerald-400">Telegram Bot (/cron)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FRECUENCIA DE CHEQUEO Y ACTUALIZACIÓN EN EL PORTAL WEB (Exclusivo Administrador) -->
+    <div class="glass-card rounded-xl p-6 space-y-5 border border-cyan-500/30">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
+                    <span class="material-symbols-outlined text-xl">update</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        Frecuencia de Chequeo Web & Telemetría
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
+                            CADA {{ $cronConfig['web_check_interval'] ?? 10 }} MINUTOS
+                        </span>
+                    </h2>
+                    <p class="text-xs text-obsidian-muted mt-0.5">
+                        Intervalo en que el servicio de monitoreo en segundo plano ejecuta la verificación de enlaces y actualiza este portal web.
+                    </p>
+                </div>
+            </div>
+
+            <!-- BOTÓN ESCANEAR AHORA -->
+            <button onclick="triggerImmediateScan()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition cursor-pointer">
+                <span class="material-symbols-outlined text-base">play_arrow</span>
+                Escanear Ahora
+            </button>
+        </div>
+
+        <!-- CUADRÍCULA: SELECTOR DE INTERVALO & AUDITORÍA -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+            <!-- SELECTOR DE FRECUENCIA Y ACCESOS RÁPIDOS (2 COLS) -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-obsidian-cyan">timer</span>
+                        Ajustar Frecuencia de Ejecución
+                    </span>
+                    <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/50 px-2.5 py-0.5 rounded-md border border-cyan-500/30">
+                        Actual: <strong>{{ $cronConfig['web_check_interval'] ?? 10 }} min</strong>
+                    </span>
+                </div>
+
+                <!-- FORMULARIO DE ACTUALIZACIÓN -->
+                <form action="{{ route('admin.cron.interval.update') }}" method="POST" class="space-y-3">
+                    @csrf
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative flex-1 min-w-[200px] max-w-xs">
+                            <input type="number" name="interval_minutes" id="web_interval_input" min="1" max="1440" required
+                                value="{{ $cronConfig['web_check_interval'] ?? 10 }}"
+                                class="w-full bg-[#040d1a] border border-obsidian-border text-white text-sm font-mono rounded-lg px-4 py-2.5 focus:outline-none focus:border-obsidian-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs font-mono text-obsidian-muted pointer-events-none">minutos</span>
+                        </div>
+                        <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
+                            <span class="material-symbols-outlined text-base">save</span>
+                            Guardar Frecuencia
+                        </button>
+                    </div>
+
+                    <!-- PRESETS RÁPIDOS -->
+                    <div class="space-y-1.5 pt-1">
+                        <span class="text-[11px] font-mono text-obsidian-muted">Preajustes rápidos:</span>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach([1, 2, 5, 10, 15, 20, 30, 60] as $preset)
+                                <button type="button" onclick="document.getElementById('web_interval_input').value = {{ $preset }}"
+                                    class="px-3 py-1 rounded-lg text-xs font-mono border transition cursor-pointer {{ ($cronConfig['web_check_interval'] ?? 10) == $preset ? 'bg-cyan-950 text-obsidian-cyan border-cyan-500/60 font-bold' : 'bg-[#040d1a] text-gray-300 border-obsidian-border hover:border-obsidian-cyan/50 hover:text-white' }}">
+                                    {{ $preset }} min @if($preset === 10)<span class="text-[10px] text-cyan-400 font-bold">(Recomendado)</span>@endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- DETALLES DE AUDITORÍA (1 COL) -->
+            <div class="bg-[#040d1a]/80 border border-obsidian-border/70 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div class="text-[11px] uppercase font-bold text-obsidian-muted flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">info</span>
+                    Auditoría de Monitoreo Web
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Frecuencia actual:</span>
+                    <span class="text-white font-bold">{{ $cronConfig['web_check_interval'] ?? 10 }} min</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Último cambio:</span>
+                    <span class="text-white">{{ $cronConfig['web_check_interval_updated_at'] ?: 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Modificado por:</span>
+                    <span class="text-cyan-300 truncate max-w-[150px]" title="{{ $cronConfig['web_check_interval_updated_by'] }}">{{ $cronConfig['web_check_interval_updated_by'] ?: 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-obsidian-muted">Motor de escaneo:</span>
+                    <span class="text-emerald-400">Python Web Sync</span>
                 </div>
             </div>
         </div>

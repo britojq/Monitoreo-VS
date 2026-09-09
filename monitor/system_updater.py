@@ -357,9 +357,12 @@ async def execute_git_update(bot_instance=None) -> str:
                 storage_p = web_dir / "storage"
                 boot_p = web_dir / "bootstrap" / "cache"
                 if storage_p.exists() and boot_p.exists():
-                    chmod_cmd = sudo_prefix + ["chmod", "-R", "775", str(storage_p), str(boot_p)]
+                    chmod_cmd = sudo_prefix + ["chmod", "-R", "777", str(storage_p)]
                     p_chmod = await asyncio.create_subprocess_exec(*chmod_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                     await p_chmod.communicate()
+                    chmod_boot = sudo_prefix + ["chmod", "-R", "775", str(boot_p)]
+                    p_boot = await asyncio.create_subprocess_exec(*chmod_boot, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                    await p_boot.communicate()
 
                 # 3. Purgar caché de vistas compiladas y rutas en Laravel
                 artisan_bin = web_dir / "artisan"
@@ -396,6 +399,22 @@ async def execute_git_update(bot_instance=None) -> str:
                     await p_fpm.communicate()
                 except Exception:
                     pass
+
+                # 5. Asegurar cron de escaneo web dinámico en /etc/cron.d/monitoreo_web
+                cron_path = Path("/etc/cron.d/monitoreo_web")
+                try:
+                    needs_update = True
+                    if cron_path.exists():
+                        content = cron_path.read_text(encoding="utf-8")
+                        if "* * * * * britojab" in content:
+                            needs_update = False
+                    if needs_update:
+                        cmd_cron = sudo_prefix + ["bash", "-c", "cat << 'CRON_EOF' > /etc/cron.d/monitoreo_web\n# /etc/cron.d/monitoreo_web - Sincronizacion Web Dinamica de Monitoreo\n* * * * * britojab /scripts/telegram-admin-bot/estatus web > /dev/null 2>&1\nCRON_EOF\nchmod 644 /etc/cron.d/monitoreo_web"]
+                        p_cron = await asyncio.create_subprocess_exec(*cmd_cron, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                        await p_cron.communicate()
+                        logs.append("⏱️ <i>Cron de escaneo web configurado a ejecución dinámica por minuto.</i>")
+                except Exception as e_cron:
+                    logger.warning(f"No fue posible actualizar /etc/cron.d/monitoreo_web: {e_cron}")
 
                 logs.append("🌐 <i>Portal Web desplegado en /var/www/monitoreo, caché purgada y servicios web recargados.</i>")
             except Exception as e_web:

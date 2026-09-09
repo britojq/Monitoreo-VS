@@ -159,7 +159,7 @@ class SyncController extends Controller
         $pythonBin = '/scripts/telegram-admin-bot/venv/bin/python';
 
         if (file_exists($pythonScript) && file_exists($pythonBin)) {
-            $result = Process::run("{$pythonBin} {$pythonScript}");
+            $result = Process::run("{$pythonBin} {$pythonScript} --force");
             return response()->json([
                 'success' => $result->successful(),
                 'output' => $result->output(),

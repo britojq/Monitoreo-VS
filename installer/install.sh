@@ -439,10 +439,10 @@ RestartSec=5
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 5. Cron de Escaneo Web cada 5 minutos
+# 5. Cron de Escaneo Web Dinámico (frecuencia administrada desde el portal web)
 cat <<CRON_EOF > /etc/cron.d/monitoreo_web
-# /etc/cron.d/monitoreo_web - Sincronizacion Web de Monitoreo cada 5 minutos
-*/5 * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
+# /etc/cron.d/monitoreo_web - Sincronizacion Web Dinamica de Monitoreo
+* * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
@@ -496,7 +496,7 @@ echo -e "🗄️ ${BOLD}Base de Datos:${NC}            ${DB_NAME} (Usuario: ${DB
 echo -e "🖥️ ${BOLD}Escritorio Remoto VNC:${NC}   noVNC + Websockify activo (systemctl status websockify)"
 echo -e "📡 ${BOLD}Bot de Monitoreo:${NC}         Habilitado (systemctl status tg-admin-bot)"
 echo -e "🔔 ${BOLD}Notificador SSH & Boot:${NC}   Activos en PAM y systemd"
-echo -e "⏱️ ${BOLD}Cron de Sincronización:${NC}   Activo cada 5 min (/etc/cron.d/monitoreo_web)"
+echo -e "⏱️ ${BOLD}Cron de Sincronización:${NC}   Dinámico / Configurable desde Portal Web (/etc/cron.d/monitoreo_web)"
 echo ""
 echo -e "${CYAN}Si este es un servidor nuevo o clonado, revise el Serial recibido en su"
 echo -e "Telegram privado y ejecute la validación por consola:${NC}"

@@ -1210,6 +1210,27 @@ debe alterar su código, tiempos o configuración systemd.
    - Integrado en el comando `/recursos` y en el menú del propietario.
 
 --------------------------------------------------------------------------------
+98. NONAGÉSIMA OCTAVA INTERVENCIÓN (2026-09-09): CONTROL DINÁMICO DE FRECUENCIA DE CHEQUEO Y ACTUALIZACIÓN EN EL PORTAL WEB
+--------------------------------------------------------------------------------
+1) Motor Dinámico de Sincronización Web (monitor/monitor_web_sync.py):
+   - Se añadió control dinámico de cadencia de escaneo basado en web_check_interval_minutes de config/config.json.
+   - Implementación de chequeo ultra-ligero (should_run_web_scan): si el tiempo transcurrido desde el último escaneo no alcanza el intervalo, el script finaliza en milisegundos sin carga de CPU o base de datos.
+   - Soporte para ejecución forzada (--force / -f) para disparadores manuales ("Escanear Ahora" en el portal web).
+   - Cron del sistema (/etc/cron.d/monitoreo_web) configurado a ejecución por minuto (* * * * *), permitiendo granularidad exacta y cambio dinámico sin necesidad de privilegios root en tiempo de ejecución.
+2) Backend Laravel y Seguridad RBAC:
+   - Nuevo método updateWebCheckInterval en AdminCronController con validación estricta (1 a 1440 minutos).
+   - Ruta protegida exclusivamente bajo middleware admin (/admin/cron/interval/update).
+   - Bloqueo total para rol Operador (HTTP 403 Forbidden).
+   - Auditoría de usuario, fecha y hora de actualización persistida en config/config.json.
+3) Interfaz de Usuario y UX Administrativo:
+   - Tarjeta dedicada "Frecuencia de Chequeo Web & Telemetría" en el Dashboard Administrativo.
+   - Badge de estado con la frecuencia actual activa.
+   - Selector numérico con preajustes rápidos: 1, 2, 5, 10 (Recomendado), 15, 20, 30 y 60 minutos.
+   - Panel lateral de auditoría en tiempo real.
+4) Despliegue y Auto-Actualización en Producción (monitor/system_updater.py):
+   - Automatización de sincronización hacia /var/www/monitoreo, permisos de almacenamiento 777, purga de cachés y actualización automática de /etc/cron.d/monitoreo_web.
+
+--------------------------------------------------------------------------------
 97. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).

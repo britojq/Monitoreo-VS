@@ -24,6 +24,9 @@ class AdminCronController extends Controller
             'updated_by' => 'Sistema',
             'next_schedule' => null,
             'next_day' => 'hoy',
+            'web_check_interval' => 10,
+            'web_check_interval_updated_at' => '',
+            'web_check_interval_updated_by' => 'Sistema',
         ];
 
         if (file_exists($this->configPath)) {
@@ -39,6 +42,9 @@ class AdminCronController extends Controller
                 }
                 $default['updated_at'] = $data['cron_reports_updated_at'] ?? '';
                 $default['updated_by'] = $data['cron_reports_updated_by'] ?? 'Sistema';
+                $default['web_check_interval'] = (int) ($data['web_check_interval_minutes'] ?? 10);
+                $default['web_check_interval_updated_at'] = $data['web_check_interval_updated_at'] ?? '';
+                $default['web_check_interval_updated_by'] = $data['web_check_interval_updated_by'] ?? 'Sistema';
 
                 // Calcular próximo envío
                 $nowHm = date('H:i');
@@ -169,6 +175,39 @@ class AdminCronController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error eliminando horario cron: ' . $e->getMessage());
             return back()->with('error', 'Error al eliminar el horario.');
+        }
+    }
+
+    /**
+     * Actualiza el intervalo de chequeo y actualización de servicios para el portal web.
+     */
+    public function updateWebCheckInterval(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+        ], [
+            'interval_minutes.required' => 'Debe indicar el intervalo en minutos.',
+            'interval_minutes.integer' => 'El intervalo debe ser un valor entero.',
+            'interval_minutes.min' => 'El intervalo mínimo es de 1 minuto.',
+            'interval_minutes.max' => 'El intervalo máximo es de 1440 minutos (24 horas).',
+        ]);
+
+        $interval = (int) $validated['interval_minutes'];
+        $user = $request->user();
+        $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
+        $nowStr = date('Y-m-d H:i:s');
+
+        try {
+            $data = $this->readRawConfig();
+            $data['web_check_interval_minutes'] = $interval;
+            $data['web_check_interval_updated_at'] = $nowStr;
+            $data['web_check_interval_updated_by'] = $adminName;
+            $this->writeRawConfig($data);
+
+            return back()->with('success', "Frecuencia de monitoreo y actualización web configurada a {$interval} minutos exitosamente.");
+        } catch (\Throwable $e) {
+            Log::error('Error actualizando intervalo de monitoreo web: ' . $e->getMessage());
+            return back()->with('error', 'Error al guardar el nuevo intervalo de monitoreo web.');
         }
     }
 
