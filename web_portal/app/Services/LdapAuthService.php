@@ -7,40 +7,188 @@ use Illuminate\Support\Facades\Log;
 
 class LdapAuthService
 {
-    protected string $host;
-    protected int $port;
-    protected string $baseDn;
+    protected string $configPath = '/scripts/telegram-admin-bot/config/config.json';
 
     /**
-     * Unidades organizacionales y áreas estrictamente autorizadas para el auto-registro
+     * Obtener configuración actual de LDAP (persiste en config.json y fallback a services.php / .env)
      */
-    protected array $allowedAreas = [
-        'ATIT',
-        'GPO TRAB INFRA TECNOL CARABOBO',
-        'INFRAESTRUCTURA',
-        'TELECOMUNICACIONES',
-    ];
-
-    public function __construct()
+    public function getConfig(): array
     {
-        $this->host = config('services.ldap.host', env('LDAP_HOST', '10.20.0.22'));
-        $this->port = (int) config('services.ldap.port', env('LDAP_PORT', 389));
-        $this->baseDn = config('services.ldap.base_dn', env('LDAP_BASE_DN', 'dc=corpoelec,dc=gob,dc=ve'));
+        $default = [
+            'enabled' => true,
+            'host' => config('services.ldap.host', env('LDAP_HOST', '10.20.0.22')),
+            'port' => (int) config('services.ldap.port', env('LDAP_PORT', 389)),
+            'base_dn' => config('services.ldap.base_dn', env('LDAP_BASE_DN', 'dc=corpoelec,dc=gob,dc=ve')),
+            'allowed_areas' => 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES',
+            'default_role' => 'operator',
+            'updated_at' => null,
+            'updated_by' => null,
+        ];
+
+        if (file_exists($this->configPath)) {
+            try {
+                $raw = @file_get_contents($this->configPath);
+                $data = json_decode($raw, true) ?: [];
+                if (isset($data['ldap_config']) && is_array($data['ldap_config'])) {
+                    $c = $data['ldap_config'];
+                    $default['enabled'] = (bool)($c['enabled'] ?? true);
+                    $default['host'] = trim($c['host'] ?? $default['host']);
+                    $default['port'] = max(1, min(65535, (int)($c['port'] ?? $default['port'])));
+                    $default['base_dn'] = trim($c['base_dn'] ?? $default['base_dn']);
+                    $default['allowed_areas'] = is_array($c['allowed_areas'] ?? null)
+                        ? implode(', ', $c['allowed_areas'])
+                        : (string)($c['allowed_areas'] ?? $default['allowed_areas']);
+                    $default['default_role'] = in_array($c['default_role'] ?? 'operator', ['admin', 'operator'])
+                        ? $c['default_role']
+                        : 'operator';
+                    $default['updated_at'] = $c['updated_at'] ?? null;
+                    $default['updated_by'] = $c['updated_by'] ?? null;
+                }
+            } catch (\Throwable $e) {
+                Log::error('Error leyendo config LDAP de config.json: ' . $e->getMessage());
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * Comprobar si la autenticación LDAP está habilitada en el sistema
+     */
+    public function isEnabled(): bool
+    {
+        return (bool) $this->getConfig()['enabled'];
+    }
+
+    /**
+     * Actualizar y persistir la configuración de LDAP en config.json
+     */
+    public function updateConfig(array $attributes, ?string $updatedBy = null): bool
+    {
+        if (!file_exists($this->configPath)) {
+            return false;
+        }
+
+        try {
+            $raw = @file_get_contents($this->configPath);
+            $data = json_decode($raw, true) ?: [];
+
+            $currentLdap = $data['ldap_config'] ?? [];
+
+            $enabled = isset($attributes['enabled']) ? (bool)$attributes['enabled'] : ($currentLdap['enabled'] ?? true);
+            $host = trim($attributes['host'] ?? ($currentLdap['host'] ?? '10.20.0.22'));
+            $port = max(1, min(65535, (int)($attributes['port'] ?? ($currentLdap['port'] ?? 389))));
+            $baseDn = trim($attributes['base_dn'] ?? ($currentLdap['base_dn'] ?? 'dc=corpoelec,dc=gob,dc=ve'));
+            $allowedAreas = trim($attributes['allowed_areas'] ?? ($currentLdap['allowed_areas'] ?? 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES'));
+            $defaultRole = in_array($attributes['default_role'] ?? '', ['admin', 'operator'])
+                ? $attributes['default_role']
+                : ($currentLdap['default_role'] ?? 'operator');
+
+            $data['ldap_config'] = [
+                'enabled' => $enabled,
+                'host' => $host,
+                'port' => $port,
+                'base_dn' => $baseDn,
+                'allowed_areas' => $allowedAreas,
+                'default_role' => $defaultRole,
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $updatedBy ?? 'Administrador',
+            ];
+
+            $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            if (@file_put_contents($this->configPath, $json . "\n") !== false) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error guardando config LDAP: ' . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Probar en tiempo real la conectividad y validación de Base DN hacia el servidor LDAP
+     */
+    public function testConnection(?string $host = null, ?int $port = null, ?string $baseDn = null): array
+    {
+        $cfg = $this->getConfig();
+        $testHost = trim($host ?: $cfg['host']);
+        $testPort = (int)($port ?: $cfg['port']);
+        $testBaseDn = trim($baseDn ?: $cfg['base_dn']);
+
+        if (!function_exists('ldap_connect')) {
+            return [
+                'success' => false,
+                'latency_ms' => 0,
+                'message' => 'La extensión PHP LDAP no está disponible en este servidor.',
+            ];
+        }
+
+        $start = microtime(true);
+        $conn = @ldap_connect($testHost, $testPort);
+        if (!$conn) {
+            $latency = round((microtime(true) - $start) * 1000, 1);
+            return [
+                'success' => false,
+                'latency_ms' => $latency,
+                'message' => "No se pudo iniciar el socket LDAP hacia {$testHost}:{$testPort}.",
+            ];
+        }
+
+        ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
+        ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
+        ldap_set_option($conn, LDAP_OPT_NETWORK_TIMEOUT, 3);
+
+        if (!@ldap_bind($conn)) {
+            $latency = round((microtime(true) - $start) * 1000, 1);
+            $err = ldap_error($conn);
+            @ldap_unbind($conn);
+            return [
+                'success' => false,
+                'latency_ms' => $latency,
+                'message' => "Fallo de conexión o bind anónimo a {$testHost}:{$testPort} ({$err}).",
+            ];
+        }
+
+        // Probar lectura de la Base DN
+        $sr = @ldap_read($conn, $testBaseDn, '(objectClass=*)', ['namingContexts', 'subschemaSubentry'], 0, 1, 3);
+        $latency = round((microtime(true) - $start) * 1000, 1);
+
+        if (!$sr) {
+            $err = ldap_error($conn);
+            @ldap_unbind($conn);
+            return [
+                'success' => false,
+                'latency_ms' => $latency,
+                'message' => "Servidor {$testHost}:{$testPort} conectado, pero la Base DN '{$testBaseDn}' no fue localizada ({$err}).",
+            ];
+        }
+
+        @ldap_unbind($conn);
+        return [
+            'success' => true,
+            'latency_ms' => $latency,
+            'message' => "¡Conexión y Base DN verificadas exitosamente! ({$latency} ms). Servidor {$testHost}:{$testPort} operativo.",
+        ];
     }
 
     /**
      * Obtener conexión LDAP activa
      */
-    protected function getConnection()
+    protected function getConnection(?string $customHost = null, ?int $customPort = null)
     {
         if (!function_exists('ldap_connect')) {
             Log::error('LDAP: Extensión php-ldap no está disponible en el servidor.');
             return null;
         }
 
-        $conn = @ldap_connect($this->host, $this->port);
+        $cfg = $this->getConfig();
+        $targetHost = $customHost ?: $cfg['host'];
+        $targetPort = $customPort ?: $cfg['port'];
+
+        $conn = @ldap_connect($targetHost, $targetPort);
         if (!$conn) {
-            Log::error("LDAP: No se pudo conectar a {$this->host}:{$this->port}");
+            Log::error("LDAP: No se pudo conectar a {$targetHost}:{$targetPort}");
             return null;
         }
 
@@ -66,6 +214,15 @@ class LdapAuthService
      */
     public function authenticate(string $username, string $password): array
     {
+        if (!$this->isEnabled()) {
+            return [
+                'success' => false,
+                'message' => 'La autenticación mediante Directorio Activo (LDAP) ha sido desactivada por el Administrador.',
+                'data' => null,
+                'area_authorized' => false,
+            ];
+        }
+
         $cleanUsername = trim($username);
         $cleanPassword = trim($password);
 
@@ -88,6 +245,11 @@ class LdapAuthService
             ];
         }
 
+        $cfg = $this->getConfig();
+        $baseDn = $cfg['base_dn'];
+        $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
+        $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
+
         // Búsqueda flexible del usuario por UID, correo corporativo, prefijo de correo o cédula
         $escapedUser = ldap_escape($cleanUsername, '', LDAP_ESCAPE_FILTER);
         $filterList = [
@@ -107,7 +269,7 @@ class LdapAuthService
         $filter = "(|" . implode('', array_unique($filterList)) . ")";
         $attributes = ['dn', 'cn', 'mail', 'givenname', 'sn', 'description', 'o', 'st', 'telephonenumber', 'uid', 'employeenumber'];
         
-        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes, 0, 5, 4);
+        $search = @ldap_search($conn, $baseDn, $filter, $attributes, 0, 5, 4);
         if (!$search) {
             $ldapErr = ldap_error($conn);
             Log::error("LDAP: Error al consultar cuenta [{$cleanUsername}]: {$ldapErr}");
@@ -152,7 +314,7 @@ class LdapAuthService
 
         $areaAuthorized = $isPreAuthorized;
         if (!$areaAuthorized) {
-            foreach ($this->allowedAreas as $area) {
+            foreach ($allowedAreas as $area) {
                 if (stripos($description, $area) !== false) {
                     $areaAuthorized = true;
                     break;
@@ -219,6 +381,10 @@ class LdapAuthService
      */
     public function searchUsers(string $term): array
     {
+        if (!$this->isEnabled()) {
+            return [];
+        }
+
         $cleanTerm = trim($term);
         if (strlen($cleanTerm) < 2) {
             return [];
@@ -228,6 +394,11 @@ class LdapAuthService
         if (!$conn) {
             return [];
         }
+
+        $cfg = $this->getConfig();
+        $baseDn = $cfg['base_dn'];
+        $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
+        $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
 
         $variants = [
             $cleanTerm,
@@ -256,7 +427,7 @@ class LdapAuthService
         $filter = "(|" . implode('', $filterParts) . ")";
         $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn'];
 
-        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes, 0, 20, 4);
+        $search = @ldap_search($conn, $baseDn, $filter, $attributes, 0, 20, 4);
         if (!$search) {
             @ldap_unbind($conn);
             return [];
@@ -279,7 +450,7 @@ class LdapAuthService
 
                 // Verificar si pertenece a las áreas estándar
                 $isDefaultArea = false;
-                foreach ($this->allowedAreas as $area) {
+                foreach ($allowedAreas as $area) {
                     if (stripos($desc, $area) !== false) {
                         $isDefaultArea = true;
                         break;
@@ -308,6 +479,10 @@ class LdapAuthService
      */
     public function findUserByUid(string $uid): ?array
     {
+        if (!$this->isEnabled()) {
+            return null;
+        }
+
         $cleanUid = trim($uid);
         if (empty($cleanUid)) {
             return null;
@@ -317,6 +492,9 @@ class LdapAuthService
         if (!$conn) {
             return null;
         }
+
+        $cfg = $this->getConfig();
+        $baseDn = $cfg['base_dn'];
 
         $escaped = ldap_escape($cleanUid, '', LDAP_ESCAPE_FILTER);
         $filterList = [
@@ -330,7 +508,7 @@ class LdapAuthService
         $filter = "(|" . implode('', $filterList) . ")";
         $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn'];
 
-        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes, 0, 5, 4);
+        $search = @ldap_search($conn, $baseDn, $filter, $attributes, 0, 5, 4);
         if (!$search) {
             @ldap_unbind($conn);
             return null;

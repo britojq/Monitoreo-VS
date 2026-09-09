@@ -1274,7 +1274,26 @@ debe alterar su código, tiempos o configuración systemd.
    - Verificación Exitosa: Pruebas unitarias en Artisan tinker, pruebas HTTP y pruebas visuales automatizadas con Playwright (`ldap_login_error_feedback.png` y `ldap_user_search_modal.png`).
 
 --------------------------------------------------------------------------------
-102. ESTADO FINAL DE VERIFICACIÓN
+102. CENTÉSIMA SEGUNDA INTERVENCIÓN (2026-09-09): MÓDULO ADMINISTRATIVO DE GESTIÓN LDAP Y ACLARATORIA SQLITE/MYSQL
+--------------------------------------------------------------------------------
+1) Gestión Dinámica de Directorio Activo (LDAP) para Rol Administrador:
+   - Panel exclusivo en Dashboard: Tarjeta administrativa "Directorio Activo Corporativo & Autenticación LDAP" visible únicamente para cuentas con rol Administrador.
+   - Parámetros configurables en tiempo real:
+     • Interruptor Habilitado / Deshabilitado (`ldap_enabled`): Permite suspender o reactivar la autenticación externa con un solo clic. Al estar desactivado, el acceso al portal se restringe con seguridad a cuentas locales.
+     • Host y Puerto (`ldap_host`, `ldap_port`): Dirección IP/nombre del servidor LDAP y puerto de red (por defecto 10.20.0.22:389).
+     • Base DN (`ldap_base_dn`): Árbol raíz para consultas LDAP (ej. dc=corpoelec,dc=gob,dc=ve).
+     • Áreas Organizacionales Permitidas (`ldap_allowed_areas`): Departamentos habilitados para auto-aprobación directa (ATIT, Infraestructura, etc.).
+     • Rol Asignado JIT (`ldap_default_role`): Rol por defecto asignado a nuevos ingresos aprobados (Operador o Administrador).
+   - Verificador de Conexión en Vivo (AJAX): Botón "Probar Conexión LDAP" que evalúa conectividad socket, protocolo v3 y lectura de Base DN con cálculo exacto de latencia en milisegundos.
+   - Persistencia Segura: Almacenamiento en `config/config.json` bajo la clave `"ldap_config"`, garantizando persistencia entre reinicios y actualizaciones sin alterar `.env`.
+   - Experiencia de Usuario Adaptativa: Badges dinámicos de estado (ACTIVO / INACTIVO) en el botón de búsqueda de usuarios y banners de advertencia informando el estado del servicio.
+
+2) Diagnóstico y Aclaratoria Técnica: SQLite vs MySQL / MariaDB:
+   - Base de Datos Activa del Sistema: 100% MariaDB / MySQL (`monitoreo_vs`) configurada en `.env` (`DB_CONNECTION=mysql`). Toda la persistencia de usuarios, sesiones, dispositivos de red, proxies, servicios y auditoría opera sobre las tablas relacionales de MySQL.
+   - Origen del archivo `database.sqlite`: Archivo vacío (0 bytes) generado por el esqueleto por defecto de instalación de Laravel 11. Las menciones en scripts de actualización (`system_updater.py`, `rsync`) corresponden a exclusiones de seguridad preventivas para no sobrescribir ficheros locales.
+
+--------------------------------------------------------------------------------
+103. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
 - Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).

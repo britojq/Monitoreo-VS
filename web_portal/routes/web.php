@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminBanController;
 use App\Http\Controllers\Admin\AdminClusterController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminLdapController;
 use App\Http\Controllers\Admin\AdminNetworkDeviceController;
 use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
@@ -135,5 +136,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('cluster/update', [AdminClusterController::class, 'update'])->name('cluster.update');
         Route::post('cluster/test', [AdminClusterController::class, 'testConnection'])->name('cluster.test');
         Route::post('cluster/generate-token', [AdminClusterController::class, 'generateToken'])->name('cluster.generate-token');
+
+        // Configuración de Directorio Activo & Autenticación LDAP
+        Route::post('ldap/update', [AdminLdapController::class, 'update'])->name('ldap.update');
+        Route::post('ldap/test-connection', [AdminLdapController::class, 'testConnection'])->name('ldap.testConnection');
     });
 });

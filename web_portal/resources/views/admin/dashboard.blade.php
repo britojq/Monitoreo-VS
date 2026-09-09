@@ -627,6 +627,186 @@
             </div>
         </form>
     </div>
+
+    <!-- CONFIGURACIÓN DE DIRECTORIO ACTIVO & AUTENTICACIÓN LDAP (Exclusivo Administrador) -->
+    <div class="glass-card rounded-xl p-6 space-y-5 border {{ ($ldapConfig['enabled'] ?? true) ? 'border-cyan-500/30' : 'border-rose-500/30' }}">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ ($ldapConfig['enabled'] ?? true) ? 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40' : 'bg-rose-950/80 text-rose-400 border border-rose-500/40' }}">
+                    <span class="material-symbols-outlined text-xl">badge</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        Directorio Activo Corporativo & Autenticación LDAP
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold {{ ($ldapConfig['enabled'] ?? true) ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-300 border border-rose-500/40' }}">
+                            {{ ($ldapConfig['enabled'] ?? true) ? '● AUTENTICACIÓN LDAP HABILITADA' : '○ AUTENTICACIÓN LDAP DESHABILITADA' }}
+                        </span>
+                    </h2>
+                    <p class="text-xs text-obsidian-muted mt-0.5">
+                        Permite a los usuarios corporativos iniciar sesión con sus credenciales de red (UID/Cédula y contraseña) y auto-aprobarse según su departamento.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('admin.users.index') }}" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:text-white hover:bg-cyan-950/40 text-xs font-mono flex items-center gap-1.5 transition">
+                    <span class="material-symbols-outlined text-sm">manage_accounts</span>
+                    Gestión de Usuarios
+                </a>
+            </div>
+        </div>
+
+        <!-- FORMULARIO DE CONFIGURACIÓN LDAP -->
+        <form action="{{ route('admin.ldap.update') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            @csrf
+            <!-- PARÁMETROS LDAP (2 COLS) -->
+            <div class="lg:col-span-2 space-y-4">
+                <!-- INTERRUPTOR DE ACTIVACIÓN/DESACTIVACIÓN -->
+                <div class="space-y-2">
+                    <label class="text-xs font-mono font-bold text-gray-300 uppercase block">Estado del Servicio LDAP:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- HABILITADO -->
+                        <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ ($ldapConfig['enabled'] ?? true) ? 'bg-emerald-950/30 border-emerald-500/50 text-white ring-1 ring-emerald-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-emerald-500/30' }}">
+                            <input type="radio" name="ldap_enabled" value="1" {{ ($ldapConfig['enabled'] ?? true) ? 'checked' : '' }} class="mt-1 text-emerald-500 focus:ring-0">
+                            <div>
+                                <span class="text-xs font-bold text-emerald-300 block">Habilitado (Recomendado)</span>
+                                <span class="text-[11px] text-obsidian-muted leading-tight block mt-0.5">
+                                    Permite inicio de sesión con cuentas de red corporativas y aprovisionamiento automático (JIT).
+                                </span>
+                            </div>
+                        </label>
+
+                        <!-- DESHABILITADO -->
+                        <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ !($ldapConfig['enabled'] ?? true) ? 'bg-rose-950/30 border-rose-500/50 text-white ring-1 ring-rose-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-rose-500/30' }}">
+                            <input type="radio" name="ldap_enabled" value="0" {{ !($ldapConfig['enabled'] ?? true) ? 'checked' : '' }} class="mt-1 text-rose-500 focus:ring-0">
+                            <div>
+                                <span class="text-xs font-bold text-rose-300 block">Deshabilitado</span>
+                                <span class="text-[11px] text-obsidian-muted leading-tight block mt-0.5">
+                                    Bloquea validación externa. El acceso al portal solo estará disponible para cuentas locales existentes.
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- HOST Y PUERTO -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2 space-y-1.5">
+                        <label class="text-xs font-mono font-bold text-obsidian-cyan uppercase block flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">dns</span>
+                            Servidor Host LDAP / IP:
+                        </label>
+                        <input type="text" name="ldap_host" id="input_ldap_host" value="{{ $ldapConfig['host'] ?? '10.20.0.22' }}" required
+                            placeholder="10.20.0.22"
+                            class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-mono font-bold text-obsidian-cyan uppercase block flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">tag</span>
+                            Puerto:
+                        </label>
+                        <input type="number" name="ldap_port" id="input_ldap_port" value="{{ $ldapConfig['port'] ?? 389 }}" min="1" max="65535" required
+                            placeholder="389"
+                            class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- BASE DN -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-mono font-bold text-obsidian-cyan uppercase block flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">folder_special</span>
+                        Base DN (Árbol de Búsqueda):
+                    </label>
+                    <input type="text" name="ldap_base_dn" id="input_ldap_base_dn" value="{{ $ldapConfig['base_dn'] ?? 'dc=corpoelec,dc=gob,dc=ve' }}" required
+                        placeholder="dc=corpoelec,dc=gob,dc=ve"
+                        class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
+                    <p class="text-[11px] font-mono text-obsidian-muted">
+                        Raíz LDAP sobre la que se ejecutan los filtros de búsqueda por UID, Cédula y Correo corporativo.
+                    </p>
+                </div>
+
+                <!-- ÁREAS PERMITIDAS & ROL POR DEFECTO -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2 space-y-1.5">
+                        <label class="text-xs font-mono font-bold text-obsidian-cyan uppercase block flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">workspaces</span>
+                            Áreas Organizacionales Autorizadas:
+                        </label>
+                        <input type="text" name="ldap_allowed_areas" id="input_ldap_allowed_areas" value="{{ $ldapConfig['allowed_areas'] ?? 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES' }}"
+                            placeholder="ATIT, INFRAESTRUCTURA..."
+                            class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
+                        <p class="text-[10px] font-mono text-obsidian-muted">
+                            Separadas por comas. Empleados con estas áreas en su ficha LDAP ingresan directamente con auto-registro.
+                        </p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-mono font-bold text-obsidian-cyan uppercase block flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">shield_person</span>
+                            Rol Asignado (JIT):
+                        </label>
+                        <select name="ldap_default_role" id="select_ldap_role"
+                            class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
+                            <option value="operator" {{ ($ldapConfig['default_role'] ?? 'operator') === 'operator' ? 'selected' : '' }}>Operador (Recomendado)</option>
+                            <option value="admin" {{ ($ldapConfig['default_role'] ?? 'operator') === 'admin' ? 'selected' : '' }}>Administrador</option>
+                        </select>
+                        <p class="text-[10px] font-mono text-obsidian-muted">
+                            Rol al auto-registrarse.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FEEDBACK DE PRUEBA DE CONEXIÓN -->
+                <div id="ldap_test_feedback" class="hidden text-xs font-mono p-3 rounded-lg border"></div>
+
+                <!-- BOTONES DE ACCIÓN -->
+                <div class="pt-2 flex flex-wrap items-center gap-3">
+                    <button type="submit" id="btn-save-ldap" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
+                        <span class="material-symbols-outlined text-base">save</span>
+                        Guardar Configuración LDAP
+                    </button>
+                    <button type="button" onclick="testLdapConnection()" id="btn-test-ldap" class="px-4 py-2.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:text-white hover:bg-cyan-950/60 font-mono text-xs uppercase flex items-center gap-2 transition cursor-pointer">
+                        <span class="material-symbols-outlined text-base" id="icon-test-ldap">wifi_tethering</span>
+                        Probar Conexión LDAP
+                    </button>
+                </div>
+            </div>
+
+            <!-- AUDITORÍA Y ESTADO LDAP (1 COL) -->
+            <div class="bg-[#040d1a]/80 border border-obsidian-border/70 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div class="text-[11px] uppercase font-bold text-obsidian-muted flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">info</span>
+                    Auditoría del Servicio LDAP
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Estado del servicio:</span>
+                    <span class="font-bold {{ ($ldapConfig['enabled'] ?? true) ? 'text-emerald-400' : 'text-rose-400' }}">
+                        {{ ($ldapConfig['enabled'] ?? true) ? 'HABILITADO' : 'DESHABILITADO' }}
+                    </span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Servidor actual:</span>
+                    <span class="text-white">{{ $ldapConfig['host'] ?? '10.20.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Rol inicial:</span>
+                    <span class="text-cyan-300 uppercase font-bold">{{ $ldapConfig['default_role'] ?? 'operator' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Último cambio:</span>
+                    <span class="text-white">{{ $ldapConfig['updated_at'] ?: 'Por defecto' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Modificado por:</span>
+                    <span class="text-cyan-300 truncate max-w-[140px]" title="{{ $ldapConfig['updated_by'] }}">{{ $ldapConfig['updated_by'] ?: 'Sistema' }}</span>
+                </div>
+                <div class="pt-2">
+                    <a href="{{ route('admin.users.index') }}" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                        <span>Gestionar usuarios autorizados</span>
+                        <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
     @endif
 </div>
 
@@ -770,6 +950,57 @@ function testMasterConnection() {
         feedback.classList.remove('text-obsidian-muted');
         feedback.classList.add('text-red-400');
         feedback.textContent = '❌ Error de red al probar conexión: ' + err.message;
+    });
+}
+
+function testLdapConnection() {
+    const host = document.getElementById('input_ldap_host').value.trim();
+    const port = document.getElementById('input_ldap_port').value.trim();
+    const baseDn = document.getElementById('input_ldap_base_dn').value.trim();
+    const feedback = document.getElementById('ldap_test_feedback');
+    const btn = document.getElementById('btn-test-ldap');
+    const icon = document.getElementById('icon-test-ldap');
+
+    if (!host) {
+        alert('Por favor ingrese el host o dirección IP del servidor LDAP.');
+        return;
+    }
+
+    feedback.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+    feedback.classList.add('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+    feedback.innerHTML = '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm animate-spin">sync</span> Probando conexión y Base DN con el servidor LDAP corporativo...</div>';
+    
+    btn.disabled = true;
+    if (icon) icon.classList.add('animate-spin');
+
+    fetch('{{ route('admin.ldap.testConnection') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ host: host, port: port, base_dn: baseDn })
+    })
+    .then(r => r.json())
+    .then(data => {
+        feedback.classList.remove('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+        if (data.success) {
+            feedback.classList.add('bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300');
+            feedback.innerHTML = `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-base text-emerald-400">check_circle</span> <span><strong>Éxito:</strong> ${data.message}</span></div>`;
+        } else {
+            feedback.classList.add('bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+            feedback.innerHTML = `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-base text-rose-400">error</span> <span><strong>Error:</strong> ${data.message}</span></div>`;
+        }
+    })
+    .catch(err => {
+        feedback.classList.remove('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+        feedback.classList.add('bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+        feedback.innerHTML = `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-base text-rose-400">error</span> <span>Error de red al intentar verificar el servidor LDAP.</span></div>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        if (icon) icon.classList.remove('animate-spin');
     });
 }
 </script>

@@ -22,6 +22,9 @@
             <button onclick="openModal('modal-ldap-search')" class="px-4 py-2.5 rounded-lg bg-obsidian-panel border border-cyan-500/50 text-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-950/60 hover:border-cyan-400 transition shadow-lg shadow-cyan-950/40">
                 <span class="material-symbols-outlined text-base">manage_accounts</span>
                 Buscar en LDAP & Autorizar
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono {{ ($isLdapEnabled ?? true) ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950 text-rose-300 border border-rose-500/40' }}">
+                    {{ ($isLdapEnabled ?? true) ? 'ACTIVO' : 'INACTIVO' }}
+                </span>
             </button>
             <button onclick="openModal('modal-create-user')" class="px-4 py-2.5 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20">
                 <span class="material-symbols-outlined text-base">person_add</span>
@@ -206,18 +209,30 @@
 <div id="modal-ldap-search" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-4xl w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
         <!-- HEADER MODAL -->
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3 shrink-0">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
+        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shrink-0">
                     <span class="material-symbols-outlined text-xl">manage_accounts</span>
                 </div>
                 <div>
-                    <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Directorio LDAP Corporativo • Búsqueda y Autorización</h3>
+                    <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide flex items-center gap-2">
+                        Directorio LDAP Corporativo • Búsqueda y Autorización
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold font-mono {{ ($isLdapEnabled ?? true) ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950 text-rose-300 border border-rose-500/40' }}">
+                            {{ ($isLdapEnabled ?? true) ? 'HABILITADO' : 'DESHABILITADO' }}
+                        </span>
+                    </h3>
                     <p class="text-[11px] font-mono text-obsidian-muted">Localice usuarios en el Directorio Activo Corporativo y concédales acceso manual con rol asignado</p>
                 </div>
             </div>
             <button onclick="closeModal('modal-ldap-search')" class="text-obsidian-muted hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+
+        @if(!($isLdapEnabled ?? true))
+        <div class="shrink-0 p-3 bg-rose-950/50 border border-rose-500/40 rounded-lg text-rose-300 text-xs font-mono flex items-center gap-2">
+            <span class="material-symbols-outlined text-base text-rose-400 shrink-0">warning</span>
+            <span>Atención: El servicio de autenticación LDAP corporativo se encuentra <strong>DESACTIVADO</strong> por el Administrador. Puede reactivarlo en la sección LDAP del <a href="{{ route('admin.dashboard') }}" class="underline hover:text-white font-bold text-cyan-300">Panel Principal</a>.</span>
+        </div>
+        @endif
 
         <!-- BARRA DE BÚSQUEDA -->
         <div class="shrink-0 space-y-2">
@@ -252,7 +267,7 @@
             <!-- Spinner de carga -->
             <div id="ldap-loading-state" class="hidden h-48 flex flex-col items-center justify-center text-center p-6 border border-dashed border-cyan-500/30 rounded-xl">
                 <span class="material-symbols-outlined text-4xl text-obsidian-cyan animate-spin mb-2">sync</span>
-                <p class="text-xs font-mono text-cyan-300">Consultando servidor LDAP corporativo (10.20.0.22)...</p>
+                <p class="text-xs font-mono text-cyan-300">Consultando servidor LDAP corporativo ({{ $ldapConfig['host'] ?? '10.20.0.22' }})...</p>
                 <p class="text-[10px] font-mono text-obsidian-muted mt-1">Buscando registros coincidentes...</p>
             </div>
 
@@ -262,7 +277,7 @@
 
         <!-- FOOTER MODAL -->
         <div class="shrink-0 pt-3 border-t border-obsidian-border flex items-center justify-between">
-            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">10.20.0.22:389</code> (Directorio Activo)</span>
+            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">{{ $ldapConfig['host'] ?? '10.20.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</code> (Directorio Activo)</span>
             <button type="button" onclick="closeModal('modal-ldap-search')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs font-mono">Cerrar</button>
         </div>
     </div>

@@ -24,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
             $view->with('clusterConfig', $clusterService->getConfig());
             $view->with('isClusterSlave', $clusterService->isSlave());
             $view->with('isClusterMaster', $clusterService->isMaster());
+
+            $ldapService = new \App\Services\LdapAuthService();
+            $view->with('ldapConfig', $ldapService->getConfig());
+            $view->with('isLdapEnabled', $ldapService->isEnabled());
         });
     }
 }
