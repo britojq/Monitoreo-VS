@@ -98,11 +98,19 @@ def get_cpu_info() -> Dict[str, Any]:
     except Exception as e:
         logger.warning(f"Error leyendo /proc/stat: {e}")
 
+    temp_info = {"max_temp": 0.0, "package_temp": 0.0, "badge": "🟢", "level": "NORMAL"}
+    try:
+        from monitor.thermal_guard import get_cpu_temperatures
+        temp_info = get_cpu_temperatures()
+    except Exception:
+        pass
+
     return {
         "load_1m": loads[0],
         "load_5m": loads[1],
         "load_15m": loads[2],
-        "iowait_percent": round(iowait, 1)
+        "iowait_percent": round(iowait, 1),
+        "temp": temp_info
     }
 
 
@@ -239,6 +247,16 @@ def get_system_health() -> Dict[str, Any]:
         is_warning = True
         reasons.append(f"Espera de disco elevada ({cpu['iowait_percent']}%)")
 
+    # Evaluación Térmica de CPU
+    cpu_temp_info = cpu.get("temp", {})
+    cpu_max_t = cpu_temp_info.get("max_temp", 0.0)
+    if cpu_max_t >= 75.0:
+        is_critical = True
+        reasons.append(f"Temperatura crítica de CPU ({cpu_max_t}°C)")
+    elif cpu_max_t >= 68.0:
+        is_warning = True
+        reasons.append(f"Temperatura elevada de CPU ({cpu_max_t}°C)")
+
     if is_critical:
         status_level = "CRÍTICO"
         status_badge = "🔴"
@@ -301,7 +319,8 @@ def format_optimizer_dashboard_html() -> Tuple[str, InlineKeyboardMarkup]:
         "<b>🔄 Memoria Swap (Disco):</b>\n"
         f"  • Total: <code>{mem['swap_total_mb']:.0f} MB</code> | Usada: <code>{mem['swap_used_mb']:.0f} MB</code> (<b>{mem['swap_percent']}%</b>)\n"
         f"  • Libre: <code>{mem['swap_free_mb']:.0f} MB</code>\n\n"
-        "<b>⚡ Procesador & I/O:</b>\n"
+        "<b>⚡ Procesador, Temperatura & I/O:</b>\n"
+        f"  • Temp. CPU: {cpu['temp']['badge']} <b><code>{cpu['temp']['max_temp']:.1f}°C</code></b> (Package: <code>{cpu['temp']['package_temp']:.1f}°C</code>)\n"
         f"  • Load Avg: <code>{cpu['load_1m']}</code> (1m), <code>{cpu['load_5m']}</code> (5m), <code>{cpu['load_15m']}</code> (15m)\n"
         f"  • Espera de Disco (I/O Wait): <code>{cpu['iowait_percent']}%</code>\n\n"
         "<b>🖥️ Entorno Gráfico (Plasma Shell):</b>\n"

@@ -343,7 +343,8 @@ ln -sf "$PROJECT_DIR/estatus" /usr/local/bin/estatus 2>/dev/null || true
 ln -sf "$PROJECT_DIR/checkpoint" /usr/local/bin/checkpoint 2>/dev/null || true
 ln -sf "$PROJECT_DIR/rollback" /usr/local/bin/rollback 2>/dev/null || true
 ln -sf "$PROJECT_DIR/activar" /usr/local/bin/activar 2>/dev/null || true
-echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint', 'rollback' y 'activar' listas en /usr/local/bin.${NC}\n"
+ln -sf "$PROJECT_DIR/temperatura" /usr/local/bin/temperatura 2>/dev/null || true
+echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint', 'rollback', 'activar' y 'temperatura' listas en /usr/local/bin.${NC}\n"
 
 # =========================================================================
 # PASO 9: SERVICIOS SYSTEMD Y TAREAS CRON
@@ -419,22 +420,43 @@ RestartSec=3
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 4. Cron de Escaneo Web cada 5 minutos
+# 4. Guardián Térmico y de Protección Física de CPU
+cat <<SERVICE_EOF > /etc/systemd/system/tg-thermal-guard.service
+[Unit]
+Description=Guardián Térmico y de Protección Física de CPU
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$PROJECT_DIR
+ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/monitor/thermal_guard.py --daemon
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
+# 5. Cron de Escaneo Web cada 5 minutos
 cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 # /etc/cron.d/monitoreo_web - Sincronizacion Web de Monitoreo cada 5 minutos
 */5 * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
-# 5. Cron Runner Dinámico de Monitoreo cada minuto
+# 6. Cron Runner Dinámico de Monitoreo cada minuto
 (crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1") | crontab -u "$SYS_USER" -
 
 systemctl daemon-reload
 systemctl enable boot-alert.service
 systemctl enable tg-admin-bot.service
+systemctl enable tg-thermal-guard.service
+systemctl restart tg-thermal-guard.service || true
 systemctl enable websockify.service
 systemctl restart websockify.service || true
-echo -e "${GREEN}[+] Servicios Systemd y Cron configurados y habilitados.${NC}\n"
+echo -e "${GREEN}[+] Servicios Systemd (Bot, Guardián Térmico) y Cron configurados y habilitados.${NC}\n"
 
 # =========================================================================
 # PASO 10: ALERTA DE CONEXIONES SSH EN TIEMPO REAL (PAM)
