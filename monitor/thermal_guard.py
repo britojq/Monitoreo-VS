@@ -308,9 +308,10 @@ def is_ai_service_active() -> bool:
 def stop_ai_service() -> bool:
     """Detiene inmediatamente el servicio del motor local de IA para salvaguardar el procesador."""
     try:
-        logger.critical(f"🛑 [EMERGENCIA TÉRMICA] Ejecutando: systemctl stop {AI_SERVICE_UNIT}")
+        cmd = ["sudo", "systemctl", "stop", AI_SERVICE_UNIT] if os.geteuid() != 0 else ["systemctl", "stop", AI_SERVICE_UNIT]
+        logger.critical(f"🛑 [CONTROL DE IA] Ejecutando: {' '.join(cmd)}")
         res = subprocess.run(
-            ["systemctl", "stop", AI_SERVICE_UNIT],
+            cmd,
             capture_output=True,
             text=True,
             timeout=10.0
@@ -324,9 +325,10 @@ def stop_ai_service() -> bool:
 def start_ai_service() -> bool:
     """Reanuda el servicio del motor local de IA una vez que la CPU ha alcanzado temperatura segura."""
     try:
-        logger.info(f"🟢 [NORMALIZACIÓN] Ejecutando: systemctl start {AI_SERVICE_UNIT}")
+        cmd = ["sudo", "systemctl", "start", AI_SERVICE_UNIT] if os.geteuid() != 0 else ["systemctl", "start", AI_SERVICE_UNIT]
+        logger.info(f"🟢 [CONTROL DE IA] Ejecutando: {' '.join(cmd)}")
         res = subprocess.run(
-            ["systemctl", "start", AI_SERVICE_UNIT],
+            cmd,
             capture_output=True,
             text=True,
             timeout=10.0

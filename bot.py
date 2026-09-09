@@ -1143,6 +1143,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/debug_completo</code> <i>(/debug_monitoreo)</i> - Reporte técnico integral exhaustivo (Servicios + Sedes) + <code>servicelog.txt</code>.",
             "• <code>/debug_monitor</code> <i>(/monitordebug)</i> - Conmutar interruptor de modo depuración global para todos los reportes.\n",
             "🧠 <b>ASISTENTE (IA)</b>",
+            "• <code>/ia [on|off|status]</code> <i>(/motor_ia, /toggle_ia)</i> - Panel interactivo para activar o desactivar en caliente el motor local de IA.",
             "• <code>/reset_ia</code> <i>(/borrar_chat)</i> - Reiniciar el contexto de la conversación con el asistente.\n",
             "<i>Recuerda también que puedes escribir directamente en el chat para interactuar con la IA.</i>\n",
             "<i>📌 <b>Nota sobre la memoria:</b> Después de entregar la respuesta técnica detallada, el bot mantendrá el hilo de memoria de la conversación para preguntas de seguimiento hasta que se use el comando <code>/reset_ia</code> y reinicie para una nueva consulta referente a otro tema.</i>\n",
@@ -1157,7 +1158,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "recursos", "temperatura", "temp", "termal", "cpu_temp", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
                 "servicios", "sedes", "caidas", "web", "monitoreo", "internet", "analisis_red",
                 "analisisred", "debug_servicios", "debug_sedes", "debug_completo", "debug_monitor",
-                "reset_ia"
+                "ia", "motor_ia", "toggle_ia", "servicio_ia", "reset_ia"
             }
             extra_cmds = [
                 f"• <code>/{cmd_name}</code> - {html.escape(cmd_info.get('description', 'Sin descripción'))}"
@@ -3742,6 +3743,257 @@ async def handle_thermal_callback(update: Update, context: ContextTypes.DEFAULT_
         return
 
 
+def format_ai_control_panel_html() -> Tuple[str, InlineKeyboardMarkup]:
+    """Genera el mensaje interactivo en formato HTML para Telegram para el control del motor local de IA."""
+    from monitor.thermal_guard import is_ai_service_active
+    hostname = platform.node()
+    is_dev = (hostname.upper() == "CENCARATIT")
+    ai_enabled_in_config = bool(CONFIG.get("ollama_enabled", True))
+    ai_service_running = is_ai_service_active()
+
+    if not ai_enabled_in_config:
+        config_badge = "🔴 <b>DESACTIVADO</b>"
+    else:
+        config_badge = "🟢 <b>ACTIVADO</b>"
+
+    if ai_service_running:
+        service_badge = "🟢 <b>ACTIVO (Running)</b>"
+    else:
+        service_badge = "🔴 <b>DETENIDO (Inactive)</b>"
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if is_dev:
+        env_note = (
+            "⚠️ <b>POLÍTICA DE SEGURIDAD EN DESARROLLO:</b>\n"
+            "El motor local de IA se encuentra permanentemente <b>deshabilitado en este equipo</b> "
+            "para resguardar el hardware físico. No se permite su activación en <code>CENCARATIT</code>.\n"
+        )
+    else:
+        env_note = (
+            "🛡️ <b>LIMITADORES ACTIVOS DE HARDWARE:</b>\n"
+            "• Tope de Memoria RAM: <code>8 GB</code> (Cgroups systemd)\n"
+            "• Cuota de CPU: <code>Máx. 70% (3 hilos)</code>\n"
+            "• Guardián Térmico: <code>Auto-corte preventivo a 75°C</code>\n"
+        )
+
+    text = (
+        "🧠 <b>CONTROL Y ADMINISTRACIÓN DEL MOTOR LOCAL DE IA</b>\n"
+        "═══════════════════════════════\n"
+        f"🖥️ <b>Servidor:</b> <code>{html.escape(hostname)}</code>\n"
+        f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n"
+        "═══════════════════════════════\n"
+        f"⚙️ <b>Estado en Configuración:</b> {config_badge}\n"
+        f"🚀 <b>Estado del Servicio Systemd:</b> {service_badge}\n\n"
+        f"{env_note}"
+        "═══════════════════════════════\n"
+        "<i>Utilice los botones interactivos inferiores para gestionar el estado del servicio:</i>"
+    )
+
+    buttons = []
+    if is_dev:
+        buttons.append([
+            InlineKeyboardButton("⚪ IA Restringida en Dev", callback_data="ia_act:dev_blocked")
+        ])
+    else:
+        if ai_enabled_in_config and ai_service_running:
+            buttons.append([
+                InlineKeyboardButton("🛑 Desactivar Motor de IA", callback_data="ia_act:disable")
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton("▶️ Activar Motor de IA", callback_data="ia_act:enable")
+            ])
+
+    buttons.append([
+        InlineKeyboardButton("🔄 Actualizar", callback_data="ia_act:refresh"),
+        InlineKeyboardButton("🌡️ Temperatura", callback_data="thermal:refresh"),
+        InlineKeyboardButton("❌ Cerrar", callback_data="ia_act:close")
+    ])
+
+    return text, InlineKeyboardMarkup(buttons)
+
+
+async def cmd_ia_control(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando interactivo para consultar, encender o apagar el motor local de IA (EXCLUSIVO OWNER en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    if user_id != owner_id:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/ia"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] IA_CONTROL DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    hostname = platform.node()
+    is_dev = (hostname.upper() == "CENCARATIT")
+
+    if context.args:
+        subcmd = context.args[0].lower().strip()
+        if subcmd in ("on", "activar", "start", "enable", "1", "si"):
+            if is_dev:
+                await safe_reply_html(
+                    update.message,
+                    "⚠️ <b>Acción Restringida:</b>\n"
+                    "Por directriz estricta de seguridad del sistema, el motor local de IA permanece "
+                    f"deshabilitado permanentemente en el servidor de desarrollo (<code>{html.escape(hostname)}</code>)."
+                )
+                return
+
+            wait_m = await update.message.reply_text("⏳ <i>Iniciando servicio del motor local de IA y aplicando límites de hardware...</i>", parse_mode='HTML')
+            CONFIG["ollama_enabled"] = True
+            save_config()
+            try:
+                from monitor.thermal_guard import start_ai_service
+                await asyncio.to_thread(start_ai_service)
+            except Exception as e:
+                logger.error(f"Error iniciando servicio IA: {e}")
+            try:
+                await wait_m.delete()
+            except Exception:
+                pass
+            dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+            await update.message.reply_text(
+                f"✅ <b>Motor Local de IA ACTIVADO exitosamente en {html.escape(hostname)}.</b>\n\n{dashboard_text}",
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+            return
+
+        elif subcmd in ("off", "desactivar", "stop", "disable", "0", "no"):
+            wait_m = await update.message.reply_text("⏳ <i>Deteniendo servicio del motor local de IA y liberando memoria RAM...</i>", parse_mode='HTML')
+            CONFIG["ollama_enabled"] = False
+            save_config()
+            try:
+                from monitor.thermal_guard import stop_ai_service
+                await asyncio.to_thread(stop_ai_service)
+            except Exception as e:
+                logger.error(f"Error deteniendo servicio IA: {e}")
+            try:
+                await wait_m.delete()
+            except Exception:
+                pass
+            dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+            await update.message.reply_text(
+                f"🛑 <b>Motor Local de IA DESACTIVADO exitosamente en {html.escape(hostname)}.</b>\n\n{dashboard_text}",
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+            return
+
+    dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+    await safe_reply_html(update.message, dashboard_text, reply_markup=keyboard)
+
+
+async def handle_ia_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones interactivas del panel de control del motor local de IA."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el creador del bot puede controlar el motor local de IA.", show_alert=True)
+        return
+
+    try:
+        action = query.data.split(":", 1)[1]
+    except IndexError:
+        await query.answer("⚠️ Solicitud inválida.")
+        return
+
+    hostname = platform.node()
+    is_dev = (hostname.upper() == "CENCARATIT")
+
+    if action == "dev_blocked":
+        await query.answer("⚠️ La IA está restringida en el servidor de desarrollo.", show_alert=True)
+        return
+
+    if action == "close":
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
+        return
+
+    if action == "refresh":
+        await query.answer("🔄 Actualizando estado...")
+        dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+    if action == "enable":
+        if is_dev:
+            await query.answer("⚠️ La IA está restringida en el servidor de desarrollo.", show_alert=True)
+            return
+
+        await query.answer("▶️ Activando motor local de IA...")
+        CONFIG["ollama_enabled"] = True
+        save_config()
+        try:
+            from monitor.thermal_guard import start_ai_service
+            await asyncio.to_thread(start_ai_service)
+        except Exception as e:
+            logger.error(f"Error iniciando servicio IA: {e}")
+
+        dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+    if action == "disable":
+        await query.answer("🛑 Desactivando motor local de IA...")
+        CONFIG["ollama_enabled"] = False
+        save_config()
+        try:
+            from monitor.thermal_guard import stop_ai_service
+            await asyncio.to_thread(stop_ai_service)
+        except Exception as e:
+            logger.error(f"Error deteniendo servicio IA: {e}")
+
+        dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+
 async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión en privado)."""
     if not await require_private_chat(update, context):
@@ -5343,7 +5595,11 @@ def main() -> None:
         "fallas",
         "reporte_caidas",
         "reinicia",
-        "reboot"
+        "reboot",
+        "ia",
+        "motor_ia",
+        "toggle_ia",
+        "servicio_ia"
     }
 
     # Asegurar existencia de copia dorada de respaldo de configuración
@@ -5408,6 +5664,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner ejecute diagnóstico térmico de CPU y estado del guardián
     application.add_handler(CommandHandler(["temperatura", "temp", "termal", "cpu_temp"], cmd_temperatura))
 
+    # Comando exclusivo para que el Owner gestione y controle el motor local de IA
+    application.add_handler(CommandHandler(["ia", "motor_ia", "toggle_ia", "servicio_ia"], cmd_ia_control))
+
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
@@ -5450,6 +5709,9 @@ def main() -> None:
 
     # Callback query handler para guardián térmico y telemetría de CPU
     application.add_handler(CallbackQueryHandler(handle_thermal_callback, pattern=r"^thermal:"))
+
+    # Callback query handler para control del motor local de IA
+    application.add_handler(CallbackQueryHandler(handle_ia_callback, pattern=r"^ia_act:"))
 
     # Callback query handler para botones del actualizador de sistema
     application.add_handler(CallbackQueryHandler(handle_update_callback, pattern=r"^update_act:"))
