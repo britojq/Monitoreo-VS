@@ -338,11 +338,12 @@ echo -e "${GREEN}[+] Inteligencia Artificial lista.${NC}\n"
 # PASO 8: COMANDOS GLOBALES CLI (/usr/local/bin)
 # =========================================================================
 echo -e "${BLUE}[*] Paso 8: Vinculando comandos globales en /usr/local/bin...${NC}"
-chmod +x "$PROJECT_DIR/estatus" "$PROJECT_DIR/checkpoint" "$PROJECT_DIR/rollback" "$PROJECT_DIR/sentinel_bot.py" 2>/dev/null || true
-ln -sf "$PROJECT_DIR/estatus" /usr/local/bin/estatus
-ln -sf "$PROJECT_DIR/checkpoint" /usr/local/bin/checkpoint
-ln -sf "$PROJECT_DIR/rollback" /usr/local/bin/rollback
-echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint' y 'rollback' listas en /usr/local/bin.${NC}\n"
+chmod +x "$PROJECT_DIR/estatus" "$PROJECT_DIR/checkpoint" "$PROJECT_DIR/rollback" "$PROJECT_DIR/activar" 2>/dev/null || true
+ln -sf "$PROJECT_DIR/estatus" /usr/local/bin/estatus 2>/dev/null || true
+ln -sf "$PROJECT_DIR/checkpoint" /usr/local/bin/checkpoint 2>/dev/null || true
+ln -sf "$PROJECT_DIR/rollback" /usr/local/bin/rollback 2>/dev/null || true
+ln -sf "$PROJECT_DIR/activar" /usr/local/bin/activar 2>/dev/null || true
+echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint', 'rollback' y 'activar' listas en /usr/local/bin.${NC}\n"
 
 # =========================================================================
 # PASO 9: SERVICIOS SYSTEMD Y TAREAS CRON
@@ -394,26 +395,7 @@ RestartSec=10
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 3. Servicio del Bot Centinela (Seguridad, DRM y Migración en Caliente)
-cat <<SERVICE_EOF > /etc/systemd/system/tg-sentinel-bot.service
-[Unit]
-Description=Telegram Sentinel Security Bot (Licensing & Anti-Tamper Core)
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-User=$SYS_USER
-Group=$SYS_USER
-WorkingDirectory=$PROJECT_DIR
-ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/sentinel_bot.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-SERVICE_EOF
-
-# 4. Proxy WebSocket Websockify para noVNC
+# 3. Proxy WebSocket Websockify para noVNC
 mkdir -p /etc/websockify
 touch /etc/websockify/tokens.cfg
 chown -R www-data:www-data /etc/websockify
@@ -437,23 +419,21 @@ RestartSec=3
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 5. Cron de Escaneo Web cada 5 minutos
+# 4. Cron de Escaneo Web cada 5 minutos
 cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 # /etc/cron.d/monitoreo_web - Sincronizacion Web de Monitoreo cada 5 minutos
 */5 * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
-# 6. Cron Runner Dinámico de Monitoreo cada minuto
+# 5. Cron Runner Dinámico de Monitoreo cada minuto
 (crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1") | crontab -u "$SYS_USER" -
 
 systemctl daemon-reload
 systemctl enable boot-alert.service
 systemctl enable tg-admin-bot.service
-systemctl enable tg-sentinel-bot.service
 systemctl enable websockify.service
 systemctl restart websockify.service || true
-systemctl restart tg-sentinel-bot.service || true
 echo -e "${GREEN}[+] Servicios Systemd y Cron configurados y habilitados.${NC}\n"
 
 # =========================================================================
@@ -492,13 +472,13 @@ echo -e "${NC}"
 echo -e "🌐 ${BOLD}Portal Web:${NC}              http://${DOMAIN_NAME}/"
 echo -e "🗄️ ${BOLD}Base de Datos:${NC}            ${DB_NAME} (Usuario: ${DB_USER})"
 echo -e "🖥️ ${BOLD}Escritorio Remoto VNC:${NC}   noVNC + Websockify activo (systemctl status websockify)"
-echo -e "🤖 ${BOLD}Bot Centinela:${NC}            Activo (systemctl status tg-sentinel-bot)"
 echo -e "📡 ${BOLD}Bot de Monitoreo:${NC}         Habilitado (systemctl status tg-admin-bot)"
 echo -e "🔔 ${BOLD}Notificador SSH & Boot:${NC}   Activos en PAM y systemd"
 echo -e "⏱️ ${BOLD}Cron de Sincronización:${NC}   Activo cada 5 min (/etc/cron.d/monitoreo_web)"
 echo ""
-echo -e "${CYAN}Si este es un servidor nuevo, abre tu Bot Centinela en Telegram para"
-echo -e "autorizar el nuevo hardware presionando el botón 'Activar' o 'Migrar'.${NC}"
-echo -e "${CYAN}Para iniciar manualmente el Bot de Monitoreo ejecute:${NC}"
-echo -e "${BOLD}  sudo systemctl start tg-admin-bot.service${NC}"
+echo -e "${CYAN}Si este es un servidor nuevo o clonado, revise el Serial recibido en su"
+echo -e "Telegram privado y ejecute la validación por consola:${NC}"
+echo -e "${BOLD}  activar [SERIAL]${NC}"
+echo -e "${CYAN}Para verificar el estado del servicio ejecute:${NC}"
+echo -e "${BOLD}  sudo systemctl status tg-admin-bot.service${NC}"
 echo ""

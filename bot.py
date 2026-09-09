@@ -652,12 +652,15 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
                 return False
 
         if update.message:
+            hostname = platform.node()
             await safe_reply_html(
                 update.message,
-                "⏳ <b>Bot en espera de activación del Owner.</b>\n\n"
-                "<i>El sistema se encuentra en modo de primer arranque o re-validación de hardware. "
-                "Por favor, responda con el Serial de Activación (ej: <code>AUTH-XXXX-XXXX-XXXX-XXXX</code>) "
-                "o use el comando <code>/activar AUTH-XXXX-XXXX-XXXX-XXXX</code> para desbloquear el bot.</i>"
+                "⏳ <b>Bot en espera de validación de instalación.</b>\n\n"
+                f"<i>El sistema en el servidor <code>{html.escape(hostname)}</code> requiere validación de hardware.\n\n"
+                "💻 <b>Instrucciones de Validación:</b>\n"
+                "Inicie sesión por consola en el servidor (SSH o terminal física) y ejecute:\n"
+                "<code>activar AUTH-XXXX-XXXX-XXXX-XXXX</code>\n\n"
+                "(Utilice el Serial de Activación recibido en la notificación privada).</i>"
             )
         return False
 
@@ -4900,10 +4903,21 @@ async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAUL
 
 
 async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Registra y gestiona errores inesperados o fallos de red durante el polling."""
+    """Registra y gestiona errores inesperados, colisiones de sesión o fallos de red durante el polling."""
     global _CONSECUTIVE_NETWORK_ERRORS
     err = context.error
-    if isinstance(err, (telegram.error.NetworkError, telegram.error.TimedOut, httpx.NetworkError, httpx.TimeoutException)):
+
+    if isinstance(err, telegram.error.Conflict):
+        logger.error(f"🚨 COLISIÓN DE INSTANCIAS DETECTADA (Conflict 409): {err}")
+        try:
+            from monitor.core_shield import send_core_conflict_alert
+            send_core_conflict_alert()
+        except Exception as e_alert:
+            logger.error(f"Error enviando alerta de conflicto: {e_alert}")
+        # Pausa preventiva para evitar saturar la API de Telegram con reconexiones en bucle
+        await asyncio.sleep(25)
+
+    elif isinstance(err, (telegram.error.NetworkError, telegram.error.TimedOut, httpx.NetworkError, httpx.TimeoutException)):
         _CONSECUTIVE_NETWORK_ERRORS += 1
         logger.warning(f"Aviso de red en polling Telegram (fallo #{_CONSECUTIVE_NETWORK_ERRORS}): {err}")
         # Solo activar conmutación si hay fallos persistentes sostenidos (mínimo 8 fallos seguidos)

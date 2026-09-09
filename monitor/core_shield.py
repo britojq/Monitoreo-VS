@@ -357,19 +357,20 @@ class SecureCore:
         return hmac.compare_digest(entered_serial.strip().upper(), self._active_serial.strip().upper())
 
     def _send_activation_alert(self, serial: str) -> None:
-        """Envía la alerta de primer arranque para solicitar activación al Owner a través del Bot Centinela."""
-        sentinel_token = _get_sentinel_token() or _get_canary_token()
-        if not sentinel_token:
+        """Envía la alerta de primer arranque para solicitar validación al Owner vía consola usando el Bot Principal."""
+        bot_token = get_core_bot_token() or _get_canary_token()
+        if not bot_token:
             return
         hostname = platform.node()
         ips_str = ", ".join(_get_local_ip_addresses())
         user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
-            "🛡️ <b>[CENTINELA: NUEVA INSTALACIÓN DETECTADA]</b>\n"
+            "🛡️ <b>[SEGURIDAD: NUEVA INSTALACIÓN DETECTADA]</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🖥️ <b>Servidor:</b> <code>{hostname}</code>\n"
-            f"🌐 <b>IPs Detectadas:</b> <code>{ips_str}</code>\n"
+            "Se ha detectado una nueva instalación o despliegue del sistema en este equipo.\n\n"
+            f"🖥️ <b>Nombre del Servidor:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>Dirección IP:</b> <code>{ips_str}</code>\n"
             f"👤 <b>Usuario Linux:</b> <code>{user_name}</code>\n"
             f"📁 <b>Ruta Base:</b> <code>{BASE_DIR}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
@@ -377,32 +378,28 @@ class SecureCore:
             f"<code>{serial}</code>\n\n"
             "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>📌 <b>Acción:</b> Presione el botón interactivo abajo o use <code>/activar {serial}</code> en este bot para anclar el hardware.</i>"
+            "💻 <b>VALIDACIÓN REQUERIDA VÍA CONSOLA (SHELL):</b>\n"
+            "Para activar y anclar la instalación en este equipo, inicie sesión por consola (SSH o terminal física) y ejecute:\n\n"
+            f"<code>activar {serial}</code>\n\n"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
         )
-        reply_markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Activar Hardware Local", "callback_data": f"sentinel:activate:{serial}"}
-                ]
-            ]
-        }
-        self._dispatch_sentinel_message(sentinel_token, msg, alert_type="first_boot", reply_markup=reply_markup)
+        self._dispatch_alert_message(bot_token, msg, alert_type="first_boot")
 
     def _send_migration_alert(self, serial: str) -> None:
-        """Envía la alerta forense de copia/migración al Owner a través del Bot Centinela."""
-        sentinel_token = _get_sentinel_token() or _get_canary_token()
-        if not sentinel_token:
+        """Envía la alerta forense de copia/migración al Owner usando el Bot Principal."""
+        bot_token = get_core_bot_token() or _get_canary_token()
+        if not bot_token:
             return
         hostname = platform.node()
         ips_str = ", ".join(_get_local_ip_addresses())
         user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = (
-            "🚨 <b>[CENTINELA: ALERTA DE COPIA / MIGRACIÓN]</b>\n"
+            "🚨 <b>[SEGURIDAD: ALERTA DE COPIA / CLONACIÓN]</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "⚠️ <b>Se detectó una discrepancia en la huella de hardware física.</b>\n\n"
-            f"🖥️ <b>Servidor Detectado:</b> <code>{hostname}</code>\n"
-            f"🌐 <b>IPs Detectadas:</b> <code>{ips_str}</code>\n"
+            "⚠️ <b>Se detectó una discrepancia en la huella de hardware física (Equipo Clonado o Copiado).</b>\n\n"
+            f"🖥️ <b>Nombre del Servidor:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>Dirección IP:</b> <code>{ips_str}</code>\n"
             f"👤 <b>Usuario Ejecutor:</b> <code>{user_name}</code>\n"
             f"📁 <b>Ruta en Disco:</b> <code>{BASE_DIR}</code>\n"
             f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
@@ -410,35 +407,111 @@ class SecureCore:
             f"<code>{serial}</code>\n\n"
             "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>¿Es una migración autorizada hacia este equipo o una copia indebida?</i>"
+            "💻 <b>VALIDACIÓN REQUERIDA VÍA CONSOLA (SHELL):</b>\n"
+            "Para autorizar la instalación en este nuevo equipo y vincularlo a su hardware, ingrese por consola (SSH o terminal física) y ejecute:\n\n"
+            f"<code>activar {serial}</code>\n\n"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
         )
-        reply_markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "🔄 Aprobar Migración en Caliente", "callback_data": f"sentinel:migrar:{serial}"}
-                ],
-                [
-                    {"text": "🚫 Bloquear y Purgar Clon", "callback_data": f"sentinel:block:{serial}"}
-                ]
-            ]
-        }
-        self._dispatch_sentinel_message(sentinel_token, msg, alert_type="migration", reply_markup=reply_markup)
+        self._dispatch_alert_message(bot_token, msg, alert_type="migration")
 
-    def _dispatch_sentinel_message(
+    def send_conflict_alert(self) -> None:
+        """Envía alerta cuando se detecta que el bot se ha iniciado en dos sitios simultáneamente (Conflict 409)."""
+        bot_token = get_core_bot_token() or _get_canary_token()
+        if not bot_token:
+            return
+        hostname = platform.node()
+        ips_str = ", ".join(_get_local_ip_addresses())
+        user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        hw_fp = ":".join(self._hw_components) if self._hw_components else hostname
+        serial, _ = self._generate_challenge(hw_fp)
+
+        msg = (
+            "🚨 <b>[ALERTA: BOT INICIADO EN DOS SITIOS SIMULTÁNEAMENTE]</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ <b>Se detectó un conflicto de sesión en Telegram (Conflict 409).</b>\n"
+            "El bot ha sido iniciado en dos equipos a la vez con el mismo token.\n\n"
+            f"🖥️ <b>Nombre del Equipo Local:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>Dirección IP:</b> <code>{ips_str}</code>\n"
+            f"👤 <b>Usuario Linux:</b> <code>{user_name}</code>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            "🔑 <b>Serial de Validación:</b>\n"
+            f"<code>{serial}</code>\n\n"
+            "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "💻 <b>ACCIONES REQUERIDAS VÍA CONSOLA (SHELL):</b>\n"
+            "1. Detenga el servicio en el equipo no deseado o duplicado (<code>sudo systemctl stop tg-admin-bot</code>).\n"
+            "2. Si este es el servidor que debe operar activamente, valide la instalación vía consola ejecutando:\n\n"
+            f"<code>activar {serial}</code>\n\n"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
+        )
+        self._dispatch_alert_message(bot_token, msg, alert_type="conflict")
+
+    def notify_console_activation_success(self, serial: str) -> None:
+        """Notifica al Owner por Telegram tras una validación exitosa por consola."""
+        bot_token = get_core_bot_token() or _get_canary_token()
+        if not bot_token:
+            return
+        hostname = platform.node()
+        ips_str = ", ".join(_get_local_ip_addresses())
+        user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        msg = (
+            "✅ <b>[VALIDACIÓN EXITOSA VÍA CONSOLA]</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "El servidor ha sido validado y anclado al hardware físico exitosamente por shell.\n\n"
+            f"🖥️ <b>Servidor:</b> <code>{hostname}</code>\n"
+            f"🌐 <b>Dirección IP:</b> <code>{ips_str}</code>\n"
+            f"🔑 <b>Serial Aplicado:</b> <code>{serial}</code>\n"
+            f"👤 <b>Usuario de Consola:</b> <code>{user_name}</code>\n"
+            f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+            "🚀 <i>El servicio de monitoreo (<code>tg-admin-bot</code>) fue reiniciado y se encuentra 100% OPERATIVO.</i>"
+        )
+        self._dispatch_alert_message(bot_token, msg, alert_type="activation_success")
+
+    def force_hardware_anchor(self) -> Tuple[bool, str]:
+        """Fuerza el anclaje físico de hardware en la máquina local (recuperación administrativa en consola)."""
+        self._hw_components = _get_hardware_components()
+        self._hw_key = _derive_hardware_key(self._hw_components)
+        cfg_path = BASE_DIR / "config" / "config.json"
+        if cfg_path.exists():
+            try:
+                c_data = json.loads(cfg_path.read_text(encoding="utf-8"))
+                c_tok = c_data.get("bot_token", "").strip()
+                if c_tok and ":" in c_tok and len(c_tok) >= 30:
+                    self._custom_token = c_tok
+            except Exception:
+                pass
+        success = self._write_anchor(self._hw_key, custom_token=self._custom_token)
+        if success:
+            self._unwrapped_master_key = _CORE_MASTER_KEY
+            self._state = "OPERATIONAL"
+            self._active_serial = None
+            self._serial_timestamp = 0
+            if CHALLENGE_FILE.exists():
+                try:
+                    CHALLENGE_FILE.unlink()
+                except Exception:
+                    pass
+            logger.info("✅ SecureCore: Forzado de anclaje de hardware exitoso. Estado: OPERATIONAL.")
+            return True, "✅ [FORZADO EXITOSO] Hardware anclado directamente a la máquina local."
+        return False, "Error escribiendo el archivo de anclaje de hardware."
+
+    def _dispatch_alert_message(
         self,
         token: str,
         text: str,
-        alert_type: str = "alert",
-        reply_markup: Optional[dict] = None
+        alert_type: str = "alert"
     ) -> None:
-        """Despacha un mensaje de alerta/control vía Bot Centinela con soporte de teclado interactivo y multi-proxy."""
-        debounce_file = Path(f"/tmp/.last_sentinel_{alert_type}")
+        """Despacha un mensaje de alerta de seguridad directamente al Owner usando el Bot Principal y multi-proxy."""
+        debounce_file = Path(f"/tmp/.last_security_{alert_type}")
         now = int(time.time())
         if debounce_file.exists():
             try:
                 last_ts = int(debounce_file.read_text().strip())
-                if now - last_ts < 300:
-                    logger.debug(f"Alerta Centinela ({alert_type}) omitida por debounce.")
+                if now - last_ts < 180:
+                    logger.debug(f"Alerta ({alert_type}) omitida por debounce.")
                     return
             except Exception:
                 pass
@@ -449,8 +522,6 @@ class SecureCore:
             "text": text,
             "parse_mode": "HTML"
         }
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
 
         proxies_to_test = [None]
         config_p = BASE_DIR / "config" / "config.json"
@@ -465,12 +536,37 @@ class SecureCore:
             except Exception:
                 pass
 
+        bot_conf_p = BASE_DIR / "config" / "bot.conf"
+        if bot_conf_p.exists():
+            try:
+                import urllib.parse
+                b_lines = bot_conf_p.read_text(encoding="utf-8").splitlines()
+                b_data = {}
+                for l in b_lines:
+                    l = l.strip()
+                    if l and not l.startswith("#") and "=" in l:
+                        k, v = l.split("=", 1)
+                        b_data[k.strip()] = v.strip().strip("'\"")
+                for letter in ("A", "B", "C", "D"):
+                    ip = b_data.get(f"IPADDRPORTPROXY{letter}")
+                    auth = b_data.get(f"USERPASSWDPROXY{letter}")
+                    if ip:
+                        if auth and ":" in auth:
+                            u, pwd = auth.split(":", 1)
+                            p_url = f"http://{urllib.parse.quote(u)}:{urllib.parse.quote(pwd)}@{ip}"
+                        else:
+                            p_url = f"http://{ip}"
+                        if p_url not in proxies_to_test:
+                            proxies_to_test.append(p_url)
+            except Exception:
+                pass
+
         for p_target in proxies_to_test:
             try:
                 with httpx.Client(proxy=p_target, timeout=8.0) as client:
                     resp = client.post(url, json=payload)
                     if resp.status_code == 200 and resp.json().get("ok"):
-                        logger.info(f"Alerta Centinela ({alert_type}) despachada exitosamente al Owner.")
+                        logger.info(f"Alerta ({alert_type}) despachada exitosamente al Owner vía Bot Principal.")
                         try:
                             debounce_file.write_text(str(now))
                         except Exception:
@@ -478,7 +574,7 @@ class SecureCore:
                         return
             except Exception:
                 continue
-        logger.warning("No se pudo entregar la alerta al Bot Centinela tras probar conexión directa y proxies.")
+        logger.warning(f"No se pudo entregar la alerta ({alert_type}) al Owner tras probar conexión directa y proxies.")
 
     def activate_hardware(self, entered_serial: str) -> Tuple[bool, str]:
         """Procesa la validación del Serial, ancla la Master Key al hardware y activa el bot."""
@@ -632,6 +728,21 @@ def is_core_operational() -> bool:
 def activate_hardware_first_boot(serial: str) -> Tuple[bool, str]:
     """Valida el serial del Owner y activa el anclaje de hardware en primer arranque."""
     return _ENGINE.activate_hardware(serial)
+
+
+def send_core_conflict_alert() -> None:
+    """Despacha alerta de conflicto cuando el bot detecta que se inició en dos sitios a la vez."""
+    _ENGINE.send_conflict_alert()
+
+
+def notify_core_console_activation(serial: str) -> None:
+    """Notifica al Owner por Telegram de una activación exitosa por consola."""
+    _ENGINE.notify_console_activation_success(serial)
+
+
+def force_core_hardware_anchor() -> Tuple[bool, str]:
+    """Fuerza el anclaje del hardware en la máquina local por consola."""
+    return _ENGINE.force_hardware_anchor()
 
 
 def migrate_core_token(new_token: str) -> Tuple[bool, str]:

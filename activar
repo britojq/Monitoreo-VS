@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🛡️ VALIDACIÓN DE INSTALACIÓN Y ANCLAJE DE HARDWARE: activar
+# Ubicación: /scripts/telegram-admin-bot/activar
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+
+set -e
+
+BASE_DIR="/scripts/telegram-admin-bot"
+PYTHON_EXEC="$BASE_DIR/venv/bin/python"
+SCRIPT="$BASE_DIR/monitor/cli_activar.py"
+
+if [ ! -f "$PYTHON_EXEC" ]; then
+    PYTHON_EXEC="$(which python3)"
+fi
+
+exec "$PYTHON_EXEC" "$SCRIPT" "$@"
