@@ -69,7 +69,11 @@ def should_run_web_scan(force: bool = False) -> tuple[bool, int, float]:
     if config_file.exists():
         try:
             cfg = json.loads(config_file.read_text(encoding="utf-8"))
-            interval_minutes = int(cfg.get("web_check_interval_minutes", 10))
+            role = str(cfg.get("node_role", "master")).lower()
+            if role == "slave":
+                interval_minutes = int(cfg.get("slave_sync_interval_minutes", 2))
+            else:
+                interval_minutes = int(cfg.get("web_check_interval_minutes", 10))
             if interval_minutes < 1:
                 interval_minutes = 1
         except Exception:

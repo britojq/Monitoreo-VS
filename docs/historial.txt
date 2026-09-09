@@ -1250,6 +1250,16 @@ debe alterar su código, tiempos o configuración systemd.
    - Interfaz Web con bloqueo visual adaptativo: Reemplaza botones de modificación por badges "Solo Lectura", deshabilita exportaciones a .conf y presenta un banner ambarino de advertencia en el nodo réplica.
    - Tarjeta de Administración de Clúster en el Dashboard: Permite alternar roles (Master / Slave), copiar o regenerar tokens criptográficos y probar la conectividad en tiempo real con el servidor Master vía AJAX.
 
+5) Intervalo Independiente de Sincronización en Esclavo & Bloqueo de Chequeo de Red:
+   - Configuración manual de cadencia de sincronización para el nodo Slave (slave_sync_interval_minutes, por defecto 2 min, con preajustes de 1, 2, 5, 10 y 15 min) directamente desde la tarjeta de Clúster en el Dashboard.
+   - Desactivación y bloqueo total de la tarjeta "Frecuencia de Chequeo Web & Telemetría" en el servidor Esclavo:
+     • Input deshabilitado (disabled) y opacidad reducida.
+     • Preajustes rápidos bloqueados (cursor-not-allowed).
+     • Botón de guardado reemplazado por control inactivo "Configurable Solo en Master" con ícono de candado.
+     • Panel ambarino explicativo informando que los chequeos de red y consultas a pfSense se ejecutan únicamente en el Master para prevenir colisiones de credenciales.
+   - El motor de sincronización (monitor/monitor_web_sync.py) respeta automáticamente slave_sync_interval_minutes cuando opera en modo slave, permitiendo una sincronización API ultraligera (0.1s de latencia interna) sin saturar al firewall ni a la red.
+   - Tooltip HUD de la barra superior (TopBar) actualizado para reflejar dinámicamente la cadencia ("Cadencia: Cada X min").
+
 --------------------------------------------------------------------------------
 100. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------

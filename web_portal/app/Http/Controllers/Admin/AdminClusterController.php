@@ -28,12 +28,16 @@ class AdminClusterController extends Controller
             'node_role' => ['required', 'in:master,slave'],
             'cluster_token' => ['required', 'string', 'min:16'],
             'master_api_url' => ['nullable', 'url'],
+            'slave_sync_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
         ], [
             'node_role.required' => 'Debe seleccionar un rol para el servidor (Master o Slave).',
             'node_role.in' => 'El rol seleccionado no es válido.',
             'cluster_token.required' => 'El token de clúster es obligatorio.',
             'cluster_token.min' => 'El token de clúster debe tener al menos 16 caracteres.',
             'master_api_url.url' => 'La URL del servidor Master debe ser válida (ej: http://10.20.23.252).',
+            'slave_sync_interval_minutes.integer' => 'El intervalo de sincronización debe ser un número entero.',
+            'slave_sync_interval_minutes.min' => 'El intervalo de sincronización debe ser de al menos 1 minuto.',
+            'slave_sync_interval_minutes.max' => 'El intervalo de sincronización no puede superar 1440 minutos.',
         ]);
 
         if ($validated['node_role'] === 'slave' && empty($validated['master_api_url'])) {
@@ -44,6 +48,7 @@ class AdminClusterController extends Controller
             'node_role' => $validated['node_role'],
             'cluster_token' => $validated['cluster_token'],
             'master_api_url' => $validated['master_api_url'] ?? 'http://10.20.23.252',
+            'slave_sync_interval_minutes' => $validated['slave_sync_interval_minutes'] ?? 2,
             'cluster_last_sync_status' => $validated['node_role'] === 'master' ? 'master_active' : 'configured',
         ]);
 

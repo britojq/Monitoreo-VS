@@ -16,6 +16,7 @@ class ClusterConfigService
             'master_api_url' => 'http://10.20.23.252',
             'cluster_last_sync_at' => null,
             'cluster_last_sync_status' => 'standalone',
+            'slave_sync_interval_minutes' => 2,
         ];
 
         if (file_exists($this->configPath)) {
@@ -28,6 +29,7 @@ class ClusterConfigService
                 $default['master_api_url'] = rtrim($data['master_api_url'] ?? 'http://10.20.23.252', '/');
                 $default['cluster_last_sync_at'] = $data['cluster_last_sync_at'] ?? null;
                 $default['cluster_last_sync_status'] = $data['cluster_last_sync_status'] ?? ($default['node_role'] === 'master' ? 'master_active' : 'pending');
+                $default['slave_sync_interval_minutes'] = max(1, min(1440, (int)($data['slave_sync_interval_minutes'] ?? 2)));
 
                 // Generar token por defecto si está vacío
                 if (empty($default['cluster_token'])) {
@@ -93,6 +95,10 @@ class ClusterConfigService
 
             if (isset($attributes['cluster_last_sync_status'])) {
                 $data['cluster_last_sync_status'] = $attributes['cluster_last_sync_status'];
+            }
+
+            if (isset($attributes['slave_sync_interval_minutes'])) {
+                $data['slave_sync_interval_minutes'] = max(1, min(1440, (int)$attributes['slave_sync_interval_minutes']));
             }
 
             $data['cluster_updated_at'] = date('Y-m-d H:i:s');

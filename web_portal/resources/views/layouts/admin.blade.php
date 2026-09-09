@@ -200,8 +200,8 @@
                         </p>
                         <div class="mt-2.5 pt-2 border-t border-obsidian-border/60 flex items-center justify-between text-[10px] text-obsidian-muted">
                             <span>Estado: <strong class="{{ $isClusterSlave ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'text-emerald-400' : 'text-amber-400') : 'text-cyan-300' }}">{{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente') }}</strong></span>
-                            @if($isClusterSlave && $clusterConfig['cluster_last_sync_at'])
-                                <span>Sinc: <strong class="text-white">{{ $clusterConfig['cluster_last_sync_at'] }}</strong></span>
+                            @if($isClusterSlave)
+                                <span>Cadencia: <strong class="text-amber-300">Cada {{ $clusterConfig['slave_sync_interval_minutes'] ?? 2 }} min</strong></span>
                             @endif
                         </div>
                     </div>

@@ -331,9 +331,16 @@
                 <div>
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Frecuencia de Chequeo Web & Telemetría
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
-                            CADA {{ $cronConfig['web_check_interval'] ?? 10 }} MINUTOS
-                        </span>
+                        @if($isClusterSlave)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-gray-900 text-gray-400 border border-gray-700">
+                                <span class="material-symbols-outlined text-xs">lock</span>
+                                DESACTIVADO EN ESCLAVO (SOLO MASTER)
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
+                                CADA {{ $cronConfig['web_check_interval'] ?? 10 }} MINUTOS
+                            </span>
+                        @endif
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
                         Intervalo en que el servicio de monitoreo en segundo plano ejecuta la verificación de enlaces y actualiza este portal web.
@@ -341,10 +348,10 @@
                 </div>
             </div>
 
-            <!-- BOTÓN ESCANEAR AHORA -->
+            <!-- BOTÓN ESCANEAR / SINCRONIZAR AHORA -->
             <button onclick="triggerImmediateScan()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition cursor-pointer">
-                <span class="material-symbols-outlined text-base">play_arrow</span>
-                Escanear Ahora
+                <span class="material-symbols-outlined text-base">{{ $isClusterSlave ? 'cloud_sync' : 'play_arrow' }}</span>
+                {{ $isClusterSlave ? 'Sincronizar con Master Ahora' : 'Escanear Ahora' }}
             </button>
         </div>
 
@@ -352,13 +359,23 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
             <!-- SELECTOR DE FRECUENCIA Y ACCESOS RÁPIDOS (2 COLS) -->
             <div class="lg:col-span-2 space-y-4">
+                @if($isClusterSlave)
+                    <div class="p-3.5 rounded-xl bg-obsidian-panel/90 border border-amber-500/30 text-xs font-mono text-amber-300 flex items-start gap-2.5">
+                        <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">lock</span>
+                        <div class="leading-relaxed">
+                            <strong class="text-white block mb-0.5">Operación Desactivada en Servidor Esclavo:</strong>
+                            Este servidor no ejecuta escaneos de red ni chequeos a pfSense para prevenir colisiones de credenciales. La frecuencia oficial de escaneo de infraestructura se configura exclusivamente en el <strong class="text-cyan-300">Servidor Master</strong> (<code>{{ $clusterConfig['master_api_url'] }}</code>).
+                        </div>
+                    </div>
+                @endif
+
                 <div class="flex items-center justify-between">
-                    <span class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-sm text-obsidian-cyan">timer</span>
+                    <span class="text-xs font-mono font-bold uppercase flex items-center gap-1.5 {{ $isClusterSlave ? 'text-gray-500' : 'text-gray-300' }}">
+                        <span class="material-symbols-outlined text-sm {{ $isClusterSlave ? 'text-gray-500' : 'text-obsidian-cyan' }}">timer</span>
                         Ajustar Frecuencia de Ejecución
                     </span>
-                    <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/50 px-2.5 py-0.5 rounded-md border border-cyan-500/30">
-                        Actual: <strong>{{ $cronConfig['web_check_interval'] ?? 10 }} min</strong>
+                    <span class="text-[11px] font-mono px-2.5 py-0.5 rounded-md border {{ $isClusterSlave ? 'bg-gray-900/60 text-gray-500 border-gray-800' : 'text-cyan-300 bg-cyan-950/50 border-cyan-500/30' }}">
+                        Actual en Master: <strong>{{ $cronConfig['web_check_interval'] ?? 10 }} min</strong>
                     </span>
                 </div>
 
@@ -369,13 +386,14 @@
                         <div class="relative flex-1 min-w-[200px] max-w-xs">
                             <input type="number" name="interval_minutes" id="web_interval_input" min="1" max="1440" required
                                 value="{{ $cronConfig['web_check_interval'] ?? 10 }}"
-                                class="w-full bg-[#040d1a] border border-obsidian-border text-white text-sm font-mono rounded-lg px-4 py-2.5 focus:outline-none focus:border-obsidian-cyan">
+                                {{ $isClusterSlave ? 'disabled' : '' }}
+                                class="w-full bg-[#040d1a] border border-obsidian-border text-white text-sm font-mono rounded-lg px-4 py-2.5 focus:outline-none focus:border-obsidian-cyan {{ $isClusterSlave ? 'opacity-40 cursor-not-allowed text-gray-500' : '' }}">
                             <span class="absolute right-3 top-2.5 text-xs font-mono text-obsidian-muted pointer-events-none">minutos</span>
                         </div>
                         @if($isClusterSlave)
-                            <button type="button" disabled class="px-5 py-2.5 rounded-lg bg-gray-800 text-gray-400 font-bold text-xs font-mono uppercase flex items-center gap-2 cursor-not-allowed opacity-60" title="Configurado exclusivamente en el Servidor Master">
+                            <button type="button" disabled class="px-5 py-2.5 rounded-lg bg-gray-900 text-gray-500 border border-gray-800 font-bold text-xs font-mono uppercase flex items-center gap-2 cursor-not-allowed" title="Configurado exclusivamente en el Servidor Master">
                                 <span class="material-symbols-outlined text-base">lock</span>
-                                Configurado en Master
+                                Configurable Solo en Master
                             </button>
                         @else
                             <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
@@ -387,12 +405,14 @@
 
                     <!-- PRESETS RÁPIDOS -->
                     <div class="space-y-1.5 pt-1">
-                        <span class="text-[11px] font-mono text-obsidian-muted">Preajustes rápidos:</span>
+                        <span class="text-[11px] font-mono {{ $isClusterSlave ? 'text-gray-600' : 'text-obsidian-muted' }}">Preajustes rápidos:</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach([1, 2, 5, 10, 15, 20, 30, 60] as $preset)
-                                <button type="button" onclick="document.getElementById('web_interval_input').value = {{ $preset }}"
-                                    class="px-3 py-1 rounded-lg text-xs font-mono border transition cursor-pointer {{ ($cronConfig['web_check_interval'] ?? 10) == $preset ? 'bg-cyan-950 text-obsidian-cyan border-cyan-500/60 font-bold' : 'bg-[#040d1a] text-gray-300 border-obsidian-border hover:border-obsidian-cyan/50 hover:text-white' }}">
-                                    {{ $preset }} min @if($preset === 10)<span class="text-[10px] text-cyan-400 font-bold">(Recomendado)</span>@endif
+                                <button type="button" 
+                                    {{ $isClusterSlave ? 'disabled' : '' }}
+                                    onclick="document.getElementById('web_interval_input').value = {{ $preset }}"
+                                    class="px-3 py-1 rounded-lg text-xs font-mono border transition {{ $isClusterSlave ? 'opacity-30 cursor-not-allowed bg-gray-900 text-gray-600 border-gray-800' : (($cronConfig['web_check_interval'] ?? 10) == $preset ? 'bg-cyan-950 text-obsidian-cyan border-cyan-500/60 font-bold cursor-pointer' : 'bg-[#040d1a] text-gray-300 border-obsidian-border hover:border-obsidian-cyan/50 hover:text-white cursor-pointer') }}">
+                                    {{ $preset }} min @if($preset === 10)<span class="text-[10px] {{ $isClusterSlave ? 'text-gray-600' : 'text-cyan-400' }} font-bold">(Recomendado)</span>@endif
                                 </button>
                             @endforeach
                         </div>
@@ -502,6 +522,39 @@
                     <div id="test-connection-feedback" class="hidden text-xs font-mono pt-1"></div>
                 </div>
 
+                <!-- CAMPO INTERVALO DE SINCRONIZACIÓN DEL SLAVE (VISIBLE CUANDO ES SLAVE) -->
+                <div id="field_slave_sync_interval" class="space-y-2 {{ $isClusterSlave ? '' : 'hidden' }}">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-amber-400">schedule</span>
+                            Intervalo de Sincronización con el Master
+                        </label>
+                        <span class="text-[11px] font-mono text-amber-300 bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-500/30">
+                            Actual: <strong>{{ $clusterConfig['slave_sync_interval_minutes'] ?? 2 }} min</strong>
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative flex-1 min-w-[180px] max-w-xs">
+                            <input type="number" name="slave_sync_interval_minutes" id="input_slave_sync_interval" min="1" max="1440"
+                                value="{{ $clusterConfig['slave_sync_interval_minutes'] ?? 2 }}"
+                                class="w-full bg-[#040d1a] border border-obsidian-border text-white text-sm font-mono rounded-lg px-4 py-2.5 focus:outline-none focus:border-obsidian-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs font-mono text-obsidian-muted pointer-events-none">minutos</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span class="text-[11px] font-mono text-obsidian-muted">Preajustes:</span>
+                        @foreach([1, 2, 5, 10, 15] as $preset_sync)
+                            <button type="button" onclick="document.getElementById('input_slave_sync_interval').value = {{ $preset_sync }}"
+                                class="px-2.5 py-1 rounded-lg text-xs font-mono border transition cursor-pointer {{ ($clusterConfig['slave_sync_interval_minutes'] ?? 2) == $preset_sync ? 'bg-amber-950 text-amber-300 border-amber-500/60 font-bold' : 'bg-[#040d1a] text-gray-300 border-obsidian-border hover:border-amber-500/50 hover:text-white' }}">
+                                {{ $preset_sync }} min @if($preset_sync === 2)<span class="text-[10px] text-amber-400 font-bold">(Recomendado)</span>@endif
+                            </button>
+                        @endforeach
+                    </div>
+                    <p class="text-[11px] text-obsidian-muted leading-relaxed">
+                        Frecuencia en minutos con la que este nodo esclavo descarga automáticamente el snapshot y la telemetría del Master vía API sin escanear la red física ni tocar pfSense.
+                    </p>
+                </div>
+
                 <!-- CAMPO TOKEN DE CLÚSTER -->
                 <div class="space-y-1.5">
                     <div class="flex items-center justify-between">
@@ -540,7 +593,7 @@
                 </div>
 
                 <div class="pt-2">
-                    <button type="submit" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
+                    <button type="submit" id="btn-save-cluster" class="px-5 py-2.5 rounded-lg bg-obsidian-cyan text-black hover:bg-cyan-300 font-bold text-xs font-mono uppercase flex items-center gap-2 transition cursor-pointer shadow-lg shadow-cyan-950/40">
                         <span class="material-symbols-outlined text-base">save</span>
                         Guardar Configuración de Clúster
                     </button>
@@ -580,11 +633,13 @@
 <script>
 function toggleClusterRoleFields(role) {
     const masterField = document.getElementById('field_master_url');
-    if (!masterField) return;
+    const slaveIntervalField = document.getElementById('field_slave_sync_interval');
     if (role === 'slave') {
-        masterField.classList.remove('hidden');
+        if (masterField) masterField.classList.remove('hidden');
+        if (slaveIntervalField) slaveIntervalField.classList.remove('hidden');
     } else {
-        masterField.classList.add('hidden');
+        if (masterField) masterField.classList.add('hidden');
+        if (slaveIntervalField) slaveIntervalField.classList.add('hidden');
     }
 }
 
