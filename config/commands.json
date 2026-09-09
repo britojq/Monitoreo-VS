@@ -29,6 +29,10 @@
       "description": "Diagnóstico de RAM, CPU y panel interactivo para liberar memoria",
       "help_text": "ℹ️ <b>Ayuda del comando /recursos:</b>\n\n• Muestra el consumo detallado de memoria RAM, memoria Swap, uso de CPU y los procesos que más memoria consumen en el host.\n• Despliega un panel con botones interactivos para:\n  - 🧹 <b>Liberar Caché de RAM</b> (drop_caches).\n  - 🔄 <b>Reiniciar Plasma Shell</b> (recuperar memoria gráfica acumulada de KDE Plasma).\n  - ⚡ <b>Optimización Completa</b> (ambas acciones combinadas)."
     },
+    "temperatura": {
+      "description": "Diagnóstico térmico en vivo de CPU y estado del guardián de hardware",
+      "help_text": "ℹ️ <b>Ayuda del comando /temperatura:</b>\n\n• Muestra la temperatura en tiempo real del procesador (Package y por cada núcleo físico individual).\n• Audita el estado del servicio local de IA y los límites físicos de hardware (RAM 8GB, CPU 280%).\n• Dispone de botón interactivo para refrescar la telemetría térmica al instante."
+    },
     "cron": {
       "description": "Panel interactivo de programación y horarios de reportes automáticos",
       "help_text": "ℹ️ <b>Ayuda del comando /cron:</b>\n\nPermite pausar o reanudar los reportes automáticos, así como configurar los horarios y la frecuencia de los despachos programados a los canales autorizados."

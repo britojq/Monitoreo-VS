@@ -16,6 +16,7 @@ import re
 import time
 import json
 import html
+import platform
 import shutil
 import logging
 import asyncio
@@ -1122,6 +1123,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/info</code> <i>(/aviso, /legal)</i> - Información legal, privacidad y advertencia de seguridad.\n",
             "🛠️ <b>Mantenimiento y Rendimiento del Sistema</b>",
             "• <code>/recursos</code> <i>(/memoria, /optimizar, /plasma)</i> - Diagnóstico de RAM, Swap, CPU y panel interactivo para liberar memoria / reiniciar Plasma Shell.",
+            "• <code>/temperatura</code> <i>(/temp, /termal, /cpu_temp)</i> - Telemetría térmica de CPU en tiempo real y estado del guardián de hardware.",
             "• <code>/cron</code> <i>(/envios, /programacion)</i> - Panel interactivo para activar, pausar y configurar horarios de reportes automáticos.",
             "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
@@ -1152,7 +1154,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "permisos", "grupos", "mis_grupos", "listar_grupos", "chat_grupos",
                 "salir_grupo", "leave_group", "expulsar_grupo", "abandonar_grupo",
                 "bloqueo_comandos", "botstatus", "info", "mensaje", "migrar_token",
-                "recursos", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
+                "recursos", "temperatura", "temp", "termal", "cpu_temp", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
                 "servicios", "sedes", "caidas", "web", "monitoreo", "internet", "analisis_red",
                 "analisisred", "debug_servicios", "debug_sedes", "debug_completo", "debug_monitor",
                 "reset_ia"
@@ -3582,6 +3584,164 @@ async def handle_optimizer_callback(update: Update, context: ContextTypes.DEFAUL
                 pass
 
 
+def format_thermal_dashboard_html() -> Tuple[str, InlineKeyboardMarkup]:
+    """Genera el mensaje interactivo en formato HTML para Telegram con telemetría de CPU y guardián térmico."""
+    from monitor.thermal_guard import (
+        get_cpu_temperatures,
+        is_ai_service_active,
+        DEFAULT_TEMP_WARNING,
+        DEFAULT_TEMP_CRITICAL,
+        DEFAULT_TEMP_RECOVERY
+    )
+    status = get_cpu_temperatures()
+    hostname = platform.node()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Determinar estado del motor de IA respetando la configuración y la máquina
+    ai_enabled_in_config = CONFIG.get("ollama_enabled", True)
+    if not ai_enabled_in_config:
+        ai_state_str = "⚪ <b>DESHABILITADO (Equipo de Desarrollo)</b>"
+    else:
+        ai_active = is_ai_service_active()
+        if ai_active:
+            ai_state_str = "🟢 <b>ACTIVO (Límite: 8GB RAM / 280% CPU)</b>"
+        else:
+            ai_state_str = "🔴 <b>DETENIDO / EN PAUSA</b>"
+
+    cores_lines = []
+    for c_name, c_temp in status["core_temps"].items():
+        c_badge = "🔴" if c_temp >= DEFAULT_TEMP_CRITICAL else ("🟡" if c_temp >= DEFAULT_TEMP_WARNING else "🟢")
+        cores_lines.append(f"  • {html.escape(c_name)}: {c_badge} <code>{c_temp:.1f}°C</code>")
+    cores_str = "\n".join(cores_lines) if cores_lines else "  • Sensores integrados operando normalmente"
+
+    text = (
+        "🌡️ <b>DIAGNÓSTICO TÉRMICO Y PROTECCIÓN FÍSICA DE CPU</b>\n"
+        "═══════════════════════════════\n"
+        f"🖥️ <b>Servidor:</b> <code>{html.escape(hostname)}</code>\n"
+        f"🔥 <b>Estado Térmico:</b> {status['badge']} <b>{status['level']}</b>\n"
+        f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n"
+        "═══════════════════════════════\n"
+        f"🌡️ <b>Temperatura Pico:</b> {status['badge']} <b><code>{status['max_temp']:.1f}°C</code></b>\n"
+        f"📦 <b>Package CPU:</b> <code>{status['package_temp']:.1f}°C</code>\n"
+        f"📊 <b>Promedio Sensores:</b> <code>{status['avg_temp']:.1f}°C</code>\n\n"
+        "<b>Detalle por Núcleo Físico:</b>\n"
+        f"{cores_str}\n\n"
+        "<b>Servicios y Guardián Autónomo:</b>\n"
+        f"  • Motor Local de IA: {ai_state_str}\n"
+        "  • Guardián Térmico: 🟢 <b>ACTIVO (Auto-corte preventivo)</b>\n\n"
+        "⚙️ <b>Umbrales de Protección Física:</b>\n"
+        f"  • Advertencia (Warning): <code>{DEFAULT_TEMP_WARNING:.1f}°C</code>\n"
+        f"  • Parada Emergencia (Stop IA): <code>{DEFAULT_TEMP_CRITICAL:.1f}°C</code>\n"
+        f"  • Auto-Recuperación: <code>&lt; {DEFAULT_TEMP_RECOVERY:.1f}°C</code> (3 min)\n"
+        "═══════════════════════════════\n"
+        "<i>El guardián térmico opera de forma autónoma cada 5 segundos protegiendo el hardware contra sobrecalentamiento.</i>"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔄 Actualizar Temperatura", callback_data="thermal:refresh")
+        ],
+        [
+            InlineKeyboardButton("💻 Ver Recursos (RAM/CPU)", callback_data="sys_opt:refresh")
+        ]
+    ])
+
+    return text, keyboard
+
+
+async def cmd_temperatura(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando para diagnóstico térmico y estado del guardián físico de CPU (EXCLUSIVO OWNER en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    if user_id != owner_id:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = update.effective_user
+        first_name = (user.first_name or "").strip()
+        last_name = (user.last_name or "").strip()
+        if last_name.lower() == "none":
+            last_name = ""
+        full_name = " ".join([p for p in [first_name, last_name] if p]) or "(sin nombre)"
+        username_str = f"@{user.username}" if user.username else ""
+        msg_text = update.message.text or "/temperatura"
+        chat_title = update.effective_chat.title if (update.effective_chat and update.effective_chat.type in ['group', 'supergroup']) else "Chat Privado"
+
+        audit_path = get_audit_log_path()
+        log_line = (
+            f"[{now_str}] TEMPERATURA DENEGADO | ID: {user_id} | "
+            f"Username: {username_str} | Nombre: {full_name} | "
+            f"Chat: {chat_title} (ID: {chat_id}) | Comando: {msg_text}\n"
+        )
+        try:
+            with open(audit_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            logger.error(f"Error escribiendo en log de auditoría ({audit_path}): {e}")
+
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Consultando telemetría física de temperatura en sensores del procesador...</i>",
+        parse_mode='HTML'
+    )
+
+    try:
+        dashboard_text, keyboard = await asyncio.to_thread(format_thermal_dashboard_html)
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+
+        await update.message.reply_text(
+            dashboard_text,
+            parse_mode='HTML',
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.error(f"Error generando panel térmico: {e}", exc_info=True)
+        try:
+            await wait_msg.edit_text(f"❌ <b>Error consultando sensores térmicos:</b> <code>{html.escape(str(e))}</code>", parse_mode='HTML')
+        except Exception:
+            await safe_reply_html(update.message, f"❌ Error: {e}")
+
+
+async def handle_thermal_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja las acciones interactivas del panel térmico."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    clicker_id = query.from_user.id
+
+    if clicker_id != owner_id:
+        await query.answer("⛔ Solo el creador del bot puede consultar la telemetría del servidor.", show_alert=True)
+        return
+
+    try:
+        action = query.data.split(":", 1)[1]
+    except IndexError:
+        await query.answer("⚠️ Solicitud inválida.")
+        return
+
+    if action == "refresh":
+        await query.answer("🔄 Actualizando telemetría térmica...")
+        dashboard_text, keyboard = await asyncio.to_thread(format_thermal_dashboard_html)
+        try:
+            await query.edit_message_text(dashboard_text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+
 async def cmd_broadcast_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando exclusivo para que el Owner envíe mensajes tipo Broadcast (difusión en privado)."""
     if not await require_private_chat(update, context):
@@ -5118,6 +5278,10 @@ def main() -> None:
         "limpiador",
         "limpieza",
         "cleaner",
+        "temperatura",
+        "temp",
+        "termal",
+        "cpu_temp",
         "mensaje",
         "broadcast",
         "difusion",
@@ -5241,6 +5405,9 @@ def main() -> None:
     # Comando exclusivo para que el Owner ejecute diagnóstico de recursos del sistema y optimización de Plasma Shell
     application.add_handler(CommandHandler(["recursos", "memoria", "optimizar", "plasma"], cmd_recursos_sistema))
 
+    # Comando exclusivo para que el Owner ejecute diagnóstico térmico de CPU y estado del guardián
+    application.add_handler(CommandHandler(["temperatura", "temp", "termal", "cpu_temp"], cmd_temperatura))
+
     # Comando exclusivo para que el Owner ejecute diagnóstico de almacenamiento y limpieza interactiva
     application.add_handler(CommandHandler(["limpiador", "limpieza", "cleaner"], cmd_limpiador))
 
@@ -5280,6 +5447,9 @@ def main() -> None:
 
     # Callback query handler para optimizador de recursos del sistema y Plasma Shell
     application.add_handler(CallbackQueryHandler(handle_optimizer_callback, pattern=r"^sys_opt:"))
+
+    # Callback query handler para guardián térmico y telemetría de CPU
+    application.add_handler(CallbackQueryHandler(handle_thermal_callback, pattern=r"^thermal:"))
 
     # Callback query handler para botones del actualizador de sistema
     application.add_handler(CallbackQueryHandler(handle_update_callback, pattern=r"^update_act:"))

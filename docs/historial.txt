@@ -1179,16 +1179,48 @@ debe alterar su código, tiempos o configuración systemd.
    - Se reestructuró por completo [`installer/install.sh`](file:///scripts/telegram-admin-bot/installer/install.sh) para desplegar desatendidamente la pila LAMP (Apache, MariaDB, PHP 8.2+), la base de datos `monitoreo_vs`, el portal web en `/var/www/monitoreo`, las capturas con Playwright Chromium, Ollama, CLI globales, notificadores `boot-alert`, alertas SSH por PAM y los servicios de ambos bots (`tg-admin-bot` y `tg-sentinel-bot`).
 
 --------------------------------------------------------------------------------
-95. ESTADO FINAL DE VERIFICACIÓN
+95. NONAGÉSIMA QUINTA INTERVENCIÓN (2026-09-08): DESCARTE DEL BOT CENTINELA Y VALIDACIÓN POR CONSOLA (SHELL)
+--------------------------------------------------------------------------------
+1) Descarte Definitivo del Bot Centinela:
+   - Se removió y purgó el servicio `tg-sentinel-bot.service` de systemd en desarrollo y producción.
+   - Se centralizó el despacho de todas las alertas de seguridad y migración a través del Bot Principal, despachando exclusivamente al Owner (`38914901`).
+   - Se interceptó el error `Conflict (409)` de Telegram para notificar de inmediato cuando el bot es iniciado en dos sitios a la vez con el mismo token.
+
+2) Protocolo de Activación por Consola (`activar`):
+   - Se creó el comando CLI `/usr/local/bin/activar` (y `estatus activar [SERIAL]`).
+   - Si se detecta un hardware no coincidente (clonación / migración), se despacha el serial temporal al Owner por Telegram y se requiere validación por consola (`activar [SERIAL]`).
+
+--------------------------------------------------------------------------------
+96. NONAGÉSIMA SEXTA INTERVENCIÓN (2026-09-09): ASIGNACIÓN DE MEMORIA (8GB), GUARDIÁN TÉRMICO DE CPU Y COMANDO /TEMPERATURA
+--------------------------------------------------------------------------------
+1) Asignación y Límite Rígido de Memoria RAM (8 GB) en Producción:
+   - Se configuró `/etc/systemd/system/ollama.service.d/override.conf` con `MemoryMax=8G`, `MemoryHigh=7.5G`, `CPUQuota=280%`, `Nice=10` y `NUM_THREADS=3`.
+   - Garantiza holgura total para el sistema operativo y servicios de red.
+
+2) Guardián Térmico Autónomo (`monitor/thermal_guard.py`):
+   - Servicio systemd `tg-thermal-guard.service` ejecutándose en segundo plano (muestreo cada 5s, ~0% CPU).
+   - Umbrales de protección: Warning (68.0°C), Parada Crítica (75.0°C), Auto-recuperación (< 55.0°C sostenido 3 min).
+   - En caso de sobrecalentamiento crítico, detiene preventivamente el motor de IA de inmediato y despacha alerta privada a Telegram (`38914901`).
+   - CLI global en consola: `/usr/local/bin/temperatura` y `estatus temperatura`.
+
+3) Comando Dedicado en Telegram (`/temperatura`):
+   - Implementado en [`bot.py`](file:///scripts/telegram-admin-bot/bot.py) con alias `/temp`, `/termal`, `/cpu_temp`.
+   - Telemetría en tiempo real: Package CPU, desglose térmico por núcleo individual, estado del servicio de IA y botones interactivos.
+   - En el servidor de desarrollo (`CENCARATIT`), el motor local de IA se mantiene estrictamente deshabilitado (`"ollama_enabled": false`).
+   - Integrado en el comando `/recursos` y en el menú del propietario.
+
+--------------------------------------------------------------------------------
+97. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
 - Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).
 - Servicios systemd:
   • `tg-admin-bot.service`: Active (running) - Bot de Monitoreo (@IA_ValleSeco_bot).
-  • `tg-sentinel-bot.service`: Active (running) - Bot Centinela (@nimda_control_bot).
-- Conexiones Telegram: Autenticados como `@IA_ValleSeco_bot` y `@nimda_control_bot` (HTTP 200 OK).
-- Tareas en segundo plano: Cron Web cada 5 min, Watchdog 10 min, y Verificador Git cada 48h.
-- Blindaje de Seguridad: DRM de hardware, Anti-Tamper, Token Canario, Token Centinela Ofuscado, Filtro PII, Rate Limiting, Anti-Forensia, PAM Timeout 15s, Boot-Alert Fast Shutdown (congelado por Regla de Oro), SRR, Centinela de Red de 10 min, Panel de Emergencia y Portal Web Administrativo activos.
+  • `tg-thermal-guard.service`: Active (running) - Guardián Térmico y de Protección Física de CPU.
+- Guardián Térmico: Monitoreo continuo a 5 segundos con parada automática a 75°C.
+- Comandos en Bot: 100% operativos (`/servicios`, `/sedes`, `/caidas`, `/internet`, `/recursos`, `/temperatura`, `/botstatus`, etc.).
+- Servidor de Desarrollo (`CENCARATIT`): Motor local de IA deshabilitado (`"ollama_enabled": false`).
+- Servidor de Producción (`MONITOREO-VS`): Motor local de IA habilitado con cgroups estrictos (8 GB RAM / 280% CPU).
 
 --------------------------------------------------------------------------------
 6. GUÍA DE ADMINISTRACIÓN RÁPIDA
