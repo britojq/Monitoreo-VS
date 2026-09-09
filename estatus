@@ -39,6 +39,28 @@ elif [ "${1:-}" = "recursos" ] || [ "${1:-}" = "optimizar" ] || [ "${1:-}" = "me
 elif [ "${1:-}" = "temperatura" ] || [ "${1:-}" = "temp" ] || [ "${1:-}" = "termal" ]; then
     shift
     exec "$PROJECT_DIR/temperatura" "$@"
+elif [ "${1:-}" = "cluster" ] || [ "${1:-}" = "nodo" ] || [ "${1:-}" = "rol" ]; then
+    shift
+    exec "$PYTHON_EXEC" -c "
+import json
+from pathlib import Path
+cfg_path = Path('$PROJECT_DIR/config/config.json')
+if cfg_path.exists():
+    cfg = json.loads(cfg_path.read_text())
+    print('=====================================================')
+    print('       ARQUITECTURA DE CLÚSTER (MASTER / SLAVE)       ')
+    print('=====================================================')
+    print(f' Rol del Nodo:       {cfg.get(\"node_role\", \"master\").upper()}')
+    print(f' Servidor Master:    {cfg.get(\"master_api_url\", \"http://10.20.23.252\")}')
+    print(f' Estado de Enlace:   {cfg.get(\"cluster_last_sync_status\", \"N/A\")}')
+    print(f' Última Sincronía:   {cfg.get(\"cluster_last_sync_at\", \"N/A\")}')
+    print('-----------------------------------------------------')
+    print(' Token de Clúster (X-Cluster-Token):')
+    print(f' {cfg.get(\"cluster_token\", \"N/A\")}')
+    print('=====================================================')
+else:
+    print('Error: Archivo de configuración no encontrado.')
+" "$@"
 fi
 
 # Pasar todos los argumentos al motor de Python

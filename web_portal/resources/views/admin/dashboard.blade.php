@@ -520,10 +520,19 @@
                             </button>
                         </div>
                     </div>
-                    <div class="relative">
+                    <div class="flex items-center gap-2">
                         <input type="text" name="cluster_token" id="input_cluster_token" value="{{ $clusterConfig['cluster_token'] }}" required
-                            class="w-full bg-[#040d1a] border border-obsidian-border text-cyan-300 text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan pr-24">
-                        <span id="copy-token-badge" class="absolute right-2.5 top-2.5 text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 hidden">¡Copiado!</span>
+                            onclick="this.select();" onfocus="this.select();"
+                            class="flex-1 bg-[#040d1a] border border-obsidian-border text-cyan-300 text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan select-all"
+                            title="Haga clic para seleccionar todo el token">
+                        <button type="button" onclick="copyClusterToken()" class="px-3.5 py-2.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer shadow-sm shrink-0" title="Copiar Token al portapapeles">
+                            <span class="material-symbols-outlined text-sm">content_copy</span>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                    <div id="copy-token-badge" class="hidden text-[11px] font-mono text-emerald-400 flex items-center gap-1 mt-1">
+                        <span class="material-symbols-outlined text-xs">check_circle</span>
+                        <span>¡Token copiado al portapapeles con éxito!</span>
                     </div>
                     <p class="text-[11px] text-obsidian-muted">
                         Este token autentica las peticiones entre los servidores. Debe ser idéntico en el Master y en los Slaves.
@@ -582,12 +591,68 @@ function toggleClusterRoleFields(role) {
 function copyClusterToken() {
     const input = document.getElementById('input_cluster_token');
     if (!input) return;
+    const textToCopy = input.value;
+    
+    // 1. Asegurar foco y selección del campo
+    input.focus();
     input.select();
-    navigator.clipboard.writeText(input.value);
+    input.setSelectionRange(0, 99999);
+
+    let copied = false;
+
+    // 2. Intentar document.execCommand('copy') - compatible 100% con HTTP no seguro
+    try {
+        copied = document.execCommand('copy');
+    } catch (e) {
+        console.warn('execCommand falló:', e);
+    }
+
+    // 3. Si no funcionó y el navegador soporta Clipboard API en contexto seguro
+    if (!copied && navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showCopySuccessBadge();
+        }).catch(() => {
+            copyViaTextarea(textToCopy);
+        });
+        return;
+    }
+
+    if (copied) {
+        showCopySuccessBadge();
+    } else {
+        copyViaTextarea(textToCopy);
+    }
+}
+
+function copyViaTextarea(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    try {
+        const ok = document.execCommand('copy');
+        if (ok) {
+            showCopySuccessBadge();
+        } else {
+            window.prompt('Copie el token de clúster con Ctrl+C:', text);
+        }
+    } catch (err) {
+        window.prompt('Copie el token de clúster con Ctrl+C:', text);
+    }
+    document.body.removeChild(ta);
+}
+
+function showCopySuccessBadge() {
     const badge = document.getElementById('copy-token-badge');
     if (badge) {
         badge.classList.remove('hidden');
-        setTimeout(() => badge.classList.add('hidden'), 2500);
+        setTimeout(() => badge.classList.add('hidden'), 3500);
     }
 }
 

@@ -4311,6 +4311,48 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
 
+async def cmd_cluster(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el estado del clúster Master/Slave y el token de autenticación (Exclusivo Owner en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    config_file = BASE_DIR / "config" / "config.json"
+    cfg = {}
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    role = cfg.get("node_role", "master").upper()
+    master_url = cfg.get("master_api_url", "http://10.20.23.252")
+    token = cfg.get("cluster_token", "No configurado")
+    last_sync = cfg.get("cluster_last_sync_at", "N/A")
+    status = cfg.get("cluster_last_sync_status", "N/A")
+
+    role_emoji = "👑" if role == "MASTER" else "🔄"
+    text = (
+        f"{role_emoji} <b>Arquitectura de Clúster (Master / Slave)</b>\n\n"
+        f"🏷️ <b>Rol del Nodo:</b> <code>{role}</code>\n"
+        f"🌐 <b>Servidor Master:</b> <code>{html.escape(master_url)}</code>\n"
+        f"📊 <b>Estado de Enlace:</b> <code>{html.escape(status)}</code>\n"
+        f"⏰ <b>Última Sincronía:</b> <code>{html.escape(str(last_sync))}</code>\n\n"
+        f"🔑 <b>Token Secreto de Clúster (toque para copiar):</b>\n"
+        f"<code>{html.escape(token)}</code>\n\n"
+        f"<i>Copie este token en el servidor Esclavo para autorizar la sincronización de telemetría sin colisiones en pfSense.</i>"
+    )
+    await safe_reply_html(update.message, text)
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
     query = update.callback_query
@@ -5672,6 +5714,9 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git
     application.add_handler(CommandHandler(["actualizar", "update", "upgrade", "git_update", "check_update"], cmd_actualizar))
+
+    # Comando exclusivo para que el Owner consulte el rol de clúster y token de autenticación
+    application.add_handler(CommandHandler(["cluster", "nodo", "rol_nodo", "token_cluster"], cmd_cluster))
 
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)
     application.add_handler(CommandHandler(["mensaje", "broadcast", "difusion", "anuncio", "comunicado"], cmd_broadcast_mensaje))
