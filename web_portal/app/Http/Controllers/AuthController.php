@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,9 +46,13 @@ class AuthController extends Controller
         }
 
         // =========================================================================
-        // CASO 1: ADMINISTRADOR (Autenticación Local Failsafe por Correo Electrónico)
+        // CASO 1: ADMINISTRADOR LOCAL (Autenticación Local Failsafe por Correo)
         // =========================================================================
-        if (filter_var($loginValue, FILTER_VALIDATE_EMAIL)) {
+        // Si el valor ingresado es un correo y existe un usuario local SIN origen LDAP
+        $isEmail = (bool) filter_var($loginValue, FILTER_VALIDATE_EMAIL);
+        $localUser = $isEmail ? User::where('email', $loginValue)->first() : null;
+
+        if ($localUser && !$localUser->isLdapUser()) {
             $credentials = [
                 'email' => $loginValue,
                 'password' => $password,
@@ -83,12 +88,12 @@ class AuthController extends Controller
             RateLimiter::hit($throttleKey, 60);
 
             return back()->withErrors([
-                'login' => 'Las credenciales de administrador ingresadas no coinciden con nuestros registros locales.',
+                'login' => 'Las credenciales de administrador local ingresadas no coinciden con nuestros registros.',
             ])->onlyInput('login');
         }
 
         // =========================================================================
-        // CASO 2: OPERADORES / PERSONAL CORPORATIVO (Autenticación LDAP & Auto-Registro)
+        // CASO 2: AUTENTICACIÓN LDAP (Para cuentas corporativas por UID o Correo)
         // =========================================================================
         /** @var \App\Services\LdapAuthService $ldapService */
         $ldapService = app(\App\Services\LdapAuthService::class);

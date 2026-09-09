@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Log;
 
 class LdapAuthService
 {
-    protected string $host = '10.20.0.22';
-    protected int $port = 389;
-    protected string $baseDn = 'dc=empresa,dc=gob,dc=ve';
+    protected string $host;
+    protected int $port;
+    protected string $baseDn;
 
     /**
      * Unidades organizacionales y áreas estrictamente autorizadas para el auto-registro
@@ -17,7 +17,16 @@ class LdapAuthService
     protected array $allowedAreas = [
         'ATIT',
         'GPO TRAB INFRA TECNOL CARABOBO',
+        'INFRAESTRUCTURA',
+        'TELECOMUNICACIONES',
     ];
+
+    public function __construct()
+    {
+        $this->host = config('services.ldap.host', env('LDAP_HOST', '10.20.0.22'));
+        $this->port = (int) config('services.ldap.port', env('LDAP_PORT', 389));
+        $this->baseDn = config('services.ldap.base_dn', env('LDAP_BASE_DN', 'dc=corpoelec,dc=gob,dc=ve'));
+    }
 
     /**
      * Obtener conexión LDAP activa
@@ -79,13 +88,29 @@ class LdapAuthService
             ];
         }
 
-        // Búsqueda del usuario por UID
+        // Búsqueda flexible del usuario por UID, correo corporativo, prefijo de correo o cédula
         $escapedUser = ldap_escape($cleanUsername, '', LDAP_ESCAPE_FILTER);
-        $filter = "(uid={$escapedUser})";
-        $attributes = ['dn', 'cn', 'mail', 'givenname', 'sn', 'description', 'o', 'st', 'telephonenumber', 'uid'];
+        $filterList = [
+            "(uid={$escapedUser})",
+            "(mail={$escapedUser})",
+            "(mail={$escapedUser}@corpoelec.gob.ve)",
+            "(mail={$escapedUser}@corpoelec.com.ve)",
+        ];
+
+        if (is_numeric($cleanUsername)) {
+            $filterList[] = "(uid=A{$escapedUser})";
+            $filterList[] = "(employeenumber={$escapedUser})";
+            $filterList[] = "(employeenumber=1{$escapedUser})";
+            $filterList[] = "(carlicense={$escapedUser})";
+        }
+
+        $filter = "(|" . implode('', array_unique($filterList)) . ")";
+        $attributes = ['dn', 'cn', 'mail', 'givenname', 'sn', 'description', 'o', 'st', 'telephonenumber', 'uid', 'employeenumber'];
         
-        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes);
+        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes, 0, 5, 4);
         if (!$search) {
+            $ldapErr = ldap_error($conn);
+            Log::error("LDAP: Error al consultar cuenta [{$cleanUsername}]: {$ldapErr}");
             @ldap_unbind($conn);
             return [
                 'success' => false,
@@ -108,11 +133,11 @@ class LdapAuthService
 
         $entry = $entries[0];
         $userDn = $entry['dn'];
+        $entryUid = strtoupper($entry['uid'][0] ?? $cleanUsername);
+        $entryMail = strtolower($entry['mail'][0] ?? ($entryUid . '@corpoelec.gob.ve'));
 
         // Paso 2: Validar pertenencia a áreas autorizadas o si fue PRE-AUTORIZADO por el Administrador
         $upperUsername = strtoupper($cleanUsername);
-        $entryUid = strtoupper($entry['uid'][0] ?? $cleanUsername);
-        $entryMail = strtolower($entry['mail'][0] ?? '');
 
         $isPreAuthorized = User::where(function ($query) use ($entryUid, $entryMail, $cleanUsername, $upperUsername) {
             $query->where('username', $entryUid)
@@ -159,8 +184,7 @@ class LdapAuthService
         }
 
         // Extracción de datos del usuario
-        $cn = $entry['cn'][0] ?? $cleanUsername;
-        $mail = $entry['mail'][0] ?? ($cleanUsername . '@empresa.local');
+        $cn = $entry['cn'][0] ?? $entryUid;
         $givenName = $entry['givenname'][0] ?? '';
         $sn = $entry['sn'][0] ?? '';
         $telephone = $entry['telephonenumber'][0] ?? '';
@@ -172,9 +196,9 @@ class LdapAuthService
             'success' => true,
             'message' => 'Autenticación LDAP exitosa.',
             'data' => [
-                'username' => strtoupper($cleanUsername),
+                'username' => $entryUid,
                 'name' => $cn,
-                'email' => strtolower($mail),
+                'email' => $entryMail,
                 'dn' => $userDn,
                 'description' => $description,
                 'givenName' => $givenName,
@@ -213,10 +237,11 @@ class LdapAuthService
 
         if (is_numeric($cleanTerm)) {
             $variants[] = 'A' . $cleanTerm;
-            $variants[] = 'V' . $cleanTerm;
-            $variants[] = 'E' . $cleanTerm;
+            $variants[] = '1' . $cleanTerm;
+            $variants[] = '11' . $cleanTerm;
         } elseif (!str_contains($cleanTerm, '@')) {
-            $variants[] = strtolower($cleanTerm) . '@empresa.local';
+            $variants[] = strtolower($cleanTerm) . '@corpoelec.gob.ve';
+            $variants[] = strtolower($cleanTerm) . '@corpoelec.com.ve';
         }
 
         $filterParts = [];
@@ -224,7 +249,8 @@ class LdapAuthService
             $esc = ldap_escape($v, '', LDAP_ESCAPE_FILTER);
             $filterParts[] = "(uid={$esc})";
             $filterParts[] = "(mail={$esc})";
-            $filterParts[] = "(cn={$esc})";
+            $filterParts[] = "(employeenumber={$esc})";
+            $filterParts[] = "(cn=*{$esc}*)";
         }
 
         $filter = "(|" . implode('', $filterParts) . ")";
@@ -246,7 +272,7 @@ class LdapAuthService
                 if (!$uid) continue;
 
                 $cn = $e['cn'][0] ?? $uid;
-                $mail = $e['mail'][0] ?? ($uid . '@empresa.local');
+                $mail = $e['mail'][0] ?? ($uid . '@corpoelec.gob.ve');
                 $desc = $e['description'][0] ?? 'Sin descripción';
                 $sede = $e['o'][0] ?? 'No especificada';
                 $st = $e['st'][0] ?? '';
@@ -293,10 +319,18 @@ class LdapAuthService
         }
 
         $escaped = ldap_escape($cleanUid, '', LDAP_ESCAPE_FILTER);
-        $filter = "(uid={$escaped})";
+        $filterList = [
+            "(uid={$escaped})",
+            "(mail={$escaped})",
+        ];
+        if (is_numeric($cleanUid)) {
+            $filterList[] = "(uid=A{$escaped})";
+            $filterList[] = "(employeenumber={$escaped})";
+        }
+        $filter = "(|" . implode('', $filterList) . ")";
         $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn'];
 
-        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes);
+        $search = @ldap_search($conn, $this->baseDn, $filter, $attributes, 0, 5, 4);
         if (!$search) {
             @ldap_unbind($conn);
             return null;
@@ -311,7 +345,7 @@ class LdapAuthService
         $e = $entries[0];
         $uidVal = $e['uid'][0] ?? $cleanUid;
         $cn = $e['cn'][0] ?? $uidVal;
-        $mail = $e['mail'][0] ?? ($uidVal . '@empresa.local');
+        $mail = $e['mail'][0] ?? ($uidVal . '@corpoelec.gob.ve');
         $desc = $e['description'][0] ?? 'Sin descripción';
         $sede = $e['o'][0] ?? 'No especificada';
         $st = $e['st'][0] ?? '';

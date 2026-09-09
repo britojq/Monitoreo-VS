@@ -1261,7 +1261,20 @@ debe alterar su código, tiempos o configuración systemd.
    - Tooltip HUD de la barra superior (TopBar) actualizado para reflejar dinámicamente la cadencia ("Cadencia: Cada X min").
 
 --------------------------------------------------------------------------------
-100. ESTADO FINAL DE VERIFICACIÓN
+101. CENTÉSIMA PRIMERA INTERVENCIÓN (2026-09-09): CORRECCIÓN Y REFACTORIZACIÓN INTEGRAL DE AUTENTICACIÓN LDAP CORPORATIVA
+--------------------------------------------------------------------------------
+1) Causa Raíz Identificada:
+   - Base DN Inexistente: `LdapAuthService.php` tenía configurada la base DN ficticia `dc=empresa,dc=gob,dc=ve`. Al consultar el servidor corporativo `10.20.0.22:389`, las búsquedas fallaban con error LDAP 32 ("No such object / Error al consultar la cuenta en el directorio corporativo").
+   - Intercepción de Correos en AuthController: Todo inicio de sesión con formato de correo electrónico era evaluado exclusivamente contra la base de datos local (`Auth::attempt`). Al ingresar con correos corporativos (ej. `joalbrito@corpoelec.gob.ve`), el sistema rechazaba la petición localmente sin consultar jamás a LDAP.
+   - Filtro Rígido de UID: La consulta LDAP solo filtraba por `(uid=...)`, impidiendo que los usuarios pudieran identificarse usando su cédula numérica (`1746281`), número de empleado (`11746281`), correo completo o alias.
+2) Solución Aplicada:
+   - Configuración centralizada en `config/services.php` y variables de entorno: host (`10.20.0.22`), puerto (389) y Base DN oficial (`dc=corpoelec,dc=gob,dc=ve`).
+   - Filtro flexible multi-atributo en `LdapAuthService.php`: ahora evalúa simultáneamente UID (`A1746281`), correos corporativos (`@corpoelec.gob.ve`, `@corpoelec.com.ve`), cédula numérica (`1746281`) y código de empleado (`11746281`).
+   - Flujo Híbrido en `AuthController.php`: distingue entre cuentas locales puras (ej. `britojq@gmail.com`) y cuentas de origen LDAP (`$user->isLdapUser()`). Si el usuario es de origen LDAP o no existe localmente, se autentica directamente contra el Directorio Activo corporativo preservando su rol existente (`admin` u `operator`).
+   - Verificación Exitosa: Pruebas unitarias en Artisan tinker, pruebas HTTP y pruebas visuales automatizadas con Playwright (`ldap_login_error_feedback.png` y `ldap_user_search_modal.png`).
+
+--------------------------------------------------------------------------------
+102. ESTADO FINAL DE VERIFICACIÓN
 --------------------------------------------------------------------------------
 - Sitio Web de Monitoreo: Operativo en Apache en `/var/www/monitoreo` (`http://monitoreo-vs.local/` y `http://localhost/`).
 - Base de Datos: MariaDB `monitoreo_vs` (Usuario: `monitoreo_user`, clave fuerte de alta entropía).
