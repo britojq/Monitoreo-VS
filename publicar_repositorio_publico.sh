@@ -87,16 +87,20 @@ rsync -av --delete \
     --exclude="web_portal/storage/framework/sessions/*" \
     --exclude="web_portal/storage/framework/views/*" \
     --exclude="publicar_repositorio_publico.sh" \
+    --exclude="README.public.md" \
     "$BASE_DIR/" "$BUILD_DIR/"
 
 # Purgar cualquier archivo de imagen residual en el directorio público
 find "$BUILD_DIR" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" -o -name "*.ico" -o -name "*.svg" -o -name "*.gif" \) -delete 2>/dev/null || true
 
-# 5. Inyectar plantillas de configuración genéricas
-echo -e "${BLUE}▶ 3. Inyectando plantillas de configuración genéricas...${NC}"
+# 5. Inyectar plantillas de configuración genéricas y README público
+echo -e "${BLUE}▶ 3. Inyectando plantillas de configuración genéricas y README público...${NC}"
 cp "$BASE_DIR/config/bot.conf.generic" "$BUILD_DIR/config/bot.conf"
 cp "$BASE_DIR/config/monitoreo.conf.generic" "$BUILD_DIR/config/monitoreo.conf"
 cp "$BASE_DIR/config/mensajes.conf.generic" "$BUILD_DIR/config/mensajes.conf"
+if [ -f "$BASE_DIR/README.public.md" ]; then
+    cp "$BASE_DIR/README.public.md" "$BUILD_DIR/README.md"
+fi
 
 # Sanitizar seeder de base de datos en web_portal si existe
 SEEDER_FILE="$BUILD_DIR/web_portal/database/seeders/InitialMonitoringSeeder.php"
