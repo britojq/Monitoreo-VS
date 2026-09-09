@@ -334,7 +334,9 @@ async def execute_git_update(bot_instance=None) -> str:
         portal_src = BASE_DIR / "web_portal"
         if web_dir.exists() and portal_src.exists():
             try:
-                rsync_cmd = [
+                # 1. Sincronizar archivos preservando credenciales y dependencias
+                sudo_prefix = ["sudo"] if os.geteuid() != 0 else []
+                rsync_cmd = sudo_prefix + [
                     "rsync", "-a",
                     "--exclude=vendor/",
                     "--exclude=node_modules/",
@@ -347,19 +349,58 @@ async def execute_git_update(bot_instance=None) -> str:
                 p_rsync = await asyncio.create_subprocess_exec(*rsync_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await p_rsync.communicate()
 
-                # Purgar caché de vistas compiladas y rutas de Laravel
+                # 2. Ajustar permisos para el usuario www-data
+                chown_cmd = sudo_prefix + ["chown", "-R", "www-data:www-data", str(web_dir)]
+                p_chown = await asyncio.create_subprocess_exec(*chown_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await p_chown.communicate()
+
+                storage_p = web_dir / "storage"
+                boot_p = web_dir / "bootstrap" / "cache"
+                if storage_p.exists() and boot_p.exists():
+                    chmod_cmd = sudo_prefix + ["chmod", "-R", "775", str(storage_p), str(boot_p)]
+                    p_chmod = await asyncio.create_subprocess_exec(*chmod_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                    await p_chmod.communicate()
+
+                # 3. Purgar caché de vistas compiladas y rutas en Laravel
                 artisan_bin = web_dir / "artisan"
                 if artisan_bin.exists():
-                    p_artisan = await asyncio.create_subprocess_exec(
-                        "php", str(artisan_bin), "view:clear",
+                    cmd_view = (sudo_prefix + ["-u", "www-data"]) if sudo_prefix else []
+                    cmd_view += ["php", str(artisan_bin), "view:clear"]
+                    p_view = await asyncio.create_subprocess_exec(
+                        *cmd_view,
                         cwd=str(web_dir),
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE
                     )
-                    await p_artisan.communicate()
-                logs.append("🌐 <i>Portal Web sincronizado y caché de vistas refrescada en /var/www/monitoreo.</i>")
+                    await p_view.communicate()
+
+                    cmd_route = (sudo_prefix + ["-u", "www-data"]) if sudo_prefix else []
+                    cmd_route += ["php", str(artisan_bin), "route:clear"]
+                    p_route = await asyncio.create_subprocess_exec(
+                        *cmd_route,
+                        cwd=str(web_dir),
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await p_route.communicate()
+
+                # 4. Recargar Apache y PHP-FPM para invalidar OPcache de PHP
+                cmd_reload = sudo_prefix + ["systemctl", "reload", "apache2"]
+                p_reload = await asyncio.create_subprocess_exec(*cmd_reload, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await p_reload.communicate()
+
+                # Recargar servicio php-fpm si está activo
+                try:
+                    cmd_fpm = sudo_prefix + ["systemctl", "reload", "php8.4-fpm"]
+                    p_fpm = await asyncio.create_subprocess_exec(*cmd_fpm, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                    await p_fpm.communicate()
+                except Exception:
+                    pass
+
+                logs.append("🌐 <i>Portal Web desplegado en /var/www/monitoreo, caché purgada y servicios web recargados.</i>")
             except Exception as e_web:
                 logger.warning(f"Advertencia al sincronizar portal web en /var/www/monitoreo: {e_web}")
+                logs.append(f"⚠️ <i>Aviso en despliegue web: {html.escape(str(e_web))}</i>")
 
         # 5. Validar sintaxis de Python en todo el proyecto
         proc = await asyncio.create_subprocess_exec(
