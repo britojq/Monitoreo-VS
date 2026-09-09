@@ -212,20 +212,28 @@
                     <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>
                 @endif
 
-                <!-- USUARIO EN SESIÓN (Click lleva a Perfil) -->
-                <a href="{{ route('admin.profile.show') }}" class="flex items-center space-x-2 sm:space-x-2.5 hover:opacity-90 transition group shrink-0" title="Ver Mi Perfil">
+                <!-- USUARIO EN SESIÓN (Click abre ventana para cerrar sesión y perfil) -->
+                <button type="button" 
+                        onclick="openUserSessionModal()" 
+                        id="btn-user-session-trigger" 
+                        class="flex items-center space-x-2 sm:space-x-2.5 hover:opacity-95 transition group shrink-0 focus:outline-none p-1.5 rounded-xl hover:bg-obsidian-panel/80 border border-transparent hover:border-obsidian-border cursor-pointer text-left" 
+                        title="Opciones de cuenta y Cerrar Sesión">
                     <div class="text-right hidden sm:block">
-                        <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition truncate max-w-[120px]">{{ Auth::user()->name }}</span>
-                        <span class="text-[9px] font-mono text-obsidian-cyan uppercase">{{ Auth::user()->role }}</span>
+                        <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition truncate max-w-[130px]">{{ Auth::user()->name }}</span>
+                        <span class="text-[9px] font-mono text-obsidian-cyan uppercase flex items-center justify-end gap-0.5">
+                            <span>{{ Auth::user()->role === 'admin' ? 'Administrador' : 'Operador' }}</span>
+                            <span class="material-symbols-outlined text-[13px] text-obsidian-cyan/70 group-hover:text-obsidian-cyan group-hover:translate-y-0.5 transition-transform">expand_more</span>
+                        </span>
                     </div>
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0">
+                    <div class="relative w-8 h-8 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0 group-hover:border-obsidian-cyan transition ring-1 ring-cyan-500/20">
                         @if(Auth::user()->avatar_url)
                             <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
                         @else
                             {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
                         @endif
+                        <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-black" title="En línea"></span>
                     </div>
-                </a>
+                </button>
             </div>
         </header>
 

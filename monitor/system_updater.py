@@ -329,6 +329,38 @@ async def execute_git_update(bot_instance=None) -> str:
                     shutil.copy2(item, CONFIG_DIR / item.name)
             logs.append("🔒 <i>Archivos de configuración preservados intactos.</i>")
 
+        # 4.1. Desplegar y sincronizar Portal Web en /var/www/monitoreo si existe
+        web_dir = Path("/var/www/monitoreo")
+        portal_src = BASE_DIR / "web_portal"
+        if web_dir.exists() and portal_src.exists():
+            try:
+                rsync_cmd = [
+                    "rsync", "-a",
+                    "--exclude=vendor/",
+                    "--exclude=node_modules/",
+                    "--exclude=.env",
+                    "--exclude=storage/",
+                    "--exclude=database/database.sqlite",
+                    f"{portal_src}/",
+                    f"{web_dir}/"
+                ]
+                p_rsync = await asyncio.create_subprocess_exec(*rsync_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await p_rsync.communicate()
+
+                # Purgar caché de vistas compiladas y rutas de Laravel
+                artisan_bin = web_dir / "artisan"
+                if artisan_bin.exists():
+                    p_artisan = await asyncio.create_subprocess_exec(
+                        "php", str(artisan_bin), "view:clear",
+                        cwd=str(web_dir),
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await p_artisan.communicate()
+                logs.append("🌐 <i>Portal Web sincronizado y caché de vistas refrescada en /var/www/monitoreo.</i>")
+            except Exception as e_web:
+                logger.warning(f"Advertencia al sincronizar portal web en /var/www/monitoreo: {e_web}")
+
         # 5. Validar sintaxis de Python en todo el proyecto
         proc = await asyncio.create_subprocess_exec(
             "python3", "-m", "py_compile", "bot.py", "monitor/checker_base.py", "monitor/system_updater.py", "monitor/boot_alert.py",

@@ -20,6 +20,14 @@
             </p>
         </div>
 
+        <!-- AVISO INFORMATIVO (EJ: CIERRE POR INACTIVIDAD) -->
+        @if (session('info'))
+            <div class="mt-6 p-4 rounded-xl bg-cyan-950/60 border border-cyan-500/50 text-cyan-300 text-xs font-mono flex items-center gap-2.5 shadow-lg shadow-cyan-500/10">
+                <span class="material-symbols-outlined text-base text-cyan-400 shrink-0">timer</span>
+                <span>{{ session('info') }}</span>
+            </div>
+        @endif
+
         <!-- MENSAJE DE ERROR -->
         @if ($errors->any())
             <div class="mt-6 p-4 rounded-xl bg-red-950/60 border border-red-500/50 text-red-400 text-xs font-mono space-y-1">

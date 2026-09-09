@@ -165,6 +165,11 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($request->query('reason') === 'inactivity') {
+            return redirect()->route('login')->with('info', 'Su sesión ha sido cerrada automáticamente tras 5 minutos de inactividad por motivos de seguridad.');
+        }
+
         return redirect()->route('home');
     }
 }

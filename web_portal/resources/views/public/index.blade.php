@@ -70,10 +70,33 @@
                 <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->format('H:i:s') : '--:--:--' }}</span>
             </div>
 
-            <!-- BOTÓN INICIO DE SESIÓN (SOLO ÍCONO) -->
+            <!-- BOTÓN INICIO DE SESIÓN / USUARIO EN SESIÓN -->
             @auth
-                <a href="{{ route('admin.dashboard') }}" title="Panel de Administración" class="w-9 h-9 rounded-lg bg-obsidian-cyan text-black flex items-center justify-center transition hover:bg-cyan-300 hover:shadow-lg hover:shadow-cyan-500/30 glow-cyan">
-                    <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                <!-- USUARIO EN SESIÓN (Click abre ventana para cerrar sesión y perfil) -->
+                <button type="button" 
+                        onclick="openUserSessionModal()" 
+                        id="btn-user-session-trigger-public" 
+                        class="flex items-center space-x-2 sm:space-x-2.5 hover:opacity-95 transition group shrink-0 focus:outline-none p-1.5 rounded-xl hover:bg-obsidian-panel/80 border border-obsidian-border/50 hover:border-obsidian-cyan/50 cursor-pointer text-left bg-obsidian-card/70 shadow-sm" 
+                        title="Opciones de cuenta y Cerrar Sesión">
+                    <div class="text-right hidden sm:block">
+                        <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition truncate max-w-[130px]">{{ Auth::user()->name }}</span>
+                        <span class="text-[9px] font-mono text-obsidian-cyan uppercase flex items-center justify-end gap-0.5">
+                            <span>{{ Auth::user()->role === 'admin' ? 'Administrador' : 'Operador' }}</span>
+                            <span class="material-symbols-outlined text-[13px] text-obsidian-cyan/70 group-hover:text-obsidian-cyan group-hover:translate-y-0.5 transition-transform">expand_more</span>
+                        </span>
+                    </div>
+                    <div class="relative w-8 h-8 rounded-full bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan font-bold flex items-center justify-center text-xs shadow-md overflow-hidden shrink-0 group-hover:border-obsidian-cyan transition ring-1 ring-cyan-500/20">
+                        @if(Auth::user()->avatar_url)
+                            <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
+                        @else
+                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                        @endif
+                        <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-black" title="En línea"></span>
+                    </div>
+                </button>
+
+                <a href="{{ route('admin.dashboard') }}" title="Ir al Panel de Administración" class="w-9 h-9 rounded-lg bg-obsidian-cyan text-black flex items-center justify-center transition hover:bg-cyan-300 hover:shadow-lg hover:shadow-cyan-500/30 glow-cyan shrink-0">
+                    <span class="material-symbols-outlined text-lg">dashboard</span>
                 </a>
             @else
                 <a href="{{ route('login') }}" title="Iniciar Sesión" class="w-9 h-9 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/60 text-obsidian-cyan flex items-center justify-center transition hover:bg-obsidian-cyan hover:text-black hover:shadow-lg hover:shadow-cyan-500/30">
