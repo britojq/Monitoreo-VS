@@ -106,6 +106,14 @@ if [ -f "$SEEDER_FILE" ]; then
     sed -i "s/A1746281:Carabobo01\*/usuario_proxy:clave_proxy/g" "$SEEDER_FILE"
 fi
 
+# Sanitizar referencias corporativas en servicios web para repo público
+if [ -f "$BUILD_DIR/web_portal/app/Services/LdapAuthService.php" ]; then
+    sed -i "s/corpoelec/empresa/gI" "$BUILD_DIR/web_portal/app/Services/LdapAuthService.php"
+fi
+if [ -f "$BUILD_DIR/web_portal/config/services.php" ]; then
+    sed -i "s/corpoelec/empresa/gI" "$BUILD_DIR/web_portal/config/services.php"
+fi
+
 # Crear .gitkeep en audit
 mkdir -p "$BUILD_DIR/audit"
 touch "$BUILD_DIR/audit/.gitkeep"
