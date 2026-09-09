@@ -3604,7 +3604,7 @@ def format_thermal_dashboard_html() -> Tuple[str, InlineKeyboardMarkup]:
     else:
         ai_active = is_ai_service_active()
         if ai_active:
-            ai_state_str = "🟢 <b>ACTIVO (Límite: 8GB RAM / 280% CPU)</b>"
+            ai_state_str = "🟢 <b>ACTIVO (Límite: 8 GB RAM / 70% CPU Máx)</b>"
         else:
             ai_state_str = "🔴 <b>DETENIDO / EN PAUSA</b>"
 
