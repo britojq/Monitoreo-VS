@@ -173,8 +173,40 @@
                 <div class="flex-1"></div>
             @endif
 
-            <!-- SECCIÓN DERECHA: ASISTENTE IA, BADGE GLOBAL, RELOJ & PERFIL -->
+            <!-- SECCIÓN DERECHA: ROL CLÚSTER, ASISTENTE IA, BADGE GLOBAL, RELOJ & PERFIL -->
             <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (MAESTRO / ESCLAVO) CON TOOLTIP HUD -->
+                <div class="relative group">
+                    <div class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border text-xs font-mono font-bold cursor-pointer transition-all duration-200 {{ $isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20' }}"
+                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Este servidor sincroniza su telemetría web desde el Master (' . $clusterConfig['master_api_url'] . '). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.' : 'MODO MAESTRO (MASTER): Este servidor ejecuta los escaneos periódicos oficiales a la infraestructura y pfSense, gestiona la configuración y sirve la API de telemetría.' }}">
+                        <span class="material-symbols-outlined text-sm {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">
+                            {{ $isClusterSlave ? 'cloud_sync' : 'dns' }}
+                        </span>
+                        <span class="hidden sm:inline">{{ $isClusterSlave ? 'ESCLAVO' : 'MAESTRO' }}</span>
+                    </div>
+
+                    <!-- HUD TOOLTIP EN HOVER (AL POSICIONAR EL MOUSE) -->
+                    <div class="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-96 p-3.5 rounded-xl bg-[#06111f] border {{ $isClusterSlave ? 'border-amber-500/60 shadow-amber-500/20' : 'border-cyan-500/60 shadow-cyan-500/20' }} shadow-2xl backdrop-blur-xl text-xs font-mono transition-all duration-200 pointer-events-none">
+                        <div class="flex items-center gap-2 pb-2 mb-2 border-b {{ $isClusterSlave ? 'border-amber-500/30 text-amber-400' : 'border-cyan-500/30 text-cyan-300' }} font-bold">
+                            <span class="material-symbols-outlined text-base">{{ $isClusterSlave ? 'cloud_sync' : 'dns' }}</span>
+                            <span>{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)' }}</span>
+                        </div>
+                        <p class="text-[11px] text-gray-200 leading-relaxed">
+                            @if($isClusterSlave)
+                                Este servidor sincroniza su telemetría web desde el Master (<code class="text-amber-300">{{ $clusterConfig['master_api_url'] }}</code>). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.
+                            @else
+                                Este servidor ejecuta los escaneos periódicos oficiales a la red y al firewall pfSense. Gestiona las configuraciones oficiales y sirve la API interna hacia los nodos réplica.
+                            @endif
+                        </p>
+                        <div class="mt-2.5 pt-2 border-t border-obsidian-border/60 flex items-center justify-between text-[10px] text-obsidian-muted">
+                            <span>Estado: <strong class="{{ $isClusterSlave ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'text-emerald-400' : 'text-amber-400') : 'text-cyan-300' }}">{{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente') }}</strong></span>
+                            @if($isClusterSlave && $clusterConfig['cluster_last_sync_at'])
+                                <span>Sinc: <strong class="text-white">{{ $clusterConfig['cluster_last_sync_at'] }}</strong></span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
                 @if(request()->routeIs('admin.dashboard'))
                     <!-- BOTÓN ASISTENTE IA -->
                     <button type="button" 
@@ -212,12 +244,6 @@
                     <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>
                 @endif
 
-                <!-- BADGE DE ROL DE CLÚSTER (MASTER / SLAVE) -->
-                <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-bold {{ $isClusterSlave ? 'bg-amber-950/70 text-amber-300 border-amber-500/40' : 'bg-cyan-950/70 text-cyan-300 border-cyan-500/40' }}" title="Rol de arquitectura de monitoreo">
-                    <span class="material-symbols-outlined text-sm {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">{{ $isClusterSlave ? 'cloud_sync' : 'dns' }}</span>
-                    <span>{{ $isClusterSlave ? 'SLAVE' : 'MASTER' }}</span>
-                </div>
-
                 <!-- USUARIO EN SESIÓN (Click abre ventana para cerrar sesión y perfil) -->
                 <button type="button" 
                         onclick="openUserSessionModal()" 
@@ -242,19 +268,6 @@
                 </button>
             </div>
         </header>
-
-        @if($isClusterSlave)
-        <!-- BANNER DE ADVERTENCIA DE MODO ESCLAVO -->
-        <div class="bg-amber-950/90 border-b border-amber-500/50 px-4 py-2.5 text-xs font-mono text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
-            <div class="flex items-center gap-2.5">
-                <span class="material-symbols-outlined text-amber-400 text-base shrink-0">cloud_sync</span>
-                <span><strong>MODO ESCLAVO (RÉPLICA):</strong> Este servidor sincroniza su telemetría web desde el Master (<code>{{ $clusterConfig['master_api_url'] }}</code>). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.</span>
-            </div>
-            <div class="flex items-center gap-2 shrink-0 text-[10px] text-amber-300/80 self-end sm:self-auto">
-                <span class="bg-amber-900/60 px-2 py-0.5 rounded border border-amber-500/30">Última sinc: {{ $clusterConfig['cluster_last_sync_at'] ?: 'Pendiente' }}</span>
-            </div>
-        </div>
-        @endif
 
         <!-- CONTENIDO DE LA PÁGINA -->
         <main class="flex-1 p-4 sm:p-6 space-y-6">
