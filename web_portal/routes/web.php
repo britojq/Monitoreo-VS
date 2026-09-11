@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAdvancedSettingsController;
 use App\Http\Controllers\Admin\AdminBanController;
 use App\Http\Controllers\Admin\AdminBotCommandController;
 use App\Http\Controllers\Admin\AdminBotTemplateController;
@@ -113,6 +114,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('bot/commands/{command}', [AdminBotCommandController::class, 'update'])->name('bot.commands.update');
         Route::post('bot/commands/{command}/toggle', [AdminBotCommandController::class, 'toggle'])->name('bot.commands.toggle');
         Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update');
+
+        // Configuración Avanzada del Sistema & Telemetría (Exclusivo Administrador)
+        Route::get('settings/advanced', [AdminAdvancedSettingsController::class, 'index'])->name('settings.advanced');
 
         // Operaciones Mutantes de Infraestructura (Exclusivas del Servidor MASTER)
         Route::middleware(['node.master'])->group(function () {

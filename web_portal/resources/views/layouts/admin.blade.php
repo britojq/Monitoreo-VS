@@ -63,6 +63,12 @@
                     <span class="material-symbols-outlined text-lg">terminal</span>
                     Comandos Bot
                 </a>
+
+                <!-- CONFIGURACIÓN AVANZADA (Solo Administrador) -->
+                <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                    <span class="material-symbols-outlined text-lg">tune</span>
+                    Configuración Avanzada
+                </a>
                 @endif
 
                 <div class="pt-4 pb-1 px-4 text-[10px] uppercase tracking-wider text-obsidian-muted/60">
