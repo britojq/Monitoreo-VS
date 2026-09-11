@@ -33,7 +33,7 @@ class SyncController extends Controller
 
             $services = MonitoredService::orderBy('sort_order')->get();
             foreach ($services as $s) {
-                $L = $s->letter;
+                $L = $s->letter ?: "S{$s->id}";
                 $lines[] = "################################### HOST ({$L}) ###################################";
                 $lines[] = "TYPESERVICE{$L}=" . ($s->is_active ? $s->type : 'DESACTIVADO');
                 $lines[] = "NAMESERVICE{$L}=\"" . addslashes($s->name) . "\"";
@@ -70,7 +70,7 @@ class SyncController extends Controller
             $lines[] = "######################### SECCION DE CHEQUEO SEDES #########################";
             $sites = MonitoredSite::with('devices')->orderBy('sort_order')->get();
             foreach ($sites as $site) {
-                $L = $site->letter;
+                $L = $site->letter ?: "ST{$site->id}";
                 $lines[] = "################################### SITE ({$L}) ###################################";
                 $lines[] = "NAMESITE{$L}=\"" . addslashes($site->name) . "\"";
                 $lines[] = "IPSITE{$L}=" . ($site->ip ?? '0.0.0.0');
@@ -84,7 +84,7 @@ class SyncController extends Controller
                 $lines[] = "SITE{$L}DIRECCION=\"" . addslashes($site->address ?? '') . "\"";
 
                 foreach ($site->devices as $dev) {
-                    $N = $dev->device_number;
+                    $N = $dev->device_number ?: $dev->id;
                     $lines[] = "NAMESITE{$L}EQUIPO{$N}=\"" . addslashes($dev->name) . "\"";
                     $lines[] = "IPSITE{$L}EQUIPO{$N}=" . ($dev->is_active ? $dev->ip : '0.0.0.0');
                     $lines[] = "NORMALSITE{$L}EQUIPO{$N}=\"" . addslashes($dev->normal_state_msg ?? "✅ - \$NAMESITE{$L}EQUIPO{$N}") . "\"";

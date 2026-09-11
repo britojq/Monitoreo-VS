@@ -20,9 +20,10 @@ class AdminServiceController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'letter' => ['required', 'string', 'max:5', 'unique:monitored_services'],
+            'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', Rule::in(['WEB', 'DNS', 'SMTP', 'DHCP', 'CUPS', 'LDAP', 'PING', 'PROXY'])],
+            'scope' => ['required', 'string', Rule::in(['corporativo', 'regional'])],
             'host_ip' => ['nullable', 'string', 'max:255'],
             'web_url' => ['nullable', 'string', 'max:500'],
             'port' => ['nullable', 'integer'],
@@ -35,7 +36,13 @@ class AdminServiceController extends Controller
             'sort_order' => ['nullable', 'integer'],
         ]);
 
-        $validated['letter'] = strtoupper($validated['letter']);
+        if (empty($validated['letter'])) {
+            $nextId = (MonitoredService::max('id') ?? 0) + 1;
+            $validated['letter'] = "S{$nextId}";
+        } else {
+            $validated['letter'] = strtoupper(trim($validated['letter']));
+        }
+        $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['sort_order'] = $validated['sort_order'] ?? MonitoredService::count();
 
@@ -50,9 +57,10 @@ class AdminServiceController extends Controller
     public function update(Request $request, MonitoredService $service): RedirectResponse
     {
         $validated = $request->validate([
-            'letter' => ['required', 'string', 'max:5', Rule::unique('monitored_services')->ignore($service->id)],
+            'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', Rule::in(['WEB', 'DNS', 'SMTP', 'DHCP', 'CUPS', 'LDAP', 'PING', 'PROXY'])],
+            'scope' => ['required', 'string', Rule::in(['corporativo', 'regional'])],
             'host_ip' => ['nullable', 'string', 'max:255'],
             'web_url' => ['nullable', 'string', 'max:500'],
             'port' => ['nullable', 'integer'],
@@ -65,7 +73,12 @@ class AdminServiceController extends Controller
             'sort_order' => ['nullable', 'integer'],
         ]);
 
-        $validated['letter'] = strtoupper($validated['letter']);
+        if (empty($validated['letter'])) {
+            $validated['letter'] = "S{$service->id}";
+        } else {
+            $validated['letter'] = strtoupper(trim($validated['letter']));
+        }
+        $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
         $validated['is_active'] = $request->boolean('is_active');
 
         $service->update($validated);

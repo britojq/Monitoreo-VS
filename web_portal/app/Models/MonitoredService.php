@@ -13,6 +13,7 @@ class MonitoredService extends Model
         'letter',
         'name',
         'type',
+        'scope',
         'host_ip',
         'web_url',
         'port',

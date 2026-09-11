@@ -277,9 +277,10 @@ async def evaluate_service(s: dict) -> dict:
 
     return {
         "id": s["id"],
-        "letter": s["letter"],
+        "letter": s.get("letter") or f"S{s['id']}",
         "name": s["name"],
         "type": stype,
+        "scope": (s.get("scope") or "corporativo").lower(),
         "host_ip": ip,
         "web_url": url,
         "status": "ACTIVO" if is_up else "APAGADO",

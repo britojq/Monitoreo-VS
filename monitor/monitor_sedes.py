@@ -15,8 +15,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
+import sys
 import time
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.config_parser import (
     EquipmentConfig,
@@ -81,10 +88,18 @@ async def run_sedes_check(debug_mode: bool = False) -> Tuple[str, Dict[str, str]
     }
     logs: List[str] = []
 
-    # Map de sedes por letra
-    site_map = {st.letter: st for st in sites}
+    # Mapeo de resultados por sede y equipo
+    site_status_map: Dict[str, Tuple[bool, str, str]] = {}
+    for letter, is_ok, log_text, state_label in site_results:
+        site_status_map[letter] = (is_ok, log_text, state_label)
+        logs.append(log_text)
 
-    # Inicializar nombres y variables de sedes (A a H) y equipos (1 a 8)
+    eq_status_map: Dict[Tuple[str, int], Tuple[bool, str, str]] = {}
+    for s_letter, num, is_ok, log_text, state_label in eq_results:
+        eq_status_map[(s_letter, num)] = (is_ok, log_text, state_label)
+        logs.append(log_text)
+
+    # Inicializar nombres y variables de sedes (A a H) y equipos (1 a 8) para compatibilidad
     for code in range(ord('A'), ord('H') + 1):
         letter = chr(code)
         variables[f"NAMESITE{letter}"] = loader.raw_monitoreo.get(f"NAMESITE{letter}", "")
@@ -95,34 +110,52 @@ async def run_sedes_check(debug_mode: bool = False) -> Tuple[str, Dict[str, str]
             variables[f"STSITE{letter}EQUIPO{num}"] = ""
             variables[f"ESTATSITE{letter}EQUIPO{num}"] = "NO_CONFIGURADO"
 
-    # Procesar resultados de sedes principales
-    for letter, is_ok, log_text, state_label in site_results:
-        st = site_map[letter]
-        variables[f"NAMESITE{letter}"] = st.name
-        msg = st.msg_normal if is_ok else st.msg_error
-        variables[f"STSITE{letter}"] = msg
+    site_blocks: List[str] = []
+
+    for site in sites:
+        letter = site.letter
+        st_res = site_status_map.get(letter)
+        is_ok = st_res[0] if st_res else False
+        state_label = st_res[2] if st_res else "APAGADO"
+
+        site_msg = site.msg_normal if is_ok else site.msg_error
+        site_line = site_msg if site_msg else (f"✅ - {site.name}" if is_ok else f"❌ - {site.name}")
+
+        variables[f"NAMESITE{letter}"] = site.name
+        variables[f"STSITE{letter}"] = site_line
         variables[f"ESTATSITE{letter}"] = state_label
-        logs.append(log_text)
 
-    # Procesar resultados de equipos
-    for s_letter, num, is_ok, log_text, state_label in eq_results:
-        st = site_map[s_letter]
-        eq = next((e for e in st.equipment if e.num == num), None)
-        if eq:
-            variables[f"NAMESITE{s_letter}EQUIPO{num}"] = eq.name
-            msg = eq.msg_normal if is_ok else eq.msg_error
-            variables[f"STSITE{s_letter}EQUIPO{num}"] = msg
-            variables[f"ESTATSITE{s_letter}EQUIPO{num}"] = state_label
-            logs.append(log_text)
+        block_lines = [
+            "━━━━━━━━━━━━",
+            f"**{site.name}**",
+            "━━━━━━━━━━━━",
+            site_line,
+        ]
 
-    # Seleccionar plantilla de mensajes.conf según debug_mode
+        for eq in site.equipment:
+            eq_res = eq_status_map.get((letter, eq.num))
+            eq_ok = eq_res[0] if eq_res else False
+            eq_label = eq_res[2] if eq_res else "APAGADO"
+            eq_msg = eq.msg_normal if eq_ok else eq.msg_error
+            eq_line = eq_msg if eq_msg else (f"✅ - {eq.name}" if eq_ok else f"❌ - {eq.name}")
+
+            variables[f"NAMESITE{letter}EQUIPO{eq.num}"] = eq.name
+            variables[f"STSITE{letter}EQUIPO{eq.num}"] = eq_line
+            variables[f"ESTATSITE{letter}EQUIPO{eq.num}"] = eq_label
+
+            block_lines.append(eq_line)
+
+        site_blocks.append("\n".join(block_lines))
+
+    variables["SEDES_Y_ENLACES"] = "\n\n".join(site_blocks)
+
+    # Seleccionar plantilla de mensajes según debug_mode
     template_key = "MENSAJEDEBUGB" if debug_mode else "MENSAJEC"
     template_str = loader.templates.get(template_key, "")
 
     if not template_str:
         lines = [f"🏢 *REPORTE DE SEDES Y ENLACES*", f"Fecha: {fecha_str} {hora_str}", ""]
-        for letter in sorted(site_map.keys()):
-            lines.append(variables[f"STSITE{letter}"])
+        lines.append(variables["SEDES_Y_ENLACES"])
         report = "\n".join(lines)
     else:
         report = render_template(template_str, variables)

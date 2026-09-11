@@ -15,9 +15,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
+import sys
 import time
 import urllib.parse
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.config_parser import (
     MonitorConfigLoader,
@@ -132,33 +139,50 @@ async def run_services_check(debug_mode: bool = False) -> Tuple[str, Dict[str, s
     }
     logs: List[str] = []
 
-    # Map de servicios por letra
-    svc_map = {svc.letter: svc for svc in services}
-
-    # Inicializar nombres y estados para todas las letras
+    # Inicializar nombres y estados para compatibilidad con plantillas legacy (A..Z)
     for code in range(ord('A'), ord('Z') + 1):
         letter = chr(code)
         variables[f"NAMESERVICE{letter}"] = loader.raw_monitoreo.get(f"NAMESERVICE{letter}", "")
         variables[f"STHOST{letter}"] = ""
         variables[f"STATESERVICE{letter}"] = "NO_CONFIGURADO"
 
-    for letter, is_ok, log_text, state_label in results:
-        svc = svc_map[letter]
+    corp_lines: List[str] = []
+    reg_lines: List[str] = []
+
+    for svc, (letter, is_ok, log_text, state_label) in zip(services, results):
         variables[f"NAMESERVICE{letter}"] = svc.name
         msg = svc.msg_normal if is_ok else svc.msg_error
-        variables[f"STHOST{letter}"] = msg
+        line_item = msg if msg else (f"✅ - {svc.name}" if is_ok else f"❌ - {svc.name}")
+        variables[f"STHOST{letter}"] = line_item
         variables[f"STATESERVICE{letter}"] = state_label
         logs.append(log_text)
 
-    # Seleccionar plantilla de mensajes.conf según debug_mode
+        if svc.scope == "regional":
+            reg_lines.append(line_item)
+        else:
+            corp_lines.append(line_item)
+
+    variables["SERVICIOS_CORPORATIVOS"] = "\n".join(corp_lines)
+    variables["SERVICIOS_REGIONALES"] = "\n".join(reg_lines)
+
+    # Seleccionar plantilla según debug_mode
     template_key = "MENSAJEDEBUGA" if debug_mode else "MENSAJEA"
     template_str = loader.templates.get(template_key, "")
 
     if not template_str:
         # Fallback si no está la plantilla
         lines = [f"📊 *REPORTE DE SERVICIOS CORPORATIVOS*", f"Fecha: {fecha_str} {hora_str}", ""]
-        for letter in sorted(svc_map.keys()):
-            lines.append(variables[f"STHOST{letter}"])
+        if corp_lines:
+            lines.append("━━━━━━━━━━━━")
+            lines.append("**Servicios Corporativos Verificados:**")
+            lines.append("━━━━━━━━━━━━")
+            lines.extend(corp_lines)
+            lines.append("")
+        if reg_lines:
+            lines.append("━━━━━━━━━━━━")
+            lines.append("**Servicios Regionales – Carabobo Verificados:**")
+            lines.append("━━━━━━━━━━━━")
+            lines.extend(reg_lines)
         report = "\n".join(lines)
     else:
         report = render_template(template_str, variables)

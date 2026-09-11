@@ -21,7 +21,7 @@ class AdminSiteController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'letter' => ['required', 'string', 'max:5', 'unique:monitored_sites'],
+            'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
             'ip' => ['nullable', 'string', 'max:255'],
             'phone_1' => ['nullable', 'string', 'max:100'],
@@ -39,21 +39,16 @@ class AdminSiteController extends Controller
             'sort_order' => ['nullable', 'integer'],
         ]);
 
-        $validated['letter'] = strtoupper($validated['letter']);
+        if (empty($validated['letter'])) {
+            $nextId = (MonitoredSite::max('id') ?? 0) + 1;
+            $validated['letter'] = "ST{$nextId}";
+        } else {
+            $validated['letter'] = strtoupper(trim($validated['letter']));
+        }
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['sort_order'] = $validated['sort_order'] ?? MonitoredSite::count();
 
-        $site = MonitoredSite::create($validated);
-
-        // Crear 8 slots de dispositivos vacíos
-        for ($i = 1; $i <= 8; $i++) {
-            $site->devices()->create([
-                'device_number' => $i,
-                'name' => "Equipo {$i}",
-                'ip' => '0.0.0.0',
-                'is_active' => false,
-            ]);
-        }
+        MonitoredSite::create($validated);
 
         app(SyncController::class)->exportToConfigFiles();
 
@@ -63,7 +58,7 @@ class AdminSiteController extends Controller
     public function update(Request $request, MonitoredSite $site): RedirectResponse
     {
         $validated = $request->validate([
-            'letter' => ['required', 'string', 'max:5', Rule::unique('monitored_sites')->ignore($site->id)],
+            'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
             'ip' => ['nullable', 'string', 'max:255'],
             'phone_1' => ['nullable', 'string', 'max:100'],
@@ -81,7 +76,11 @@ class AdminSiteController extends Controller
             'sort_order' => ['nullable', 'integer'],
         ]);
 
-        $validated['letter'] = strtoupper($validated['letter']);
+        if (empty($validated['letter'])) {
+            $validated['letter'] = "ST{$site->id}";
+        } else {
+            $validated['letter'] = strtoupper(trim($validated['letter']));
+        }
         $validated['is_active'] = $request->boolean('is_active');
 
         $site->update($validated);
@@ -103,6 +102,38 @@ class AdminSiteController extends Controller
         app(SyncController::class)->exportToConfigFiles();
 
         return redirect()->route('admin.sites.index')->with('success', 'Sede y equipos actualizados exitosamente.');
+    }
+
+    public function addDevice(Request $request, MonitoredSite $site): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'ip' => ['required', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $maxNum = $site->devices()->max('device_number') ?? 0;
+        $site->devices()->create([
+            'device_number' => $maxNum + 1,
+            'name' => $validated['name'],
+            'ip' => $validated['ip'],
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        app(SyncController::class)->exportToConfigFiles();
+
+        return back()->with('success', "Dispositivo agregado a [{$site->name}] exitosamente.");
+    }
+
+    public function deleteDevice(MonitoredSiteDevice $device): RedirectResponse
+    {
+        $siteName = $device->site->name ?? 'la sede';
+        $deviceName = $device->name;
+        $device->delete();
+
+        app(SyncController::class)->exportToConfigFiles();
+
+        return back()->with('success', "Dispositivo [{$deviceName}] eliminado de [{$siteName}] exitosamente.");
     }
 
     public function toggle(MonitoredSite $site): RedirectResponse

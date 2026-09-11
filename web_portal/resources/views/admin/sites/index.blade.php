@@ -18,8 +18,16 @@
             <h2 class="text-lg font-bold text-white">Sedes Regionales y Equipos de Red Monitoreados</h2>
             <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión</p>
         </div>
-        <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
-            Datos de monitoreo.conf
+        <div class="flex items-center gap-2">
+            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
+                Fuente: MariaDB (SSOT)
+            </div>
+            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                <button onclick="openCreateSiteModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs hover:bg-white transition shadow-sm">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    Agregar Sede
+                </button>
+            @endif
         </div>
     </div>
 
@@ -29,7 +37,7 @@
             <div class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/60 pb-3">
                     <div class="flex items-center space-x-3">
-                        <span class="text-lg font-bold text-obsidian-purple font-mono">[ {{ $site->letter }} ]</span>
+                        <span class="text-lg font-bold text-obsidian-purple font-mono">[ {{ $site->letter ?: 'ST'.$site->id }} ]</span>
                         <div>
                             <h3 class="text-base font-bold text-white">{{ $site->name }}</h3>
                             <p class="text-xs font-mono text-obsidian-muted">IP Gateway: {{ $site->ip ?: '0.0.0.0' }}</p>
@@ -50,7 +58,7 @@
                                 {{ $site->is_active ? 'Activa' : 'Desactivada' }}
                             </span>
                         @endif
-                        <button onclick="openSiteHistoryModal({{ $site->id }}, '{{ addslashes($site->name) }}', '{{ $site->letter }}', '{{ $site->ip }}')" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white font-mono text-xs transition flex items-center gap-1 shadow-sm" title="Ver Gráficos y Métricas Temporales">
+                        <button onclick="openSiteHistoryModal({{ $site->id }}, '{{ addslashes($site->name) }}', '{{ $site->letter ?: 'ST'.$site->id }}', '{{ $site->ip }}')" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white font-mono text-xs transition flex items-center gap-1 shadow-sm" title="Ver Gráficos y Métricas Temporales">
                             <span class="material-symbols-outlined text-sm">show_chart</span>
                             <span>Histórico</span>
                         </button>
@@ -65,6 +73,13 @@
                                     <span class="material-symbols-outlined text-sm">tune</span>
                                     <span>Modificar</span>
                                 </button>
+                                <form action="{{ route('admin.sites.destroy', $site->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar la sede [{{ addslashes($site->name) }}] y todos sus equipos asociados?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition inline-flex items-center" title="Eliminar Sede">
+                                        <span class="material-symbols-outlined text-sm">delete</span>
+                                    </button>
+                                </form>
                             @endif
                         @endif
                     </div>
@@ -80,23 +95,50 @@
                     </div>
                 </div>
 
-                <!-- EQUIPOS SECUNDARIOS ASOCIADOS (1..8) -->
+                <!-- EQUIPOS SECUNDARIOS ASOCIADOS -->
                 <div>
-                    <span class="text-[11px] font-mono uppercase text-obsidian-muted block mb-2">Equipos de Red Asociados ({{ $site->devices->where('is_active', true)->count() }} Activos de 8)</span>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        @foreach($site->devices as $dev)
-                            <div class="p-2.5 rounded-lg border text-xs font-mono {{ $dev->is_active ? 'bg-obsidian-panel/80 border-obsidian-border' : 'bg-obsidian-panel/20 border-obsidian-border/30 opacity-50' }}">
-                                <div class="flex items-center justify-between text-[10px] text-obsidian-muted">
-                                    <span>#{{ $dev->device_number }}</span>
-                                    <span class="{{ $dev->is_active ? 'text-emerald-400 font-bold' : 'text-obsidian-muted' }}">
-                                        {{ $dev->is_active ? 'ACTIVO' : 'OFF' }}
-                                    </span>
-                                </div>
-                                <div class="text-white font-sans font-semibold truncate text-[11px] mt-1">{{ $dev->name }}</div>
-                                <div class="text-obsidian-muted text-[10px] truncate">{{ $dev->ip }}</div>
-                            </div>
-                        @endforeach
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-mono uppercase text-obsidian-muted">
+                            Equipos de Red Asociados ({{ $site->devices->where('is_active', true)->count() }} Activos de {{ $site->devices->count() }})
+                        </span>
+                        @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                            <button onclick="openAddDeviceModal({{ $site->id }}, '{{ addslashes($site->name) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-obsidian-panel border border-obsidian-border text-[11px] font-mono text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition">
+                                <span class="material-symbols-outlined text-xs">add</span>
+                                Agregar Dispositivo
+                            </button>
+                        @endif
                     </div>
+                    @if($site->devices->count() > 0)
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            @foreach($site->devices as $dev)
+                                <div class="p-2.5 rounded-lg border text-xs font-mono relative group {{ $dev->is_active ? 'bg-obsidian-panel/80 border-obsidian-border' : 'bg-obsidian-panel/20 border-obsidian-border/30 opacity-50' }}">
+                                    <div class="flex items-center justify-between text-[10px] text-obsidian-muted">
+                                        <span>#{{ $dev->device_number ?: $dev->id }}</span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="{{ $dev->is_active ? 'text-emerald-400 font-bold' : 'text-obsidian-muted' }}">
+                                                {{ $dev->is_active ? 'ACTIVO' : 'OFF' }}
+                                            </span>
+                                            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                                                <form action="{{ route('admin.sites.devices.destroy', $dev->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar equipo [{{ addslashes($dev->name) }}]?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-400 hover:text-red-200 transition opacity-0 group-hover:opacity-100 leading-none text-xs px-1" title="Eliminar Equipo">
+                                                        &times;
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="text-white font-sans font-semibold truncate text-[11px] mt-1">{{ $dev->name }}</div>
+                                    <div class="text-obsidian-muted text-[10px] truncate">{{ $dev->ip }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-xs font-mono text-obsidian-muted bg-obsidian-panel/20 p-3 rounded-lg border border-dashed border-obsidian-border text-center">
+                            Sin equipos de red configurados para esta sede.
+                        </div>
+                    @endif
                 </div>
             </div>
         @endforeach
@@ -104,11 +146,116 @@
 </div>
 
 @if(auth()->user()->isAdmin())
+<!-- MODAL CREAR NUEVA SEDE (Solo Administrador) -->
+<div id="modal-create-site" onclick="if(event.target === this) closeModal('modal-create-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
+                <span class="material-symbols-outlined text-obsidian-cyan text-base">add_circle</span>
+                Agregar Nueva Sede Regional
+            </h3>
+            <button type="button" onclick="closeModal('modal-create-site')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
+        </div>
+        <form id="form-create-site" action="{{ route('admin.sites.store') }}" method="POST" class="space-y-4 font-mono text-xs">
+            @csrf
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug (opcional):</label>
+                    <input type="text" name="letter" maxlength="10" placeholder="Auto" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre de la Sede:</label>
+                    <input type="text" name="name" required placeholder="ej. CIAU Morón" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">IP Gateway / Enlace:</label>
+                    <input type="text" name="ip" placeholder="ej. 10.20.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Dirección Física:</label>
+                    <input type="text" name="address" placeholder="Av. Principal, Edif. ..." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Principal:</label>
+                    <input type="text" name="phone_1" placeholder="ej. 0242-3600000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Secundario:</label>
+                    <input type="text" name="phone_2" placeholder="ej. 0414-0000000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="create-site-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                <label for="create-site-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo de sede inmediatamente</label>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+                <button type="button" onclick="closeModal('modal-create-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">save</span>
+                    Guardar Sede
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL AGREGAR DISPOSITIVO A SEDE (Solo Administrador) -->
+<div id="modal-add-device" onclick="if(event.target === this) closeModal('modal-add-device')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div>
+                <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
+                    <span class="material-symbols-outlined text-obsidian-cyan text-base">router</span>
+                    Agregar Dispositivo a Sede
+                </h3>
+                <p id="add-device-site-name" class="text-[11px] font-mono text-obsidian-cyan mt-0.5">Sede</p>
+            </div>
+            <button type="button" onclick="closeModal('modal-add-device')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
+        </div>
+        <form id="form-add-device" method="POST" class="space-y-4 font-mono text-xs">
+            @csrf
+            <div>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre del Dispositivo / Función:</label>
+                <input type="text" name="name" required placeholder="ej. SW Cisco Taquillas / ATU 01" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Dirección IP:</label>
+                <input type="text" name="ip" required placeholder="ej. 10.20.106.240" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="add-device-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                <label for="add-device-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo del dispositivo</label>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+                <button type="button" onclick="closeModal('modal-add-device')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    Registrar Equipo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL EDITAR SEDE & EQUIPOS (Solo Administrador) -->
 <div id="modal-edit-site" onclick="if(event.target === this) closeModal('modal-edit-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-2xl w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
-            <h3 class="text-sm font-bold text-white uppercase font-mono">Configurar Sede & Equipos de Red</h3>
+            <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
+                <span class="material-symbols-outlined text-obsidian-cyan text-base">tune</span>
+                Configurar Sede & Equipos de Red
+            </h3>
             <button type="button" onclick="closeModal('modal-edit-site')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
         <form id="form-edit-site" method="POST" class="space-y-5 font-mono text-xs">
@@ -120,64 +267,52 @@
                 <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block border-b border-obsidian-border/40 pb-1">1. Parámetros Principales de la Sede</span>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px]">Letra Clave:</label>
-                        <input type="text" id="edit-site-letter" name="letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Letra / Slug:</label>
+                        <input type="text" id="edit_st_letter" name="letter" maxlength="10" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre de la Sede:</label>
-                        <input type="text" id="edit-site-name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" id="edit_st_name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">IP Gateway / Enlace:</label>
-                        <input type="text" id="edit-site-ip" name="ip" placeholder="ej. 192.168.1.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" id="edit_st_ip" name="ip" placeholder="ej. 192.168.1.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Dirección Física:</label>
-                        <input type="text" id="edit-site-address" name="address" placeholder="Ubicación o Edificio" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" id="edit_st_address" name="address" placeholder="Ubicación o Edificio" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Principal:</label>
-                        <input type="text" id="edit-site-phone1" name="phone_1" placeholder="ej. 0241-1234567" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" id="edit_st_phone_1" name="phone_1" placeholder="ej. 0241-1234567" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Teléfono Secundario:</label>
-                        <input type="text" id="edit-site-phone2" name="phone_2" placeholder="ej. 0414-7654321" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" id="edit_st_phone_2" name="phone_2" placeholder="ej. 0414-7654321" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="edit_st_active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="edit_st_active" class="text-obsidian-muted cursor-pointer select-none">Sede activa en el monitoreo</label>
                 </div>
             </div>
 
-            <!-- EQUIPOS ASOCIADOS (1..8) -->
+            <!-- EQUIPOS ASOCIADOS A ESTA SEDE -->
             <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
                 <div class="flex items-center justify-between border-b border-obsidian-border/40 pb-1">
-                    <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block">2. Equipos Secundarios de Red (1..8)</span>
-                    <span class="text-[10px] text-obsidian-muted">Dejar IP vacía para omitir monitoreo</span>
+                    <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block">2. Equipos de Red de esta Sede</span>
+                    <span class="text-[10px] text-obsidian-muted">Ajuste de nombres, IPs y estados activos</span>
                 </div>
                 
-                <div class="space-y-2.5 max-h-60 overflow-y-auto custom-scroll pr-1">
-                    @for($i = 1; $i <= 8; $i++)
-                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded-lg bg-obsidian-panel/80 border border-obsidian-border/40 text-[11px]">
-                            <div class="sm:col-span-1 text-center font-bold text-obsidian-cyan">
-                                #{{ $i }}
-                                <input type="hidden" name="devices[{{ $i }}][number]" value="{{ $i }}"/>
-                            </div>
-                            <div class="sm:col-span-4">
-                                <input type="text" id="edit-site-dev-name-{{ $i }}" name="devices[{{ $i }}][name]" placeholder="Nombre Equipo {{ $i }}" class="w-full bg-obsidian-panel border border-obsidian-border rounded p-1.5 text-white text-[11px]"/>
-                            </div>
-                            <div class="sm:col-span-4">
-                                <input type="text" id="edit-site-dev-ip-{{ $i }}" name="devices[{{ $i }}][ip]" placeholder="IP (ej. 192.168.1.{{ 10 + $i }})" class="w-full bg-obsidian-panel border border-obsidian-border rounded p-1.5 text-white text-[11px]"/>
-                            </div>
-                            <div class="sm:col-span-3 flex items-center justify-end gap-1.5">
-                                <input type="checkbox" id="edit-site-dev-active-{{ $i }}" name="devices[{{ $i }}][is_active]" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                                <label for="edit-site-dev-active-{{ $i }}" class="text-[10px] text-obsidian-muted cursor-pointer select-none">Habilitar</label>
-                            </div>
-                        </div>
-                    @endfor
+                <div id="devices-edit-container" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                    <!-- Dinámico vía JS -->
                 </div>
             </div>
 
@@ -355,8 +490,27 @@
         if (e.key === 'Escape') {
             closeModal('modal-site-history');
             closeModal('modal-edit-site');
+            closeModal('modal-create-site');
+            closeModal('modal-add-device');
         }
     });
+
+    function openCreateSiteModal() {
+        const form = document.getElementById('form-create-site');
+        if (form) form.reset();
+        openModal('modal-create-site');
+    }
+
+    function openAddDeviceModal(siteId, siteName) {
+        const form = document.getElementById('form-add-device');
+        if (form) {
+            form.action = `/admin/sites/${siteId}/devices`;
+            form.reset();
+        }
+        const siteLabel = document.getElementById('add-device-site-name');
+        if (siteLabel) siteLabel.innerText = `Sede: ${siteName}`;
+        openModal('modal-add-device');
+    }
 
     function openEditSiteModal(site) {
         document.getElementById('form-edit-site').action = `/admin/sites/${site.id}`;

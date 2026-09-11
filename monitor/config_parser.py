@@ -98,13 +98,11 @@ def load_templates_from_mariadb() -> Dict[str, str]:
                             f"━━━━━━━━━━━━\n"
                             f"**Servicios Corporativos Verificados:**\n"
                             f"━━━━━━━━━━━━\n"
-                            f"$STHOSTA\n$STHOSTB\n$STHOSTC\n$STHOSTD\n$STHOSTE\n"
-                            f"$STHOSTF\n$STHOSTG\n$STHOSTI\n$STHOSTJ\n$STHOSTK\n\n"
+                            f"$SERVICIOS_CORPORATIVOS\n\n"
                             f"━━━━━━━━━━━━\n"
                             f"**Servicios Regionales – Carabobo Verificados:**\n"
                             f"━━━━━━━━━━━━\n"
-                            f"$STHOSTL\n$STHOSTM\n$STHOSTN\n$STHOSTO\n$STHOSTT\n"
-                            f"$STHOSTS\n$STHOSTR\n$STHOSTQ\n\n"
+                            f"$SERVICIOS_REGIONALES\n\n"
                             f"{imp}\n\n"
                             f"{sig}\n\n"
                             f"{slo}\n"
@@ -117,30 +115,33 @@ def load_templates_from_mariadb() -> Dict[str, str]:
                             f"**Hora:** $hora.\n\n"
                             f"{sub}\n\n"
                             f"{leg}\n\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"**$NAMESITEA**\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"$STSITEA\n\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"**$NAMESITEC**\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"$STSITEC\n"
-                            f"$STSITECEQUIPO1\n$STSITECEQUIPO2\n$STSITECEQUIPO3\n$STSITECEQUIPO5\n$STSITECEQUIPO8\n\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"**$NAMESITED**\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"$STSITED\n"
-                            f"$STSITEDEQUIPO1\n$STSITEDEQUIPO2\n$STSITEDEQUIPO3\n\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"**$NAMESITEE**\n"
-                            f"━━━━━━━━━━━━\n"
-                            f"$STSITEE\n"
-                            f"$STSITEEEQUIPO1\n$STSITEEEQUIPO2\n$STSITEEEQUIPO3\n$STSITEEEQUIPO4\n$STSITEEEQUIPO5\n$STSITEEEQUIPO8\n\n"
+                            f"$SEDES_Y_ENLACES\n\n"
                             f"{imp}\n\n"
                             f"{sig}\n\n"
                             f"{slo}\n"
                         )
                         templates["MENSAJEC"] = body
+                    elif key == "debug_servicios":
+                        templates["MENSAJEDEBUGA"] = (
+                            f"\n{hdr}\n"
+                            f"**Fecha:** $fecha\n"
+                            f"**Hora:** $hora.\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**Servicios Corporativos:**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$SERVICIOS_CORPORATIVOS\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**Servicios Regionales:**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$SERVICIOS_REGIONALES\n"
+                        )
+                    elif key == "debug_sedes":
+                        templates["MENSAJEDEBUGB"] = (
+                            f"\n{hdr}\n"
+                            f"**Fecha:** $fecha\n"
+                            f"**Hora:** $hora.\n\n"
+                            f"$SEDES_Y_ENLACES\n"
+                        )
                 return templates
         finally:
             conn.close()
@@ -153,6 +154,7 @@ class ServiceConfig:
     letter: str
     service_type: str  # WEB, DNS, PROXY, SMTP, DHCP, CUPS, LDAP, PING, OTRO
     name: str
+    scope: str = "corporativo"  # corporativo | regional
     web_url: str = ""
     ip_host: str = ""
     cups_port_ip: str = ""
@@ -165,6 +167,7 @@ class ServiceConfig:
     url_test_site: str = ""
     msg_normal: str = ""
     msg_error: str = ""
+    id: Optional[int] = None
 
 
 @dataclass
@@ -175,6 +178,7 @@ class EquipmentConfig:
     ip_host: str
     msg_normal: str = ""
     msg_error: str = ""
+    id: Optional[int] = None
 
 
 @dataclass
@@ -185,6 +189,7 @@ class SiteConfig:
     msg_normal: str = ""
     msg_error: str = ""
     equipment: List[EquipmentConfig] = field(default_factory=list)
+    id: Optional[int] = None
 
 
 @dataclass
@@ -208,7 +213,7 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
                 # 1. Servicios
                 cur.execute("SELECT * FROM monitored_services")
                 for r in cur.fetchall():
-                    L = r["letter"].upper()
+                    L = (r.get("letter") or f"S{r['id']}").upper()
                     raw_monitoreo[f"NAMESERVICE{L}"] = r["name"] or ""
                     raw_monitoreo[f"TYPESERVICE{L}"] = (r["type"] or "WEB").upper() if r.get("is_active") else "DESACTIVADO"
                     raw_monitoreo[f"WEBSERVICE{L}"] = r["web_url"] or ""
@@ -230,7 +235,7 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
                 # 2. Sedes y Equipos
                 cur.execute("SELECT * FROM monitored_sites")
                 for s in cur.fetchall():
-                    L = s["letter"].upper()
+                    L = (s.get("letter") or f"ST{s['id']}").upper()
                     raw_monitoreo[f"NAMESITE{L}"] = s["name"] or ""
                     raw_monitoreo[f"IPSITE{L}"] = s["ip"] or "0.0.0.0"
                     raw_monitoreo[f"NORMALSITE{L}"] = s.get("normal_state_msg") or f"✅ - $NAMESITE{L}"
@@ -244,8 +249,8 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
                     "JOIN monitored_sites s ON d.monitored_site_id = s.id"
                 )
                 for d in cur.fetchall():
-                    L = d["site_letter"].upper()
-                    N = d["device_number"]
+                    L = (d.get("site_letter") or f"ST{d.get('monitored_site_id')}").upper()
+                    N = d.get("device_number") or d["id"]
                     raw_monitoreo[f"NAMESITE{L}EQUIPO{N}"] = d["name"] or ""
                     raw_monitoreo[f"IPSITE{L}EQUIPO{N}"] = d["ip"] if d.get("is_active") else "0.0.0.0"
                     raw_monitoreo[f"NORMALSITE{L}EQUIPO{N}"] = d.get("normal_state_msg") or f"✅ - $NAMESITE{L}EQUIPO{N}"
@@ -254,7 +259,7 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
                 # 3. Proxies
                 cur.execute("SELECT * FROM monitored_proxies")
                 for p in cur.fetchall():
-                    L = p["letter"].upper()
+                    L = (p.get("letter") or f"P{p['id']}").upper()
                     raw_bot[f"NAMEPROXY{L}"] = p["name"] or f"Proxy {L}"
                     raw_bot[f"IPADDRPORTPROXY{L}"] = p["ip_port"] or ""
                     raw_bot[f"USERPASSWDPROXY{L}"] = p.get("auth_userpass") or ""
@@ -277,7 +282,7 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
                 cur.execute(
                     "SELECT * FROM monitored_services WHERE is_active = 1 "
                     "AND name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
-                    "ORDER BY sort_order, letter"
+                    "ORDER BY sort_order, id"
                 )
                 rows = cur.fetchall()
                 if not rows:
@@ -285,9 +290,13 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
 
                 services: List[ServiceConfig] = []
                 for r in rows:
-                    letter = r["letter"].upper()
+                    raw_letter = (r.get("letter") or "").strip().upper()
+                    letter = raw_letter or f"S{r['id']}"
                     name = (r["name"] or "").strip()
                     stype = (r["type"] or "WEB").strip().upper()
+                    scope = (r.get("scope") or "").strip().lower()
+                    if not scope:
+                        scope = "regional" if raw_letter in ('L', 'M', 'N', 'O', 'Q', 'R', 'S', 'T') else "corporativo"
                     raw_ip = (r["host_ip"] or "").strip()
                     clean_ip = raw_ip.split(":")[0] if raw_ip else ""
                     port = r.get("port")
@@ -308,6 +317,7 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
                         letter=letter,
                         service_type=stype,
                         name=name,
+                        scope=scope,
                         web_url=web_url,
                         ip_host=clean_ip,
                         cups_port_ip=cups_port,
@@ -319,7 +329,8 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
                         proxy_ip_port=proxy_ip_port,
                         url_test_site=url_test,
                         msg_normal=normal_msg,
-                        msg_error=error_msg
+                        msg_error=error_msg,
+                        id=r.get("id")
                     )
                     services.append(svc)
                 return services
@@ -339,7 +350,7 @@ def load_sites_from_mariadb() -> List[SiteConfig]:
                 cur.execute(
                     "SELECT * FROM monitored_sites WHERE is_active = 1 "
                     "AND name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
-                    "ORDER BY sort_order, letter"
+                    "ORDER BY sort_order, id"
                 )
                 site_rows = cur.fetchall()
                 if not site_rows:
@@ -349,25 +360,27 @@ def load_sites_from_mariadb() -> List[SiteConfig]:
                     "SELECT d.*, s.letter as site_letter FROM monitored_site_devices d "
                     "JOIN monitored_sites s ON d.monitored_site_id = s.id "
                     "WHERE d.is_active = 1 AND d.name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
-                    "ORDER BY s.letter, d.device_number"
+                    "ORDER BY d.monitored_site_id, d.device_number, d.id"
                 )
                 dev_rows = cur.fetchall()
 
-                dev_by_site: Dict[str, List[Dict]] = {}
+                dev_by_site_id: Dict[int, List[Dict]] = {}
                 for d in dev_rows:
-                    dev_by_site.setdefault(d["site_letter"].upper(), []).append(d)
+                    dev_by_site_id.setdefault(d["monitored_site_id"], []).append(d)
 
                 sites: List[SiteConfig] = []
                 for s in site_rows:
-                    letter = s["letter"].upper()
+                    site_id = s["id"]
+                    raw_letter = (s.get("letter") or "").strip().upper()
+                    letter = raw_letter or f"ST{site_id}"
                     name = (s["name"] or "").strip()
                     ip = (s["ip"] or "").strip()
                     normal_msg = (s.get("normal_state_msg") or f"✅ - {name}").strip()
                     error_msg = (s.get("error_state_msg") or f"❌ - {name}").strip()
 
                     equipment: List[EquipmentConfig] = []
-                    for d in dev_by_site.get(letter, []):
-                        dnum = int(d["device_number"])
+                    for idx, d in enumerate(dev_by_site_id.get(site_id, [])):
+                        dnum = int(d["device_number"]) if d.get("device_number") is not None else (idx + 1)
                         dname = (d["name"] or "").strip()
                         dip = (d["ip"] or "").strip()
                         dnorm = (d.get("normal_state_msg") or f"✅ - {dname}").strip()
@@ -378,7 +391,8 @@ def load_sites_from_mariadb() -> List[SiteConfig]:
                             name=dname,
                             ip_host=dip,
                             msg_normal=dnorm,
-                            msg_error=derr
+                            msg_error=derr,
+                            id=d.get("id")
                         )
                         equipment.append(eq)
 
@@ -388,7 +402,8 @@ def load_sites_from_mariadb() -> List[SiteConfig]:
                         ip_host=ip,
                         msg_normal=normal_msg,
                         msg_error=error_msg,
-                        equipment=equipment
+                        equipment=equipment,
+                        id=site_id
                     )
                     sites.append(st)
                 return sites

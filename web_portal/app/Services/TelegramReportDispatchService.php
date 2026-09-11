@@ -152,8 +152,10 @@ class TelegramReportDispatchService
             $icon = $isUp ? '✅' : '❌';
             $line = "{$icon} - {$name}";
 
-            // L a T son servicios regionales, A a K corporativos
-            if (in_array($letter, ['L', 'M', 'N', 'O', 'Q', 'R', 'S', 'T'])) {
+            // Usar scope (regional o corporativo) con fallback retrocompatible
+            $scope = strtolower($s['scope'] ?? '');
+            $isRegional = ($scope === 'regional') || in_array($letter, ['L', 'M', 'N', 'O', 'Q', 'R', 'S', 'T']);
+            if ($isRegional) {
                 $serviciosRegionales[] = $line;
             } else {
                 $serviciosCorporativos[] = $line;

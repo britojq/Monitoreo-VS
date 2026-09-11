@@ -122,11 +122,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             Route::delete('services/{service}', [AdminServiceController::class, 'destroy'])->name('services.destroy');
             Route::post('services/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('services.toggle');
 
-            // Modificaciones de Sedes
+            // Modificaciones de Sedes y Equipos
             Route::post('sites', [AdminSiteController::class, 'store'])->name('sites.store');
             Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update');
             Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy');
             Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle');
+            Route::post('sites/{site}/devices', [AdminSiteController::class, 'addDevice'])->name('sites.devices.store');
+            Route::delete('sites/devices/{device}', [AdminSiteController::class, 'deleteDevice'])->name('sites.devices.destroy');
 
             // Modificaciones de Dispositivos de Red
             Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');

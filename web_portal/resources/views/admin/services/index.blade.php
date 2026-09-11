@@ -18,8 +18,16 @@
             <h2 class="text-lg font-bold text-white">Servicios Corporativos Monitoreados</h2>
             <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión</p>
         </div>
-        <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
-            Datos de monitoreo.conf
+        <div class="flex items-center gap-2">
+            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
+                Fuente: MariaDB (SSOT)
+            </div>
+            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                <button onclick="openCreateServiceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs hover:bg-white transition shadow-sm">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    Agregar Servicio
+                </button>
+            @endif
         </div>
     </div>
 
@@ -32,6 +40,7 @@
                         <th class="px-5 py-4">ID / Letra</th>
                         <th class="px-5 py-4">Nombre del Servicio</th>
                         <th class="px-5 py-4">Tipo</th>
+                        <th class="px-5 py-4">Ámbito</th>
                         <th class="px-5 py-4">Host IP / URL</th>
                         <th class="px-5 py-4">Puerto</th>
                         <th class="px-5 py-4">Estado</th>
@@ -42,7 +51,7 @@
                     @foreach($services as $s)
                         <tr class="hover:bg-obsidian-panel/40 transition">
                             <td class="px-5 py-4 font-bold text-obsidian-cyan">
-                                [ {{ $s->letter }} ]
+                                [ {{ $s->letter ?: 'S'.$s->id }} ]
                             </td>
                             <td class="px-5 py-4 font-sans font-semibold text-white">
                                 {{ $s->name }}
@@ -50,6 +59,11 @@
                             <td class="px-5 py-4">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
                                     {{ $s->type }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($s->scope ?? 'corporativo') === 'regional' ? 'bg-purple-950/70 text-purple-400 border border-purple-500/40' : 'bg-cyan-950/70 text-cyan-400 border border-cyan-500/40' }}">
+                                    {{ strtoupper($s->scope ?? 'corporativo') }}
                                 </span>
                             </td>
                             <td class="px-5 py-4 text-obsidian-muted truncate max-w-xs">
@@ -74,8 +88,8 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-5 py-4 text-right space-x-1.5">
-                                <button onclick="openServiceHistoryModal({{ $s->id }}, '{{ addslashes($s->name) }}', '{{ $s->letter }}', '{{ $s->type }}')" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition flex items-center gap-1 inline-flex" title="Ver Gráfico e Histórico">
+                            <td class="px-5 py-4 text-right space-x-1.5 whitespace-nowrap">
+                                <button onclick="openServiceHistoryModal({{ $s->id }}, '{{ addslashes($s->name) }}', '{{ $s->letter ?: 'S'.$s->id }}', '{{ $s->type }}')" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition flex items-center gap-1 inline-flex" title="Ver Gráfico e Histórico">
                                     <span class="material-symbols-outlined text-sm">show_chart</span>
                                     <span>Histórico</span>
                                 </button>
@@ -90,6 +104,13 @@
                                             <span class="material-symbols-outlined text-sm">edit</span>
                                             <span>Modificar</span>
                                         </button>
+                                        <form action="{{ route('admin.services.destroy', $s->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar el servicio [{{ addslashes($s->name) }}]?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="px-2 py-1.5 rounded-lg bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition inline-flex items-center" title="Eliminar Servicio">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </form>
                                     @endif
                                 @endif
                             </td>
@@ -102,29 +123,123 @@
 </div>
 
 @if(auth()->user()->isAdmin())
+<!-- MODAL CREAR NUEVO SERVICIO (Solo Administrador) -->
+<div id="modal-create-service" onclick="if(event.target === this) closeModal('modal-create-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
+                <span class="material-symbols-outlined text-obsidian-cyan text-base">add_circle</span>
+                Agregar Nuevo Servicio Monitoreado
+            </h3>
+            <button type="button" onclick="closeModal('modal-create-service')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
+        </div>
+        <form id="form-create-service" action="{{ route('admin.services.store') }}" method="POST" class="space-y-4 font-mono text-xs">
+            @csrf
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug (opcional):</label>
+                    <input type="text" name="letter" maxlength="10" placeholder="Auto" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
+                    <select name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
+                        <option value="WEB">WEB (HTTP/S)</option>
+                        <option value="PING">PING (ICMP)</option>
+                        <option value="DNS">DNS</option>
+                        <option value="SMTP">SMTP</option>
+                        <option value="DHCP">DHCP</option>
+                        <option value="LDAP">LDAP</option>
+                        <option value="PROXY">PROXY</option>
+                        <option value="CUPS">CUPS</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
+                    <select name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
+                        <option value="corporativo">Corporativo</option>
+                        <option value="regional">Regional</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
+                <input type="text" name="name" required placeholder="ej. Sistema SIGECOM" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
+                    <input type="text" name="host_ip" placeholder="ej. 10.20.0.50" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
+                    <input type="number" name="port" placeholder="ej. 80, 443, 389" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
+                <input type="text" name="web_url" placeholder="http://10.20.0.50/login" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
+                <input type="text" name="credentials" placeholder="usuario:clave" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="create-service-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                <label for="create-service-active" class="text-obsidian-muted cursor-pointer select-none">Activar monitoreo inmediatamente</label>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+                <button type="button" onclick="closeModal('modal-create-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">save</span>
+                    Guardar Servicio
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL EDITAR SERVICIO (Solo Administrador) -->
 <div id="modal-edit-service" onclick="if(event.target === this) closeModal('modal-edit-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
-            <h3 class="text-sm font-bold text-white uppercase font-mono">Editar Parámetros de Servicio</h3>
+            <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
+                <span class="material-symbols-outlined text-obsidian-cyan text-base">edit</span>
+                Editar Parámetros de Servicio
+            </h3>
             <button type="button" onclick="closeModal('modal-edit-service')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
         <form id="form-edit-service" method="POST" class="space-y-4 font-mono text-xs">
             @csrf
             @method('PUT')
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-3">
                 <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Letra / Identificador:</label>
-                    <input type="text" id="edit-service-letter" name="letter" required maxlength="5" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug:</label>
+                    <input type="text" id="edit-service-letter" name="letter" maxlength="10" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                 </div>
                 <div>
                     <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
                     <select id="edit-service-type" name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
-                        <option value="WEB">WEB (HTTP/HTTPS)</option>
+                        <option value="WEB">WEB (HTTP/S)</option>
                         <option value="PING">PING (ICMP)</option>
-                        <option value="PORT">PORT (TCP)</option>
                         <option value="DNS">DNS</option>
                         <option value="SMTP">SMTP</option>
+                        <option value="DHCP">DHCP</option>
+                        <option value="LDAP">LDAP</option>
+                        <option value="PROXY">PROXY</option>
+                        <option value="CUPS">CUPS</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
+                    <select id="edit-service-scope" name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
+                        <option value="corporativo">Corporativo</option>
+                        <option value="regional">Regional</option>
                     </select>
                 </div>
             </div>
@@ -146,13 +261,18 @@
             </div>
 
             <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para servicios WEB):</label>
-                <input type="url" id="edit-service-url" name="web_url" placeholder="https://ejemplo.com/salud" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
+                <input type="text" id="edit-service-url" name="web_url" placeholder="https://ejemplo.com/salud" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
 
             <div>
                 <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
                 <input type="text" id="edit-service-credentials" name="credentials" placeholder="user:pass o token" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="edit-service-active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                <label for="edit-service-active" class="text-obsidian-muted cursor-pointer select-none">Servicio activo en monitoreo</label>
             </div>
 
             <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
@@ -329,19 +449,26 @@
         if (e.key === 'Escape') {
             closeModal('modal-service-history');
             closeModal('modal-edit-service');
+            closeModal('modal-create-service');
         }
     });
 
+    function openCreateServiceModal() {
+        document.getElementById('form-create-service').reset();
+        openModal('modal-create-service');
+    }
+
     function openEditServiceModal(s) {
         document.getElementById('form-edit-service').action = `/admin/services/${s.id}`;
-        document.getElementById('edit_s_letter').value = s.letter;
-        document.getElementById('edit_s_type').value = s.type;
-        document.getElementById('edit_s_name').value = s.name;
-        document.getElementById('edit_s_ip').value = s.host_ip || '';
-        document.getElementById('edit_s_port').value = s.port || '';
-        document.getElementById('edit_s_web').value = s.web_url || '';
-        document.getElementById('edit_s_cred').value = s.credentials || '';
-        document.getElementById('edit_s_active').checked = s.is_active;
+        document.getElementById('edit-service-letter').value = s.letter || '';
+        document.getElementById('edit-service-type').value = s.type;
+        document.getElementById('edit-service-scope').value = s.scope || 'corporativo';
+        document.getElementById('edit-service-name').value = s.name;
+        document.getElementById('edit-service-host').value = s.host_ip || '';
+        document.getElementById('edit-service-port').value = s.port || '';
+        document.getElementById('edit-service-url').value = s.web_url || '';
+        document.getElementById('edit-service-credentials').value = s.credentials || '';
+        document.getElementById('edit-service-active').checked = !!s.is_active;
         openModal('modal-edit-service');
     }
 
