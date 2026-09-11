@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminNetworkDeviceController;
 use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminSiteController;
+use App\Http\Controllers\Admin\AdminTelegramDispatchController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SyncController;
@@ -68,6 +69,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Perfil de Usuario (Accesible para Administradores y Operadores)
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Despacho Manual de Reportes Oficiales a Telegram (Accesible para Operadores y Administradores)
+    Route::post('telegram/dispatch', [AdminTelegramDispatchController::class, 'dispatch'])->name('telegram.dispatch');
+    Route::get('telegram/dispatch/status', [AdminTelegramDispatchController::class, 'getLatestDispatch'])->name('telegram.dispatch.status');
 
     // Control Remoto VNC (Accesible para Operadores y Administradores)
     Route::post('vnc/session', [VncSessionController::class, 'createSession'])->name('vnc.session');

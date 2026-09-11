@@ -5,6 +5,45 @@
 @section('admin_content')
 <div class="space-y-6">
     <!-- ========================================================================= -->
+    <!-- BARRA SUPERIOR DE ACCIONES RÁPIDAS Y TELEMETRÍA                           -->
+    <!-- ========================================================================= -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/90 backdrop-blur-md shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+                <span class="material-symbols-outlined text-lg">monitoring</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
+                        Telemetría en Vivo & Emisión Oficial
+                    </h2>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        ACTIVO
+                    </span>
+                </div>
+                <p class="text-[10px] font-mono text-obsidian-muted">
+                    Operador en turno: <span class="text-cyan-300 font-semibold">{{ auth()->user()->full_title_name }}</span>
+                    @if(auth()->user()->hasCompleteAtitProfile())
+                        <span class="text-emerald-400 font-bold ml-1">✓ Ficha Lista</span>
+                    @else
+                        <a href="{{ route('admin.profile.show') }}" class="text-amber-400 underline font-bold ml-1 hover:text-white">⚠ Ficha Incompleta</a>
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+            <!-- BOTÓN MODAL DESPACHAR REPORTE A TELEGRAM -->
+            <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-top"
+                class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-cyan-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-400/50 text-cyan-200 font-bold text-xs font-mono tracking-wide shadow-md shadow-cyan-950/30 hover:scale-[1.02] active:scale-[0.98] transition flex items-center gap-2 cursor-pointer">
+                <span class="material-symbols-outlined text-base text-cyan-400">send</span>
+                <span>Despachar Reporte a Telegram</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
     <!-- SECCIÓN SUPERIOR: SUPERVISIÓN EN VIVO (IDÉNTICA A LA VISTA PÚBLICA)       -->
     <!-- ========================================================================= -->
     @include('partials.monitoring_board', ['isDashboard' => true])
@@ -26,9 +65,16 @@
                 </p>
             </div>
         </div>
-        <span class="px-3 py-1 rounded-full text-xs font-mono font-bold self-start sm:self-auto {{ auth()->user()->isAdmin() ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/40' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40' }}">
-            {{ auth()->user()->isAdmin() ? 'ROL: ADMINISTRADOR' : 'ROL: OPERADOR' }}
-        </span>
+        <div class="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+            <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-mgmt"
+                class="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono font-bold text-xs flex items-center gap-1.5 transition cursor-pointer">
+                <span class="material-symbols-outlined text-sm text-cyan-400">send</span>
+                <span>Despachar a Telegram</span>
+            </button>
+            <span class="px-3 py-1 rounded-full text-xs font-mono font-bold {{ auth()->user()->isAdmin() ? 'bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-cyan/40' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40' }}">
+                {{ auth()->user()->isAdmin() ? 'ROL: ADMINISTRADOR' : 'ROL: OPERADOR' }}
+            </span>
+        </div>
     </div>
 
     <!-- STATS OVERVIEW -->
@@ -810,6 +856,175 @@
     @endif
 </div>
 
+<!-- MODAL DESPACHAR REPORTE OFICIAL A TELEGRAM -->
+<div id="modal-telegram-dispatch" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-2xl w-full rounded-2xl p-5 sm:p-6 border border-cyan-500/40 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+        <!-- HEADER MODAL -->
+        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-950 to-blue-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shadow-md shrink-0">
+                    <span class="material-symbols-outlined text-2xl">send</span>
+                </div>
+                <div>
+                    <h3 class="text-sm sm:text-base font-bold text-white uppercase font-mono tracking-wide flex items-center gap-2">
+                        Despacho Oficial a Telegram
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                            ATIT • EN VIVO
+                        </span>
+                    </h3>
+                    <p class="text-[11px] font-mono text-obsidian-muted">
+                        Emisión manual de reportes consolidados firmados con tu ficha institucional
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="closeTelegramDispatchModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none transition p-1 cursor-pointer" title="Cerrar ventana">&times;</button>
+        </div>
+
+        <!-- CUERPO DEL MODAL (SCROLLABLE) -->
+        <div class="flex-1 overflow-y-auto space-y-4 pr-1 custom-scroll" id="dispatch-modal-scroll-area">
+            <!-- ALERTA DE RESPUESTA / RESULTADO (FEEDBACK INMEDIATO ARRIBA) -->
+            <div id="dispatch-feedback-alert" class="hidden p-3.5 rounded-xl border text-xs font-mono transition-all"></div>
+
+            <!-- 1. EXPLICACIÓN DE PROPÓSITO ("Para qué es y qué hará") -->
+            <div class="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/40 to-cyan-950/40 border border-cyan-500/30 text-xs font-mono text-cyan-200/90 leading-relaxed flex items-start gap-3">
+                <span class="material-symbols-outlined text-cyan-400 text-lg shrink-0 mt-0.5">info</span>
+                <div>
+                    <strong class="text-white block mb-0.5">¿Qué realiza esta acción?</strong>
+                    Compila el estado de disponibilidad y latencia de la infraestructura y lo transmite de forma inmediata al canal institucional de Telegram. El reporte conservará la estructura oficial establecida e incluirá tus credenciales como operador en turno.
+                </div>
+            </div>
+
+            <!-- 2. BANNER DE HISTORIAL Y ALERTA DE RECIENTE ENVÍO -->
+            <div id="dispatch-recent-alert" class="p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-[#040e1a] border-obsidian-border text-obsidian-muted transition-all">
+                <span class="material-symbols-outlined text-base animate-spin text-cyan-400 shrink-0 mt-0.5" id="dispatch-recent-icon">sync</span>
+                <div class="flex-1" id="dispatch-recent-content">
+                    Consultando registros de actividad reciente...
+                </div>
+            </div>
+
+            <!-- 3. FICHA DEL OPERADOR FIRMANTE -->
+            <div class="p-3.5 rounded-xl bg-[#040e1a]/90 border border-obsidian-border/80 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-cyan-400">badge</span>
+                        Ficha Institucional del Operador
+                    </span>
+                    @if(auth()->user()->hasCompleteAtitProfile())
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                            ✓ Ficha Completa
+                        </span>
+                    @else
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                            ⚠ Ficha Incompleta
+                        </span>
+                    @endif
+                </div>
+
+                @if(!auth()->user()->hasCompleteAtitProfile())
+                    <div class="p-3 rounded-lg bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs font-mono flex items-start gap-2.5">
+                        <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
+                        <div class="leading-relaxed">
+                            <strong>Datos Faltantes para Firma Institucional:</strong><br>
+                            Tu cuenta aún no tiene completos los campos requeridos (C.I., N° Personal o Teléfono). Debes completarlos para autorizar el despacho de reportes oficiales.
+                            <div class="pt-2">
+                                <a href="{{ route('admin.profile.show') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold hover:text-white transition">
+                                    <span class="material-symbols-outlined text-sm">edit</span>
+                                    <span>Completar Mi Perfil Ahora &rarr;</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <!-- PREVISUALIZACIÓN DE LA FIRMA -->
+                    <div class="bg-[#020710] p-3 rounded-lg border border-obsidian-border/60 font-mono text-xs text-gray-300 space-y-1">
+                        <div class="text-[10px] text-obsidian-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">draw</span>
+                            Firma oficial que se anexará al final del reporte:
+                        </div>
+                        <div class="pl-2 border-l-2 border-cyan-500/60 text-cyan-200/90 whitespace-pre-line leading-relaxed select-all">Personal de  ATIT:
+{{ auth()->user()->full_title_name }}
+C.I: {{ auth()->user()->cedula }}
+N° Personal: {{ auth()->user()->personal_number }}
+📱Tlf: {{ auth()->user()->phone }}</div>
+                    </div>
+                @endif
+            </div>
+
+            <!-- 4. SELECTOR DEL TIPO DE REPORTE -->
+            <div class="space-y-2">
+                <label class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">category</span>
+                    Seleccione el Reporte a Despachar
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- OPCIÓN 1: SERVICIOS -->
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="dispatch_report_type" value="servicios" checked class="peer sr-only">
+                        <div class="p-3.5 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-lg peer-checked:shadow-cyan-950/40 transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-blue-400 text-lg">dns</span>
+                                    <span class="text-xs font-bold text-white font-mono uppercase">Servicios Corporativos</span>
+                                </div>
+                                <span class="w-4 h-4 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 peer-checked:border-cyan-400 flex items-center justify-center text-[10px] text-black font-bold">✓</span>
+                            </div>
+                            <p class="text-[11px] font-mono text-obsidian-muted leading-tight">
+                                Telemetría de servidores corporativos y regionales Carabobo (A a la T).
+                            </p>
+                        </div>
+                    </label>
+
+                    <!-- OPCIÓN 2: SEDES -->
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="dispatch_report_type" value="sedes" class="peer sr-only">
+                        <div class="p-3.5 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-lg peer-checked:shadow-cyan-950/40 transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-purple-400 text-lg">domain</span>
+                                    <span class="text-xs font-bold text-white font-mono uppercase">Sedes y Enlaces</span>
+                                </div>
+                                <span class="w-4 h-4 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 peer-checked:border-cyan-400 flex items-center justify-center text-[10px] text-black font-bold">✓</span>
+                            </div>
+                            <p class="text-[11px] font-mono text-obsidian-muted leading-tight">
+                                Estatus de sedes CIAU Eje Costero, enlaces WAN y dispositivos de red.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 5. MODO DE DATOS (INSTANTÁNEO VS LIVE) -->
+            <div class="p-3 rounded-xl bg-[#040e1a]/70 border border-obsidian-border/60 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-400 text-base">bolt</span>
+                    <div>
+                        <span class="text-xs font-mono text-white font-bold block">Origen de los Datos:</span>
+                        <span class="text-[10px] font-mono text-obsidian-muted">Instantáneo desde Telemetría en Memoria (Cero retardo, previene bloqueos pfSense)</span>
+                    </div>
+                </div>
+                <select id="dispatch_mode_select" class="bg-[#020710] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400">
+                    <option value="instant" selected>⚡ Instantáneo (Snapshot)</option>
+                    <option value="live">🔍 Sondeo Físico (Live)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- FOOTER MODAL CON ACCIONES -->
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between gap-3 shrink-0">
+            <button type="button" onclick="closeTelegramDispatchModal()" class="px-4 py-2 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white text-xs font-mono font-bold transition cursor-pointer">
+                Cancelar
+            </button>
+
+            <button type="button" onclick="submitTelegramDispatch()" id="btn-submit-telegram-dispatch"
+                {{ !auth()->user()->hasCompleteAtitProfile() ? 'disabled' : '' }}
+                class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-cyan-950/50 hover:shadow-cyan-500/25 transition-all cursor-pointer {{ !auth()->user()->hasCompleteAtitProfile() ? 'opacity-50 cursor-not-allowed grayscale' : '' }}">
+                <span class="material-symbols-outlined text-base" id="icon-submit-dispatch">send</span>
+                <span id="text-submit-dispatch">Confirmar y Despachar a Telegram</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 function toggleClusterRoleFields(role) {
     const masterField = document.getElementById('field_master_url');
@@ -1003,5 +1218,189 @@ function testLdapConnection() {
         if (icon) icon.classList.remove('animate-spin');
     });
 }
+
+// --- GESTOR DE DESPACHO OFICIAL A TELEGRAM ---
+function openTelegramDispatchModal() {
+    const modal = document.getElementById('modal-telegram-dispatch');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    const feedback = document.getElementById('dispatch-feedback-alert');
+    if (feedback) {
+        feedback.classList.add('hidden');
+        feedback.innerHTML = '';
+    }
+
+    fetchLatestDispatchStatus();
+}
+
+function closeTelegramDispatchModal() {
+    const modal = document.getElementById('modal-telegram-dispatch');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function fetchLatestDispatchStatus() {
+    const icon = document.getElementById('dispatch-recent-icon');
+    const content = document.getElementById('dispatch-recent-content');
+    const alertBox = document.getElementById('dispatch-recent-alert');
+
+    if (!content || !alertBox) return;
+
+    if (icon) {
+        icon.className = 'material-symbols-outlined text-base animate-spin text-cyan-400 shrink-0 mt-0.5';
+        icon.textContent = 'sync';
+    }
+    alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-[#040e1a] border-obsidian-border text-obsidian-muted transition-all';
+    content.textContent = 'Consultando registros de actividad reciente...';
+
+    fetch('{{ route('admin.telegram.dispatch.status') }}', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (icon) icon.classList.remove('animate-spin');
+
+        const latest = data.latest_general;
+        if (latest && latest.is_recent) {
+            alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-amber-950/40 border-amber-500/50 text-amber-200 transition-all';
+            if (icon) {
+                icon.className = 'material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5';
+                icon.textContent = 'warning';
+            }
+            content.innerHTML = `<div><strong class="text-amber-300 block mb-0.5">⚠️ Aviso de Despacho Reciente (${latest.diff_minutes} min):</strong>` +
+                `El operador <strong class="text-white">${latest.operator_name}</strong> despachó un reporte de <strong class="text-cyan-300">${latest.report_type_label}</strong> ` +
+                `<span class="underline">${latest.time_ago}</span> (${latest.created_at}). Confirme si es indispensable emitir otra actualización para evitar duplicados en el canal institucional.</div>`;
+        } else if (latest) {
+            alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-emerald-950/30 border-emerald-500/40 text-emerald-300 transition-all';
+            if (icon) {
+                icon.className = 'material-symbols-outlined text-base text-emerald-400 shrink-0 mt-0.5';
+                icon.textContent = 'check_circle';
+            }
+            content.innerHTML = `<div><strong class="text-white block mb-0.5">✅ Canal Despejado:</strong>` +
+                `Último despacho registrado ${latest.time_ago} (${latest.created_at}) emitido por <span class="text-white font-bold">${latest.operator_name}</span>.</div>`;
+        } else {
+            alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-[#040e1a] border-obsidian-border text-obsidian-muted transition-all';
+            if (icon) {
+                icon.className = 'material-symbols-outlined text-base text-cyan-400 shrink-0 mt-0.5';
+                icon.textContent = 'info';
+            }
+            content.textContent = 'No hay registros de despachos previos en la base de datos.';
+        }
+    })
+    .catch(err => {
+        if (icon) icon.classList.remove('animate-spin');
+        content.textContent = 'No se pudo consultar el historial reciente de despachos: ' + err.message;
+    });
+}
+
+function submitTelegramDispatch() {
+    const reportTypeEl = document.querySelector('input[name="dispatch_report_type"]:checked');
+    const reportType = reportTypeEl ? reportTypeEl.value : 'servicios';
+    const modeEl = document.getElementById('dispatch_mode_select');
+    const mode = modeEl ? modeEl.value : 'instant';
+
+    const btn = document.getElementById('btn-submit-telegram-dispatch');
+    const icon = document.getElementById('icon-submit-dispatch');
+    const text = document.getElementById('text-submit-dispatch');
+    const feedback = document.getElementById('dispatch-feedback-alert');
+
+    if (btn) btn.disabled = true;
+    if (icon) {
+        icon.className = 'material-symbols-outlined text-base animate-spin';
+        icon.textContent = 'sync';
+    }
+    if (text) text.textContent = 'Despachando Reporte...';
+
+    if (feedback) {
+        feedback.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+        feedback.classList.add('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+        feedback.innerHTML = '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm animate-spin">sync</span> Compilando telemetría oficial y transmitiendo a Telegram...</div>';
+    }
+
+    fetch('{{ route('admin.telegram.dispatch') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            report_type: reportType,
+            mode: mode
+        })
+    })
+    .then(r => r.json().then(data => ({ status: r.status, body: data })))
+    .then(({ status, body }) => {
+        if (feedback) {
+            feedback.classList.remove('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+            if (status === 200 && body.success) {
+                feedback.classList.add('bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300');
+                feedback.innerHTML = `<div class="flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-base text-emerald-400 shrink-0 mt-0.5">check_circle</span>
+                    <div>
+                        <strong class="text-white block">¡Reporte Oficial Transmitido con Éxito!</strong>
+                        <span>${body.message}</span>
+                        <div class="mt-1 text-[11px] text-cyan-300">Firmado por: <strong>${body.operator}</strong> • Hora: <strong>${body.dispatched_at}</strong></div>
+                    </div>
+                </div>`;
+                fetchLatestDispatchStatus();
+            } else if (body.incomplete_profile) {
+                feedback.classList.add('bg-amber-950/40', 'border-amber-500/50', 'text-amber-200');
+                feedback.innerHTML = `<div class="flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
+                    <div>
+                        <strong class="text-white block">Perfil Institucional Incompleto</strong>
+                        <span>${body.message}</span>
+                        <div class="mt-1.5"><a href="${body.profile_url}" class="underline font-bold text-cyan-300 hover:text-white">Ir a Mi Perfil &rarr;</a></div>
+                    </div>
+                </div>`;
+            } else {
+                feedback.classList.add('bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+                feedback.innerHTML = `<div class="flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-base text-rose-400 shrink-0 mt-0.5">error</span>
+                    <div>
+                        <strong class="text-white block">Error en el Despacho</strong>
+                        <span>${body.message || 'No se pudo transmitir el reporte.'}</span>
+                    </div>
+                </div>`;
+            }
+        }
+    })
+    .catch(err => {
+        if (feedback) {
+            feedback.classList.remove('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
+            feedback.classList.add('bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
+            feedback.innerHTML = `<div class="flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-base text-rose-400 shrink-0 mt-0.5">error</span>
+                <div>
+                    <strong class="text-white block">Error de Red</strong>
+                    <span>Ocurrió una falla de conexión al comunicarse con el servidor: ${err.message}</span>
+                </div>
+            </div>`;
+        }
+    })
+    .finally(() => {
+        if (btn) btn.disabled = false;
+        if (icon) {
+            icon.className = 'material-symbols-outlined text-base';
+            icon.textContent = 'send';
+        }
+        if (text) text.textContent = 'Confirmar y Despachar a Telegram';
+    });
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeTelegramDispatchModal();
+    }
+});
 </script>
 @endsection
