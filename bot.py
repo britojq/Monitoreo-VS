@@ -571,13 +571,58 @@ MSG_UNAUTHORIZED_ADMIN_COMMAND = (
 
 
 def load_commands_data() -> tuple[dict, dict]:
-    """Carga los comandos y mensajes informativos/ayuda desde commands.json."""
+    """
+    Carga los comandos y mensajes informativos/ayuda desde MariaDB (SSOT).
+    Si MariaDB no está disponible o las tablas están vacías, recurre a commands.json como fallback tolerante a fallos.
+    """
     default_messages = {
         "start_header": "🤖 <b>Bot de Administración de Servidores</b>\n\nComandos disponibles:",
         "unknown_command": "⚠️ Comando no reconocido. Usa <code>/start</code> para ver las opciones disponibles.",
         "help_general": "ℹ️ Usa <code>/start</code> o <code>/help [comando]</code> para información específica."
     }
 
+    # 1. Intentar cargar directamente desde MariaDB (SSOT)
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT command, title, description, help_text, category, access_level, is_active "
+                    "FROM bot_commands WHERE is_active = 1 ORDER BY sort_order, command"
+                )
+                cmd_rows = cur.fetchall()
+
+                cur.execute("SELECT setting_key, setting_value FROM bot_settings WHERE setting_group = 'messages'")
+                msg_rows = cur.fetchall()
+
+                if cmd_rows:
+                    commands: dict = {}
+                    for r in cmd_rows:
+                        cmd_name = r["command"].strip().lower()
+                        commands[cmd_name] = {
+                            "description": r.get("description") or "",
+                            "help_text": r.get("help_text") or "",
+                            "title": r.get("title") or "",
+                            "category": r.get("category") or "General",
+                            "access_level": r.get("access_level") or "all"
+                        }
+
+                    messages = dict(default_messages)
+                    for m in msg_rows:
+                        k = m["setting_key"]
+                        v = m["setting_value"]
+                        if v:
+                            messages[k] = v
+
+                    logger.info(f"Comandos ({len(commands)}) y mensajes cargados exitosamente desde MariaDB (SSOT)")
+                    return messages, commands
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"No se pudieron cargar comandos desde MariaDB ({e}). Usando fallback de archivo.")
+
+    # 2. Fallback tolerante a fallos desde commands.json
     if COMMANDS_PATH.exists():
         try:
             with open(COMMANDS_PATH, "r", encoding="utf-8") as f:
@@ -590,7 +635,7 @@ def load_commands_data() -> tuple[dict, dict]:
                     messages = default_messages
                     commands = data
 
-                logger.info(f"Comandos y mensajes cargados exitosamente desde {COMMANDS_PATH}")
+                logger.info(f"Comandos y mensajes cargados desde archivo fallback {COMMANDS_PATH}")
                 return messages, commands
         except Exception as e:
             logger.error(f"Error al leer {COMMANDS_PATH}: {e}")

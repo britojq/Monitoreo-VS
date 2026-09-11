@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBanController;
+use App\Http\Controllers\Admin\AdminBotCommandController;
 use App\Http\Controllers\Admin\AdminBotTemplateController;
 use App\Http\Controllers\Admin\AdminClusterController;
 use App\Http\Controllers\Admin\AdminCronController;
@@ -106,6 +107,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('bot/templates/{template}', [AdminBotTemplateController::class, 'update'])->name('bot.templates.update');
         Route::post('bot/templates/{template}/reset', [AdminBotTemplateController::class, 'reset'])->name('bot.templates.reset');
         Route::post('bot/templates/preview', [AdminBotTemplateController::class, 'preview'])->name('bot.templates.preview');
+
+        // Comandos y Configuración del Bot (Exclusivo Administrador)
+        Route::get('bot/commands', [AdminBotCommandController::class, 'index'])->name('bot.commands.index');
+        Route::put('bot/commands/{command}', [AdminBotCommandController::class, 'update'])->name('bot.commands.update');
+        Route::post('bot/commands/{command}/toggle', [AdminBotCommandController::class, 'toggle'])->name('bot.commands.toggle');
+        Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update');
 
         // Operaciones Mutantes de Infraestructura (Exclusivas del Servidor MASTER)
         Route::middleware(['node.master'])->group(function () {

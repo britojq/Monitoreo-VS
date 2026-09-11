@@ -57,6 +57,12 @@
                     <span class="material-symbols-outlined text-lg">edit_note</span>
                     Plantillas Bot
                 </a>
+
+                <!-- COMANDOS DEL BOT (Solo Administrador) -->
+                <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                    <span class="material-symbols-outlined text-lg">terminal</span>
+                    Comandos Bot
+                </a>
                 @endif
 
                 <div class="pt-4 pb-1 px-4 text-[10px] uppercase tracking-wider text-obsidian-muted/60">
