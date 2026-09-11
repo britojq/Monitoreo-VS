@@ -315,7 +315,7 @@
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">badge</span>
                                 <span>Cédula de Identidad (C.I.)</span>
                             </label>
-                            <input type="text" name="cedula" id="input_cedula" value="{{ old('cedula', $user->cedula) }}" placeholder="Ej: 11746281" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <input type="text" name="cedula" id="input_cedula" value="{{ old('cedula', $user->cedula) }}" placeholder="Ej: 12345678" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
                         </div>
                     </div>
 
@@ -326,7 +326,7 @@
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">pin</span>
                                 <span>N° de Personal / Ficha Corpoelec</span>
                             </label>
-                            <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 144306" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 100001" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
                         </div>
 
                         <!-- TELÉFONO DE CONTACTO -->
@@ -335,7 +335,7 @@
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">call</span>
                                 <span>Teléfono de Contacto (📱Tlf)</span>
                             </label>
-                            <input type="text" name="phone" id="input_phone" value="{{ old('phone', $user->phone) }}" placeholder="Ej: 02423602039 o celular" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <input type="text" name="phone" id="input_phone" value="{{ old('phone', $user->phone) }}" placeholder="Ej: 0241-1234567 o celular" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
                         </div>
                     </div>
 
