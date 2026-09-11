@@ -44,14 +44,79 @@ from telegram.ext import (
 )
 
 
+def split_message(text: str, limit: int = 4000) -> list:
+    """Divide un texto largo en fragmentos compatibles con Telegram."""
+    text = (text or "").strip()
+
+    if not text:
+        return ["(Sin respuesta)"]
+
+    chunks = []
+
+    while len(text) > limit:
+        cut = text.rfind("\n", 0, limit)
+
+        # Si no hay un buen salto de línea, cortamos duro.
+        if cut <= limit // 2:
+            cut = limit
+
+        chunks.append(text[:cut].rstrip())
+        text = text[cut:].lstrip()
+
+    if text:
+        chunks.append(text)
+
+    return chunks
+
+
 async def safe_reply_html(message_obj, text: str, **kwargs) -> None:
-    """Envía un mensaje con parse_mode='HTML'. Si Telegram rechaza la sintaxis HTML, reintenta enviarlo sin parse_mode."""
+    """Envía un mensaje con parse_mode='HTML' de forma robusta, particionando automáticamente si excede el límite de Telegram."""
+    text = (text or "").strip()
+    if not text:
+        return
+
+    # Si excede el límite seguro de Telegram (4000 caracteres), particionar de forma limpia
+    if len(text) > 4000:
+        chunks = split_message(text, limit=4000)
+        reply_markup = kwargs.pop("reply_markup", None)
+        for i, chunk in enumerate(chunks):
+            is_last = (i == len(chunks) - 1)
+            extra_args = dict(kwargs)
+            if is_last and reply_markup is not None:
+                extra_args["reply_markup"] = reply_markup
+            try:
+                await message_obj.reply_text(chunk, parse_mode='HTML', **extra_args)
+            except Exception as e_chunk:
+                logger.warning(f"Error enviando fragmento {i+1}/{len(chunks)} en HTML ({e_chunk}). Reintentando en texto plano...")
+                clean_chunk = re.sub(r'<[^>]+>', '', chunk)
+                try:
+                    await message_obj.reply_text(clean_chunk, **extra_args)
+                except Exception as e_final:
+                    logger.error(f"Error crítico al enviar fragmento plano: {e_final}")
+        return
+
     try:
         await message_obj.reply_text(text, parse_mode='HTML', **kwargs)
     except Exception as e:
         logger.warning(f"Error al enviar mensaje con parse_mode='HTML': {e}. Reintentando sin formato HTML.")
         clean_text = re.sub(r'<[^>]+>', '', text)
-        await message_obj.reply_text(clean_text, **kwargs)
+        if len(clean_text) > 4000:
+            chunks = split_message(clean_text, limit=4000)
+            reply_markup = kwargs.pop("reply_markup", None)
+            for i, chunk in enumerate(chunks):
+                is_last = (i == len(chunks) - 1)
+                extra_args = dict(kwargs)
+                if is_last and reply_markup is not None:
+                    extra_args["reply_markup"] = reply_markup
+                try:
+                    await message_obj.reply_text(chunk, **extra_args)
+                except Exception as e_f:
+                    logger.error(f"Error enviando fragmento plano fallback: {e_f}")
+        else:
+            try:
+                await message_obj.reply_text(clean_text, **kwargs)
+            except Exception as e_plain:
+                logger.error(f"Error enviando mensaje plano como fallback: {e_plain}")
 
 
 
@@ -881,29 +946,7 @@ def markdown_to_telegram_html(text: str) -> str:
     return text
 
 
-def split_message(text: str, limit: int = 4096) -> list:
-    """Divide un texto largo en fragmentos compatibles con Telegram."""
-    text = (text or "").strip()
 
-    if not text:
-        return ["(Sin respuesta)"]
-
-    chunks = []
-
-    while len(text) > limit:
-        cut = text.rfind("\n", 0, limit)
-
-        # Si no hay un buen salto de línea, cortamos duro.
-        if cut <= limit // 2:
-            cut = limit
-
-        chunks.append(text[:cut].rstrip())
-        text = text[cut:].lstrip()
-
-    if text:
-        chunks.append(text)
-
-    return chunks
 
 
 def get_security_warning_html() -> str:
@@ -1108,10 +1151,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 👑 MENÚ PERSONALIZADO EXCLUSIVO PARA EL PROPIETARIO (SOLO EN CHAT PRIVADO)
     # =========================================================================
     if is_owner and is_private:
-        owner_menu = [
-            "👑 <b>PANEL DE CONTROL PRINCIPAL • ADMINISTRADOR</b>\n",
+        owner_menu_p1 = [
+            "👑 <b>PANEL DE CONTROL PRINCIPAL • PARTE 1/2</b>\n",
             f"¡Bienvenido, <b>{html.escape(display_name)}</b>!\n",
-            "A continuación tienes el inventario completo de herramientas y comandos administrativos del sistema:\n",
+            "A continuación tienes el inventario de herramientas administrativas:\n",
             "🛡️ <b>Gestión de Seguridad y Accesos</b>",
             "• <code>/permisos</code> <i>(/autorizados, /whitelist)</i> - Gestión interactiva de usuarios y grupos autorizados.",
             "• <code>/grupos</code> <i>(/mis_grupos, /chat_grupos)</i> - Auditoría en tiempo real de grupos activos y forzar salida.",
@@ -1128,8 +1171,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
-            "• <code>/reinicia</code> <i>(/reboot)</i> - Reinicio completo del servidor host del sistema.\n",
-            "📊 <b>Monitoreo e Infraestructura de Red</b>",
+            "• <code>/reinicia</code> <i>(/reboot)</i> - Reinicio completo del servidor host del sistema."
+        ]
+
+        owner_menu_p2 = [
+            "📊 <b>PANEL DE CONTROL PRINCIPAL • PARTE 2/2</b>\n",
+            "<b>Monitoreo e Infraestructura de Red</b>",
             "• <code>/servicios [web|grupo]</code> <i>(/reporte_servicios, /servicios_grupo)</i> - Chequeo de Servicios Corporativos (con captura web o despacho al grupo).",
             "• <code>/sedes [web|grupo]</code> <i>(/reporte_sedes, /sedes_grupo, /sitios)</i> - Chequeo de Sedes y Enlaces de Comunicación (con captura web o despacho al grupo).",
             "• <code>/caidas [web|grupo]</code> <i>(/incidentes, /fallas, /caidas_grupo)</i> - Reporte enfocado en fallas, servicios caídos y sedes desconectadas.",
@@ -1166,12 +1213,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 if cmd_name.lower() not in already_listed
             ]
             if extra_cmds:
-                owner_menu.append("⚙️ <b>Comandos Adicionales del Sistema:</b>")
-                owner_menu.extend(extra_cmds)
+                owner_menu_p2.append("⚙️ <b>Comandos Adicionales del Sistema:</b>")
+                owner_menu_p2.extend(extra_cmds)
 
-        owner_menu.append("\n<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
+        owner_menu_p2.append("\n<i>Sistema operando en Debian GNU/Linux • Python 3.11</i>")
 
-        await safe_reply_html(update.message, "\n".join(owner_menu))
+        await safe_reply_html(update.message, "\n".join(owner_menu_p1))
+        await safe_reply_html(update.message, "\n".join(owner_menu_p2))
         return
 
     # =========================================================================
@@ -2885,23 +2933,22 @@ async def _run_and_send_monitoring_report(
         except Exception:
             pass
 
-        # Enviar reporte de servicios si aplica (formateado a HTML)
+        if result.get("skipped"):
+            await safe_reply_html(
+                update.message,
+                "⚠️ <b>Chequeo en curso:</b> Ya existe una ronda de monitoreo ejecutándose en el servidor. Por favor espere unos segundos e intente nuevamente."
+            )
+            return
+
+        # Enviar reporte de servicios si aplica (formateado a HTML con fallback resiliente)
         if result.get("report_servicios"):
             html_svc = markdown_to_telegram_html(result["report_servicios"])
-            try:
-                await update.message.reply_text(html_svc, parse_mode='HTML')
-            except Exception as e_html:
-                logger.warning(f"Fallo envío en HTML de servicios ({e_html}). Enviando en texto plano...")
-                await update.message.reply_text(result["report_servicios"])
+            await safe_reply_html(update.message, html_svc)
 
-        # Enviar reporte de sedes si aplica (formateado a HTML)
+        # Enviar reporte de sedes si aplica (formateado a HTML con fallback resiliente)
         if result.get("report_sedes"):
             html_sedes = markdown_to_telegram_html(result["report_sedes"])
-            try:
-                await update.message.reply_text(html_sedes, parse_mode='HTML')
-            except Exception as e_html:
-                logger.warning(f"Fallo envío en HTML de sedes ({e_html}). Enviando en texto plano...")
-                await update.message.reply_text(result["report_sedes"])
+            await safe_reply_html(update.message, html_sedes)
 
         if screen_file and screen_file.exists():
             caption = (
