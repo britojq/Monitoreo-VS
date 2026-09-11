@@ -311,21 +311,28 @@ class TelegramReportDispatchService
         $script = '/scripts/telegram-admin-bot/monitor/web_screenshot.py';
 
         if (!file_exists($pythonExec) || !file_exists($script)) {
+            Log::error("generateScreenshot: pythonExec ({$pythonExec}) o script ({$script}) no existen.");
             return null;
         }
 
         $captureMode = ($reportType === 'sedes') ? 'sedes' : 'servicios';
-        $cmd = 'export PYTHONPATH=/scripts/telegram-admin-bot && ' .
+        $cmd = 'export HOME=/var/www && ' .
+               'export PYTHONPATH=/scripts/telegram-admin-bot && ' .
+               'export PLAYWRIGHT_BROWSERS_PATH=/var/www/.cache/ms-playwright && ' .
                escapeshellcmd($pythonExec) . ' -c ' . escapeshellarg(
             "import asyncio; from monitor.web_screenshot import capture_web_dashboard; " .
             "p = asyncio.run(capture_web_dashboard('{$captureMode}')); print(str(p) if p else '')"
-        ) . ' 2>/dev/null';
+        ) . ' 2>&1';
 
-        $output = trim(@shell_exec($cmd) ?? '');
+        $rawOutput = trim(@shell_exec($cmd) ?? '');
+        $lines = explode("\n", $rawOutput);
+        $output = trim(end($lines));
+
         if (!empty($output) && file_exists($output) && filesize($output) > 1024) {
             return $output;
         }
 
+        Log::warning("No se pudo generar la captura web para el reporte ({$reportType}). Detalle: {$rawOutput}");
         return null;
     }
 
