@@ -20,6 +20,22 @@ class TelegramReportDispatchService
     }
 
     /**
+     * Compila y retorna el texto íntegro del reporte oficial para previsualización.
+     */
+    public function compileReportText(
+        User $user,
+        string $reportType = 'servicios',
+        string $mode = 'instant',
+        ?string $observations = ''
+    ): string {
+        $cleanObservations = trim((string) $observations);
+        if ($mode === 'live') {
+            return $this->compileLiveReport($reportType, $user, $cleanObservations);
+        }
+        return $this->compileSnapshotReport($reportType, $user, $cleanObservations);
+    }
+
+    /**
      * Envía un reporte oficial a Telegram firmado por el usuario en sesión.
      *
      * @param User $user Usuario autenticado firmante

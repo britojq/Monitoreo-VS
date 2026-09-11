@@ -73,8 +73,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
 
-    // Despacho Manual de Reportes Oficiales a Telegram (Accesible para Operadores y Administradores)
+    // Envíos Manuales de Reportes Oficiales a Telegram (Accesible para Operadores y Administradores)
     Route::post('telegram/dispatch', [AdminTelegramDispatchController::class, 'dispatch'])->name('telegram.dispatch');
+    Route::post('telegram/dispatch/preview', [AdminTelegramDispatchController::class, 'preview'])->name('telegram.dispatch.preview');
     Route::get('telegram/dispatch/status', [AdminTelegramDispatchController::class, 'getLatestDispatch'])->name('telegram.dispatch.status');
 
     // Control Remoto VNC (Accesible para Operadores y Administradores)

@@ -56,6 +56,13 @@ class AdminTelegramDispatchController extends Controller
         $observations = $validated['observations'] ?? '';
         $includeScreenshot = $request->boolean('include_screenshot', true);
 
+        // RESTRICCIÓN DE SEGURIDAD Y PRIVACIDAD DE ROL:
+        // Los operadores tienen estrictamente restringido el envío al Owner privado.
+        // Su destino se fija de manera forzada y exclusiva al Grupo Corporativo institucional.
+        if (!$user->isAdmin()) {
+            $destination = 'group';
+        }
+
         $result = $dispatchService->dispatch(
             $user,
             $reportType,
@@ -82,6 +89,36 @@ class AdminTelegramDispatchController extends Controller
             'has_screenshot' => $result['has_screenshot'] ?? false,
             'has_observations' => $result['has_observations'] ?? false,
             'dispatched_at' => Carbon::now('America/Caracas')->format('h:i:s A'),
+        ]);
+    }
+
+    /**
+     * Genera una previsualización dinámica del mensaje oficial sin emitir llamadas a Telegram.
+     */
+    public function preview(Request $request, TelegramReportDispatchService $dispatchService): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesión no válida o expirada.',
+            ], 401);
+        }
+
+        $reportType = (string) ($request->input('report_type') ?? 'servicios');
+        $mode = (string) ($request->input('mode') ?? 'instant');
+        $observations = (string) ($request->input('observations') ?? '');
+
+        $previewText = $dispatchService->compileReportText($user, $reportType, $mode, $observations);
+
+        return response()->json([
+            'success' => true,
+            'report_type' => $reportType,
+            'operator' => $user->full_title_name,
+            'preview_raw' => $previewText,
+            'preview_html' => nl2br($previewText),
         ]);
     }
 

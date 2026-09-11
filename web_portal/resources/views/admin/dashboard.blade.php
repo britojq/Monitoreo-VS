@@ -177,7 +177,7 @@ N° Personal: {{ auth()->user()->personal_number }}
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <!-- OPCIÓN 1: SERVICIOS -->
                     <label class="cursor-pointer group">
-                        <input type="radio" name="dispatch_report_type" value="servicios" checked class="peer sr-only">
+                        <input type="radio" name="dispatch_report_type" value="servicios" checked onchange="triggerFullPreviewReload()" class="peer sr-only">
                         <div class="p-3.5 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-lg peer-checked:shadow-cyan-950/40 transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
@@ -194,7 +194,7 @@ N° Personal: {{ auth()->user()->personal_number }}
 
                     <!-- OPCIÓN 2: SEDES -->
                     <label class="cursor-pointer group">
-                        <input type="radio" name="dispatch_report_type" value="sedes" class="peer sr-only">
+                        <input type="radio" name="dispatch_report_type" value="sedes" onchange="triggerFullPreviewReload()" class="peer sr-only">
                         <div class="p-3.5 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-lg peer-checked:shadow-cyan-950/40 transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
@@ -212,6 +212,7 @@ N° Personal: {{ auth()->user()->personal_number }}
             </div>
 
             <!-- 5. SELECTOR DE DESTINATARIO -->
+            @if(auth()->user()->isAdmin())
             <div class="space-y-2">
                 <label class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm text-cyan-400">near_me</span>
@@ -270,6 +271,30 @@ N° Personal: {{ auth()->user()->personal_number }}
                     </label>
                 </div>
             </div>
+            @else
+            <!-- DESTINO EXCLUSIVO PARA ROL OPERADOR (SIN ACCESO A OWNER) -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">near_me</span>
+                    Destino de la Transmisión
+                </label>
+                <div class="p-3 rounded-xl border border-cyan-500/30 bg-[#040e1a] flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-blue-950/80 border border-blue-500/40 flex items-center justify-center text-blue-300 shrink-0">
+                            <span class="material-symbols-outlined text-base">groups</span>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-white font-mono uppercase block">Grupo Corporativo (Sede Valle Seco)</span>
+                            <span class="text-[10px] font-mono text-obsidian-muted">Canal institucional oficial autorizado (<code>-1001383163558</code>)</span>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/40 shrink-0">
+                        ✓ Canal Autorizado
+                    </span>
+                    <input type="hidden" name="dispatch_destination" value="group">
+                </div>
+            </div>
+            @endif
 
             <!-- 6. CAMPO DE OBSERVACIONES (EXCLUSIVO WEB) -->
             <div class="p-3.5 rounded-xl bg-[#040e1a]/90 border border-obsidian-border/80 space-y-2.5">
@@ -318,10 +343,43 @@ N° Personal: {{ auth()->user()->personal_number }}
                             <span class="text-[10px] font-mono text-obsidian-muted">Snapshot sin retrasos</span>
                         </div>
                     </div>
-                    <select id="dispatch_mode_select" class="bg-[#020710] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400">
+                    <select id="dispatch_mode_select" onchange="triggerFullPreviewReload()" class="bg-[#020710] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400">
                         <option value="instant" selected>⚡ Snapshot</option>
                         <option value="live">🔍 Sondeo Físico</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- 8. VISTA PREVIA COMPLETA DEL MENSAJE (SIMULACIÓN TELEGRAM) -->
+            <div class="space-y-2 pt-2 border-t border-obsidian-border/80">
+                <div class="flex items-center justify-between">
+                    <button type="button" onclick="toggleFullMessagePreview()" class="flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition cursor-pointer">
+                        <span class="material-symbols-outlined text-sm" id="icon-toggle-full-preview">visibility</span>
+                        <span id="text-toggle-full-preview">Ver Vista Previa del Mensaje Completo</span>
+                        <span class="material-symbols-outlined text-xs transition-transform" id="arrow-toggle-full-preview">expand_more</span>
+                    </button>
+                    <span class="text-[10px] font-mono text-obsidian-muted flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs text-blue-400">send</span>
+                        Simulación de entrega Telegram
+                    </span>
+                </div>
+
+                <div id="dispatch-full-preview-container" class="hidden space-y-2 pt-1">
+                    <div class="p-3.5 rounded-xl bg-[#08121f] border border-cyan-500/30 text-gray-200 font-mono text-xs shadow-inner">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-cyan-500/20 text-[10px] text-cyan-300">
+                            <span class="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                                <span class="material-symbols-outlined text-xs text-cyan-400">chat</span>
+                                Mensaje que recibirá Telegram:
+                            </span>
+                            <button type="button" onclick="loadFullMessagePreview()" class="text-obsidian-muted hover:text-white flex items-center gap-1 transition cursor-pointer" title="Recargar vista previa">
+                                <span class="material-symbols-outlined text-xs" id="spinner-preview-refresh">sync</span>
+                                <span>Actualizar</span>
+                            </button>
+                        </div>
+                        <div id="dispatch-full-preview-content" class="max-h-64 overflow-y-auto whitespace-pre-wrap leading-relaxed pr-1 custom-scroll text-[11px] select-all bg-[#040e1a] p-3 rounded-lg border border-obsidian-border/60">
+                            Cargando previsualización...
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -379,6 +437,87 @@ function updateObservationsPreview() {
         if (previewBadge) previewBadge.classList.add('hidden');
         if (previewText) previewText.textContent = '';
     }
+    triggerFullPreviewReload();
+}
+
+let fullPreviewDebounceTimer = null;
+
+function toggleFullMessagePreview() {
+    const container = document.getElementById('dispatch-full-preview-container');
+    const icon = document.getElementById('icon-toggle-full-preview');
+    const text = document.getElementById('text-toggle-full-preview');
+    const arrow = document.getElementById('arrow-toggle-full-preview');
+    if (!container) return;
+
+    const isHidden = container.classList.contains('hidden');
+    if (isHidden) {
+        container.classList.remove('hidden');
+        if (icon) icon.textContent = 'visibility_off';
+        if (text) text.textContent = 'Ocultar Vista Previa del Mensaje';
+        if (arrow) arrow.textContent = 'expand_less';
+        loadFullMessagePreview();
+    } else {
+        container.classList.add('hidden');
+        if (icon) icon.textContent = 'visibility';
+        if (text) text.textContent = 'Ver Vista Previa del Mensaje Completo';
+        if (arrow) arrow.textContent = 'expand_more';
+    }
+}
+
+function triggerFullPreviewReload() {
+    const container = document.getElementById('dispatch-full-preview-container');
+    if (container && !container.classList.contains('hidden')) {
+        clearTimeout(fullPreviewDebounceTimer);
+        fullPreviewDebounceTimer = setTimeout(() => {
+            loadFullMessagePreview();
+        }, 350);
+    }
+}
+
+function loadFullMessagePreview() {
+    const previewContent = document.getElementById('dispatch-full-preview-content');
+    const spinner = document.getElementById('spinner-preview-refresh');
+    if (!previewContent) return;
+
+    const reportTypeEl = document.querySelector('input[name="dispatch_report_type"]:checked');
+    const reportType = reportTypeEl ? reportTypeEl.value : 'servicios';
+    const modeEl = document.getElementById('dispatch_mode_select');
+    const mode = modeEl ? modeEl.value : 'instant';
+    const obsToggle = document.getElementById('dispatch_toggle_observations');
+    const obsTextEl = document.getElementById('dispatch_observations_text');
+    const observations = (obsToggle && obsToggle.checked && obsTextEl) ? obsTextEl.value.trim() : '';
+
+    if (spinner) spinner.classList.add('animate-spin');
+    previewContent.classList.add('opacity-50');
+
+    fetch('{{ route('admin.telegram.dispatch.preview') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            report_type: reportType,
+            mode: mode,
+            observations: observations
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.preview_raw) {
+            previewContent.innerHTML = data.preview_raw;
+        } else {
+            previewContent.innerHTML = '<span class="text-rose-400">Error al generar la vista previa: ' + (data.message || 'Desconocido') + '</span>';
+        }
+    })
+    .catch(err => {
+        previewContent.innerHTML = '<span class="text-rose-400">Error al consultar el servidor: ' + err.message + '</span>';
+    })
+    .finally(() => {
+        if (spinner) spinner.classList.remove('animate-spin');
+        previewContent.classList.remove('opacity-50');
+    });
 }
 
 function openTelegramDispatchModal() {
@@ -466,8 +605,9 @@ function fetchLatestDispatchStatus() {
 function submitTelegramDispatch() {
     const reportTypeEl = document.querySelector('input[name="dispatch_report_type"]:checked');
     const reportType = reportTypeEl ? reportTypeEl.value : 'servicios';
-    const destEl = document.querySelector('input[name="dispatch_destination"]:checked');
-    const destination = destEl ? destEl.value : 'both';
+    const destRadio = document.querySelector('input[name="dispatch_destination"]:checked');
+    const destHidden = document.querySelector('input[name="dispatch_destination"][type="hidden"]');
+    const destination = destRadio ? destRadio.value : (destHidden ? destHidden.value : 'group');
     const modeEl = document.getElementById('dispatch_mode_select');
     const mode = modeEl ? modeEl.value : 'instant';
 
