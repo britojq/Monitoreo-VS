@@ -23,7 +23,11 @@ from playwright.async_api import async_playwright
 logger = logging.getLogger("monitor.screenshot")
 
 CACHE_DIR = Path("/tmp/monitoreo_captures")
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.chmod(0o777)
+except Exception:
+    pass
 
 # Memoria de caché: { 'mode': (timestamp, filepath) }
 _SCREENSHOT_CACHE: dict[str, tuple[float, Path]] = {}
@@ -133,6 +137,12 @@ async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Op
                 await page.screenshot(path=str(target_file), full_page=False)
 
             await browser.close()
+
+            if target_file.exists():
+                try:
+                    target_file.chmod(0o666)
+                except Exception:
+                    pass
 
             if target_file.exists() and target_file.stat().st_size > 1024:
                 _SCREENSHOT_CACHE[mode] = (now, target_file)
