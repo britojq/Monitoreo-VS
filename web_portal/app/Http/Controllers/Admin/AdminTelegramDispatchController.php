@@ -31,9 +31,13 @@ class AdminTelegramDispatchController extends Controller
         $validated = $request->validate([
             'report_type' => ['required', 'string', 'in:servicios,sedes,completo'],
             'mode' => ['nullable', 'string', 'in:instant,live'],
+            'destination' => ['nullable', 'string', 'in:both,group,owner'],
+            'observations' => ['nullable', 'string', 'max:1000'],
+            'include_screenshot' => ['nullable', 'boolean'],
         ], [
             'report_type.required' => 'Debe seleccionar el tipo de reporte a enviar.',
             'report_type.in' => 'El tipo de reporte seleccionado no es válido.',
+            'destination.in' => 'El destino seleccionado no es válido.',
         ]);
 
         // Verificar si la ficha institucional está completa
@@ -48,8 +52,19 @@ class AdminTelegramDispatchController extends Controller
 
         $reportType = $validated['report_type'];
         $mode = $validated['mode'] ?? 'instant';
+        $destination = $validated['destination'] ?? 'both';
+        $observations = $validated['observations'] ?? '';
+        $includeScreenshot = $request->boolean('include_screenshot', true);
 
-        $result = $dispatchService->dispatch($user, $reportType, $mode, $request->ip());
+        $result = $dispatchService->dispatch(
+            $user,
+            $reportType,
+            $mode,
+            $request->ip(),
+            $observations,
+            $destination,
+            $includeScreenshot
+        );
 
         if (!$result['success']) {
             return response()->json([
@@ -63,6 +78,9 @@ class AdminTelegramDispatchController extends Controller
             'message' => $result['message'],
             'operator' => $user->full_title_name,
             'report_type' => $reportType,
+            'destination' => $result['destination_label'] ?? $destination,
+            'has_screenshot' => $result['has_screenshot'] ?? false,
+            'has_observations' => $result['has_observations'] ?? false,
             'dispatched_at' => Carbon::now('America/Caracas')->format('h:i:s A'),
         ]);
     }

@@ -146,11 +146,20 @@
                 @else
                     <!-- PREVISUALIZACIÓN DE LA FIRMA -->
                     <div class="bg-[#020710] p-3 rounded-lg border border-obsidian-border/60 font-mono text-xs text-gray-300 space-y-1">
-                        <div class="text-[10px] text-obsidian-muted uppercase tracking-wider mb-1 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-xs text-cyan-400">draw</span>
-                            Firma oficial que se anexará al final del reporte:
+                        <div class="text-[10px] text-obsidian-muted uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs text-cyan-400">draw</span>
+                                Estructura de firma institucional al pie del reporte:
+                            </span>
+                            <span id="dispatch-preview-obs-badge" class="hidden px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                                + Observaciones Anexadas
+                            </span>
                         </div>
-                        <div class="pl-2 border-l-2 border-cyan-500/60 text-cyan-200/90 whitespace-pre-line leading-relaxed select-all">Personal de  ATIT:
+                        <div class="pl-2 border-l-2 border-cyan-500/60 text-cyan-200/90 whitespace-pre-line leading-relaxed select-all">
+<div id="dispatch-preview-obs-container" class="hidden mb-2 text-amber-300 bg-amber-950/20 p-2 rounded border border-amber-500/30">━━━━━━━━━━━━
+📝 <b>OBSERVACIONES:</b>
+<span id="dispatch-preview-obs-text" class="text-amber-200"></span>
+━━━━━━━━━━━━</div>👨‍💻 <b>Personal de  ATIT:</b>
 {{ auth()->user()->full_title_name }}
 C.I: {{ auth()->user()->cedula }}
 N° Personal: {{ auth()->user()->personal_number }}
@@ -202,19 +211,118 @@ N° Personal: {{ auth()->user()->personal_number }}
                 </div>
             </div>
 
-            <!-- 5. MODO DE DATOS (INSTANTÁNEO VS LIVE) -->
-            <div class="p-3 rounded-xl bg-[#040e1a]/70 border border-obsidian-border/60 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-amber-400 text-base">bolt</span>
-                    <div>
-                        <span class="text-xs font-mono text-white font-bold block">Origen de los Datos:</span>
-                        <span class="text-[10px] font-mono text-obsidian-muted">Instantáneo desde Telemetría en Memoria (Cero retardo, previene bloqueos pfSense)</span>
+            <!-- 5. SELECTOR DE DESTINATARIO -->
+            <div class="space-y-2">
+                <label class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">near_me</span>
+                    Destino de la Transmisión
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <!-- OPCIÓN 1: AMBOS -->
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="dispatch_destination" value="both" checked class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-md transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-cyan-400 text-base">campaign</span>
+                                    <span class="text-xs font-bold text-white font-mono uppercase">Ambos</span>
+                                </div>
+                                <span class="w-3.5 h-3.5 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 flex items-center justify-center text-[9px] text-black font-bold">✓</span>
+                            </div>
+                            <p class="text-[10px] font-mono text-obsidian-muted leading-tight">
+                                Grupo Corporativo y Administrador Privado.
+                            </p>
+                        </div>
+                    </label>
+
+                    <!-- OPCIÓN 2: GRUPO CORPORATIVO -->
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="dispatch_destination" value="group" class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-md transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-blue-400 text-base">groups</span>
+                                    <span class="text-xs font-bold text-white font-mono uppercase">Grupo Sede</span>
+                                </div>
+                                <span class="w-3.5 h-3.5 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 flex items-center justify-center text-[9px] text-black font-bold">✓</span>
+                            </div>
+                            <p class="text-[10px] font-mono text-obsidian-muted leading-tight">
+                                Canal de Sede Valle Seco (-1001383163558).
+                            </p>
+                        </div>
+                    </label>
+
+                    <!-- OPCIÓN 3: OWNER / PRIVADO -->
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="dispatch_destination" value="owner" class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-obsidian-border bg-[#040e1a] peer-checked:border-cyan-400 peer-checked:bg-cyan-950/30 peer-checked:shadow-md transition group-hover:border-cyan-500/50 h-full flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-purple-400 text-base">lock_person</span>
+                                    <span class="text-xs font-bold text-white font-mono uppercase">Solo Owner</span>
+                                </div>
+                                <span class="w-3.5 h-3.5 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 flex items-center justify-center text-[9px] text-black font-bold">✓</span>
+                            </div>
+                            <p class="text-[10px] font-mono text-obsidian-muted leading-tight">
+                                Chat privado del Administrador (38914901).
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 6. CAMPO DE OBSERVACIONES (EXCLUSIVO WEB) -->
+            <div class="p-3.5 rounded-xl bg-[#040e1a]/90 border border-obsidian-border/80 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <label for="dispatch_toggle_observations" class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="dispatch_toggle_observations" onchange="toggleObservationsInput()" class="w-4 h-4 rounded bg-[#020710] border-cyan-500/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer">
+                        <span class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-amber-400">edit_note</span>
+                            ¿Desea agregar observaciones al reporte?
+                        </span>
+                    </label>
+                    <span class="text-[10px] font-mono text-obsidian-muted uppercase tracking-wider">Opcional • Web</span>
+                </div>
+
+                <div id="dispatch_observations_container" class="hidden space-y-1.5 pt-1">
+                    <textarea id="dispatch_observations_text" maxlength="1000" rows="3" oninput="updateObservationsPreview()" placeholder="Escriba aquí cualquier novedad u observación operativa que se anexará antes de la firma institucional (ej. Mantenimiento preventivo en enlace microondas, contingencia eléctrica en subestación...)" class="w-full bg-[#020710] border border-obsidian-border rounded-xl p-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400 resize-y transition custom-scroll"></textarea>
+                    <div class="flex items-center justify-between text-[10px] font-mono text-obsidian-muted">
+                        <span>Se insertará inmediatamente antes de la firma de <strong>Personal de ATIT</strong>.</span>
+                        <span id="dispatch_obs_counter">0 / 1000</span>
                     </div>
                 </div>
-                <select id="dispatch_mode_select" class="bg-[#020710] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400">
-                    <option value="instant" selected>⚡ Instantáneo (Snapshot)</option>
-                    <option value="live">🔍 Sondeo Físico (Live)</option>
-                </select>
+            </div>
+
+            <!-- 7. CAPTURA DE PANTALLA EN HD & MODO DE DATOS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- CAPTURA HD -->
+                <div class="p-3 rounded-xl bg-[#040e1a]/70 border border-obsidian-border/60 flex items-center justify-between gap-2">
+                    <label for="dispatch_include_screenshot" class="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input type="checkbox" id="dispatch_include_screenshot" checked class="w-4 h-4 rounded bg-[#020710] border-cyan-500/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-cyan-400 text-lg">photo_camera</span>
+                            <div>
+                                <span class="text-xs font-mono text-white font-bold block">Captura Gráfica HD:</span>
+                                <span class="text-[10px] font-mono text-obsidian-muted">Adjunta imagen panorámica 2x</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- ORIGEN DE LOS DATOS -->
+                <div class="p-3 rounded-xl bg-[#040e1a]/70 border border-obsidian-border/60 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-400 text-base">bolt</span>
+                        <div>
+                            <span class="text-xs font-mono text-white font-bold block">Origen de Datos:</span>
+                            <span class="text-[10px] font-mono text-obsidian-muted">Snapshot sin retrasos</span>
+                        </div>
+                    </div>
+                    <select id="dispatch_mode_select" class="bg-[#020710] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-400">
+                        <option value="instant" selected>⚡ Snapshot</option>
+                        <option value="live">🔍 Sondeo Físico</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -236,6 +344,43 @@ N° Personal: {{ auth()->user()->personal_number }}
 
 <script>
 // --- GESTOR DE ENVÍO OFICIAL A TELEGRAM ---
+function toggleObservationsInput() {
+    const toggle = document.getElementById('dispatch_toggle_observations');
+    const container = document.getElementById('dispatch_observations_container');
+    const obsText = document.getElementById('dispatch_observations_text');
+    if (!toggle || !container) return;
+
+    if (toggle.checked) {
+        container.classList.remove('hidden');
+        if (obsText) obsText.focus();
+    } else {
+        container.classList.add('hidden');
+    }
+    updateObservationsPreview();
+}
+
+function updateObservationsPreview() {
+    const toggle = document.getElementById('dispatch_toggle_observations');
+    const obsText = document.getElementById('dispatch_observations_text');
+    const previewContainer = document.getElementById('dispatch-preview-obs-container');
+    const previewText = document.getElementById('dispatch-preview-obs-text');
+    const previewBadge = document.getElementById('dispatch-preview-obs-badge');
+    const counter = document.getElementById('dispatch_obs_counter');
+
+    const val = (obsText ? obsText.value : '').trim();
+    if (counter) counter.textContent = `${(obsText ? obsText.value : '').length} / 1000`;
+
+    if (toggle && toggle.checked && val.length > 0) {
+        if (previewContainer) previewContainer.classList.remove('hidden');
+        if (previewBadge) previewBadge.classList.remove('hidden');
+        if (previewText) previewText.textContent = val;
+    } else {
+        if (previewContainer) previewContainer.classList.add('hidden');
+        if (previewBadge) previewBadge.classList.add('hidden');
+        if (previewText) previewText.textContent = '';
+    }
+}
+
 function openTelegramDispatchModal() {
     const modal = document.getElementById('modal-telegram-dispatch');
     if (!modal) return;
@@ -249,6 +394,7 @@ function openTelegramDispatchModal() {
         feedback.innerHTML = '';
     }
 
+    updateObservationsPreview();
     fetchLatestDispatchStatus();
 }
 
@@ -320,8 +466,17 @@ function fetchLatestDispatchStatus() {
 function submitTelegramDispatch() {
     const reportTypeEl = document.querySelector('input[name="dispatch_report_type"]:checked');
     const reportType = reportTypeEl ? reportTypeEl.value : 'servicios';
+    const destEl = document.querySelector('input[name="dispatch_destination"]:checked');
+    const destination = destEl ? destEl.value : 'both';
     const modeEl = document.getElementById('dispatch_mode_select');
     const mode = modeEl ? modeEl.value : 'instant';
+
+    const obsToggle = document.getElementById('dispatch_toggle_observations');
+    const obsTextEl = document.getElementById('dispatch_observations_text');
+    const observations = (obsToggle && obsToggle.checked && obsTextEl) ? obsTextEl.value.trim() : '';
+
+    const screenshotEl = document.getElementById('dispatch_include_screenshot');
+    const includeScreenshot = screenshotEl ? screenshotEl.checked : true;
 
     const btn = document.getElementById('btn-submit-telegram-dispatch');
     const icon = document.getElementById('icon-submit-dispatch');
@@ -350,7 +505,10 @@ function submitTelegramDispatch() {
         },
         body: JSON.stringify({
             report_type: reportType,
-            mode: mode
+            mode: mode,
+            destination: destination,
+            observations: observations,
+            include_screenshot: includeScreenshot
         })
     })
     .then(r => r.json().then(data => ({ status: r.status, body: data })))
