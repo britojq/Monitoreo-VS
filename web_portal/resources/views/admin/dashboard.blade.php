@@ -134,7 +134,7 @@
                         <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
                         <div class="leading-relaxed">
                             <strong>Datos Faltantes para Firma Institucional:</strong><br>
-                            Tu cuenta aún no tiene completos los campos requeridos (C.I., N° Personal o Teléfono). Debes completarlos para autorizar el envío de reportes oficiales.
+                            Tu cuenta aún no tiene completos los campos requeridos (Nombre real, C.I., N° Personal o Teléfono). Debes completarlos en tu perfil para autorizar el envío de reportes oficiales.
                             <div class="pt-2">
                                 <a href="{{ route('admin.profile.show') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold hover:text-white transition">
                                     <span class="material-symbols-outlined text-sm">edit</span>

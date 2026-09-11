@@ -45,7 +45,7 @@ class AdminTelegramDispatchController extends Controller
             return response()->json([
                 'success' => false,
                 'incomplete_profile' => true,
-                'message' => 'Para enviar reportes oficiales debes registrar tu Cédula de Identidad, N° de Personal y Teléfono en tu perfil institucional.',
+                'message' => 'Para enviar reportes oficiales debes registrar tu Nombre real, Cédula de Identidad, N° de Personal y Teléfono en tu perfil institucional.',
                 'profile_url' => route('admin.profile.show'),
             ], 422);
         }

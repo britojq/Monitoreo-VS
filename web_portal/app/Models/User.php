@@ -82,6 +82,12 @@ class User extends Authenticatable
     {
         $title = trim($this->academic_title ?? '');
         $name = trim($this->name ?? '');
+
+        // Filtrar placeholders genéricos para que jamás se impriman en el reporte
+        if (preg_match('/^(grado\s*acad[eé]mico|t[ií]tulo(\s*acad[eé]mico)?|n\/a|none|null)$/i', $title)) {
+            $title = '';
+        }
+
         if (!empty($title) && !str_starts_with(strtolower($name), strtolower($title))) {
             return $title . ' ' . $name;
         }
@@ -104,10 +110,21 @@ class User extends Authenticatable
 
     public function hasCompleteAtitProfile(): bool
     {
-        return !empty($this->name) &&
-               !empty($this->cedula) &&
-               !empty($this->personal_number) &&
-               !empty($this->phone);
+        $name = trim($this->name ?? '');
+        $ci = trim($this->cedula ?? '');
+        $personal = trim($this->personal_number ?? '');
+        $phone = trim($this->phone ?? '');
+
+        // No permitir nombres genéricos de rol ni datos ficticios de prueba
+        $isGenericName = in_array(strtolower($name), ['operador', 'operator', 'admin', 'administrador', 'usuario', 'user']);
+        $isDummyCi = in_array($ci, ['1234567890', '12345678', '0']);
+
+        return !empty($name) &&
+               !$isGenericName &&
+               !empty($ci) &&
+               !$isDummyCi &&
+               !empty($personal) &&
+               !empty($phone);
     }
 
     public function bannedIps()
