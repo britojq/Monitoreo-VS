@@ -196,6 +196,247 @@ class ProxyConfig:
     url: str
 
 
+def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Carga variables de configuración de servicios, sedes y proxies directamente desde MariaDB (SSOT)."""
+    raw_monitoreo: Dict[str, str] = {}
+    raw_bot: Dict[str, str] = {}
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 1. Servicios
+                cur.execute("SELECT * FROM monitored_services")
+                for r in cur.fetchall():
+                    L = r["letter"].upper()
+                    raw_monitoreo[f"NAMESERVICE{L}"] = r["name"] or ""
+                    raw_monitoreo[f"TYPESERVICE{L}"] = (r["type"] or "WEB").upper() if r.get("is_active") else "DESACTIVADO"
+                    raw_monitoreo[f"WEBSERVICE{L}"] = r["web_url"] or ""
+                    raw_ip = (r["host_ip"] or "").strip()
+                    clean_ip = raw_ip.split(":")[0] if raw_ip else ""
+                    port = r.get("port")
+                    raw_monitoreo[f"IPSERVICE{L}"] = clean_ip
+                    raw_monitoreo[f"CUPSPORTIP{L}"] = f"{clean_ip}:{port or 631}"
+                    raw_monitoreo[f"LDAPPORTIP{L}"] = str(port or 389)
+                    raw_monitoreo[f"SMTPPORT{L}"] = str(port or 25)
+                    raw_monitoreo[f"NETINTERFACE{L}"] = r.get("check_interface") or "eno1"
+                    raw_monitoreo[f"TESTHOSTDNS{L}"] = r.get("dns_test_domain") or ""
+                    raw_monitoreo[f"PROXYUSERPASSW{L}"] = r.get("credentials") or "USUARIO:CLAVE"
+                    raw_monitoreo[f"PROXYIPPORT{L}"] = f"{clean_ip}:{port or 8080}"
+                    raw_monitoreo[f"URLTESTSITE{L}"] = r.get("web_url") or ""
+                    raw_monitoreo[f"NORMALESTATEMSG{L}"] = r.get("normal_state_msg") or f"✅ - $NAMESERVICE{L}"
+                    raw_monitoreo[f"ERRORESTATEMSG{L}"] = r.get("error_state_msg") or f"❌ - $NAMESERVICE{L}"
+
+                # 2. Sedes y Equipos
+                cur.execute("SELECT * FROM monitored_sites")
+                for s in cur.fetchall():
+                    L = s["letter"].upper()
+                    raw_monitoreo[f"NAMESITE{L}"] = s["name"] or ""
+                    raw_monitoreo[f"IPSITE{L}"] = s["ip"] or "0.0.0.0"
+                    raw_monitoreo[f"NORMALSITE{L}"] = s.get("normal_state_msg") or f"✅ - $NAMESITE{L}"
+                    raw_monitoreo[f"ERRORSITE{L}"] = s.get("error_state_msg") or f"❌ - $NAMESITE{L}"
+                    raw_monitoreo[f"SITE{L}DIRECCION"] = s.get("address") or ""
+                    for n in range(1, 9):
+                        raw_monitoreo[f"SITE{L}TELEFONO{n}"] = s.get(f"phone_{n}") or ""
+
+                cur.execute(
+                    "SELECT d.*, s.letter as site_letter FROM monitored_site_devices d "
+                    "JOIN monitored_sites s ON d.monitored_site_id = s.id"
+                )
+                for d in cur.fetchall():
+                    L = d["site_letter"].upper()
+                    N = d["device_number"]
+                    raw_monitoreo[f"NAMESITE{L}EQUIPO{N}"] = d["name"] or ""
+                    raw_monitoreo[f"IPSITE{L}EQUIPO{N}"] = d["ip"] if d.get("is_active") else "0.0.0.0"
+                    raw_monitoreo[f"NORMALSITE{L}EQUIPO{N}"] = d.get("normal_state_msg") or f"✅ - $NAMESITE{L}EQUIPO{N}"
+                    raw_monitoreo[f"ERRORSITE{L}EQUIPO{N}"] = d.get("error_state_msg") or f"❌ - $NAMESITE{L}EQUIPO{N}"
+
+                # 3. Proxies
+                cur.execute("SELECT * FROM monitored_proxies")
+                for p in cur.fetchall():
+                    L = p["letter"].upper()
+                    raw_bot[f"NAMEPROXY{L}"] = p["name"] or f"Proxy {L}"
+                    raw_bot[f"IPADDRPORTPROXY{L}"] = p["ip_port"] or ""
+                    raw_bot[f"USERPASSWDPROXY{L}"] = p.get("auth_userpass") or ""
+                    raw_monitoreo[f"DEFAULTPROXY{L}"] = p["ip_port"] or ""
+                    raw_monitoreo[f"USUARIOCLAVEDEFAULT{L}"] = p.get("auth_userpass") or ""
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return raw_monitoreo, raw_bot
+
+
+def load_services_from_mariadb() -> List[ServiceConfig]:
+    """Extrae la lista de servicios activos directamente desde MariaDB (SSOT)."""
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM monitored_services WHERE is_active = 1 "
+                    "AND name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
+                    "ORDER BY sort_order, letter"
+                )
+                rows = cur.fetchall()
+                if not rows:
+                    return []
+
+                services: List[ServiceConfig] = []
+                for r in rows:
+                    letter = r["letter"].upper()
+                    name = (r["name"] or "").strip()
+                    stype = (r["type"] or "WEB").strip().upper()
+                    raw_ip = (r["host_ip"] or "").strip()
+                    clean_ip = raw_ip.split(":")[0] if raw_ip else ""
+                    port = r.get("port")
+                    web_url = (r["web_url"] or "").strip()
+                    credentials = (r.get("credentials") or "").strip()
+                    check_iface = (r.get("check_interface") or "eno1").strip()
+                    dns_domain = (r.get("dns_test_domain") or "intranet.corpoelec.com.ve").strip()
+                    normal_msg = (r.get("normal_state_msg") or f"✅ - {name}").strip()
+                    error_msg = (r.get("error_state_msg") or f"❌ - {name}").strip()
+
+                    cups_port = f"{clean_ip}:{port or 631}"
+                    ldap_port = str(port or 389)
+                    smtp_port = str(port or 25)
+                    proxy_ip_port = f"{clean_ip}:{port or 8080}"
+                    url_test = web_url or (f"http://{clean_ip}" if clean_ip else "")
+
+                    svc = ServiceConfig(
+                        letter=letter,
+                        service_type=stype,
+                        name=name,
+                        web_url=web_url,
+                        ip_host=clean_ip,
+                        cups_port_ip=cups_port,
+                        ldap_port_ip=ldap_port,
+                        smtp_port=smtp_port,
+                        net_interface=check_iface,
+                        dns_test_host=dns_domain,
+                        proxy_user_pass=credentials,
+                        proxy_ip_port=proxy_ip_port,
+                        url_test_site=url_test,
+                        msg_normal=normal_msg,
+                        msg_error=error_msg
+                    )
+                    services.append(svc)
+                return services
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def load_sites_from_mariadb() -> List[SiteConfig]:
+    """Extrae la lista de sedes y sus equipos de comunicación activos desde MariaDB (SSOT)."""
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM monitored_sites WHERE is_active = 1 "
+                    "AND name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
+                    "ORDER BY sort_order, letter"
+                )
+                site_rows = cur.fetchall()
+                if not site_rows:
+                    return []
+
+                cur.execute(
+                    "SELECT d.*, s.letter as site_letter FROM monitored_site_devices d "
+                    "JOIN monitored_sites s ON d.monitored_site_id = s.id "
+                    "WHERE d.is_active = 1 AND d.name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
+                    "ORDER BY s.letter, d.device_number"
+                )
+                dev_rows = cur.fetchall()
+
+                dev_by_site: Dict[str, List[Dict]] = {}
+                for d in dev_rows:
+                    dev_by_site.setdefault(d["site_letter"].upper(), []).append(d)
+
+                sites: List[SiteConfig] = []
+                for s in site_rows:
+                    letter = s["letter"].upper()
+                    name = (s["name"] or "").strip()
+                    ip = (s["ip"] or "").strip()
+                    normal_msg = (s.get("normal_state_msg") or f"✅ - {name}").strip()
+                    error_msg = (s.get("error_state_msg") or f"❌ - {name}").strip()
+
+                    equipment: List[EquipmentConfig] = []
+                    for d in dev_by_site.get(letter, []):
+                        dnum = int(d["device_number"])
+                        dname = (d["name"] or "").strip()
+                        dip = (d["ip"] or "").strip()
+                        dnorm = (d.get("normal_state_msg") or f"✅ - {dname}").strip()
+                        derr = (d.get("error_state_msg") or f"❌ - {dname}").strip()
+                        eq = EquipmentConfig(
+                            site_letter=letter,
+                            num=dnum,
+                            name=dname,
+                            ip_host=dip,
+                            msg_normal=dnorm,
+                            msg_error=derr
+                        )
+                        equipment.append(eq)
+
+                    st = SiteConfig(
+                        letter=letter,
+                        name=name,
+                        ip_host=ip,
+                        msg_normal=normal_msg,
+                        msg_error=error_msg,
+                        equipment=equipment
+                    )
+                    sites.append(st)
+                return sites
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def load_proxies_from_mariadb() -> List[ProxyConfig]:
+    """Extrae la lista de proxies configurados directamente desde MariaDB (SSOT)."""
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM monitored_proxies WHERE is_active = 1 "
+                    "AND name NOT IN ('NO CONFIGURADO', 'SIN CONFIGURAR') "
+                    "ORDER BY letter"
+                )
+                rows = cur.fetchall()
+                if not rows:
+                    return []
+
+                proxies: List[ProxyConfig] = []
+                for r in rows:
+                    letter = r["letter"].upper()
+                    name = (r["name"] or f"Proxy {letter}").strip()
+                    ip_port = (r["ip_port"] or "").strip()
+                    auth = (r.get("auth_userpass") or "").strip()
+                    if not ip_port:
+                        continue
+                    if auth and ":" in auth:
+                        u, p = auth.split(":", 1)
+                        u_enc = urllib.parse.quote(u)
+                        p_enc = urllib.parse.quote(p)
+                        url = f"http://{u_enc}:{p_enc}@{ip_port}"
+                    else:
+                        url = f"http://{ip_port}"
+                    proxies.append(ProxyConfig(letter=letter, name=name, ip_port=ip_port, user_pass=auth, url=url))
+                return proxies
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
 def get_formatted_datetime() -> Tuple[str, str]:
     """Retorna fecha en formato formal en español y hora HH:MM:SS."""
     now = datetime.now()
@@ -230,7 +471,7 @@ def render_template(template_str: str, variables: Dict[str, str]) -> str:
 
 
 class MonitorConfigLoader:
-    """Cargador estructurado de configuraciones de monitoreo."""
+    """Cargador estructurado de configuraciones de monitoreo con MariaDB como SSOT."""
 
     def __init__(self):
         self.monitoreo_path = get_config_path("monitoreo.conf")
@@ -240,18 +481,32 @@ class MonitorConfigLoader:
         self.raw_monitoreo = parse_bash_config(self.monitoreo_path)
         self.raw_bot = parse_bash_config(self.bot_path)
         self.templates = parse_bash_templates(self.mensajes_path)
+
+        # 1. Overlay dinámico de MariaDB para variables bash
+        db_raw_monitoreo, db_raw_bot = load_raw_configs_from_mariadb()
+        if db_raw_monitoreo:
+            self.raw_monitoreo.update(db_raw_monitoreo)
+        if db_raw_bot:
+            self.raw_bot.update(db_raw_bot)
+
+        # 2. Overlay dinámico de MariaDB para plantillas de mensajes
         db_templates = load_templates_from_mariadb()
         if db_templates:
             self.templates.update(db_templates)
 
     def get_services(self) -> List[ServiceConfig]:
-        """Extrae la lista de servicios configurados (letras A a Z)."""
+        """Extrae la lista de servicios configurados (primero MariaDB, fallback monitoreo.conf)."""
+        db_services = load_services_from_mariadb()
+        if db_services:
+            return db_services
+
+        # Fallback histórico a monitoreo.conf
         services: List[ServiceConfig] = []
         for code in range(ord('A'), ord('Z') + 1):
             letter = chr(code)
             stype = self.raw_monitoreo.get(f"TYPESERVICE{letter}")
             name = self.raw_monitoreo.get(f"NAMESERVICE{letter}")
-            if not stype or not name or name.strip().upper() in ("NO CONFIGURADO", "SIN CONFIGURAR", ""):
+            if not stype or not name or name.strip().upper() in ("NO CONFIGURADO", "SIN CONFIGURAR", "") or stype.strip().upper() in ("DESACTIVADO", "INACTIVO"):
                 continue
 
             svc = ServiceConfig(
@@ -275,7 +530,12 @@ class MonitorConfigLoader:
         return services
 
     def get_sites(self) -> List[SiteConfig]:
-        """Extrae la lista de sedes (A a H) y sus equipos de comunicación (1 a 8)."""
+        """Extrae la lista de sedes y equipos de comunicación (primero MariaDB, fallback monitoreo.conf)."""
+        db_sites = load_sites_from_mariadb()
+        if db_sites:
+            return db_sites
+
+        # Fallback histórico a monitoreo.conf
         sites: List[SiteConfig] = []
         for code in range(ord('A'), ord('H') + 1):
             letter = chr(code)
@@ -313,7 +573,12 @@ class MonitorConfigLoader:
         return sites
 
     def get_proxies(self) -> List[ProxyConfig]:
-        """Extrae la lista de proxies configurados en bot.conf o monitoreo.conf."""
+        """Extrae la lista de proxies (primero MariaDB, fallback bot.conf / monitoreo.conf)."""
+        db_proxies = load_proxies_from_mariadb()
+        if db_proxies:
+            return db_proxies
+
+        # Fallback histórico
         proxies: List[ProxyConfig] = []
         for letter in ("A", "B", "C", "D"):
             ip = self.raw_bot.get(f"IPADDRPORTPROXY{letter}") or self.raw_monitoreo.get(f"DEFAULTPROXY{letter}")

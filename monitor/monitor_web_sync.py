@@ -375,6 +375,13 @@ def sync_conf_to_db():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # Si MariaDB ya contiene registros, actúa como Fuente Única de Verdad (SSOT)
+            # y no debe ser sobreescrita por monitoreo.conf
+            cursor.execute("SELECT COUNT(*) as cnt FROM monitored_services")
+            row = cursor.fetchone()
+            if row and row.get("cnt", 0) > 0:
+                return
+
             # 1. SERVICIOS (A..Z)
             for i, letter in enumerate([chr(c) for c in range(ord("A"), ord("Z") + 1)]):
                 name = data.get(f"NAMESERVICE{letter}")
