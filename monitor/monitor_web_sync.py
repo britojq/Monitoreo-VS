@@ -828,7 +828,95 @@ async def sync_from_master() -> bool:
                         sumry.get("proxies_total", 0),
                         json.dumps(snapshot_payload, ensure_ascii=False)
                     ))
-                    cursor.execute("DELETE FROM monitoring_snapshots WHERE created_at < NOW() - INTERVAL 30 DAY")
+                    # 2.1 Histórico de servicios
+                    all_services = snapshot_payload.get("services", [])
+                    hist_sql = """
+                        INSERT INTO service_check_histories 
+                        (monitored_service_id, is_up, latency_ms, http_code, status_message, checked_at, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                    """
+                    hist_records = []
+                    for s in all_services:
+                        if "id" in s and s["id"]:
+                            hist_records.append((
+                                s["id"],
+                                1 if s.get("is_up") else 0,
+                                float(s.get("latency_ms", 0.0) or 0.0),
+                                str(s.get("http_code") or "")[:10],
+                                str(s.get("status") or "")[:255]
+                            ))
+                    if hist_records:
+                        cursor.executemany(hist_sql, hist_records)
+                    cursor.execute("DELETE FROM service_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+                    # 2.2 Histórico de sedes
+                    all_sites = snapshot_payload.get("sites", [])
+                    site_hist_sql = """
+                        INSERT INTO site_check_histories 
+                        (monitored_site_id, is_up, latency_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                    """
+                    site_hist_records = []
+                    for st in all_sites:
+                        if "id" in st and st["id"]:
+                            devs = st.get("devices", [])
+                            devs_online = sum(1 for d in devs if d.get("is_up"))
+                            devs_total = len(devs)
+                            status_msg = "Enlace Operativo" if st.get("is_up") else "Enlace Caído / Timeout"
+                            site_hist_records.append((
+                                st["id"],
+                                1 if st.get("is_up") else 0,
+                                float(st.get("latency_ms", 0.0) or 0.0),
+                                devs_online,
+                                devs_total,
+                                status_msg
+                            ))
+                    if site_hist_records:
+                        cursor.executemany(site_hist_sql, site_hist_records)
+                    cursor.execute("DELETE FROM site_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+                    # 2.3 Histórico de proxies
+                    all_proxies = snapshot_payload.get("proxies", [])
+                    proxy_hist_sql = """
+                        INSERT INTO proxy_check_histories 
+                        (monitored_proxy_id, is_up, latency_ms, http_code, status_message, checked_at, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                    """
+                    proxy_hist_records = []
+                    for p in all_proxies:
+                        if "id" in p and p["id"]:
+                            status_msg = "Proxy Operativo / Respondiendo" if p.get("is_up") else "Proxy Inaccesible / Falló Túnel"
+                            proxy_hist_records.append((
+                                p["id"],
+                                1 if p.get("is_up") else 0,
+                                float(p.get("latency_ms", 0.0) or 0.0),
+                                "200" if p.get("is_up") else None,
+                                status_msg
+                            ))
+                    if proxy_hist_records:
+                        cursor.executemany(proxy_hist_sql, proxy_hist_records)
+                    cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+                    # 2.4 Histórico de dispositivos de red Valle Seco
+                    all_net_devices = snapshot_payload.get("network_devices", [])
+                    net_hist_sql = """
+                        INSERT INTO network_device_check_histories 
+                        (monitored_network_device_id, is_up, latency_ms, status_message, checked_at, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, NOW(), NOW(), NOW())
+                    """
+                    net_hist_records = []
+                    for nd in all_net_devices:
+                        if "id" in nd and nd["id"]:
+                            status_msg = "Dispositivo Operativo / Enlace Activo" if nd.get("is_up") else "Dispositivo Caído / Inalcanzable"
+                            net_hist_records.append((
+                                nd["id"],
+                                1 if nd.get("is_up") else 0,
+                                float(nd.get("latency_ms", 0.0) or 0.0),
+                                status_msg
+                            ))
+                    if net_hist_records:
+                        cursor.executemany(net_hist_sql, net_hist_records)
+                    cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
                 conn.close()
             except Exception as e_db:
                 print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")
