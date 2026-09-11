@@ -30,3 +30,19 @@
 3. **FILTRO PERMANENTE EN MENSAJES Y CÓDIGO:**
    - En controladores (`AiChatController.php`), vistas (`blade.php`), bot de Telegram (`bot.py`) y cualquier otro módulo de cara al usuario, los textos de error deben mantenerse estrictamente neutrales y sin tecnicismos que expongan las herramientas internas del backend.
 
+## 🚨 REGLA DE ORO #3: INTEGRIDAD DE TELEMETRÍA, HISTÓRICOS Y REPLICACIÓN EN CLUSTER (MODO ESCLAVO Y MASTER)
+
+1. **REPLICACIÓN COMPLETA DE TELEMETRÍA EN NODOS ESCLAVO:**
+   - Todo nodo en modo esclavo (`SLAVE`) en el cluster no debe limitarse a recibir el snapshot global en `monitoring_snapshots`. Debe obligatoriamente sincronizar y poblar en tiempo real las 4 tablas de telemetría e histórico en MariaDB:
+     - `service_check_histories`
+     - `site_check_histories`
+     - `proxy_check_histories`
+     - `network_device_check_histories`
+   - Cualquier nueva métrica, entidad de red o tabla de auditoría/historial que se agregue al ecosistema debe incluirse inmediatamente en la función `sync_from_master()` de `monitor/monitor_web_sync.py` para garantizar paridad absoluta de datos entre Master y Esclavo.
+
+2. **REGLA DE VISIBILIDAD DE GRÁFICOS (BACKEND Y FRONTEND):**
+   - La bandera `has_data` jamás debe supeditarse a que el estado sea activo/UP (`$upChecks > 0`). Los eventos de caída (DOWN) o degradación forman parte fundamental del histórico y deben graficarse como líneas/curvas de indisponibilidad (en color rojo `#ef4444`). Ocultar el lienzo por estar caído es un error crítico de monitoreo.
+   - En cualquier consulta de histórico (`MonitoringDataService.php`, APIs o vistas), si la ventana de tiempo (ej. 24h) cuenta con menos de 2 puntos por pausas de servicios o mantenimientos, debe implementarse un mecanismo de *fallback* automático que recupere los últimos N registros existentes para evitar canvas vacíos.
+
+3. **VERIFICACIÓN MULTI-NODO ANTES DE CONFIRMAR CAMBIOS:**
+   - Todo cambio en el esquema de base de datos, migraciones o lógica de recolección de métricas debe verificarse y contrastarse tanto en el entorno de Desarrollo/Esclavo (`10.20.23.221`) como en el servidor Master/Producción (`10.20.23.252`).
