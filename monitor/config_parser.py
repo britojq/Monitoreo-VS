@@ -294,7 +294,7 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
                     web_url = (r["web_url"] or "").strip()
                     credentials = (r.get("credentials") or "").strip()
                     check_iface = (r.get("check_interface") or "eno1").strip()
-                    dns_domain = (r.get("dns_test_domain") or "intranet.corpoelec.com.ve").strip()
+                    dns_domain = (r.get("dns_test_domain") or "").strip()
                     normal_msg = (r.get("normal_state_msg") or f"✅ - {name}").strip()
                     error_msg = (r.get("error_state_msg") or f"❌ - {name}").strip()
 
