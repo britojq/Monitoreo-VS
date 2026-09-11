@@ -17,9 +17,15 @@ import logging
 from pathlib import Path
 import re
 import socket
+import time
 from typing import Tuple
 
 import httpx
+from monitor.proxy_cache import (
+    get_cached_proxy_result,
+    save_cached_proxy_result,
+    ProxyInflightGuard
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,11 +138,25 @@ async def check_dns(dns_server: str, test_host: str, timeout: float = 3.5) -> Tu
 
 
 async def check_proxy(proxy_url: str, test_url: str = "https://core.telegram.org/bots", timeout: float = 4.5) -> Tuple[bool, str, str]:
-    """Verifica navegación a través de un proxy corporativo (Squid/pfSense) usando curl con SECLEVEL=0."""
+    """Verifica navegación a través de un proxy corporativo (Squid/pfSense) usando curl con SECLEVEL=0 y caché anti-colisión."""
     if not proxy_url:
         return False, "0", "Proxy no configurado"
 
     target = test_url if test_url else "https://core.telegram.org/bots"
+
+    # 1. Comprobar caché de corto plazo (60s) en memoria RAM compartida (/dev/shm)
+    cached = get_cached_proxy_result(proxy_url, target, max_age_seconds=60.0)
+    if cached:
+        return cached["is_ok"], cached["code_str"], cached["detail"]
+
+    # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar su resultado
+    guard = ProxyInflightGuard(proxy_url, target)
+    waited_cached = await guard.acquire_or_wait(timeout=timeout)
+    if waited_cached:
+        return waited_cached["is_ok"], waited_cached["code_str"], waited_cached["detail"]
+
+    # 3. Realizar chequeo físico con curl
+    t0 = time.perf_counter()
     try:
         proc = await asyncio.create_subprocess_exec(
             "curl",
@@ -153,18 +173,30 @@ async def check_proxy(proxy_url: str, test_url: str = "https://core.telegram.org
             stderr=asyncio.subprocess.PIPE
         )
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 1.0)
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
         code_str = stdout.decode("utf-8", errors="ignore").strip()
+        is_ok = False
+        detail = "Proxy no responde (Timeout / Caído)"
         if code_str.isdigit():
             code = int(code_str)
             if code in (200, 301, 302):
-                return True, code_str, f"Proxy operativo (HTTP {code_str})"
+                is_ok = True
+                detail = f"Proxy operativo (HTTP {code_str})"
             elif code > 0:
-                return False, code_str, f"Proxy respondió HTTP {code_str}"
-        return False, code_str or "0", "Proxy no responde (Timeout / Caído)"
+                detail = f"Proxy respondió HTTP {code_str}"
+
+        # Guardar en memoria compartida para reutilización inmediata por otros procesos
+        save_cached_proxy_result(proxy_url, target, is_ok, code_str, detail, elapsed_ms, source="curl")
+        return is_ok, code_str, detail
     except asyncio.TimeoutError:
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        save_cached_proxy_result(proxy_url, target, False, "0", "Timeout al probar proxy", elapsed_ms, source="curl")
         return False, "0", "Timeout al probar proxy"
     except Exception as e:
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
         return False, "0", f"Fallo al probar proxy: {e}"
+    finally:
+        guard.release()
 
 
 async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[bool, str, str]:

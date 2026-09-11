@@ -168,6 +168,11 @@ from monitor.core_shield import (
     activate_hardware_first_boot,
     migrate_core_token
 )
+from monitor.proxy_cache import (
+    get_cached_proxy_result,
+    save_cached_proxy_result,
+    ProxyInflightGuard
+)
 
 
 # --- LOGGING ---
@@ -1987,30 +1992,73 @@ def get_denied_users_summary() -> list[dict]:
 
 
 async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None = None, timeout: float = 3.5) -> dict:
-    """Verifica la conectividad y latencia hacia Telegram (directa o vía proxy)."""
+    """Verifica la conectividad y latencia hacia Telegram (directa o vía proxy) con protección de caché."""
+    guard = None
+    if proxy_url:
+        # 1. Comprobar si existe resultado reciente en memoria compartida (/dev/shm)
+        cached = get_cached_proxy_result(proxy_url, tg_url, max_age_seconds=60.0)
+        if cached:
+            elapsed_ms = int(cached.get("latency_ms", 0))
+            is_ok = bool(cached.get("is_ok"))
+            code = int(cached.get("code_str", 200 if is_ok else 0) or 0)
+            return {
+                "name": name,
+                "ok": is_ok,
+                "status_code": code,
+                "elapsed_ms": elapsed_ms,
+                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)" if is_ok else f"Inaccesible ({elapsed_ms} ms)"
+            }
+
+        # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar resultado
+        guard = ProxyInflightGuard(proxy_url, tg_url)
+        waited_cached = await guard.acquire_or_wait(timeout=timeout)
+        if waited_cached:
+            elapsed_ms = int(waited_cached.get("latency_ms", 0))
+            is_ok = bool(waited_cached.get("is_ok"))
+            code = int(waited_cached.get("code_str", 200 if is_ok else 0) or 0)
+            return {
+                "name": name,
+                "ok": is_ok,
+                "status_code": code,
+                "elapsed_ms": elapsed_ms,
+                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)" if is_ok else f"Inaccesible ({elapsed_ms} ms)"
+            }
+
     t0 = time.perf_counter()
     try:
         async with httpx.AsyncClient(proxy=proxy_url, timeout=timeout) as client:
             r = await client.get(tg_url)
             elapsed_ms = int((time.perf_counter() - t0) * 1000)
-            if r.status_code == 200 and r.json().get("ok"):
+            is_ok = (r.status_code == 200 and r.json().get("ok"))
+            detail_str = f"Operativo (HTTP {r.status_code}, {elapsed_ms} ms)" if is_ok else f"HTTP {r.status_code} ({elapsed_ms} ms)"
+            if proxy_url:
+                save_cached_proxy_result(
+                    proxy_url, tg_url, is_ok, str(r.status_code),
+                    detail_str, elapsed_ms, source="bot_endpoint"
+                )
+            if is_ok:
                 return {
                     "name": name,
                     "ok": True,
                     "status_code": r.status_code,
                     "elapsed_ms": elapsed_ms,
-                    "detail": f"Operativo (HTTP 200, {elapsed_ms} ms)"
+                    "detail": detail_str
                 }
             return {
                 "name": name,
                 "ok": False,
                 "status_code": r.status_code,
                 "elapsed_ms": elapsed_ms,
-                "detail": f"HTTP {r.status_code} ({elapsed_ms} ms)"
+                "detail": detail_str
             }
     except Exception as e:
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
         err_str = "Timeout" if "timed out" in str(e).lower() else "Inaccesible"
+        if proxy_url:
+            save_cached_proxy_result(
+                proxy_url, tg_url, False, "0",
+                f"{err_str} ({elapsed_ms} ms)", elapsed_ms, source="bot_endpoint"
+            )
         return {
             "name": name,
             "ok": False,
@@ -2018,6 +2066,9 @@ async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None =
             "elapsed_ms": elapsed_ms,
             "detail": f"{err_str} ({elapsed_ms} ms)"
         }
+    finally:
+        if guard:
+            guard.release()
 
 
 async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

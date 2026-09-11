@@ -25,6 +25,15 @@ import pymysql
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 BASE_DIR = Path("/scripts/telegram-admin-bot")
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from monitor.proxy_cache import (
+    get_cached_proxy_result,
+    save_cached_proxy_result,
+    ProxyInflightGuard
+)
+
 APP_DIR = Path("/var/www/monitoreo") if Path("/var/www/monitoreo").exists() else Path("/var/www/testapp")
 SNAPSHOT_FILE = APP_DIR / "storage" / "app" / "public" / "monitoring_snapshot.json"
 LAST_SCAN_TIMESTAMP_FILE = Path("/tmp/last_web_sync_timestamp.txt")
@@ -196,10 +205,23 @@ async def check_web_service(url: str, timeout: float = 4.0) -> tuple[bool, int, 
         return False, 0, 0.0
 
 async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_url: str = "https://core.telegram.org/bots", timeout: float = 3.5) -> tuple[bool, float]:
-    """Comprueba la operatividad de un proxy corporativo."""
+    """Comprueba la operatividad de un proxy corporativo con caché en memoria compartida y protección anti-colisión."""
     if not proxy_str:
         return False, 0.0
-    
+
+    target = test_url if test_url else "https://core.telegram.org/bots"
+
+    # 1. Comprobar caché de corto plazo (60s) en memoria RAM compartida (/dev/shm)
+    cached = get_cached_proxy_result(proxy_str, target, max_age_seconds=60.0)
+    if cached:
+        return cached["is_ok"], float(cached.get("latency_ms", 0.0))
+
+    # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar su resultado
+    guard = ProxyInflightGuard(proxy_str, target)
+    waited_cached = await guard.acquire_or_wait(timeout=timeout)
+    if waited_cached:
+        return waited_cached["is_ok"], float(waited_cached.get("latency_ms", 0.0))
+
     proxy_url = f"http://{proxy_str}"
     if auth_userpass and ":" in auth_userpass:
         proxy_url = f"http://{auth_userpass}@{proxy_str}"
@@ -207,11 +229,18 @@ async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_ur
     start = time.perf_counter()
     try:
         async with httpx.AsyncClient(proxy=proxy_url, verify=SSL_PERMISSIVE_CTX, timeout=timeout) as client:
-            r = await client.get(test_url)
+            r = await client.get(target)
             elapsed = (time.perf_counter() - start) * 1000.0
-            return (r.status_code == 200), round(elapsed, 1)
+            is_ok = (r.status_code == 200)
+            detail = f"Proxy operativo (HTTP {r.status_code})" if is_ok else f"HTTP {r.status_code}"
+            save_cached_proxy_result(proxy_str, target, is_ok, str(r.status_code), detail, elapsed, source="web_sync")
+            return is_ok, round(elapsed, 1)
     except Exception:
+        elapsed = (time.perf_counter() - start) * 1000.0
+        save_cached_proxy_result(proxy_str, target, False, "0", "Fallo de conexión", elapsed, source="web_sync")
         return False, 0.0
+    finally:
+        guard.release()
 
 # --- PROCESAMIENTO GENERAL ---
 
