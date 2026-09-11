@@ -286,7 +286,7 @@
                         <span class="material-symbols-outlined text-2xl text-obsidian-cyan">assignment_ind</span>
                         <div>
                             <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha Institucional ATIT / CORPOELEC</h3>
-                            <p class="text-[11px] font-mono text-obsidian-muted">Firma oficial adjuntada a reportes de Telegram despachados desde la Web</p>
+                            <p class="text-[11px] font-mono text-obsidian-muted">Firma oficial adjuntada a reportes de Telegram enviados desde la Web</p>
                         </div>
                     </div>
                     <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ $user->hasCompleteAtitProfile() ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">

@@ -120,7 +120,7 @@
                             <span class="text-obsidian-muted text-[11px] uppercase">Dispersión de Notificación:</span>
                             <span class="text-emerald-400 flex items-center gap-1 font-semibold text-[11px]">
                                 <span class="material-symbols-outlined text-xs">send</span>
-                                Despachado en vivo a Telegram SecOps
+                                Enviado en vivo a Telegram SecOps
                             </span>
                         </div>
                     </div>

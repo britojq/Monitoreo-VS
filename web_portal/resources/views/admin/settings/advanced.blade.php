@@ -224,7 +224,7 @@
                         @endif
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
-                        Control del despacho desatendido de reportes de infraestructura a los canales oficiales y grupos autorizados.
+                        Control del envío desatendido de reportes de infraestructura a los canales oficiales y grupos autorizados.
                     </p>
                 </div>
             </div>
@@ -253,7 +253,7 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm text-obsidian-cyan">alarm</span>
-                        Horarios Diarios de Despacho (24 horas)
+                        Horarios Diarios de Envío (24 horas)
                     </span>
                     @if(!empty($cronConfig['next_schedule']) && ($cronConfig['enabled'] ?? true))
                         <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/50 px-2.5 py-0.5 rounded-md border border-cyan-500/30">

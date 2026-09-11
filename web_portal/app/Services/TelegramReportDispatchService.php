@@ -33,7 +33,7 @@ class TelegramReportDispatchService
         if (!$user->hasCompleteAtitProfile()) {
             return [
                 'success' => false,
-                'message' => 'Ficha incompleta. Debe registrar su Cédula, N° de Personal y Teléfono en su perfil antes de despachar reportes oficiales.',
+                'message' => 'Ficha incompleta. Debe registrar su Cédula, N° de Personal y Teléfono en su perfil antes de enviar reportes oficiales.',
                 'dispatch' => null,
             ];
         }
@@ -64,10 +64,10 @@ class TelegramReportDispatchService
 
             if ($isLoopback) {
                 $sent = true;
-                $responseMsg = 'Reporte auditado en entorno de desarrollo/local (127.0.0.1). Despacho externo a Telegram bloqueado por seguridad.';
+                $responseMsg = 'Reporte auditado en entorno de desarrollo/local (127.0.0.1). Envío externo a Telegram bloqueado por seguridad.';
             } else {
                 $sent = $this->telegramService->sendMessage($reportText, 'HTML');
-                $responseMsg = $sent ? 'Despachado exitosamente a Telegram.' : 'Error al despachar mensaje a través del API de Telegram.';
+                $responseMsg = $sent ? 'Enviado exitosamente a Telegram.' : 'Error al enviar mensaje a través del API de Telegram.';
             }
 
             // 4. Registrar en la tabla de auditoría
@@ -86,21 +86,21 @@ class TelegramReportDispatchService
             if (!$sent) {
                 return [
                     'success' => false,
-                    'message' => 'No se pudo despachar el mensaje por Telegram. Verifique la conectividad y tokens del bot.',
+                    'message' => 'No se pudo enviar el mensaje por Telegram. Verifique la conectividad y tokens del bot.',
                     'dispatch' => $dispatch,
                 ];
             }
 
             return [
                 'success' => true,
-                'message' => 'Reporte oficial despachado exitosamente a Telegram.',
+                'message' => 'Reporte oficial enviado exitosamente a Telegram.',
                 'dispatch' => $dispatch,
             ];
         } catch (\Throwable $e) {
             Log::error("Error en TelegramReportDispatchService: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return [
                 'success' => false,
-                'message' => 'Excepción durante el despacho: ' . $e->getMessage(),
+                'message' => 'Excepción durante el envío: ' . $e->getMessage(),
                 'dispatch' => null,
             ];
         }

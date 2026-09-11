@@ -32,7 +32,7 @@ class AdminTelegramDispatchController extends Controller
             'report_type' => ['required', 'string', 'in:servicios,sedes,completo'],
             'mode' => ['nullable', 'string', 'in:instant,live'],
         ], [
-            'report_type.required' => 'Debe seleccionar el tipo de reporte a despachar.',
+            'report_type.required' => 'Debe seleccionar el tipo de reporte a enviar.',
             'report_type.in' => 'El tipo de reporte seleccionado no es válido.',
         ]);
 
@@ -41,7 +41,7 @@ class AdminTelegramDispatchController extends Controller
             return response()->json([
                 'success' => false,
                 'incomplete_profile' => true,
-                'message' => 'Para despachar reportes oficiales debes registrar tu Cédula de Identidad, N° de Personal y Teléfono en tu perfil institucional.',
+                'message' => 'Para enviar reportes oficiales debes registrar tu Cédula de Identidad, N° de Personal y Teléfono en tu perfil institucional.',
                 'profile_url' => route('admin.profile.show'),
             ], 422);
         }

@@ -38,7 +38,7 @@
             <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-top"
                 class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-cyan-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-400/50 text-cyan-200 font-bold text-xs font-mono tracking-wide shadow-md shadow-cyan-950/30 hover:scale-[1.02] active:scale-[0.98] transition flex items-center gap-2 cursor-pointer">
                 <span class="material-symbols-outlined text-base text-cyan-400">send</span>
-                <span>Despachar Reporte a Telegram</span>
+                <span>Enviar Reporte a Telegram</span>
             </button>
         </div>
     </div>
@@ -65,7 +65,7 @@
     @endif
 </div>
 
-<!-- MODAL DESPACHAR REPORTE OFICIAL A TELEGRAM -->
+<!-- MODAL ENVIAR REPORTE OFICIAL A TELEGRAM -->
 <div id="modal-telegram-dispatch" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
     <div class="glass-panel max-w-2xl w-full rounded-2xl p-5 sm:p-6 border border-cyan-500/40 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
         <!-- HEADER MODAL -->
@@ -76,7 +76,7 @@
                 </div>
                 <div>
                     <h3 class="text-sm sm:text-base font-bold text-white uppercase font-mono tracking-wide flex items-center gap-2">
-                        Despacho Oficial a Telegram
+                        Envío Oficial a Telegram
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
                             ATIT • EN VIVO
                         </span>
@@ -134,7 +134,7 @@
                         <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
                         <div class="leading-relaxed">
                             <strong>Datos Faltantes para Firma Institucional:</strong><br>
-                            Tu cuenta aún no tiene completos los campos requeridos (C.I., N° Personal o Teléfono). Debes completarlos para autorizar el despacho de reportes oficiales.
+                            Tu cuenta aún no tiene completos los campos requeridos (C.I., N° Personal o Teléfono). Debes completarlos para autorizar el envío de reportes oficiales.
                             <div class="pt-2">
                                 <a href="{{ route('admin.profile.show') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold hover:text-white transition">
                                     <span class="material-symbols-outlined text-sm">edit</span>
@@ -163,7 +163,7 @@ N° Personal: {{ auth()->user()->personal_number }}
             <div class="space-y-2">
                 <label class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm text-cyan-400">category</span>
-                    Seleccione el Reporte a Despachar
+                    Seleccione el Reporte a Enviar
                 </label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <!-- OPCIÓN 1: SERVICIOS -->
@@ -228,14 +228,14 @@ N° Personal: {{ auth()->user()->personal_number }}
                 {{ !auth()->user()->hasCompleteAtitProfile() ? 'disabled' : '' }}
                 class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-cyan-950/50 hover:shadow-cyan-500/25 transition-all cursor-pointer {{ !auth()->user()->hasCompleteAtitProfile() ? 'opacity-50 cursor-not-allowed grayscale' : '' }}">
                 <span class="material-symbols-outlined text-base" id="icon-submit-dispatch">send</span>
-                <span id="text-submit-dispatch">Confirmar y Despachar a Telegram</span>
+                <span id="text-submit-dispatch">Confirmar y Enviar a Telegram</span>
             </button>
         </div>
     </div>
 </div>
 
 <script>
-// --- GESTOR DE DESPACHO OFICIAL A TELEGRAM ---
+// --- GESTOR DE ENVÍO OFICIAL A TELEGRAM ---
 function openTelegramDispatchModal() {
     const modal = document.getElementById('modal-telegram-dispatch');
     if (!modal) return;
@@ -291,8 +291,8 @@ function fetchLatestDispatchStatus() {
                 icon.className = 'material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5';
                 icon.textContent = 'warning';
             }
-            content.innerHTML = `<div><strong class="text-amber-300 block mb-0.5">⚠️ Aviso de Despacho Reciente (${latest.diff_minutes} min):</strong>` +
-                `El operador <strong class="text-white">${latest.operator_name}</strong> despachó un reporte de <strong class="text-cyan-300">${latest.report_type_label}</strong> ` +
+            content.innerHTML = `<div><strong class="text-amber-300 block mb-0.5">⚠️ Aviso de Envío Reciente (${latest.diff_minutes} min):</strong>` +
+                `El operador <strong class="text-white">${latest.operator_name}</strong> envió un reporte de <strong class="text-cyan-300">${latest.report_type_label}</strong> ` +
                 `<span class="underline">${latest.time_ago}</span> (${latest.created_at}). Confirme si es indispensable emitir otra actualización para evitar duplicados en el canal institucional.</div>`;
         } else if (latest) {
             alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-emerald-950/30 border-emerald-500/40 text-emerald-300 transition-all';
@@ -301,19 +301,19 @@ function fetchLatestDispatchStatus() {
                 icon.textContent = 'check_circle';
             }
             content.innerHTML = `<div><strong class="text-white block mb-0.5">✅ Canal Despejado:</strong>` +
-                `Último despacho registrado ${latest.time_ago} (${latest.created_at}) emitido por <span class="text-white font-bold">${latest.operator_name}</span>.</div>`;
+                `Último reporte enviado ${latest.time_ago} (${latest.created_at}) emitido por <span class="text-white font-bold">${latest.operator_name}</span>.</div>`;
         } else {
             alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-[#040e1a] border-obsidian-border text-obsidian-muted transition-all';
             if (icon) {
                 icon.className = 'material-symbols-outlined text-base text-cyan-400 shrink-0 mt-0.5';
                 icon.textContent = 'info';
             }
-            content.textContent = 'No hay registros de despachos previos en la base de datos.';
+            content.textContent = 'No hay registros de envíos previos en la base de datos.';
         }
     })
     .catch(err => {
         if (icon) icon.classList.remove('animate-spin');
-        content.textContent = 'No se pudo consultar el historial reciente de despachos: ' + err.message;
+        content.textContent = 'No se pudo consultar el historial reciente de envíos: ' + err.message;
     });
 }
 
@@ -333,7 +333,7 @@ function submitTelegramDispatch() {
         icon.className = 'material-symbols-outlined text-base animate-spin';
         icon.textContent = 'sync';
     }
-    if (text) text.textContent = 'Despachando Reporte...';
+    if (text) text.textContent = 'Enviando Reporte...';
 
     if (feedback) {
         feedback.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
@@ -383,7 +383,7 @@ function submitTelegramDispatch() {
                 feedback.innerHTML = `<div class="flex items-start gap-2.5">
                     <span class="material-symbols-outlined text-base text-rose-400 shrink-0 mt-0.5">error</span>
                     <div>
-                        <strong class="text-white block">Error en el Despacho</strong>
+                        <strong class="text-white block">Error en el Envío</strong>
                         <span>${body.message || 'No se pudo transmitir el reporte.'}</span>
                     </div>
                 </div>`;
@@ -409,7 +409,7 @@ function submitTelegramDispatch() {
             icon.className = 'material-symbols-outlined text-base';
             icon.textContent = 'send';
         }
-        if (text) text.textContent = 'Confirmar y Despachar a Telegram';
+        if (text) text.textContent = 'Confirmar y Enviar a Telegram';
     });
 }
 
