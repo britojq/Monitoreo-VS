@@ -276,11 +276,117 @@
                     </form>
                 </div>
             @endif
+
+            <!-- ============================================================== -->
+            <!-- TARJETA COMÚN: FICHA INSTITUCIONAL ATIT (FIRMA DE REPORTES)    -->
+            <!-- ============================================================== -->
+            <div class="glass-card rounded-2xl p-6 border border-obsidian-cyan/40 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-2xl text-obsidian-cyan">assignment_ind</span>
+                        <div>
+                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha Institucional ATIT / CORPOELEC</h3>
+                            <p class="text-[11px] font-mono text-obsidian-muted">Firma oficial adjuntada a reportes de Telegram despachados desde la Web</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ $user->hasCompleteAtitProfile() ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
+                        {{ $user->hasCompleteAtitProfile() ? '✓ Ficha Completa' : '⚠️ Ficha Incompleta' }}
+                    </span>
+                </div>
+
+                <form action="{{ route('admin.profile.update') }}" method="POST" class="space-y-4 font-mono text-xs">
+                    @csrf
+                    <input type="hidden" name="atit_profile_only" value="1"/>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- TÍTULO / GRADO ACADÉMICO -->
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-obsidian-cyan">school</span>
+                                <span>Título / Grado Académico</span>
+                            </label>
+                            <input type="text" name="academic_title" id="input_academic_title" value="{{ old('academic_title', $user->academic_title) }}" placeholder="Ej: Ing., Lic., T.S.U., Tec." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <p class="text-[10px] text-obsidian-muted/70 mt-1">Prefijo opcional para su nombre oficial (ej: Ing.).</p>
+                        </div>
+
+                        <!-- CÉDULA DE IDENTIDAD -->
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-obsidian-cyan">badge</span>
+                                <span>Cédula de Identidad (C.I.)</span>
+                            </label>
+                            <input type="text" name="cedula" id="input_cedula" value="{{ old('cedula', $user->cedula) }}" placeholder="Ej: 11746281" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- NÚMERO DE PERSONAL / FICHA -->
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-obsidian-cyan">pin</span>
+                                <span>N° de Personal / Ficha Corpoelec</span>
+                            </label>
+                            <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 144306" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                        </div>
+
+                        <!-- TELÉFONO DE CONTACTO -->
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-obsidian-cyan">call</span>
+                                <span>Teléfono de Contacto (📱Tlf)</span>
+                            </label>
+                            <input type="text" name="phone" id="input_phone" value="{{ old('phone', $user->phone) }}" placeholder="Ej: 02423602039 o celular" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                        </div>
+                    </div>
+
+                    <!-- PREVISUALIZACIÓN DE FIRMA TELEGRAM EN VIVO -->
+                    <div class="mt-4 p-4 rounded-xl bg-black/40 border border-obsidian-border space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-obsidian-cyan font-bold uppercase flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm">terminal</span>
+                                Previsualización de Firma en Telegram:
+                            </span>
+                            <span class="text-[10px] text-obsidian-muted font-mono">Actualización en vivo</span>
+                        </div>
+                        <pre id="signature_preview" class="p-3 rounded-lg bg-obsidian-panel/80 border border-obsidian-border/80 text-emerald-400 font-mono text-xs leading-relaxed whitespace-pre select-all">Personal de  ATIT:
+{{ $user->full_title_name }}
+C.I: {{ $user->cedula ?? '(Sin cédula)' }}
+N° Personal: {{ $user->personal_number ?? '(Sin ficha)' }}
+📱Tlf: {{ $user->phone ?? '(Sin teléfono)' }}</pre>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit" class="px-6 py-2.5 rounded-lg bg-obsidian-cyan text-black font-mono font-bold text-xs uppercase flex items-center gap-2 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
+                            <span class="material-symbols-outlined text-base">save</span>
+                            Guardar Ficha Institucional
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    const userRawName = @json($user->name);
+
+    function updateSignaturePreview() {
+        const title = (document.getElementById('input_academic_title')?.value || '').trim();
+        const ci = (document.getElementById('input_cedula')?.value || '').trim() || '(Sin cédula)';
+        const personal = (document.getElementById('input_personal_number')?.value || '').trim() || '(Sin ficha)';
+        const phone = (document.getElementById('input_phone')?.value || '').trim() || '(Sin teléfono)';
+
+        let fullName = userRawName;
+        if (title && !fullName.toLowerCase().startsWith(title.toLowerCase())) {
+            fullName = title + ' ' + fullName;
+        }
+
+        const preview = document.getElementById('signature_preview');
+        if (preview) {
+            preview.textContent = `Personal de  ATIT:\n${fullName}\nC.I: ${ci}\nN° Personal: ${personal}\n📱Tlf: ${phone}`;
+        }
+    }
+
     function previewAvatar(input) {
         if (input.files && input.files[0]) {
             const file = input.files[0];

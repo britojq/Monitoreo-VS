@@ -13,6 +13,10 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'academic_title',
+        'cedula',
+        'personal_number',
+        'phone',
         'username',
         'email',
         'avatar',
@@ -27,6 +31,8 @@ class User extends Authenticatable
 
     protected $appends = [
         'avatar_url',
+        'full_title_name',
+        'atit_signature',
     ];
 
     protected $hidden = [
@@ -70,6 +76,38 @@ class User extends Authenticatable
             return asset('storage/' . $this->avatar);
         }
         return null;
+    }
+
+    public function getFullTitleNameAttribute(): string
+    {
+        $title = trim($this->academic_title ?? '');
+        $name = trim($this->name ?? '');
+        if (!empty($title) && !str_starts_with(strtolower($name), strtolower($title))) {
+            return $title . ' ' . $name;
+        }
+        return $name;
+    }
+
+    public function getAtitSignatureAttribute(): string
+    {
+        $name = $this->full_title_name;
+        $ci = $this->cedula ?? '';
+        $personal = $this->personal_number ?? '';
+        $phone = $this->phone ?? '';
+
+        return "**Personal de  ATIT:**\n" .
+               $name . "\n" .
+               "C.I: " . $ci . "\n" .
+               "N° Personal: " . $personal . "\n" .
+               "📱Tlf: " . $phone;
+    }
+
+    public function hasCompleteAtitProfile(): bool
+    {
+        return !empty($this->name) &&
+               !empty($this->cedula) &&
+               !empty($this->personal_number) &&
+               !empty($this->phone);
     }
 
     public function bannedIps()
