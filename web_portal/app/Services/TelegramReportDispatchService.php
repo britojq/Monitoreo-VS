@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BotMessageTemplate;
 use App\Models\MonitoringSnapshot;
 use App\Models\TelegramDispatch;
 use App\Models\User;
@@ -162,18 +163,33 @@ class TelegramReportDispatchService
         $linesCorp = implode("\n", $serviciosCorporativos);
         $linesReg = implode("\n", $serviciosRegionales);
 
-        return "<b>GERENCIA DE ATIT REGIÓN CENTRAL</b>\n" .
-               "<b>DIVISIÓN DE ATIT CARABOBO</b>\n" .
-               "<b>DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA - SERVIDORES.</b>\n" .
+        $tmpl = BotMessageTemplate::getByKey('servicios');
+
+        $header = $tmpl && !empty($tmpl->header_text)
+            ? $tmpl->header_text
+            : "<b>GERENCIA DE ATIT REGIÓN CENTRAL</b>\n<b>DIVISIÓN DE ATIT CARABOBO</b>\n<b>DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA - SERVIDORES.</b>\n<b>Lugar:</b> Puerto Cabello - (Valle Seco)\n<b>Coordinación:</b> Infraestructura Tecnológica - Servidores.";
+
+        $subHeader = $tmpl && !empty($tmpl->sub_header)
+            ? $tmpl->sub_header
+            : "<b>ESTATUS DE SERVICIOS CORPORATIVOS (CARABOBO - VALLE SECO)</b>";
+
+        $legend = $tmpl && !empty($tmpl->legend_text)
+            ? $tmpl->legend_text
+            : "<b>Leyenda:</b>\n✅ Operativo.\n⚠️ Advertencia.\n❌ Fallas.";
+
+        $impact = $tmpl && !empty($tmpl->impact_statement)
+            ? $tmpl->impact_statement
+            : "Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.";
+
+        $slogan = $tmpl && !empty($tmpl->slogan)
+            ? $tmpl->slogan
+            : "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
+
+        return "{$header}\n" .
                "<b>Fecha:</b> {$fecha}\n" .
-               "<b>Hora:</b> {$hora}.\n" .
-               "<b>Lugar:</b> Puerto Cabello - (Valle Seco)\n" .
-               "<b>Coordinación:</b> Infraestructura Tecnológica - Servidores.\n\n" .
-               "<b>ESTATUS DE SERVICIOS CORPORATIVOS (CARABOBO - VALLE SECO)</b>\n\n" .
-               "<b>Leyenda:</b>\n" .
-               "✅ Operativo.\n" .
-               "⚠️ Advertencia.\n" .
-               "❌ Fallas.\n\n" .
+               "<b>Hora:</b> {$hora}.\n\n" .
+               "{$subHeader}\n\n" .
+               "{$legend}\n\n" .
                "━━━━━━━━━━━━\n" .
                "<b>Servicios Corporativos Verificados:</b>\n" .
                "━━━━━━━━━━━━\n" .
@@ -182,9 +198,9 @@ class TelegramReportDispatchService
                "<b>Servicios Regionales – Carabobo Verificados:</b>\n" .
                "━━━━━━━━━━━━\n" .
                "{$linesReg}\n\n" .
-               "Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.\n\n" .
+               "{$impact}\n\n" .
                "{$firma}\n\n" .
-               "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
+               "{$slogan}";
     }
 
     /**
@@ -214,22 +230,37 @@ class TelegramReportDispatchService
 
         $allSitesText = implode("\n\n", $sitesBlocks);
 
-        return "<b>GERENCIA DE ATIT REGIÓN CENTRAL</b>\n" .
-               "<b>DIVISIÓN DE ATIT CARABOBO</b>\n" .
-               "<b>DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA</b>\n" .
+        $tmpl = BotMessageTemplate::getByKey('sedes');
+
+        $header = $tmpl && !empty($tmpl->header_text)
+            ? $tmpl->header_text
+            : "<b>GERENCIA DE ATIT REGIÓN CENTRAL</b>\n<b>DIVISIÓN DE ATIT CARABOBO</b>\n<b>DEPARTAMENTO DE  INFRAESTRUCTURA TECNOLÓGICA</b>\n<b>Lugar:</b> Puerto Cabello - (Valle Seco)\n<b>Coordinación:</b> Infraestructura Tecnológica - Servidores.";
+
+        $subHeader = $tmpl && !empty($tmpl->sub_header)
+            ? $tmpl->sub_header
+            : "<b>ESTATUS DE CIAU EJE COSTERO</b>";
+
+        $legend = $tmpl && !empty($tmpl->legend_text)
+            ? $tmpl->legend_text
+            : "<b>Leyenda:</b>\n✅ Operativo.\n⚠️ Advertencia.\n❌ Fallas.";
+
+        $impact = $tmpl && !empty($tmpl->impact_statement)
+            ? $tmpl->impact_statement
+            : "Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.";
+
+        $slogan = $tmpl && !empty($tmpl->slogan)
+            ? $tmpl->slogan
+            : "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
+
+        return "{$header}\n" .
                "<b>Fecha:</b> {$fecha}\n" .
-               "<b>Hora:</b> {$hora}.\n" .
-               "<b>Lugar:</b> Puerto Cabello - (Valle Seco)\n" .
-               "<b>Coordinación:</b> Infraestructura Tecnológica - Servidores.\n\n" .
-               "<b>ESTATUS DE CIAU EJE COSTERO</b>\n\n" .
-               "<b>Leyenda:</b>\n" .
-               "✅ Operativo.\n" .
-               "⚠️ Advertencia.\n" .
-               "❌ Fallas.\n\n" .
+               "<b>Hora:</b> {$hora}.\n\n" .
+               "{$subHeader}\n\n" .
+               "{$legend}\n\n" .
                "{$allSitesText}\n\n" .
-               "Impacto al SEN: Monitorear los servidores de la Región Central, permite detectar fallas a tiempo  que puedan ocasionar la imposibilidad de los servicios corporativos que son parte del SEN.\n\n" .
+               "{$impact}\n\n" .
                "{$firma}\n\n" .
-               "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
+               "{$slogan}";
     }
 
     /**

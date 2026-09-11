@@ -42,4 +42,5 @@ web_portal/storage/framework/views/*
 web_portal/storage/app/public/*
 web_portal/bootstrap/cache/*.php
 !web_portal/bootstrap/cache/.gitignore
-
+# Scratch scripts
+scratch/

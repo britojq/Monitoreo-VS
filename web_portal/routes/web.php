@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminBanController;
+use App\Http\Controllers\Admin\AdminBotTemplateController;
 use App\Http\Controllers\Admin\AdminClusterController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -99,6 +100,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('bans/unban/ip/{id}', [AdminBanController::class, 'unbanIp'])->name('bans.unban.ip');
         Route::post('bans/unban/all/{userId}', [AdminBanController::class, 'unbanAll'])->name('bans.unban.all');
         Route::post('bans/ban-ip', [AdminBanController::class, 'banIp'])->name('bans.ban.ip');
+
+        // Plantillas de Mensajería y Reportes del Bot (Exclusivo Administrador)
+        Route::get('bot/templates', [AdminBotTemplateController::class, 'index'])->name('bot.templates.index');
+        Route::put('bot/templates/{template}', [AdminBotTemplateController::class, 'update'])->name('bot.templates.update');
+        Route::post('bot/templates/{template}/reset', [AdminBotTemplateController::class, 'reset'])->name('bot.templates.reset');
+        Route::post('bot/templates/preview', [AdminBotTemplateController::class, 'preview'])->name('bot.templates.preview');
 
         // Operaciones Mutantes de Infraestructura (Exclusivas del Servidor MASTER)
         Route::middleware(['node.master'])->group(function () {

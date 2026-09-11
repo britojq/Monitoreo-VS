@@ -58,6 +58,96 @@ def parse_bash_templates(filepath: Path) -> Dict[str, str]:
     return data
 
 
+def load_templates_from_mariadb() -> Dict[str, str]:
+    """Carga las plantillas de mensajes oficiales directamente desde MariaDB (SSOT)."""
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT template_key, header_text, sub_header, legend_text, "
+                    "impact_statement, default_signature, slogan FROM bot_message_templates WHERE is_active = 1"
+                )
+                rows = cursor.fetchall()
+                if not rows:
+                    return {}
+
+                def to_md(text: str) -> str:
+                    if not text:
+                        return ""
+                    return text.replace("<b>", "**").replace("</b>", "**")
+
+                templates: Dict[str, str] = {}
+                for r in rows:
+                    key = r.get("template_key")
+                    hdr = to_md(r.get("header_text") or "")
+                    sub = to_md(r.get("sub_header") or "")
+                    leg = to_md(r.get("legend_text") or "")
+                    imp = r.get("impact_statement") or ""
+                    sig = to_md(r.get("default_signature") or "")
+                    slo = to_md(r.get("slogan") or "")
+
+                    if key == "servicios":
+                        body = (
+                            f"\n{hdr}\n"
+                            f"**Fecha:** $fecha\n"
+                            f"**Hora:** $hora.\n\n"
+                            f"{sub}\n\n"
+                            f"{leg}\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**Servicios Corporativos Verificados:**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STHOSTA\n$STHOSTB\n$STHOSTC\n$STHOSTD\n$STHOSTE\n"
+                            f"$STHOSTF\n$STHOSTG\n$STHOSTI\n$STHOSTJ\n$STHOSTK\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**Servicios Regionales – Carabobo Verificados:**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STHOSTL\n$STHOSTM\n$STHOSTN\n$STHOSTO\n$STHOSTT\n"
+                            f"$STHOSTS\n$STHOSTR\n$STHOSTQ\n\n"
+                            f"{imp}\n\n"
+                            f"{sig}\n\n"
+                            f"{slo}\n"
+                        )
+                        templates["MENSAJEA"] = body
+                    elif key == "sedes":
+                        body = (
+                            f"\n{hdr}\n"
+                            f"**Fecha:** $fecha\n"
+                            f"**Hora:** $hora.\n\n"
+                            f"{sub}\n\n"
+                            f"{leg}\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**$NAMESITEA**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STSITEA\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**$NAMESITEC**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STSITEC\n"
+                            f"$STSITECEQUIPO1\n$STSITECEQUIPO2\n$STSITECEQUIPO3\n$STSITECEQUIPO5\n$STSITECEQUIPO8\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**$NAMESITED**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STSITED\n"
+                            f"$STSITEDEQUIPO1\n$STSITEDEQUIPO2\n$STSITEDEQUIPO3\n\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"**$NAMESITEE**\n"
+                            f"━━━━━━━━━━━━\n"
+                            f"$STSITEE\n"
+                            f"$STSITEEEQUIPO1\n$STSITEEEQUIPO2\n$STSITEEEQUIPO3\n$STSITEEEQUIPO4\n$STSITEEEQUIPO5\n$STSITEEEQUIPO8\n\n"
+                            f"{imp}\n\n"
+                            f"{sig}\n\n"
+                            f"{slo}\n"
+                        )
+                        templates["MENSAJEC"] = body
+                return templates
+        finally:
+            conn.close()
+    except Exception:
+        return {}
+
+
 @dataclass
 class ServiceConfig:
     letter: str
@@ -150,6 +240,9 @@ class MonitorConfigLoader:
         self.raw_monitoreo = parse_bash_config(self.monitoreo_path)
         self.raw_bot = parse_bash_config(self.bot_path)
         self.templates = parse_bash_templates(self.mensajes_path)
+        db_templates = load_templates_from_mariadb()
+        if db_templates:
+            self.templates.update(db_templates)
 
     def get_services(self) -> List[ServiceConfig]:
         """Extrae la lista de servicios configurados (letras A a Z)."""
