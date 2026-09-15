@@ -132,14 +132,14 @@
     <!-- SINCRONIZACIÓN Y ARCHIVOS (.conf) & SNAPSHOT                               -->
     <!-- ========================================================================= -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- SINCRONIZACIÓN Y ARCHIVOS -->
+        <!-- SINCRONIZACIÓN DEL SISTEMA -->
         <div class="glass-card rounded-xl p-6 lg:col-span-2 space-y-4">
             <h2 class="text-base font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan">sync</span>
-                Sincronización Bidireccional de Archivos (.conf)
+                Sincronización del Sistema de Monitoreo
             </h2>
             <p class="text-xs text-obsidian-muted leading-relaxed">
-                Los cambios que realices en este panel (Servicios, Sedes, Dispositivos y Proxies) se guardan en la base de datos MariaDB y se exportan automáticamente a los archivos oficiales <code class="text-obsidian-cyan font-mono">/scripts/telegram-admin-bot/config/monitoreo.conf</code> y <code class="text-obsidian-cyan font-mono">bot.conf</code> para que el motor asíncrono de Python y el bot de Telegram los utilicen según la frecuencia de chequeo establecida (actualmente cada {{ $cronConfig['web_check_interval'] ?? 10 }} minutos).
+                Los cambios que realices en este panel (Servicios, Sedes, Dispositivos y Proxies) se guardan en el Servidor Maestro y se sincronizan automáticamente para que el motor de monitoreo y el bot de Telegram los utilicen según la frecuencia de chequeo establecida (actualmente cada {{ $cronConfig['web_check_interval'] ?? 10 }} minutos).
             </p>
             <div class="pt-2 flex flex-wrap gap-3">
                 @if($isClusterSlave)
@@ -152,7 +152,7 @@
                         @csrf
                         <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold text-xs font-mono uppercase flex items-center gap-2 hover:bg-cyan-300 transition cursor-pointer">
                             <span class="material-symbols-outlined text-base">save</span>
-                            Forzar Exportación a .conf
+                            Sincronizar Configuración del Sistema
                         </button>
                     </form>
                 @endif
@@ -718,8 +718,8 @@
                         <span class="material-symbols-outlined text-xs">folder_special</span>
                         Base DN (Árbol de Búsqueda):
                     </label>
-                    <input type="text" name="ldap_base_dn" id="input_ldap_base_dn" value="{{ $ldapConfig['base_dn'] ?? 'dc=corpoelec,dc=gob,dc=ve' }}" required
-                        placeholder="dc=corpoelec,dc=gob,dc=ve"
+                    <input type="text" name="ldap_base_dn" id="input_ldap_base_dn" value="{{ $ldapConfig['base_dn'] ?? 'dc=empresa,dc=gob,dc=ve' }}" required
+                        placeholder="dc=empresa,dc=gob,dc=ve"
                         class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
                     <p class="text-[11px] font-mono text-obsidian-muted">
                         Raíz LDAP sobre la que se ejecutan los filtros de búsqueda por UID, Cédula y Correo corporativo.

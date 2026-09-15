@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MonitoredSite extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'letter',
@@ -40,6 +41,11 @@ class MonitoredSite extends Model
     public function devices(): HasMany
     {
         return $this->hasMany(MonitoredSiteDevice::class)->orderBy('device_number');
+    }
+
+    public function networkDevices(): HasMany
+    {
+        return $this->hasMany(MonitoredNetworkDevice::class, 'monitored_site_id')->orderBy('device_number');
     }
 
     public function histories(): HasMany

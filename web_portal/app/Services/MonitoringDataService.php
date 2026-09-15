@@ -56,8 +56,15 @@ class MonitoringDataService
             ->where('ip_port', '!=', '')
             ->get();
 
-        // 4. Dispositivos locales en red Valle Seco
+        // 4. Dispositivos locales en red Valle Seco (Sede ID: 1 o por defecto)
+        $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
+        $valleSecoId = $valleSecoSite ? $valleSecoSite->id : 1;
+
         $networkDevices = MonitoredNetworkDevice::where('is_active', true)
+            ->where(function($q) use ($valleSecoId) {
+                $q->where('monitored_site_id', $valleSecoId)
+                  ->orWhereNull('monitored_site_id');
+            })
             ->where('name', 'not like', '%NO CONFIGURADO%')
             ->whereNotNull('ip')
             ->where('ip', '!=', '0.0.0.0')

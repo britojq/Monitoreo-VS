@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MonitoredSite;
 use App\Models\MonitoredSiteDevice;
+use App\Models\MonitoredNetworkDevice;
+use App\Models\MonitoringSnapshot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,7 +17,13 @@ class AdminSiteController extends Controller
     public function index(): View
     {
         $sites = MonitoredSite::with('devices')->orderBy('sort_order')->get();
-        return view('admin.sites.index', compact('sites'));
+        $networkDevices = MonitoredNetworkDevice::all()->keyBy('ip');
+        $latestSnapshot = MonitoringSnapshot::latest()->first();
+        $snapshotDevices = ($latestSnapshot && isset($latestSnapshot->payload_json['network_devices']))
+            ? collect($latestSnapshot->payload_json['network_devices'])->keyBy('ip')
+            : collect();
+
+        return view('admin.sites.index', compact('sites', 'networkDevices', 'snapshotDevices'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -88,13 +96,99 @@ class AdminSiteController extends Controller
         // Procesar dispositivos si se enviaron en el formulario
         if ($request->has('devices')) {
             foreach ($request->input('devices', []) as $devId => $devData) {
-                $device = MonitoredSiteDevice::where('monitored_site_id', $site->id)->find($devId);
-                if ($device) {
-                    $device->update([
-                        'name' => $devData['name'] ?? $device->name,
-                        'ip' => $devData['ip'] ?? $device->ip,
-                        'is_active' => isset($devData['is_active']) && $devData['is_active'] == '1',
-                    ]);
+                // Si está marcado para eliminación
+                if (!empty($devData['_delete'])) {
+                    if (is_numeric($devId)) {
+                        $device = MonitoredSiteDevice::where('monitored_site_id', $site->id)->find($devId);
+                        if ($device) {
+                            $delIp = $device->ip;
+                            $device->delete();
+                            \App\Models\MonitoredNetworkDevice::where('ip', $delIp)->delete();
+                        }
+                    }
+                    continue;
+                }
+
+                if (!empty($devData['name']) && !empty($devData['ip'])) {
+                    $accType = strtoupper(trim($devData['access_type'] ?? 'SIN SOPORTE'));
+                    $accPort = !empty($devData['access_port']) 
+                        ? (int)$devData['access_port'] 
+                        : ($accType === 'SSH' ? 22 : ($accType === 'TELNET' ? 23 : ($accType === 'WEB' ? 80 : ($accType === 'VNC' ? 5900 : null))));
+                    $isActive = isset($devData['is_active']) && ($devData['is_active'] == '1' || $devData['is_active'] === true);
+
+                    if (is_numeric($devId)) {
+                        $device = MonitoredSiteDevice::where('monitored_site_id', $site->id)->find($devId);
+                        if ($device) {
+                            $oldIp = $device->ip;
+                            $device->update([
+                                'name' => $devData['name'],
+                                'ip' => $devData['ip'],
+                                'mac' => $devData['mac'] ?? null,
+                                'vendor_data' => $devData['vendor_data'] ?? null,
+                                'model' => $devData['model'] ?? null,
+                                'serial' => $devData['serial'] ?? null,
+                                'ports' => $devData['ports'] ?? null,
+                                'access_type' => $accType,
+                                'access_port' => $accPort,
+                                'notes' => $devData['notes'] ?? null,
+                                'is_active' => $isActive,
+                            ]);
+
+                            \App\Models\MonitoredNetworkDevice::updateOrCreate(
+                                ['ip' => $oldIp],
+                                [
+                                    'monitored_site_id' => $site->id,
+                                    'name' => $device->name,
+                                    'ip' => $device->ip,
+                                    'mac' => $device->mac,
+                                    'vendor_data' => $device->vendor_data,
+                                    'model' => $device->model,
+                                    'serial' => $device->serial,
+                                    'ports' => $device->ports,
+                                    'access_type' => $device->access_type,
+                                    'access_port' => $device->access_port,
+                                    'notes' => $device->notes,
+                                    'is_active' => $device->is_active,
+                                ]
+                            );
+                        }
+                    } else {
+                        // Nuevo dispositivo agregado dinámicamente desde el modal de la sede
+                        $maxNum = $site->devices()->max('device_number') ?? 0;
+                        $newDev = $site->devices()->create([
+                            'device_number' => $maxNum + 1,
+                            'name' => $devData['name'],
+                            'ip' => $devData['ip'],
+                            'mac' => $devData['mac'] ?? null,
+                            'vendor_data' => $devData['vendor_data'] ?? null,
+                            'model' => $devData['model'] ?? null,
+                            'serial' => $devData['serial'] ?? null,
+                            'ports' => $devData['ports'] ?? null,
+                            'access_type' => $accType,
+                            'access_port' => $accPort,
+                            'notes' => $devData['notes'] ?? null,
+                            'is_active' => $isActive,
+                        ]);
+
+                        \App\Models\MonitoredNetworkDevice::updateOrCreate(
+                            ['ip' => $newDev->ip],
+                            [
+                                'monitored_site_id' => $site->id,
+                                'device_number' => $newDev->device_number,
+                                'name' => $newDev->name,
+                                'ip' => $newDev->ip,
+                                'mac' => $newDev->mac,
+                                'vendor_data' => $newDev->vendor_data,
+                                'model' => $newDev->model,
+                                'serial' => $newDev->serial,
+                                'ports' => $newDev->ports,
+                                'access_type' => $newDev->access_type,
+                                'access_port' => $newDev->access_port,
+                                'notes' => $newDev->notes,
+                                'is_active' => $newDev->is_active,
+                            ]
+                        );
+                    }
                 }
             }
         }
@@ -109,16 +203,56 @@ class AdminSiteController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'ip' => ['required', 'string', 'max:255'],
+            'mac' => ['nullable', 'string', 'max:50'],
+            'vendor_data' => ['nullable', 'string', 'max:255'],
+            'access_type' => ['nullable', 'string', Rule::in(['TELNET', 'SSH', 'WEB', 'VNC', 'SIN SOPORTE'])],
+            'access_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'model' => ['nullable', 'string', 'max:255'],
+            'serial' => ['nullable', 'string', 'max:100'],
+            'ports' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
             'is_active' => ['boolean'],
         ]);
 
+        $validated['access_type'] = strtoupper(trim($validated['access_type'] ?? 'SIN SOPORTE'));
+        if (empty($validated['access_port'])) {
+            if ($validated['access_type'] === 'SSH') {
+                $validated['access_port'] = 22;
+            } elseif ($validated['access_type'] === 'TELNET') {
+                $validated['access_port'] = 23;
+            } elseif ($validated['access_type'] === 'WEB') {
+                $validated['access_port'] = 80;
+            } elseif ($validated['access_type'] === 'VNC') {
+                $validated['access_port'] = 5900;
+            } else {
+                $validated['access_port'] = null;
+            }
+        }
+
         $maxNum = $site->devices()->max('device_number') ?? 0;
-        $site->devices()->create([
-            'device_number' => $maxNum + 1,
-            'name' => $validated['name'],
-            'ip' => $validated['ip'],
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $validated['device_number'] = $maxNum + 1;
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        $siteDevice = $site->devices()->create($validated);
+
+        // Espejo en MonitoredNetworkDevice
+        \App\Models\MonitoredNetworkDevice::updateOrCreate(
+            ['ip' => $validated['ip']],
+            [
+                'monitored_site_id' => $site->id,
+                'device_number' => $maxNum + 1,
+                'name' => $validated['name'],
+                'mac' => $validated['mac'] ?? null,
+                'vendor_data' => $validated['vendor_data'] ?? null,
+                'access_type' => $validated['access_type'],
+                'access_port' => $validated['access_port'],
+                'model' => $validated['model'] ?? null,
+                'serial' => $validated['serial'] ?? null,
+                'ports' => $validated['ports'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'is_active' => $validated['is_active'],
+            ]
+        );
 
         app(SyncController::class)->exportToConfigFiles();
 
@@ -129,6 +263,11 @@ class AdminSiteController extends Controller
     {
         $siteName = $device->site->name ?? 'la sede';
         $deviceName = $device->name;
+        $ip = $device->ip;
+
+        // Eliminar también de MonitoredNetworkDevice
+        \App\Models\MonitoredNetworkDevice::where('ip', $ip)->delete();
+
         $device->delete();
 
         app(SyncController::class)->exportToConfigFiles();

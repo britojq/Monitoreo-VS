@@ -15,110 +15,222 @@
                 <span class="text-obsidian-border font-mono text-xs">/</span>
                 <span class="text-xs font-mono text-obsidian-muted">Servicios Monitoreados</span>
             </div>
-            <h2 class="text-lg font-bold text-white">Servicios Corporativos Monitoreados</h2>
-            <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión</p>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400">cloud_done</span>
+                Servicios y Plataformas de Red Monitoreados
+            </h2>
+            <p class="text-xs font-mono text-obsidian-muted">Gestión de plataformas web, DNS, autenticación LDAP, proxies de salida y telemetría de red</p>
         </div>
-        <div class="flex items-center gap-2">
-            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
-                Fuente: MariaDB (SSOT)
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center gap-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
             </div>
             @if(auth()->user()->isAdmin() && !$isClusterSlave)
-                <button onclick="openCreateServiceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs hover:bg-white transition shadow-sm">
+                <button type="button" onclick="openCreateServiceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan hover:bg-white text-black font-bold font-mono text-xs transition shadow-sm cursor-pointer">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
-                    Agregar Servicio
+                    <span>+ Agregar Servicio</span>
                 </button>
             @endif
         </div>
     </div>
 
-    <!-- TABLA DE SERVICIOS -->
-    <div class="glass-card rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs font-mono">
-                <thead class="bg-obsidian-panel border-b border-obsidian-border text-obsidian-muted uppercase text-[11px]">
-                    <tr>
-                        <th class="px-5 py-4">ID / Letra</th>
-                        <th class="px-5 py-4">Nombre del Servicio</th>
-                        <th class="px-5 py-4">Tipo</th>
-                        <th class="px-5 py-4">Ámbito</th>
-                        <th class="px-5 py-4">Host IP / URL</th>
-                        <th class="px-5 py-4">Puerto</th>
-                        <th class="px-5 py-4">Estado</th>
-                        <th class="px-5 py-4 text-right">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-obsidian-border/60">
-                    @foreach($services as $s)
-                        <tr class="hover:bg-obsidian-panel/40 transition">
-                            <td class="px-5 py-4 font-bold text-obsidian-cyan">
-                                [ {{ $s->letter ?: 'S'.$s->id }} ]
-                            </td>
-                            <td class="px-5 py-4 font-sans font-semibold text-white">
-                                {{ $s->name }}
-                            </td>
-                            <td class="px-5 py-4">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
-                                    {{ $s->type }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-4">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($s->scope ?? 'corporativo') === 'regional' ? 'bg-purple-950/70 text-purple-400 border border-purple-500/40' : 'bg-cyan-950/70 text-cyan-400 border border-cyan-500/40' }}">
-                                    {{ strtoupper($s->scope ?? 'corporativo') }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-4 text-obsidian-muted truncate max-w-xs">
-                                {{ $s->host_ip ?: ($s->web_url ?: '--') }}
-                            </td>
-                            <td class="px-5 py-4 text-obsidian-muted">
-                                {{ $s->port ?: '--' }}
-                            </td>
-                            <td class="px-5 py-4">
-                                @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.services.toggle', $s->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $s->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
-                                            <span class="w-1.5 h-1.5 rounded-full {{ $s->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
-                                            {{ $s->is_active ? 'Activo' : 'Desactivado' }}
-                                        </button>
-                                    </form>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold {{ $s->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $s->is_active ? 'bg-emerald-400' : 'bg-obsidian-muted' }}"></span>
-                                        {{ $s->is_active ? 'Activo' : 'Desactivado' }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-5 py-4 text-right space-x-1.5 whitespace-nowrap">
-                                <button onclick="openServiceHistoryModal({{ $s->id }}, '{{ addslashes($s->name) }}', '{{ $s->letter ?: 'S'.$s->id }}', '{{ $s->type }}')" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white transition flex items-center gap-1 inline-flex" title="Ver Gráfico e Histórico">
-                                    <span class="material-symbols-outlined text-sm">show_chart</span>
-                                    <span>Histórico</span>
-                                </button>
-                                @if(auth()->user()->isAdmin())
-                                    @if($isClusterSlave)
-                                        <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
-                                            <span class="material-symbols-outlined text-xs">lock</span>
-                                            Solo Lectura
-                                        </span>
-                                    @else
-                                        <button onclick="openEditServiceModal({{ json_encode($s) }})" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center gap-1 inline-flex" title="Editar Parámetros">
-                                            <span class="material-symbols-outlined text-sm">edit</span>
-                                            <span>Modificar</span>
-                                        </button>
-                                        <form action="{{ route('admin.services.destroy', $s->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar el servicio [{{ addslashes($s->name) }}]?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="px-2 py-1.5 rounded-lg bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition inline-flex items-center" title="Eliminar Servicio">
-                                                <span class="material-symbols-outlined text-sm">delete</span>
-                                            </button>
-                                        </form>
-                                    @endif
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    @php
+        $totalCount = $services->count();
+        $activeCount = $services->where('is_active', true)->count();
+        $inactiveCount = $totalCount - $activeCount;
+
+        $upCount = 0;
+        $downCount = 0;
+        foreach($services->where('is_active', true) as $activeSrv) {
+            $sn = $snapshotServices->get((string)$activeSrv->id) ?? $snapshotServices->get((string)$activeSrv->letter);
+            if ($sn && ($sn['is_up'] ?? false)) {
+                $upCount++;
+            } else {
+                $downCount++;
+            }
+        }
+
+        $corporateServices = $services->where('scope', 'corporativo');
+        $regionalServices = $services->where('scope', 'regional');
+        $otherServices = $services->whereNotIn('scope', ['corporativo', 'regional']);
+    @endphp
+
+    <!-- RESUMEN KPI DE TELEMETRÍA (ESTILO OBSIDIAN) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+        <div class="glass-card rounded-xl p-3.5 border border-obsidian-border bg-obsidian-panel/40">
+            <div class="flex items-center justify-between text-obsidian-muted text-[10px] uppercase">
+                <span>Total Registrados</span>
+                <span class="material-symbols-outlined text-xs text-obsidian-cyan">dns</span>
+            </div>
+            <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-xl font-bold text-white">{{ $totalCount }}</span>
+                <span class="text-[10px] text-obsidian-muted">servicios</span>
+            </div>
+            <p class="text-[9.5px] text-obsidian-muted mt-0.5">{{ $services->where('scope', 'corporativo')->count() }} Corp / {{ $services->where('scope', 'regional')->count() }} Reg</p>
         </div>
+
+        <div class="glass-card rounded-xl p-3.5 border border-obsidian-border bg-obsidian-panel/40">
+            <div class="flex items-center justify-between text-obsidian-muted text-[10px] uppercase">
+                <span>Monitoreo Activo</span>
+                <span class="material-symbols-outlined text-xs text-emerald-400">sensors</span>
+            </div>
+            <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-xl font-bold text-emerald-400">{{ $activeCount }}</span>
+                <span class="text-[10px] text-obsidian-muted">habilitados</span>
+            </div>
+            <p class="text-[9.5px] text-obsidian-muted mt-0.5">{{ $inactiveCount }} inactivos o en reserva</p>
+        </div>
+
+        <div class="glass-card rounded-xl p-3.5 border border-obsidian-border bg-obsidian-panel/40">
+            <div class="flex items-center justify-between text-obsidian-muted text-[10px] uppercase">
+                <span>Operativos ONLINE</span>
+                <span class="material-symbols-outlined text-xs text-emerald-400">check_circle</span>
+            </div>
+            <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-xl font-bold text-emerald-400">{{ $upCount }}</span>
+                <span class="text-[10px] text-obsidian-muted">al 100%</span>
+            </div>
+            <p class="text-[9.5px] text-emerald-400/80 mt-0.5">Respuesta inmediata</p>
+        </div>
+
+        <div class="glass-card rounded-xl p-3.5 border border-obsidian-border bg-obsidian-panel/40">
+            <div class="flex items-center justify-between text-obsidian-muted text-[10px] uppercase">
+                <span>Con Falla / Timeout</span>
+                <span class="material-symbols-outlined text-xs {{ $downCount > 0 ? 'text-red-400' : 'text-obsidian-muted' }}">warning</span>
+            </div>
+            <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-xl font-bold {{ $downCount > 0 ? 'text-red-400' : 'text-white' }}">{{ $downCount }}</span>
+                <span class="text-[10px] text-obsidian-muted">servicios</span>
+            </div>
+            <p class="text-[9.5px] {{ $downCount > 0 ? 'text-red-400/90' : 'text-obsidian-muted' }} mt-0.5">{{ $downCount > 0 ? 'Requiere atención técnica' : 'Sin fallas detectadas' }}</p>
+        </div>
+    </div>
+
+    <!-- BARRA DE BÚSQUEDA Y FILTRADO RÁPIDO -->
+    <div class="glass-card rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 border border-obsidian-border/70">
+        <div class="relative w-full sm:w-80">
+            <span class="material-symbols-outlined text-sm text-obsidian-muted absolute left-3 top-1/2 -translate-y-1/2">search</span>
+            <input type="text" id="service-search-input" onkeyup="filterServicesList()" placeholder="Buscar por nombre, IP, tipo o letra..." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-obsidian-muted focus:outline-none focus:border-cyan-500/60 font-mono">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono w-full sm:w-auto">
+            <button type="button" onclick="setServiceFilter('all')" id="filter-btn-all" class="filter-chip px-2.5 py-1 rounded-lg transition font-semibold bg-obsidian-cyan text-black shadow-sm cursor-pointer">
+                Todos ({{ $totalCount }})
+            </button>
+            <button type="button" onclick="setServiceFilter('corporativo')" id="filter-btn-corporativo" class="filter-chip px-2.5 py-1 rounded-lg transition font-semibold text-obsidian-muted hover:text-white bg-obsidian-panel border border-obsidian-border cursor-pointer">
+                Corporativos ({{ $corporateServices->count() }})
+            </button>
+            <button type="button" onclick="setServiceFilter('regional')" id="filter-btn-regional" class="filter-chip px-2.5 py-1 rounded-lg transition font-semibold text-obsidian-muted hover:text-white bg-obsidian-panel border border-obsidian-border cursor-pointer">
+                Regionales ({{ $regionalServices->count() }})
+            </button>
+            <button type="button" onclick="setServiceFilter('active')" id="filter-btn-active" class="filter-chip px-2.5 py-1 rounded-lg transition font-semibold text-obsidian-muted hover:text-white bg-obsidian-panel border border-obsidian-border cursor-pointer">
+                Activos ({{ $activeCount }})
+            </button>
+            <button type="button" onclick="setServiceFilter('down')" id="filter-btn-down" class="filter-chip px-2.5 py-1 rounded-lg transition font-semibold text-obsidian-muted hover:text-white bg-obsidian-panel border border-obsidian-border cursor-pointer">
+                Caídos ({{ $downCount }})
+            </button>
+        </div>
+    </div>
+
+    <!-- SECCIONES DE SERVICIOS POR ÁMBITO (ESTILO GLASS-CARD DE ADMIN/SITES) -->
+    <div class="space-y-6">
+        <!-- 1. SERVICIOS CORPORATIVOS -->
+        @if($corporateServices->count() > 0)
+            <div id="section-scope-corporativo" class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80">
+                <!-- CABECERA DE ÁMBITO CORPORATIVO -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/60 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shadow-md shrink-0">
+                            <span class="material-symbols-outlined text-xl">corporate_fare</span>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
+                                <span>Servicios y Plataformas Corporativas</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
+                                    {{ $corporateServices->where('is_active', true)->count() }} Activos de {{ $corporateServices->count() }}
+                                </span>
+                            </h3>
+                            <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
+                                <span>Sistemas corporativos centrales, autenticación institucional y plataformas web</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-cyan-950/70 text-cyan-300 border border-cyan-500/40">
+                            Ámbito: Corporativo Nacional
+                        </span>
+                    </div>
+                </div>
+
+                <!-- GRID DE TARJETAS DE SERVICIOS CORPORATIVOS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($corporateServices as $s)
+                        @include('admin.services._service_card', ['s' => $s, 'snapshotServices' => $snapshotServices, 'isClusterSlave' => $isClusterSlave])
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <!-- 2. SERVICIOS REGIONALES -->
+        @if($regionalServices->count() > 0)
+            <div id="section-scope-regional" class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80">
+                <!-- CABECERA DE ÁMBITO REGIONAL -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/60 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md shrink-0">
+                            <span class="material-symbols-outlined text-xl">hub</span>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
+                                <span>Servicios Regionales de Infraestructura</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-purple-300">
+                                    {{ $regionalServices->where('is_active', true)->count() }} Activos de {{ $regionalServices->count() }}
+                                </span>
+                            </h3>
+                            <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
+                                <span>Servidores DNS locales, proxies Pfsense, servidores SMTP y DHCP regional</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-purple-950/70 text-purple-300 border border-purple-500/40">
+                            Ámbito: Carabobo / Aragua / Valle Seco
+                        </span>
+                    </div>
+                </div>
+
+                <!-- GRID DE TARJETAS DE SERVICIOS REGIONALES -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($regionalServices as $s)
+                        @include('admin.services._service_card', ['s' => $s, 'snapshotServices' => $snapshotServices, 'isClusterSlave' => $isClusterSlave])
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <!-- 3. OTROS SERVICIOS (SI EXISTEN) -->
+        @if($otherServices->count() > 0)
+            <div id="section-scope-otros" class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/60 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-obsidian-panel border border-obsidian-border flex items-center justify-center text-obsidian-muted shadow-md shrink-0">
+                            <span class="material-symbols-outlined text-xl">dns</span>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white font-sans">Otros Servicios Monitoreados</h3>
+                            <p class="text-xs font-mono text-obsidian-muted mt-0.5">Servicios con configuración especial o ámbito personalizado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($otherServices as $s)
+                        @include('admin.services._service_card', ['s' => $s, 'snapshotServices' => $snapshotServices, 'isClusterSlave' => $isClusterSlave])
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 
@@ -194,8 +306,8 @@
             </div>
 
             <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
-                <button type="button" onclick="closeModal('modal-create-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1">
+                <button type="button" onclick="closeModal('modal-create-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">save</span>
                     Guardar Servicio
                 </button>
@@ -276,16 +388,16 @@
             </div>
 
             <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
-                <button type="button" onclick="closeModal('modal-edit-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold">Actualizar Servicio</button>
+                <button type="button" onclick="closeModal('modal-edit-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold cursor-pointer">Actualizar Servicio</button>
             </div>
         </form>
     </div>
 </div>
 @endif
 
-<!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL -->
-<div id="modal-service-history" onclick="if(event.target === this) closeModal('modal-service-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">
+<!-- MODAL HISTÓRICO Y TELEMETRÍA (CHART.JS) -->
+<div id="modal-service-history" onclick="if(event.target === this) closeServiceHistoryModal()" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">
     <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto custom-scroll p-5 sm:p-6 bg-[#07172b]/95">
         <!-- CABECERA DEL HISTÓRICO -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 pb-4">
@@ -295,9 +407,9 @@
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span id="hist-service-letter" class="text-xs font-mono font-bold text-obsidian-cyan bg-obsidian-panel px-2 py-0.5 rounded border border-obsidian-border">[ A ]</span>
+                        <span id="hist-service-id" class="text-xs font-mono font-bold text-obsidian-cyan bg-obsidian-panel px-2 py-0.5 rounded border border-obsidian-border">ID #1</span>
                         <h3 id="hist-service-name" class="text-base font-bold text-white font-sans truncate max-w-md">Servicio</h3>
-                        <span id="hist-service-type" class="text-[9px] font-mono font-bold uppercase bg-obsidian-panel text-obsidian-muted px-1.5 py-0.5 rounded border border-obsidian-border">WEB</span>
+                        <span id="hist-service-type" class="text-[10px] font-mono font-bold uppercase bg-obsidian-panel text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/40">WEB</span>
                     </div>
                     <p id="hist-service-target" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">Destino: 10.20.0.1</p>
                 </div>
@@ -306,12 +418,12 @@
             <!-- CONTROLES DE RANGO TEMPORAL -->
             <div class="flex items-center gap-2 self-end sm:self-auto">
                 <div class="inline-flex rounded-lg p-1 bg-obsidian-panel border border-obsidian-border text-xs font-mono">
-                    <button type="button" onclick="loadServiceHistory('6h')" id="btn-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn">6H</button>
-                    <button type="button" onclick="loadServiceHistory('24h')" id="btn-range-24h" class="px-2.5 py-1 rounded-md bg-obsidian-cyan text-black font-bold transition range-btn">24H</button>
-                    <button type="button" onclick="loadServiceHistory('7d')" id="btn-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn">7D</button>
-                    <button type="button" onclick="loadServiceHistory('30d')" id="btn-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn">30D</button>
+                    <button type="button" onclick="loadServiceHistory('6h')" id="btn-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn cursor-pointer">6H</button>
+                    <button type="button" onclick="loadServiceHistory('24h')" id="btn-range-24h" class="px-2.5 py-1 rounded-md bg-obsidian-cyan text-black font-bold transition range-btn cursor-pointer">24H</button>
+                    <button type="button" onclick="loadServiceHistory('7d')" id="btn-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn cursor-pointer">7D</button>
+                    <button type="button" onclick="loadServiceHistory('30d')" id="btn-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn cursor-pointer">30D</button>
                 </div>
-                <button type="button" onclick="closeModal('modal-service-history')" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition" title="Cerrar">&times;</button>
+                <button type="button" onclick="closeServiceHistoryModal()" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition cursor-pointer" title="Cerrar">&times;</button>
             </div>
         </div>
 
@@ -425,6 +537,7 @@
     let currentServiceId = null;
     let currentRange = '24h';
     let historyChart = null;
+    let activeFilterType = 'all';
 
     function openModal(id) {
         const m = document.getElementById(id);
@@ -444,10 +557,18 @@
         }
     }
 
+    function closeServiceHistoryModal() {
+        closeModal('modal-service-history');
+        if (historyChart) {
+            historyChart.destroy();
+            historyChart = null;
+        }
+    }
+
     // Cerrar modal al presionar tecla Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            closeModal('modal-service-history');
+            closeServiceHistoryModal();
             closeModal('modal-edit-service');
             closeModal('modal-create-service');
         }
@@ -472,10 +593,10 @@
         openModal('modal-edit-service');
     }
 
-    async function openServiceHistoryModal(serviceId, name, letter, type) {
+    async function openServiceHistoryModal(serviceId, name, idVal, type) {
         currentServiceId = serviceId;
         document.getElementById('hist-service-name').innerText = name;
-        document.getElementById('hist-service-letter').innerText = `[ ${letter} ]`;
+        document.getElementById('hist-service-id').innerText = `ID #${serviceId}`;
         document.getElementById('hist-service-type').innerText = type;
         
         openModal('modal-service-history');
@@ -488,11 +609,11 @@
         
         // Update active tab buttons
         document.querySelectorAll('.range-btn').forEach(btn => {
-            btn.className = 'px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn';
+            btn.className = 'px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition range-btn cursor-pointer';
         });
         const activeBtn = document.getElementById(`btn-range-${range}`);
         if (activeBtn) {
-            activeBtn.className = 'px-2.5 py-1 rounded-md bg-obsidian-cyan text-black font-bold transition range-btn';
+            activeBtn.className = 'px-2.5 py-1 rounded-md bg-obsidian-cyan text-black font-bold transition range-btn cursor-pointer';
         }
 
         const overlay = document.getElementById('chart-loading-overlay');
@@ -567,7 +688,6 @@
         const isAllDown = statuses.length > 0 && statuses.every(s => s === 0);
         const lineColor = isAllDown ? '#ef4444' : '#22d3ee';
 
-        // Gradient fill under line
         const gradient = ctx.createLinearGradient(0, 0, 0, 200);
         if (isAllDown) {
             gradient.addColorStop(0, 'rgba(239, 68, 68, 0.35)');
@@ -577,7 +697,6 @@
             gradient.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
         }
 
-        // Point colors & radius
         const pointBackgroundColors = statuses.map(s => s === 1 ? '#22d3ee' : '#ef4444');
         const pointBorderColors = statuses.map(s => s === 1 ? '#051424' : '#fee2e2');
         const pointRadiuses = statuses.map(s => s === 1 ? (statuses.length > 30 ? 0 : 3) : 6);
@@ -617,9 +736,7 @@
                     intersect: false,
                 },
                 plugins: {
-                    legend: {
-                        display: false,
-                    },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(7, 23, 43, 0.95)',
                         titleColor: lineColor,
@@ -633,9 +750,9 @@
                                 const pt = points[idx];
                                 if (!pt) return `Latencia: ${context.parsed.y} ms`;
                                 if (pt.is_up) {
-                                    return `⚡ Latencia: ${pt.latency_ms} ms (${pt.status_message})`;
+                                    return `Latencia: ${pt.latency_ms} ms (${pt.status_message})`;
                                 } else {
-                                    return `❌ SERVICIO CAÍDO / APAGADO (${pt.status_message})`;
+                                    return `SERVICIO CAÍDO / APAGADO (${pt.status_message})`;
                                 }
                             }
                         }
@@ -643,9 +760,7 @@
                 },
                 scales: {
                     x: {
-                        grid: {
-                            color: 'rgba(28, 46, 71, 0.5)',
-                        },
+                        grid: { color: 'rgba(28, 46, 71, 0.5)' },
                         ticks: {
                             color: '#8295b0',
                             font: { family: 'JetBrains Mono', size: 9.5 },
@@ -655,9 +770,7 @@
                     y: {
                         beginAtZero: true,
                         suggestedMax: 10,
-                        grid: {
-                            color: 'rgba(28, 46, 71, 0.5)',
-                        },
+                        grid: { color: 'rgba(28, 46, 71, 0.5)' },
                         ticks: {
                             color: '#8295b0',
                             font: { family: 'JetBrains Mono', size: 9.5 },
@@ -666,6 +779,66 @@
                             }
                         }
                     }
+                }
+            }
+        });
+    }
+
+    // --- FILTRADO EN TIEMPO REAL ---
+    function setServiceFilter(type) {
+        activeFilterType = type;
+        document.querySelectorAll('.filter-chip').forEach(btn => {
+            btn.className = 'filter-chip px-2.5 py-1 rounded-lg transition font-semibold text-obsidian-muted hover:text-white bg-obsidian-panel border border-obsidian-border cursor-pointer';
+        });
+        const activeBtn = document.getElementById(`filter-btn-${type}`);
+        if (activeBtn) {
+            activeBtn.className = 'filter-chip px-2.5 py-1 rounded-lg transition font-semibold bg-obsidian-cyan text-black shadow-sm cursor-pointer';
+        }
+        filterServicesList();
+    }
+
+    function filterServicesList() {
+        const query = (document.getElementById('service-search-input').value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('.service-card');
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const letter = card.getAttribute('data-letter') || '';
+            const type = card.getAttribute('data-type') || '';
+            const target = card.getAttribute('data-target') || '';
+            const scope = card.getAttribute('data-scope') || '';
+            const isActive = card.getAttribute('data-active') === '1';
+            const status = card.getAttribute('data-status') || '';
+
+            const matchesSearch = !query || name.includes(query) || letter.includes(query) || type.includes(query) || target.includes(query);
+            
+            let matchesFilter = true;
+            if (activeFilterType === 'corporativo') {
+                matchesFilter = scope === 'corporativo';
+            } else if (activeFilterType === 'regional') {
+                matchesFilter = scope === 'regional';
+            } else if (activeFilterType === 'active') {
+                matchesFilter = isActive;
+            } else if (activeFilterType === 'down') {
+                matchesFilter = isActive && status === 'down';
+            }
+
+            if (matchesSearch && matchesFilter) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // Ocultar sección si no contiene tarjetas visibles
+        ['corporativo', 'regional', 'otros'].forEach(scope => {
+            const sec = document.getElementById(`section-scope-${scope}`);
+            if (sec) {
+                const visible = sec.querySelectorAll('.service-card:not(.hidden)').length;
+                if (visible === 0) {
+                    sec.classList.add('hidden');
+                } else {
+                    sec.classList.remove('hidden');
                 }
             }
         });

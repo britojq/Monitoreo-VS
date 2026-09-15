@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -9,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, Auditable;
 
     protected $fillable = [
         'name',
@@ -27,6 +28,9 @@ class User extends Authenticatable
         'banned_at',
         'last_login_at',
         'last_login_ip',
+        'terms_accepted_at',
+        'terms_accepted_ip',
+        'terms_version',
     ];
 
     protected $appends = [
@@ -48,7 +52,13 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'banned_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
         ];
+    }
+
+    public function hasAcceptedTerms(): bool
+    {
+        return !is_null($this->terms_accepted_at);
     }
 
     public function isAdmin(): bool

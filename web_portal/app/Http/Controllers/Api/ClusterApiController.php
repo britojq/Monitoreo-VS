@@ -65,6 +65,7 @@ class ClusterApiController extends Controller
                 'proxies' => MonitoredProxy::orderBy('letter')->get(),
                 'network_devices' => MonitoredNetworkDevice::orderBy('sort_order')->get(),
             ],
+            'audit_logs' => \App\Models\AuditLog::latest()->take(100)->get(),
         ]);
     }
 }

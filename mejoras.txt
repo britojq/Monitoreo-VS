@@ -1,10 +1,25 @@
-fijate, actualmente el servidor de desarroll y produccion entran en conflictos con el servidor PFsense porque el mismo bloquea los accesos del mismo usuario desde IP diferentes entonces para solucionar esto necesito crear una nueva forma de trabajo como a continuacion te explico:
+Basandote en el ejemplo que te dare a continuacion, requiero una ventana que aparezca una vez cuando el usuario inicia sesion, la idea de esta ventana es de dar a conocer los lineamientos mostrados y al darle dar aceptar se registre que el usuario esta de acuerdo a todo lo manifestado en esa ventana imformativa, debes crear un modulo de acepto de terminos de uso y colocar ahi si el usuario le dio aceptar y cerro la ventana, esta ventana solo se mostrara si el usuario no acepta las condicioenes de uso, se debe llevar un registro de auditoria por usuario para saber que acepto los terminos descritos en la ventana, CREA UNA VENTANA VISTOSA USA ICONOS Y TODO LO NECESARIO PARA QUE SEA LLAMATIVA, el texto de ejemplo es el siguiente:
 
-el servidor de produccion debe ser un servidor Master, sera el unico que realzara escaneos periodicos como se definio (cada 10 minutos)
-el servidor de desarrollo la vista web se conectara al servidor de produccion (master) para obtener los datos del escaneo
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ ADVERTENCIA DE SEGURIDAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-me gustaria que exista un modo de trabajo master y esclavo, en donde al entrar al portal se le asigne este rol (Master o Slave) y que el slave no haga escaneo en intervalos de tiempo cuando este en modo (Slave) sino que se conecte  al servidor (Master) y obtenga toda la data
-teniendo en cuenta que si el servidor esta como (slave) no podra cambiar configuraciones del archivo "monitoreo.conf" ni otra configuraciones y debe indicar que se deben hacer esos cambios en el servidor master (solo cuando un usuario con rol administrador inicie sesion e intente hacerlo)
-me gustaria que diseñes algo con una api que este activa pero oculta al publico y que los servidores la usen para este fin exclusivamente y que solo validando credenciales puedan usar esa conexion de api
+Este BOT está protegido por un Custodio de Registros.
 
-basandote en esta idea dame una sugerencia de que hacer y como lo implementarias
+Toda la información contenida y procesada por este bot es de carácter Confidencial y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ AVISO LEGAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se registran y almacenan los datos (ID:, Usuario, Dirección IP, Fecha, Hora y mensajes enviados) en nuestros servidores en caso de utilizar el bot sin autorización esto con fines de auditoría y seguridad.
+
+Cualquier ACCESO NO AUTORIZADO, intento de intrusión o uso indebido de la información será sancionado conforme a lo establecido en la Ley Contra los Delitos Informáticos, Capítulos I y II, artículos 6, 7, 8, 9, 10, 11 y 13.
+
+Si usted no cuenta con autorización para acceder a este bot o utilizar sus servicios, desconéctese y elimine inmediatamente.
+
+La permanencia en esta chat constituye la aceptación de los términos aquí expuestos.
+
+
+
+

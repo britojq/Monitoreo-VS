@@ -917,6 +917,41 @@ async def sync_from_master() -> bool:
                     if net_hist_records:
                         cursor.executemany(net_hist_sql, net_hist_records)
                     cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+
+                    # 2.5 Sincronización de pista de auditoría (audit_logs)
+                    audit_logs = data.get("audit_logs", [])
+                    if audit_logs:
+                        audit_sql = """
+                            INSERT IGNORE INTO audit_logs
+                            (id, user_id, user_name, user_email, user_role, event, module, auditable_type, auditable_id, entity_name, entity_label, description, old_values, new_values, changed_fields, ip_address, user_agent, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        audit_records = []
+                        for al in audit_logs:
+                            if "id" in al:
+                                audit_records.append((
+                                    al["id"],
+                                    al.get("user_id"),
+                                    al.get("user_name"),
+                                    al.get("user_email"),
+                                    al.get("user_role"),
+                                    al.get("event"),
+                                    al.get("module"),
+                                    al.get("auditable_type"),
+                                    al.get("auditable_id"),
+                                    al.get("entity_name"),
+                                    al.get("entity_label"),
+                                    al.get("description"),
+                                    json.dumps(al.get("old_values")) if isinstance(al.get("old_values"), (dict, list)) else al.get("old_values"),
+                                    json.dumps(al.get("new_values")) if isinstance(al.get("new_values"), (dict, list)) else al.get("new_values"),
+                                    json.dumps(al.get("changed_fields")) if isinstance(al.get("changed_fields"), (dict, list)) else al.get("changed_fields"),
+                                    al.get("ip_address"),
+                                    al.get("user_agent"),
+                                    al.get("created_at"),
+                                    al.get("updated_at") or al.get("created_at")
+                                ))
+                        if audit_records:
+                            cursor.executemany(audit_sql, audit_records)
                 conn.close()
             except Exception as e_db:
                 print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")

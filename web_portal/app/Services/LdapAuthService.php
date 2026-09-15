@@ -195,7 +195,7 @@ class LdapAuthService
 
     /**
      * Obtiene los dominios de correo permitidos a partir de los componentes dc= de la Base DN.
-     * Ejemplo: "dc=corpoelec,dc=gob,dc=ve" -> ['corpoelec.gob.ve', 'corpoelec.com.ve']
+     * Ejemplo: "dc=empresa,dc=gob,dc=ve" -> ['empresa.gob.ve', 'empresa.com.ve']
      */
     public function getDomainsFromBaseDn(string $baseDn): array
     {
@@ -363,7 +363,7 @@ class LdapAuthService
         $cfg = $this->getConfig();
         $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
         $domains = $this->getDomainsFromBaseDn($baseDn);
-        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
+        $primaryDomain = $domains[0] ?? 'empresa.gob.ve';
         $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
         $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
 
@@ -516,7 +516,7 @@ class LdapAuthService
         $cfg = $this->getConfig();
         $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
         $domains = $this->getDomainsFromBaseDn($baseDn);
-        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
+        $primaryDomain = $domains[0] ?? 'empresa.gob.ve';
         $rawAreas = explode(',', $cfg['allowed_areas'] ?? '');
         $allowedAreas = array_values(array_filter(array_map('trim', $rawAreas)));
 
@@ -617,7 +617,7 @@ class LdapAuthService
         $cfg = $this->getConfig();
         $baseDn = $this->resolveBaseDn($conn, $cfg['base_dn']);
         $domains = $this->getDomainsFromBaseDn($baseDn);
-        $primaryDomain = $domains[0] ?? 'corpoelec.gob.ve';
+        $primaryDomain = $domains[0] ?? 'empresa.gob.ve';
 
         $escaped = ldap_escape($cleanUid, '', LDAP_ESCAPE_FILTER);
         $filterList = [

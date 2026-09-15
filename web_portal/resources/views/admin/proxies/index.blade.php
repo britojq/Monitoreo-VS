@@ -19,7 +19,7 @@
             <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión</p>
         </div>
         <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
-            Datos de bot.conf
+            Fuente: SERVIDOR MAESTRO
         </div>
     </div>
 

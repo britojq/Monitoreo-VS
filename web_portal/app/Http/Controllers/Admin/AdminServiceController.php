@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MonitoredService;
+use App\Models\MonitoringSnapshot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,20 @@ class AdminServiceController extends Controller
     public function index(): View
     {
         $services = MonitoredService::orderBy('sort_order')->get();
-        return view('admin.services.index', compact('services'));
+        $latestSnapshot = MonitoringSnapshot::latest()->first();
+        $snapshotServices = collect();
+        if ($latestSnapshot && isset($latestSnapshot->payload_json['services'])) {
+            foreach ($latestSnapshot->payload_json['services'] as $srv) {
+                if (isset($srv['id'])) {
+                    $snapshotServices->put((string)$srv['id'], $srv);
+                }
+                if (isset($srv['letter'])) {
+                    $snapshotServices->put((string)$srv['letter'], $srv);
+                }
+            }
+        }
+
+        return view('admin.services.index', compact('services', 'snapshotServices'));
     }
 
     public function store(Request $request): RedirectResponse

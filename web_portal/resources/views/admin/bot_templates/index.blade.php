@@ -14,7 +14,7 @@
                 <h1 class="text-base sm:text-lg font-bold text-white tracking-wide uppercase font-mono flex items-center gap-2">
                     Plantillas de Mensajería & Reportes Oficiales
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                        MARIADB • SSOT
+                        SERVIDOR MAESTRO
                     </span>
                 </h1>
                 <p class="text-xs font-mono text-obsidian-muted">

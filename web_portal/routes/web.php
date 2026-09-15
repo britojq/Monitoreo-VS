@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminAdvancedSettingsController;
+use App\Http\Controllers\Admin\AdminAuditController;
 use App\Http\Controllers\Admin\AdminBanController;
 use App\Http\Controllers\Admin\AdminBotCommandController;
 use App\Http\Controllers\Admin\AdminBotTemplateController;
@@ -13,8 +14,10 @@ use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminSiteController;
 use App\Http\Controllers\Admin\AdminTelegramDispatchController;
+use App\Http\Controllers\Admin\AdminTermsController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SshSessionController;
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Admin\TelnetSessionController;
 use App\Http\Controllers\Admin\VncSessionController;
@@ -86,9 +89,21 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('telnet/session', [TelnetSessionController::class, 'createSession'])->name('telnet.session');
     Route::get('telnet/terminal', [TelnetSessionController::class, 'terminal'])->name('telnet.terminal');
 
+    // Control Remoto SSH (Accesible para Operadores y Administradores)
+    Route::post('ssh/session', [SshSessionController::class, 'createSession'])->name('ssh.session');
+    Route::get('ssh/terminal', [SshSessionController::class, 'terminal'])->name('ssh.terminal');
+
+    // Aceptación de Términos de Uso y Seguridad (Accesible para todos los usuarios autenticados)
+    Route::post('terms/accept', [AdminTermsController::class, 'accept'])->name('terms.accept');
+
     // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN (Protegidas por Middleware 'admin')
     // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO
     Route::middleware(['admin'])->group(function () {
+
+        // Gestión y Auditoría de Términos de Uso (Exclusivo Administrador)
+        Route::get('terms', [AdminTermsController::class, 'index'])->name('terms.index');
+        Route::post('terms/{user}/reset', [AdminTermsController::class, 'reset'])->name('terms.reset');
+        Route::post('terms/reset-all', [AdminTermsController::class, 'resetAll'])->name('terms.resetAll');
 
         // Búsqueda y Autorización Manual de Usuarios LDAP
         Route::get('users/ldap/search', [AdminUserController::class, 'searchLdapUsers'])->name('users.ldap.search');
@@ -103,6 +118,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('bans/unban/ip/{id}', [AdminBanController::class, 'unbanIp'])->name('bans.unban.ip');
         Route::post('bans/unban/all/{userId}', [AdminBanController::class, 'unbanAll'])->name('bans.unban.all');
         Route::post('bans/ban-ip', [AdminBanController::class, 'banIp'])->name('bans.ban.ip');
+
+        // Registro y Pista de Auditoría del Sistema (Exclusivo Administrador)
+        Route::get('audit', [AdminAuditController::class, 'index'])->name('audit.index');
+        Route::get('audit/{audit}', [AdminAuditController::class, 'show'])->name('audit.show');
 
         // Plantillas de Mensajería y Reportes del Bot (Exclusivo Administrador)
         Route::get('bot/templates', [AdminBotTemplateController::class, 'index'])->name('bot.templates.index');
@@ -136,7 +155,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             Route::delete('sites/devices/{device}', [AdminSiteController::class, 'deleteDevice'])->name('sites.devices.destroy');
 
             // Modificaciones de Dispositivos de Red
+            Route::post('devices', [AdminNetworkDeviceController::class, 'store'])->name('devices.store');
             Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');
+            Route::delete('devices/{device}', [AdminNetworkDeviceController::class, 'destroy'])->name('devices.destroy');
             Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle');
 
             // Modificaciones de Proxies

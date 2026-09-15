@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MonitoredNetworkDevice;
+use App\Models\MonitoredSite;
+use App\Models\MonitoredSiteDevice;
 use App\Models\MonitoringSnapshot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,18 +16,103 @@ use Illuminate\View\View;
 class AdminNetworkDeviceController extends Controller
 {
     /**
-     * Muestra el listado de dispositivos de red Valle Seco.
+     * Muestra el listado centralizado de dispositivos de red de todas las sedes.
      * Accesible para Operadores y Administradores.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $devices = MonitoredNetworkDevice::orderBy('device_number')->get();
+        $siteFilter = $request->query('site_id');
+        $query = MonitoredNetworkDevice::with('site')->orderBy('monitored_site_id')->orderBy('device_number');
+
+        if (!empty($siteFilter)) {
+            $query->where('monitored_site_id', $siteFilter);
+        }
+
+        $totalCount = (clone $query)->count();
+        $activeCount = (clone $query)->where('is_active', true)->count();
+        $inactiveCount = (clone $query)->where('is_active', false)->count();
+
+        $devices = $query->paginate(15)->withQueryString();
+        $sites = MonitoredSite::where('is_active', true)->orderBy('sort_order')->get();
+
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotDevices = ($latestSnapshot && isset($latestSnapshot->payload_json['network_devices']))
             ? collect($latestSnapshot->payload_json['network_devices'])->keyBy('id')
             : collect();
 
-        return view('admin.devices.index', compact('devices', 'snapshotDevices'));
+        return view('admin.devices.index', compact('devices', 'sites', 'siteFilter', 'snapshotDevices', 'totalCount', 'activeCount', 'inactiveCount'));
+    }
+
+    /**
+     * Registra un nuevo dispositivo de red y lo asigna a una sede.
+     * EXCLUSIVO PARA ADMINISTRADORES.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            abort(403, 'Acceso Denegado: Solo administradores pueden agregar dispositivos.');
+        }
+
+        $validated = $request->validate([
+            'monitored_site_id' => ['required', 'exists:monitored_sites,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'ip' => ['required', 'string', 'max:255', 'unique:monitored_network_devices,ip'],
+            'mac' => ['nullable', 'string', 'max:50'],
+            'vendor_data' => ['nullable', 'string', 'max:255'],
+            'access_type' => ['required', 'string', Rule::in(['TELNET', 'SSH', 'WEB', 'VNC', 'SIN SOPORTE'])],
+            'access_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'model' => ['nullable', 'string', 'max:255'],
+            'serial' => ['nullable', 'string', 'max:100'],
+            'ports' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $validated['access_type'] = strtoupper(trim($validated['access_type']));
+        if (empty($validated['access_port'])) {
+            if ($validated['access_type'] === 'SSH') {
+                $validated['access_port'] = 22;
+            } elseif ($validated['access_type'] === 'TELNET') {
+                $validated['access_port'] = 23;
+            } elseif ($validated['access_type'] === 'WEB') {
+                $validated['access_port'] = 80;
+            } elseif ($validated['access_type'] === 'VNC') {
+                $validated['access_port'] = 5900;
+            } else {
+                $validated['access_port'] = null;
+            }
+        }
+
+        $validated['is_active'] = $request->boolean('is_active', true);
+        $nextNum = (MonitoredNetworkDevice::where('monitored_site_id', $validated['monitored_site_id'])->max('device_number') ?? 0) + 1;
+        $validated['device_number'] = $nextNum;
+        $validated['sort_order'] = MonitoredNetworkDevice::count() + 1;
+
+        $device = MonitoredNetworkDevice::create($validated);
+
+        // Sincronizar espejo en monitored_site_devices para que sea visible en admin/sites
+        $nextSiteDevNum = (MonitoredSiteDevice::where('monitored_site_id', $validated['monitored_site_id'])->max('device_number') ?? 0) + 1;
+        MonitoredSiteDevice::updateOrCreate(
+            ['monitored_site_id' => $validated['monitored_site_id'], 'ip' => $validated['ip']],
+            [
+                'device_number' => $nextSiteDevNum,
+                'name' => $validated['name'],
+                'mac' => $validated['mac'] ?? null,
+                'vendor_data' => $validated['vendor_data'] ?? null,
+                'access_type' => $validated['access_type'],
+                'access_port' => $validated['access_port'],
+                'model' => $validated['model'] ?? null,
+                'serial' => $validated['serial'] ?? null,
+                'ports' => $validated['ports'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'is_active' => $validated['is_active'],
+            ]
+        );
+
+        app(SyncController::class)->exportToConfigFiles();
+
+        return redirect()->route('admin.devices.index')
+            ->with('success', "Dispositivo [{$device->name}] creado y asignado exitosamente.");
     }
 
     /**
@@ -39,11 +126,12 @@ class AdminNetworkDeviceController extends Controller
         }
 
         $validated = $request->validate([
+            'monitored_site_id' => ['nullable', 'exists:monitored_sites,id'],
             'name' => ['required', 'string', 'max:255'],
-            'ip' => ['required', 'string', 'max:255'],
+            'ip' => ['required', 'string', 'max:255', Rule::unique('monitored_network_devices', 'ip')->ignore($device->id)],
             'mac' => ['nullable', 'string', 'max:50'],
             'vendor_data' => ['nullable', 'string', 'max:255'],
-            'access_type' => ['required', 'string', Rule::in(['TELNET', 'WEB', 'VNC', 'SIN SOPORTE'])],
+            'access_type' => ['required', 'string', Rule::in(['TELNET', 'SSH', 'WEB', 'VNC', 'SIN SOPORTE'])],
             'access_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'model' => ['nullable', 'string', 'max:255'],
             'serial' => ['nullable', 'string', 'max:100'],
@@ -54,7 +142,9 @@ class AdminNetworkDeviceController extends Controller
 
         $validated['access_type'] = strtoupper(trim($validated['access_type']));
         if (empty($validated['access_port'])) {
-            if ($validated['access_type'] === 'TELNET') {
+            if ($validated['access_type'] === 'SSH') {
+                $validated['access_port'] = 22;
+            } elseif ($validated['access_type'] === 'TELNET') {
                 $validated['access_port'] = 23;
             } elseif ($validated['access_type'] === 'WEB') {
                 $validated['access_port'] = 80;
@@ -66,14 +156,77 @@ class AdminNetworkDeviceController extends Controller
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $oldIp = $device->ip;
 
         $device->update($validated);
 
-        // Disparar sincronización con config/monitoreo.conf
+        // Sincronizar en monitored_site_devices
+        $siteId = $validated['monitored_site_id'] ?? $device->monitored_site_id;
+        if ($siteId) {
+            $siteDev = MonitoredSiteDevice::where('ip', $oldIp)->first();
+            if ($siteDev) {
+                $siteDev->update([
+                    'monitored_site_id' => $siteId,
+                    'name' => $validated['name'],
+                    'ip' => $validated['ip'],
+                    'mac' => $validated['mac'] ?? null,
+                    'vendor_data' => $validated['vendor_data'] ?? null,
+                    'access_type' => $validated['access_type'],
+                    'access_port' => $validated['access_port'],
+                    'model' => $validated['model'] ?? null,
+                    'serial' => $validated['serial'] ?? null,
+                    'ports' => $validated['ports'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                    'is_active' => $validated['is_active'],
+                ]);
+            } else {
+                $nextSiteDevNum = (MonitoredSiteDevice::where('monitored_site_id', $siteId)->max('device_number') ?? 0) + 1;
+                MonitoredSiteDevice::create([
+                    'monitored_site_id' => $siteId,
+                    'device_number' => $nextSiteDevNum,
+                    'name' => $validated['name'],
+                    'ip' => $validated['ip'],
+                    'mac' => $validated['mac'] ?? null,
+                    'vendor_data' => $validated['vendor_data'] ?? null,
+                    'access_type' => $validated['access_type'],
+                    'access_port' => $validated['access_port'],
+                    'model' => $validated['model'] ?? null,
+                    'serial' => $validated['serial'] ?? null,
+                    'ports' => $validated['ports'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                    'is_active' => $validated['is_active'],
+                ]);
+            }
+        }
+
         app(SyncController::class)->exportToConfigFiles();
 
         return redirect()->route('admin.devices.index')
             ->with('success', "Dispositivo [{$device->name}] actualizado y sincronizado exitosamente.");
+    }
+
+    /**
+     * Elimina un dispositivo de red y su reflejo en la sede.
+     * EXCLUSIVO PARA ADMINISTRADORES.
+     */
+    public function destroy(Request $request, MonitoredNetworkDevice $device): RedirectResponse
+    {
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            abort(403, 'Acceso Denegado: Solo administradores pueden eliminar dispositivos.');
+        }
+
+        $name = $device->name;
+        $ip = $device->ip;
+
+        // Eliminar también en monitored_site_devices
+        MonitoredSiteDevice::where('ip', $ip)->delete();
+
+        $device->delete();
+
+        app(SyncController::class)->exportToConfigFiles();
+
+        return redirect()->route('admin.devices.index')
+            ->with('success', "Dispositivo [{$name}] eliminado exitosamente.");
     }
 
     /**
@@ -88,6 +241,9 @@ class AdminNetworkDeviceController extends Controller
 
         $device->is_active = !$device->is_active;
         $device->save();
+
+        // Sincronizar estado en monitored_site_devices
+        MonitoredSiteDevice::where('ip', $device->ip)->update(['is_active' => $device->is_active]);
 
         app(SyncController::class)->exportToConfigFiles();
 

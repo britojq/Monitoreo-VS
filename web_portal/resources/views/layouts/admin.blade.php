@@ -6,113 +6,123 @@
 
 <div class="min-h-screen flex relative">
     <!-- SIDEBAR DE ADMINISTRACIÓN RETRÁCTIL (AUTO-ESCONDIDO) -->
-    <aside id="admin-sidebar" class="w-64 sm:w-72 glass-panel border-r border-obsidian-border flex flex-col justify-between shrink-0 z-50 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl bg-[#07172b]/98">
-        <div>
-            <!-- CABECERA DE SIDEBAR -->
-            <div class="h-14 px-5 flex items-center justify-between border-b border-obsidian-border">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan p-1 shadow-lg shadow-cyan-500/20">
-                        <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]">
-                    </div>
-                    <div>
-                        <h2 class="text-xs sm:text-sm font-bold text-white tracking-tight">PANEL DE CONTROL</h2>
-                        <p class="text-[10px] font-mono text-obsidian-cyan">ATIT VALLE SECO</p>
-                    </div>
+    <aside id="admin-sidebar" class="w-72 max-w-[85vw] glass-panel border-r border-obsidian-border flex flex-col h-screen fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl bg-[#07172b]/98">
+        <!-- CABECERA DE SIDEBAR (FIJA) -->
+        <div class="h-14 px-5 flex items-center justify-between border-b border-obsidian-border shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan p-1 shadow-lg shadow-cyan-500/20">
+                    <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]">
                 </div>
-                <!-- BOTÓN CERRAR SIDEBAR -->
-                <button type="button" onclick="toggleAdminSidebar(false)" class="p-1 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition leading-none text-xl" title="Ocultar Menú">
-                    &times;
-                </button>
+                <div>
+                    <h2 class="text-xs sm:text-sm font-bold text-white tracking-tight">PANEL DE CONTROL</h2>
+                    <p class="text-[10px] font-mono text-obsidian-cyan">ATIT VALLE SECO</p>
+                </div>
             </div>
-
-            <!-- ENLACES DE NAVEGACIÓN -->
-            <nav class="p-4 space-y-1.5 font-mono text-xs">
-                <!-- DASHBOARD -->
-                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.dashboard') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">dashboard</span>
-                    Dashboard
-                </a>
-
-                <!-- MI PERFIL (Para Administradores y Operadores) -->
-                <a href="{{ route('admin.profile.show') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.profile.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">account_circle</span>
-                    Mi Perfil
-                </a>
-
-                @if(auth()->user()->isAdmin())
-                <!-- GESTIÓN DE USUARIOS (Solo Administrador) -->
-                <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">group</span>
-                    Usuarios
-                </a>
-
-                <!-- BANEOS & SEGURIDAD (Solo Administrador) -->
-                <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}">
-                    <span class="material-symbols-outlined text-lg">gavel</span>
-                    Baneos & Seguridad
-                </a>
-
-                <!-- PLANTILLAS DE MENSAJERÍA BOT (Solo Administrador) -->
-                <a href="{{ route('admin.bot.templates.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.templates.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">edit_note</span>
-                    Plantillas Bot
-                </a>
-
-                <!-- COMANDOS DEL BOT (Solo Administrador) -->
-                <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">terminal</span>
-                    Comandos Bot
-                </a>
-
-                <!-- CONFIGURACIÓN AVANZADA (Solo Administrador) -->
-                <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">tune</span>
-                    Configuración Avanzada
-                </a>
-                @endif
-
-                <div class="pt-4 pb-1 px-4 text-[10px] uppercase tracking-wider text-obsidian-muted/60">
-                    Infraestructura Monitoreada
-                </div>
-
-                <!-- SERVICIOS -->
-                <a href="{{ route('admin.services.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.services.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">dns</span>
-                    Servicios
-                </a>
-
-                <!-- SEDES -->
-                <a href="{{ route('admin.sites.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.sites.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">domain</span>
-                    Sedes & Enlaces
-                </a>
-
-                <!-- DISPOSITIVOS DE RED -->
-                <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">router</span>
-                    Dispositivos de Red
-                </a>
-
-                <!-- PROXIES -->
-                <a href="{{ route('admin.proxies.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-semibold transition {{ request()->routeIs('admin.proxies.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                    <span class="material-symbols-outlined text-lg">public</span>
-                    Proxies
-                </a>
-            </nav>
+            <!-- BOTÓN CERRAR SIDEBAR -->
+            <button type="button" onclick="toggleAdminSidebar(false)" class="p-1 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition leading-none text-xl cursor-pointer" title="Ocultar Menú">
+                &times;
+            </button>
         </div>
 
-        <!-- PIE DE SIDEBAR -->
-        <div class="p-4 border-t border-obsidian-border space-y-2">
+        <!-- ENLACES DE NAVEGACIÓN (SCROLLABLE INDEPENDIENTE) -->
+        <nav class="flex-1 min-h-0 overflow-y-auto px-3.5 py-2.5 space-y-1 font-mono text-xs custom-scroll">
+            <!-- DASHBOARD -->
+            <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.dashboard') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">dashboard</span>
+                Dashboard
+            </a>
+
+            <!-- MI PERFIL (Para Administradores y Operadores) -->
+            <a href="{{ route('admin.profile.show') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.profile.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">account_circle</span>
+                Mi Perfil
+            </a>
+
+            @if(auth()->user()->isAdmin())
+            <!-- GESTIÓN DE USUARIOS (Solo Administrador) -->
+            <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">group</span>
+                Usuarios
+            </a>
+
+            <!-- AUDITORÍA DEL SISTEMA (Solo Administrador) -->
+            <a href="{{ route('admin.audit.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.audit.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">policy</span>
+                Auditoría
+            </a>
+
+            <!-- TÉRMINOS DE USO & SEGURIDAD (Solo Administrador) -->
+            <a href="{{ route('admin.terms.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.terms.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">verified_user</span>
+                Términos de Uso
+            </a>
+
+            <!-- BANEOS & SEGURIDAD (Solo Administrador) -->
+            <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}">
+                <span class="material-symbols-outlined text-lg">gavel</span>
+                Baneos & Seguridad
+            </a>
+
+            <!-- PLANTILLAS DE MENSAJERÍA BOT (Solo Administrador) -->
+            <a href="{{ route('admin.bot.templates.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.templates.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">edit_note</span>
+                Plantillas Bot
+            </a>
+
+            <!-- COMANDOS DEL BOT (Solo Administrador) -->
+            <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">terminal</span>
+                Comandos Bot
+            </a>
+
+            <!-- CONFIGURACIÓN AVANZADA (Solo Administrador) -->
+            <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">tune</span>
+                Configuración Avanzada
+            </a>
+            @endif
+
+            <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider text-obsidian-muted/60 font-bold">
+                Infraestructura Monitoreada
+            </div>
+
+            <!-- SERVICIOS -->
+            <a href="{{ route('admin.services.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.services.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">dns</span>
+                Servicios
+            </a>
+
+            <!-- SEDES -->
+            <a href="{{ route('admin.sites.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.sites.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">domain</span>
+                Sedes & Enlaces
+            </a>
+
+            <!-- DISPOSITIVOS DE RED -->
+            <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">router</span>
+                Dispositivos de Red
+            </a>
+
+            <!-- PROXIES -->
+            <a href="{{ route('admin.proxies.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.proxies.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">public</span>
+                Proxies
+            </a>
+        </nav>
+
+        <!-- PIE DE SIDEBAR (FIJO) -->
+        <div class="p-3 border-t border-obsidian-border space-y-2 shrink-0 bg-[#07172b]/95">
             @if(auth()->user()->isAdmin())
             <!-- BOTÓN ESCANEAR AHORA (Solo Administrador) -->
-            <button onclick="triggerImmediateScan()" id="btn-scan-now" class="w-full py-2.5 px-3 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-bold transition flex items-center justify-center gap-2">
+            <button onclick="triggerImmediateScan()" id="btn-scan-now" class="w-full py-2 px-3 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer">
                 <span class="material-symbols-outlined text-base" id="icon-scan-now">bolt</span>
                 <span id="text-scan-now">Escanear Ahora</span>
             </button>
             @endif
 
             <!-- VER SITIO PÚBLICO -->
-            <a href="{{ route('home') }}" target="_blank" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition">
+            <a href="{{ route('home') }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-mono text-obsidian-muted hover:text-white hover:bg-obsidian-panel transition">
                 <span class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-base">visibility</span>
                     Ver Sitio Público
@@ -121,9 +131,9 @@
             </a>
 
             <!-- CERRAR SESIÓN -->
-            <form action="{{ route('logout') }}" method="POST">
+            <form action="{{ route('logout') }}" method="POST" class="m-0">
                 @csrf
-                <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono text-red-400 hover:bg-red-950/40 hover:text-red-300 transition">
+                <button type="submit" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono text-red-400 hover:bg-red-950/40 hover:text-red-300 transition cursor-pointer">
                     <span class="material-symbols-outlined text-base">logout</span>
                     Cerrar Sesión
                 </button>
@@ -390,4 +400,169 @@
         }
     }
 </script>
+
+@if(auth()->check() && !auth()->user()->hasAcceptedTerms())
+<!-- ========================================================================= -->
+<!-- MODAL OBLIGATORIO: ACEPTACIÓN DE TÉRMINOS DE USO & ADVERTENCIA LEGAL -->
+<!-- ========================================================================= -->
+<div id="mandatory-terms-modal" class="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
+    <div class="w-full max-w-2xl glass-panel rounded-2xl border-2 border-cyan-500/50 bg-[#061426]/98 p-5 sm:p-7 shadow-[0_0_50px_rgba(34,211,238,0.25)] relative text-left space-y-5 animate-in fade-in zoom-in-95 duration-300 max-h-[95vh] flex flex-col">
+        
+        <!-- CABECERA DE IMPACTO VISUAL -->
+        <div class="flex items-center gap-3 pb-3 border-b border-obsidian-border shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/30 border border-cyan-400/60 flex items-center justify-center text-cyan-300 glow-cyan shrink-0 shadow-lg shadow-cyan-500/20">
+                <span class="material-symbols-outlined text-3xl animate-pulse">security</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-950/80 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                        CONFIRMACIÓN OBLIGATORIA
+                    </span>
+                    <span class="text-[10px] font-mono text-cyan-400/80 hidden sm:inline">ATIT VALLE SECO</span>
+                </div>
+                <h2 class="text-base sm:text-lg font-bold text-white tracking-tight leading-tight mt-0.5">
+                    LINEAMIENTOS DE SEGURIDAD & MARCO LEGAL
+                </h2>
+                <p class="text-[11px] font-mono text-obsidian-muted">
+                    Custodia de registros y políticas de confidencialidad institucional
+                </p>
+            </div>
+        </div>
+
+        <!-- CUERPO DE LINEAMIENTOS (SCROLLABLE ELEGANTE) -->
+        <div class="flex-1 min-h-0 overflow-y-auto space-y-4 font-mono text-xs leading-relaxed custom-scroll pr-2">
+            
+            <!-- TARJETA 1: ADVERTENCIA DE SEGURIDAD -->
+            <div class="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 shadow-inner space-y-2 relative overflow-hidden">
+                <div class="flex items-center gap-2 text-amber-400 font-bold text-xs sm:text-sm">
+                    <span class="material-symbols-outlined text-xl">warning</span>
+                    <span>ADVERTENCIA DE SEGURIDAD</span>
+                </div>
+                <p class="text-amber-100 font-semibold text-xs leading-relaxed">
+                    Este BOT y Sistema de Monitoreo están protegidos por un <span class="text-amber-300 underline font-bold">Custodio de Registros</span>.
+                </p>
+                <p class="text-amber-200/90 text-[11px] leading-relaxed">
+                    Toda la información contenida y procesada por este bot y plataforma es de carácter <b>Estrictamente Confidencial</b> y se encuentra amparada bajo rigurosos protocolos de privacidad y protección de datos institucionales.
+                </p>
+            </div>
+
+            <!-- TARJETA 2: AVISO LEGAL & LEY DE DELITOS INFORMÁTICOS -->
+            <div class="p-4 rounded-xl bg-red-950/25 border border-red-500/40 shadow-inner space-y-2.5 relative overflow-hidden">
+                <div class="flex items-center gap-2 text-red-400 font-bold text-xs sm:text-sm">
+                    <span class="material-symbols-outlined text-xl">gavel</span>
+                    <span>AVISO LEGAL & RESPONSABILIDAD PENAL</span>
+                </div>
+                <p class="text-gray-200 text-[11px] leading-relaxed">
+                    Se registran y almacenan los datos (<b>ID de Usuario, Nombre, Dirección IP, Fecha, Hora y acciones/mensajes enviados</b>) en nuestros servidores en caso de utilizar el sistema o bot sin autorización, esto con fines de auditoría y seguridad.
+                </p>
+                
+                <div class="p-3 rounded-lg bg-[#030914]/90 border border-red-500/30 text-[11px] text-red-200 space-y-1">
+                    <p class="font-bold flex items-center gap-1.5 text-red-400">
+                        <span class="material-symbols-outlined text-base">policy</span>
+                        LEY ESPECIAL CONTRA LOS DELITOS INFORMÁTICOS
+                    </p>
+                    <p class="leading-relaxed">
+                        Cualquier <b>ACCESO NO AUTORIZADO</b>, intento de intrusión o uso indebido de la información será sancionado conforme a lo establecido en la Ley Contra los Delitos Informáticos, <b>Capítulos I y II, artículos 6, 7, 8, 9, 10, 11 y 13</b>.
+                    </p>
+                </div>
+
+                <p class="text-red-300 font-semibold text-[11px]">
+                    ⚠️ Si usted no cuenta con autorización para acceder a este bot o utilizar sus servicios, desconéctese y elimine inmediatamente.
+                </p>
+                
+                <p class="text-obsidian-cyan text-[11px] italic font-semibold border-t border-red-500/20 pt-2">
+                    La permanencia en este sistema constituye la aceptación plena e incondicional de los términos aquí expuestos.
+                </p>
+            </div>
+
+        </div>
+
+        <!-- PIE DEL MODAL: CHECKBOX Y BOTONES -->
+        <div class="shrink-0 pt-3 border-t border-obsidian-border space-y-3">
+            <!-- CHECKBOX DE CONFIRMACIÓN -->
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-obsidian-panel/80 border border-cyan-500/30 hover:border-cyan-400 transition cursor-pointer select-none">
+                <input type="checkbox" id="chk-accept-terms" onchange="toggleAcceptButtonState()" class="mt-0.5 w-4 h-4 rounded border-cyan-500 text-obsidian-cyan focus:ring-obsidian-cyan bg-[#040c17] cursor-pointer">
+                <span class="text-xs text-cyan-200 font-mono leading-relaxed">
+                    He leído íntegramente, comprendo y acepto formalmente los <b>Lineamientos de Seguridad</b>, la <b>Custodia de Registros</b> y el <b>Aviso Legal</b> expuestos.
+                </span>
+            </label>
+
+            <!-- ACCIONES -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <!-- BOTÓN SALIR / CERRAR SESIÓN -->
+                <form action="{{ route('logout') }}" method="POST" class="w-full sm:w-auto m-0">
+                    @csrf
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-red-950/40 border border-red-500/50 text-red-400 hover:bg-red-950 hover:text-white font-mono text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">logout</span>
+                        <span>Rechazar y Cerrar Sesión</span>
+                    </button>
+                </form>
+
+                <!-- BOTÓN ACEPTAR FORMALMENTE -->
+                <button type="button" id="btn-submit-terms" onclick="submitTermsAcceptance()" disabled 
+                        class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-mono text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed cursor-pointer hover:shadow-cyan-500/30 hover:scale-[1.02]">
+                    <span class="material-symbols-outlined text-base" id="icon-submit-terms">verified</span>
+                    <span id="text-submit-terms">ACEPTAR LINEAMIENTOS Y CONTINUAR</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function toggleAcceptButtonState() {
+        const chk = document.getElementById('chk-accept-terms');
+        const btn = document.getElementById('btn-submit-terms');
+        if (chk && btn) {
+            btn.disabled = !chk.checked;
+        }
+    }
+
+    async function submitTermsAcceptance() {
+        const btn = document.getElementById('btn-submit-terms');
+        const icon = document.getElementById('icon-submit-terms');
+        const txt = document.getElementById('text-submit-terms');
+        const modal = document.getElementById('mandatory-terms-modal');
+
+        btn.disabled = true;
+        icon.innerText = 'progress_activity';
+        icon.classList.add('animate-spin');
+        txt.innerText = 'Registrando Aceptación...';
+
+        try {
+            const response = await fetch('{{ route("admin.terms.accept") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ version: '1.0' })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                modal.classList.add('opacity-0', 'scale-95', 'transition-all', 'duration-300');
+                setTimeout(() => {
+                    modal.remove();
+                }, 300);
+            } else {
+                alert('⚠️ Error al registrar consentimiento: ' + (data.message || 'Error desconocido'));
+                btn.disabled = false;
+                icon.innerText = 'verified';
+                icon.classList.remove('animate-spin');
+                txt.innerText = 'ACEPTAR LINEAMIENTOS Y CONTINUAR';
+            }
+        } catch (error) {
+            alert('Error de red al registrar aceptación: ' + error);
+            btn.disabled = false;
+            icon.innerText = 'verified';
+            icon.classList.remove('animate-spin');
+            txt.innerText = 'ACEPTAR LINEAMIENTOS Y CONTINUAR';
+        }
+    }
+</script>
+@endif
 @endsection

@@ -10,7 +10,7 @@
 
 3. **FILTRO PERMANENTE EN CÓDIGO (BACKEND Y SERVICIOS):**
    - En cualquier despachador o servicio (`TelegramNotificationService.php`, `monitor_engine.py`, `bot.py`, etc.), se debe filtrar explícitamente y descartar cualquier `chat_id` que pertenezca a grupos (identificadores negativos) para cualquier evento de login o seguridad.
-   - Todo acceso proveniente de `127.0.0.1`, `::1` o pruebas de desarrollo debe bloquear automáticamente el despacho externo a Telegram y limitarse al registro local de auditoría.
+   - Las alertas de inicio de sesión web (local y LDAP) deben notificarse siempre al chat privado del Administrador (`owner_id`: `38914901`) tanto en el servidor de desarrollo como en producción, bloqueando única y estrictamente cualquier despacho hacia grupos.
 
 4. **CONFIGURACIÓN RESPETADA:**
    En `config/bot.conf`, la directiva `IDA` debe mantenerse siempre apuntando al ID privado del Administrador (`38914901`) y jamás descomentar la línea del grupo para propósitos de prueba o seguridad.
@@ -46,3 +46,26 @@
 
 3. **VERIFICACIÓN MULTI-NODO ANTES DE CONFIRMAR CAMBIOS:**
    - Todo cambio en el esquema de base de datos, migraciones o lógica de recolección de métricas debe verificarse y contrastarse tanto en el entorno de Desarrollo/Esclavo (`10.20.23.221`) como en el servidor Master/Producción (`10.20.23.252`).
+
+## 🚨 REGLA DE ORO #4: CONTROL ESTRICTO DE REPOSITORIO PÚBLICO Y DESPLIEGUE A PRODUCCIÓN
+
+1. **PROHIBICIÓN ABSOLUTA DE ACTUALIZAR EL REPOSITORIO PÚBLICO SIN PRUEBAS COMPLETAS EN DESARROLLO:**
+   Bajo NINGUNA circunstancia se debe actualizar o hacer `git push` al repositorio público (`public` / `Monitoreo-VS`) sin que antes todas las pruebas en el servidor de desarrollo (`10.20.23.221`) hayan concluido exitosamente y certifiquen que la solución es 100% correcta, funcional y libre de errores.
+
+2. **PROHIBICIÓN ESTRICTA DE ACTUALIZAR PRODUCCIÓN SIN AUTORIZACIÓN PREVIA:**
+   Está estrictamente prohibido aplicar cambios, sincronizar archivos, ejecutar migraciones o desplegar al servidor de producción (`10.20.23.252`) sin haber solicitado y recibido autorización explícita previa del usuario o sin que este lo indique directamente.
+
+## 🚨 REGLA DE ORO #5: TRANSPARENCIA TOTAL, VERACIDAD ABSOLUTA Y REGISTRO OBLIGATORIO DE CONEXIONES
+
+1. **OBLIGACIÓN DE VERACIDAD Y RESPUESTA DIRECTA:**
+   Cuando el usuario pregunte sobre cualquier conexión remota, comando ejecutado o acción realizada en cualquier servidor (especialmente en Producción `10.20.23.252` o Desarrollo `10.20.23.221`), el asistente debe responder con absoluta veracidad, claridad y sin rodeos, detallando exactamente qué comando se ejecutó, por qué medio (SSH, API, CLI, navegador), a qué hora exacta y qué resultado produjo.
+
+2. **PROHIBICIÓN ESTRICTA DE NEGAR, FALSEAR U OCULTAR ACCIONES/CONEXIONES:**
+   Bajo NINGUNA circunstancia se debe negar, minimizar u omitir una conexión o comando ejecutado. Queda estrictamente prohibido responder afirmando que "no hubo conexión" o que "no se realizó ninguna acción" sin antes haber auditado minuciosamente el historial completo de subprocesos y herramientas ejecutadas en la sesión.
+
+3. **CONCIENCIA DE SEGURIDAD Y ALERTAS PAM EN TIEMPO REAL:**
+   Toda conexión saliente vía SSH hacia el servidor de Producción (`10.20.23.252`) dispara alertas inmediatas de seguridad por PAM hacia el Telegram privado del Administrador. Toda interacción hacia cualquier nodo remoto es un evento crítico de auditoría y alta visibilidad que jamás debe ejecutarse de forma inadvertida ni encubierta.
+
+4. **PROHIBICIÓN DE CONEXIONES A PRODUCCIÓN SIN AUTORIZACIÓN EXPRESA:**
+   En estricto cumplimiento de la Regla de Oro #4, no se debe realizar ningún tipo de conexión SSH (ni siquiera comandos de sólo lectura como `cat`, `diff` o consultas de diagnóstico) hacia el servidor de producción (`10.20.23.252`) sin la autorización previa, explícita y directa del usuario.
+

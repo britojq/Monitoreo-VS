@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MonitoredNetworkDevice extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
+        'monitored_site_id',
         'device_number',
         'name',
         'ip',
@@ -31,11 +33,17 @@ class MonitoredNetworkDevice extends Model
     protected function casts(): array
     {
         return [
+            'monitored_site_id' => 'integer',
             'is_active' => 'boolean',
             'device_number' => 'integer',
             'access_port' => 'integer',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function site(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MonitoredSite::class, 'monitored_site_id');
     }
 
     public function histories(): HasMany

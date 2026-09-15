@@ -36,7 +36,7 @@ class AdminLdapController extends Controller
             'ldap_port.integer' => 'El puerto debe ser un número entero válido (ej. 389 o 636).',
             'ldap_port.min' => 'El puerto debe ser mayor o igual a 1.',
             'ldap_port.max' => 'El puerto debe ser menor o igual a 65535.',
-            'ldap_base_dn.required' => 'El Base DN de búsqueda es obligatorio (ej. dc=corpoelec,dc=gob,dc=ve).',
+            'ldap_base_dn.required' => 'El Base DN de búsqueda es obligatorio (ej. dc=empresa,dc=gob,dc=ve).',
             'ldap_default_role.in' => 'El rol por defecto debe ser Operador o Administrador.',
         ]);
 

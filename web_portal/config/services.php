@@ -45,7 +45,7 @@ return [
     'ldap' => [
         'host' => env('LDAP_HOST', '10.20.0.22'),
         'port' => (int) env('LDAP_PORT', 389),
-        'base_dn' => env('LDAP_BASE_DN', 'dc=corpoelec,dc=gob,dc=ve'),
+        'base_dn' => env('LDAP_BASE_DN', 'dc=empresa,dc=gob,dc=ve'),
     ],
 
 ];

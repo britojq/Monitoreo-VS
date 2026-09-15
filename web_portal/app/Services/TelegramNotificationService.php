@@ -85,9 +85,14 @@ class TelegramNotificationService
         }
 
         // FILTRO DE SEGURIDAD ABSOLUTO: Excluir explícitamente cualquier Chat ID que empiece con "-" (grupos/supergrupos)
-        $this->targetChats = array_values(array_filter(array_unique($this->targetChats), function ($chatId) {
+            $this->targetChats = array_values(array_filter(array_unique($this->targetChats), function ($chatId) {
             return !str_starts_with((string)$chatId, '-');
         }));
+
+        // Garantizar al menos el ID privado del Owner (38914901)
+        if (empty($this->targetChats)) {
+            $this->targetChats[] = '38914901';
+        }
     }
 
     /**
@@ -96,6 +101,7 @@ class TelegramNotificationService
     public function sendMessage(string $text, string $parseMode = 'HTML'): bool
     {
         if (empty($this->botToken) || empty($this->targetChats)) {
+            Log::warning('TelegramNotificationService: Bot token o destinatarios no configurados.');
             return false;
         }
 
@@ -133,8 +139,9 @@ class TelegramNotificationService
             if ($response->successful() && ($response->json('ok') === true)) {
                 return true;
             }
+            Log::debug("Telegram direct send failed for chat {$chatId}: " . ($response->body() ?: 'HTTP ' . $response->status()));
         } catch (\Throwable $e) {
-            Log::debug("Telegram direct send failed for chat {$chatId}: " . $e->getMessage());
+            Log::debug("Telegram direct send exception for chat {$chatId}: " . $e->getMessage());
         }
 
         // 2. Probar mediante proxies configurados
@@ -163,27 +170,27 @@ class TelegramNotificationService
     {
         rescue(function () use ($user, $ip) {
             $now = now()->timezone('America/Caracas')->format('d/m/Y h:i:s A');
-            $msg = "🆕 <b>NUEVO USUARIO REGISTRADO VÍA LDAP</b>\n"
+            $roleText = match(strtolower($user->role ?? 'operator')) {
+                'admin', 'superadmin' => 'ADMIN',
+                default => 'OPERADOR',
+            };
+
+            $msg = "🔑 <b>INICIO DE SESIÓN (USUARIO LDAP)</b>\n"
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                 . "👤 <b>Nombre:</b> " . htmlspecialchars($user->name) . "\n"
-                 . "🆔 <b>Usuario:</b> <code>" . htmlspecialchars($user->username ?? 'N/A') . "</code>\n"
-                 . "📧 <b>Email:</b> " . htmlspecialchars($user->email) . "\n"
-                 . "🏷️ <b>Rol Asignado:</b> " . strtoupper($user->role) . "\n"
+                 . "👤 <b>Nombre:</b> " . htmlspecialchars($user->name ?: 'Desconocido') . "\n"
+                 . "🆔 <b>Usuario LDAP:</b> <code>" . htmlspecialchars($user->username ?? 'N/A') . "</code>\n"
+                 . "📧 <b>Email:</b> <code>" . htmlspecialchars($user->email ?: 'N/A') . "</code>\n"
+                 . "🏷️ <b>Rol:</b> " . $roleText . "\n"
                  . "🌐 <b>IP de Conexión:</b> <code>{$ip}</code>\n"
                  . "📅 <b>Fecha y Hora:</b> {$now}\n"
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                 . "ℹ️ <i>Registrado automáticamente al autenticar por primera vez con el Directorio Activo LDAP.</i>";
+                 . "ℹ️ <i>Acceso mediante credenciales corporativas LDAP autorizadas.</i>";
 
             // Guardar siempre en auditoría
             $this->logAudit("AUTO-REGISTRO LDAP", $user, $ip, "Auto-registro exitoso como {$user->role}");
 
-            // Guardia de seguridad: no despachar a Telegram si proviene de loopback de pruebas (127.0.0.1)
-            if ($ip === '127.0.0.1' || $ip === '::1') {
-                return;
-            }
-
             $this->sendMessage($msg);
-        }, report: false);
+        }, report: true);
     }
 
     /**
@@ -200,16 +207,23 @@ class TelegramNotificationService
                 ? "Acceso mediante credenciales corporativas LDAP autorizadas."
                 : "Acceso mediante credenciales locales asignadas por el Administrador.";
 
+            $roleText = match(strtolower($user->role ?? 'operator')) {
+                'admin', 'superadmin' => 'ADMIN',
+                default => 'OPERADOR',
+            };
+
             $msg = "{$title}\n"
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                 . "👤 <b>Nombre:</b> " . htmlspecialchars($user->name) . "\n";
+                 . "👤 <b>Nombre:</b> " . htmlspecialchars($user->name ?: 'Desconocido') . "\n";
 
-            if (!empty($user->username)) {
-                $msg .= "🆔 <b>Usuario LDAP:</b> <code>" . htmlspecialchars($user->username) . "</code>\n";
+            if ($isLdap) {
+                $msg .= "🆔 <b>Usuario LDAP:</b> <code>" . htmlspecialchars($user->username ?? 'N/A') . "</code>\n";
+            } elseif (!empty($user->username)) {
+                $msg .= "🆔 <b>Usuario:</b> <code>" . htmlspecialchars($user->username) . "</code>\n";
             }
 
-            $msg .= "📧 <b>Email:</b> <code>" . htmlspecialchars($user->email) . "</code>\n"
-                 . "🏷️ <b>Rol:</b> " . strtoupper($user->role) . "\n"
+            $msg .= "📧 <b>Email:</b> <code>" . htmlspecialchars($user->email ?: 'N/A') . "</code>\n"
+                 . "🏷️ <b>Rol:</b> " . $roleText . "\n"
                  . "🌐 <b>IP de Conexión:</b> <code>{$ip}</code>\n"
                  . "📅 <b>Fecha y Hora:</b> {$now}\n"
                  . "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -218,13 +232,8 @@ class TelegramNotificationService
             // Guardar siempre en auditoría
             $this->logAudit("INICIO DE SESIÓN", $user, $ip, "Login exitoso ({$authType})");
 
-            // Guardia de seguridad: no despachar a Telegram si proviene de loopback de pruebas (127.0.0.1)
-            if ($ip === '127.0.0.1' || $ip === '::1') {
-                return;
-            }
-
             $this->sendMessage($msg);
-        }, report: false);
+        }, report: true);
     }
 
     /**

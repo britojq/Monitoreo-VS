@@ -13,15 +13,15 @@
                 </span>
                 <div>
                     <h1 class="text-xl md:text-2xl font-black tracking-wide text-white uppercase">Comandos y Mensajes del Bot</h1>
-                    <p class="text-xs text-obsidian-muted mt-0.5">Gestión de comandos dinámicos, textos de ayuda y políticas operativas en MariaDB (SSOT)</p>
+                    <p class="text-xs text-obsidian-muted mt-0.5">Gestión de comandos dinámicos, textos de ayuda y políticas operativas en el Servidor Maestro</p>
                 </div>
             </div>
         </div>
 
-        <!-- INDICADOR SSOT -->
+        <!-- INDICADOR FUENTE -->
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            MariaDB Fuente Única de Verdad (SSOT)
+            Fuente: SERVIDOR MAESTRO
         </div>
     </div>
 

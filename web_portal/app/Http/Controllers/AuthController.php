@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +63,7 @@ class AuthController extends Controller
                 $user = Auth::user();
 
                 if (!$user->is_active) {
+                    AuditService::logLoginFailed($loginValue, $request, 'Cuenta suspendida o desactivada');
                     Auth::logout();
                     $banMsg = $user->ban_reason 
                         ? "Esta cuenta ha sido suspendida. Motivo: {$user->ban_reason}"
@@ -76,6 +78,9 @@ class AuthController extends Controller
                     'last_login_ip' => $request->ip(),
                 ]);
 
+                // Registrar auditoría de inicio de sesión
+                AuditService::logLogin($user, $request, 'local');
+
                 // Notificar acceso a Telegram
                 /** @var \App\Services\TelegramNotificationService $telegramService */
                 $telegramService = app(\App\Services\TelegramNotificationService::class);
@@ -86,6 +91,7 @@ class AuthController extends Controller
             }
 
             RateLimiter::hit($throttleKey, 60);
+            AuditService::logLoginFailed($loginValue, $request, 'Credenciales locales incorrectas');
 
             return back()->withErrors([
                 'login' => 'Las credenciales de administrador local ingresadas no coinciden con nuestros registros.',
@@ -101,6 +107,7 @@ class AuthController extends Controller
 
         if (!$ldapResult['success']) {
             RateLimiter::hit($throttleKey, 60);
+            AuditService::logLoginFailed($loginValue, $request, $ldapResult['message'] ?? 'Credenciales LDAP incorrectas');
             return back()->withErrors([
                 'login' => $ldapResult['message'],
             ])->onlyInput('login');
@@ -133,6 +140,7 @@ class AuthController extends Controller
         } else {
             // Si ya existía, validar estado activo
             if (!$user->is_active) {
+                AuditService::logLoginFailed($loginValue, $request, 'Cuenta LDAP suspendida o desactivada');
                 $banMsg = $user->ban_reason 
                     ? "Esta cuenta ha sido suspendida. Motivo: {$user->ban_reason}"
                     : 'Su cuenta se encuentra desactivada en este portal.';
@@ -153,6 +161,9 @@ class AuthController extends Controller
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
 
+        // Registrar auditoría de inicio de sesión LDAP
+        AuditService::logLogin($user, $request, 'ldap');
+
         // Notificar a Telegram
         /** @var \App\Services\TelegramNotificationService $telegramService */
         $telegramService = app(\App\Services\TelegramNotificationService::class);
@@ -167,6 +178,11 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+        if ($user) {
+            AuditService::logLogout($user, $request);
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

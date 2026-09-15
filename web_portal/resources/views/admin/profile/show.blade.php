@@ -285,7 +285,7 @@
                     <div class="flex items-center gap-2.5">
                         <span class="material-symbols-outlined text-2xl text-obsidian-cyan">assignment_ind</span>
                         <div>
-                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha Institucional ATIT / CORPOELEC</h3>
+                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha Institucional ATIT / empresa</h3>
                             <p class="text-[11px] font-mono text-obsidian-muted">Firma oficial adjuntada a reportes de Telegram enviados desde la Web</p>
                         </div>
                     </div>
@@ -324,7 +324,7 @@
                         <div>
                             <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">pin</span>
-                                <span>N° de Personal / Ficha Corpoelec</span>
+                                <span>N° de Personal / Ficha empresa</span>
                             </label>
                             <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 100001" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
                         </div>
