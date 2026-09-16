@@ -602,6 +602,15 @@ async def execute_git_update(bot_instance=None) -> str:
             await (await asyncio.create_subprocess_exec(*(sudo_prefix + ["systemctl", "reload", "apache2"]))).communicate()
             logs.append("🗄️ <i>Migraciones de BD aplicadas y cachés del portal web purgadas.</i>")
 
+            # 7.7 Centinela de Inmunidad y Auto-curación de Entorno
+            heal_py = BASE_DIR / "monitor" / "self_heal_environment.py"
+            if heal_py.exists():
+                p_selfheal = await asyncio.create_subprocess_exec(
+                    sys.executable, str(heal_py),
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await p_selfheal.communicate()
+
         # 8. Smoke Test post-despliegue
         smoke_ok, smoke_msg = await run_post_deploy_smoke_test()
         if not smoke_ok:

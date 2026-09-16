@@ -181,6 +181,11 @@ sync_web_portal() {
 
     # Recargar Apache y PHP-FPM
     sudo systemctl reload apache2 2>/dev/null || true
+
+    # Ejecutar Centinela de Inmunidad y Auto-curación
+    if [ -f "$BASE_DIR/monitor/self_heal_environment.py" ]; then
+        "$PYTHON_BIN" "$BASE_DIR/monitor/self_heal_environment.py" >/dev/null 2>&1 || true
+    fi
 }
 
 # ------------------------------------------------------------------------------
