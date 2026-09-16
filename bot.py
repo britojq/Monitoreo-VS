@@ -1221,6 +1221,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/emergencia</code> <i>(/panico, /contingencia)</i> - Panel de emergencia (detener servicio, modo mantenimiento, restaurar config).",
             "• <code>/limpiador</code> <i>(/limpieza, /cleaner)</i> - Diagnóstico de almacenamiento, inodos y panel interactivo de limpieza.",
             "• <code>/actualizar</code> <i>(/update, /git_update)</i> - Comprobar y aplicar actualizaciones desde GitHub.",
+            "• <code>/rollback</code> <i>(/revertir)</i> - Reversión segura de versión y restauración atómica de MariaDB.",
+            "• <code>/estado_deploy</code> <i>(/deploy_status)</i> - Estado de GitOps, ruta de red, respaldos y Circuit Breaker.",
+            "• <code>/desbloquear_update</code> - Liberar Circuit Breaker de actualización tras solventar incidentes.",
             "• <code>/reinicia</code> <i>(/reboot)</i> - Reinicio completo del servidor host del sistema."
         ]
 
@@ -1253,6 +1256,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "salir_grupo", "leave_group", "expulsar_grupo", "abandonar_grupo",
                 "bloqueo_comandos", "botstatus", "info", "mensaje", "migrar_token",
                 "recursos", "temperatura", "temp", "termal", "cpu_temp", "cron", "emergencia", "limpiador", "actualizar", "reinicia",
+                "rollback", "revertir", "estado_deploy", "deploy_status", "desbloquear_update", "unlock_update",
                 "servicios", "sedes", "caidas", "web", "monitoreo", "internet", "analisis_red",
                 "analisisred", "debug_servicios", "debug_sedes", "debug_completo", "debug_monitor",
                 "ia", "motor_ia", "toggle_ia", "servicio_ia", "reset_ia"
@@ -4412,7 +4416,13 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("⛔ Solo el creador y administrador del bot puede gestionar actualizaciones.", show_alert=True)
         return
 
-    from monitor.system_updater import build_update_dashboard, execute_git_update
+    from monitor.system_updater import (
+        build_update_dashboard,
+        build_deployment_dashboard,
+        execute_git_update,
+        execute_rollback,
+        clear_update_lock
+    )
 
     action = query.data.replace("update_act:", "")
 
@@ -4434,10 +4444,12 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         try:
             await query.edit_message_text(
                 "⏳ <b>Descargando actualización desde GitHub...</b>\n\n"
+                "• Evaluando conectividad y proxy...\n"
                 "• Respaldando archivos en <code>config/</code>...\n"
+                "• Generando respaldo comprimido de base de datos MariaDB...\n"
                 "• Ejecutando sincronización forzada con el repositorio oficial...\n"
-                "• Validando integridad de sintaxis...\n"
-                "• Preparando reinicio de servicio...",
+                "• Ejecutando migraciones de Laravel...\n"
+                "• Validando integridad de sintaxis y Smoke Test...",
                 parse_mode='HTML'
             )
         except Exception:
@@ -4452,6 +4464,187 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
             except Exception:
                 pass
         return
+
+    elif action == "status":
+        await query.answer("📊 Consultando estado de despliegue...")
+        text, keyboard = await build_deployment_dashboard()
+        try:
+            await query.edit_message_text(text, parse_mode='HTML', reply_markup=keyboard)
+        except Exception:
+            pass
+        return
+
+    elif action == "unlock":
+        await query.answer("🔓 Desbloqueando Circuit Breaker...")
+        clear_update_lock()
+        text, keyboard = await build_deployment_dashboard()
+        try:
+            await query.edit_message_text(
+                "✅ <b>Circuit Breaker liberado.</b>\n\n" + text,
+                parse_mode='HTML',
+                reply_markup=keyboard
+            )
+        except Exception:
+            pass
+        return
+
+    elif action == "rollback_prompt":
+        await query.answer()
+        keyboard = [
+            [
+                InlineKeyboardButton("⚠️ Confirmar Reversión Inmediata", callback_data="update_act:rollback_confirm"),
+                InlineKeyboardButton("❌ Cancelar", callback_data="update_act:status")
+            ]
+        ]
+        prompt_text = (
+            "⚠️ <b>¿Confirma que desea revertir el sistema a la versión anterior?</b>\n\n"
+            "• Repositorio Git volverá a <code>HEAD@{1}</code>.\n"
+            "• MariaDB restaurará el último snapshot comprimido.\n"
+            "• El portal web se sincronizará y se purgará la caché.\n"
+            "• El bot se reiniciará automáticamente."
+        )
+        try:
+            await query.edit_message_text(prompt_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception:
+            pass
+        return
+
+    elif action == "rollback_confirm":
+        await query.answer("🔄 Ejecutando Rollback...")
+        try:
+            await query.edit_message_text(
+                "⏳ <b>Ejecutando Rollback seguro del sistema...</b>\n\n"
+                "• Revirtiendo repositorio Git a commit anterior...\n"
+                "• Restaurando snapshot de base de datos MariaDB...\n"
+                "• Sincronizando portal web y limpiando cachés...\n"
+                "• Liberando Circuit Breaker...",
+                parse_mode='HTML'
+            )
+        except Exception:
+            pass
+
+        res = await execute_rollback(bot_instance=context.bot)
+        try:
+            await query.edit_message_text(res, parse_mode='HTML')
+        except Exception:
+            try:
+                await query.message.reply_text(res, parse_mode='HTML')
+            except Exception:
+                pass
+        return
+
+
+async def cmd_rollback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner revierta actualizaciones del sistema de forma segura (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id and user_id != IMMUTABLE_OWNER_ID:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    from monitor.system_updater import execute_rollback
+
+    target_commit = context.args[0] if context.args else None
+
+    # Si se pasa argumento explícito "si", "now", "confirm" o un commit hash -> aplicar de inmediato
+    if target_commit and target_commit.lower() in ("si", "now", "confirm", "forzar"):
+        wait_msg = await update.message.reply_text(
+            "⏳ <i>Ejecutando Rollback seguro del sistema y restaurando base de datos MariaDB...</i>",
+            parse_mode='HTML'
+        )
+        res = await execute_rollback(bot_instance=context.bot)
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+        await safe_reply_html(update.message, res)
+        return
+
+    # Si no se pasó confirmación inmediata, solicitar confirmación interactiva
+    keyboard = [
+        [
+            InlineKeyboardButton("⚠️ Sí, Revertir Sistema Inmediatamente", callback_data="update_act:rollback_confirm"),
+            InlineKeyboardButton("❌ Cancelar", callback_data="update_act:status")
+        ]
+    ]
+    prompt_text = (
+        "⚠️ <b>Confirmación de Reversión del Sistema (Rollback)</b>\n\n"
+        "Esta acción restaurará el sistema a la versión anterior:\n"
+        "• 📦 Reversión del repositorio Git a <code>HEAD@{1}</code>.\n"
+        "• 💾 Restauración del último snapshot atómico de MariaDB.\n"
+        "• 🌐 Sincronización del portal web y purga de cachés de Laravel.\n"
+        "• 🔓 Desbloqueo automático del Circuit Breaker.\n\n"
+        "<b>¿Desea proceder con la reversión?</b>"
+    )
+    await safe_reply_html(update.message, prompt_text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+async def cmd_estado_deploy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el estado técnico de GitOps, conectividad de red, Circuit Breaker y respaldos de BD."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id and user_id != IMMUTABLE_OWNER_ID:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    from monitor.system_updater import build_deployment_dashboard
+
+    wait_msg = await update.message.reply_text(
+        "⏳ <i>Consultando estado técnico del pipeline y enlaces de red...</i>",
+        parse_mode='HTML'
+    )
+    text, keyboard = await build_deployment_dashboard()
+    try:
+        await wait_msg.delete()
+    except Exception:
+        pass
+
+    await safe_reply_html(update.message, text, reply_markup=keyboard)
+
+
+async def cmd_desbloquear_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Libera el Circuit Breaker de actualización (.update_lock)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id and user_id != IMMUTABLE_OWNER_ID:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    from monitor.system_updater import clear_update_lock, is_update_locked
+    locked, _ = is_update_locked()
+    clear_update_lock()
+
+    if locked:
+        msg = (
+            "🔓 <b>Circuit Breaker Liberado Exitosamente</b>\n\n"
+            "Se ha retirado la protección de bloqueo de despliegue.\n"
+            "El sistema está listo nuevamente para ejecutar <code>/actualizar</code>."
+        )
+    else:
+        msg = (
+            "ℹ️ <b>Circuit Breaker Despejado</b>\n\n"
+            "El sistema no se encontraba bloqueado. Puede ejecutar <code>/actualizar</code> con normalidad."
+        )
+    await safe_reply_html(update.message, msg)
+
 
 
 async def cmd_cluster(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -5645,6 +5838,9 @@ def main() -> None:
                         BotCommand("limpiador", "Mantenimiento y limpieza de espacio"),
                         BotCommand("emergencia", "Panel de contingencia y mantenimiento"),
                         BotCommand("actualizar", "Comprobar y aplicar cambios Git"),
+                        BotCommand("rollback", "Revertir versión y restaurar BD"),
+                        BotCommand("estado_deploy", "Estado del despliegue y respaldos"),
+                        BotCommand("desbloquear_update", "Liberar Circuit Breaker"),
                         BotCommand("internet", "Diagnóstico de internet y proxies"),
                         BotCommand("analisis_red", "Captura y análisis profundo de red"),
                         BotCommand("debug_servicios", "Diagnóstico exhaustivo servicios"),
@@ -5857,6 +6053,11 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git
     application.add_handler(CommandHandler(["actualizar", "update", "upgrade", "git_update", "check_update"], cmd_actualizar))
+
+    # Comandos exclusivos para que el Owner gestione reversiones, GitOps y Circuit Breaker
+    application.add_handler(CommandHandler(["rollback", "revertir", "git_rollback"], cmd_rollback))
+    application.add_handler(CommandHandler(["estado_deploy", "deploy_status", "git_status"], cmd_estado_deploy))
+    application.add_handler(CommandHandler(["desbloquear_update", "unlock_update"], cmd_desbloquear_update))
 
     # Comando exclusivo para que el Owner consulte el rol de clúster y token de autenticación
     application.add_handler(CommandHandler(["cluster", "nodo", "rol_nodo", "token_cluster"], cmd_cluster))
