@@ -201,13 +201,13 @@
                                                         <span>WEB</span>
                                                     </a>
                                                 @elseif($devAcc === 'VNC')
-                                                    <a href="/vnc.html?host={{ $dev->ip }}&port={{ $devPort }}"
-                                                       target="_blank"
-                                                       class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-purple-950/90 hover:bg-purple-500 hover:text-white border border-purple-500/50 text-purple-300 transition flex items-center gap-1 cursor-pointer shadow-xs"
-                                                       title="Conectar Escritorio Remoto VNC (Puerto {{ $devPort }})">
-                                                        <span class="material-symbols-outlined text-[11px]">desktop_windows</span>
-                                                        <span>VNC</span>
-                                                    </a>
+                                                    <button type="button"
+                                                            onclick="openVncViewer('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                            class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-purple-950/90 hover:bg-purple-500 hover:text-white border border-purple-500/50 text-purple-300 transition flex items-center gap-1 cursor-pointer shadow-xs"
+                                                            title="Conectar Escritorio Remoto VNC (Puerto {{ $devPort }})">
+                                                         <span class="material-symbols-outlined text-[11px]">desktop_windows</span>
+                                                         <span>VNC</span>
+                                                     </button>
                                                 @else
                                                     <span class="px-1.5 py-0.5 rounded text-[8.5px] bg-obsidian-panel border border-obsidian-border text-obsidian-muted inline-flex items-center gap-0.5" title="Sin protocolo de acceso remoto configurado">
                                                         <span class="material-symbols-outlined text-[10px]">power_off</span>
@@ -785,6 +785,33 @@
         } catch (err) {
             console.error('Error Telnet:', err);
             alert('Error de comunicación con el proxy Telnet.');
+        }
+    }
+
+    async function openVncViewer(ip, name = '', site = '') {
+        try {
+            const res = await fetch("{{ route('admin.vnc.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ip, name, site })
+            });
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                const w = 1280;
+                const h = 800;
+                const left = (screen.width/2)-(w/2);
+                const top = (screen.height/2)-(h/2);
+                window.open(data.viewer_url, `vnc_${ip.replace(/\./g, '_')}`, `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=no,status=no`);
+            } else {
+                alert('No se pudo inicializar la sesión VNC: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error VNC:', err);
+            alert('Error de comunicación con el servicio VNC.');
         }
     }
 

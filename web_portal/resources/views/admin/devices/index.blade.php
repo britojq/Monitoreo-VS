@@ -188,31 +188,43 @@
                                 @endif
                             </td>
 
-                            <!-- PROTOCOLO DE ACCESO -->
-                            <td class="px-2.5 py-1.5 whitespace-nowrap">
+                            <!-- PROTOCOLO DE ACCESO / CONEXIÓN DIRECTA -->
+                            <td class="px-2.5 py-1.5 whitespace-nowrap text-center">
                                 @if($accType === 'SSH')
-                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 inline-flex items-center gap-0.5">
+                                    <button type="button" 
+                                            onclick="openSshTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
+                                            class="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black transition text-[9px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-xs" 
+                                            title="Consola SSH Web ({{ $d->ip }}:{{ $accPort }})">
                                         <span class="material-symbols-outlined text-[10px]">terminal</span>
-                                        SSH:{{ $accPort }}
-                                    </span>
+                                        <span>SSH:{{ $accPort }}</span>
+                                    </button>
                                 @elseif($accType === 'TELNET')
-                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-950 border border-cyan-500/40 text-cyan-300 inline-flex items-center gap-0.5">
+                                    <button type="button" 
+                                            onclick="openTelnetTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
+                                            class="px-2 py-0.5 rounded bg-cyan-950/90 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500 hover:text-black transition text-[9px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-xs" 
+                                            title="Consola Telnet ({{ $d->ip }}:{{ $accPort }})">
                                         <span class="material-symbols-outlined text-[10px]">terminal</span>
-                                        TEL:{{ $accPort }}
-                                    </span>
+                                        <span>TEL:{{ $accPort }}</span>
+                                    </button>
                                 @elseif($accType === 'WEB')
-                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-950 border border-blue-500/40 text-blue-300 inline-flex items-center gap-0.5">
+                                    <a href="http://{{ $d->ip }}:{{ $accPort }}" target="_blank" 
+                                       class="px-2 py-0.5 rounded bg-blue-950/90 border border-blue-500/50 text-blue-300 hover:bg-blue-500 hover:text-black transition text-[9px] font-bold inline-flex items-center gap-1 shadow-xs" 
+                                       title="Interfaz Web ({{ $d->ip }}:{{ $accPort }})">
                                         <span class="material-symbols-outlined text-[10px]">open_in_browser</span>
-                                        WEB:{{ $accPort }}
-                                    </span>
+                                        <span>WEB:{{ $accPort }}</span>
+                                    </a>
                                 @elseif($accType === 'VNC')
-                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-950 border border-purple-500/40 text-purple-300 inline-flex items-center gap-0.5">
+                                    <button type="button" 
+                                            onclick="openVncViewer('{{ $d->ip }}', '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
+                                            class="px-2 py-0.5 rounded bg-purple-950/90 border border-purple-500/50 text-purple-300 hover:bg-purple-500 hover:text-white transition text-[9px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-xs" 
+                                            title="Conectar Escritorio Remoto VNC ({{ $d->ip }}:{{ $accPort }})">
                                         <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
-                                        VNC:{{ $accPort }}
-                                    </span>
+                                        <span>VNC:{{ $accPort }}</span>
+                                    </button>
                                 @else
-                                    <span class="px-1 py-0.5 rounded text-[8.5px] bg-obsidian-panel border border-obsidian-border text-obsidian-muted">
-                                        SIN ACCESO
+                                    <span class="px-1.5 py-0.5 rounded text-[8.5px] bg-obsidian-panel border border-obsidian-border text-obsidian-muted inline-flex items-center gap-0.5">
+                                        <span class="material-symbols-outlined text-[10px]">power_off</span>
+                                        <span>SIN ACCESO</span>
                                     </span>
                                 @endif
                             </td>
@@ -235,40 +247,8 @@
                                 @endif
                             </td>
 
-                            <!-- ACCIONES (BOTONES COMPACTOS) -->
+                            <!-- ACCIONES (GESTIÓN DE DISPOSITIVO) -->
                             <td class="px-2.5 py-1.5 text-right space-x-1 whitespace-nowrap">
-                                <!-- BOTÓN CONEXIÓN REMOTA DIRECTA -->
-                                @if($accType === 'SSH')
-                                    <button type="button" 
-                                            onclick="openSshTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
-                                            class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black transition text-[9.5px] font-bold inline-flex items-center gap-0.5 cursor-pointer shadow-xs" 
-                                            title="Consola SSH Web ({{ $d->ip }}:{{ $accPort }})">
-                                        <span class="material-symbols-outlined text-[11px]">terminal</span>
-                                        <span>SSH</span>
-                                    </button>
-                                @elseif($accType === 'TELNET')
-                                    <button type="button" 
-                                            onclick="openTelnetTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
-                                            class="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500 hover:text-black transition text-[9.5px] font-bold inline-flex items-center gap-0.5 cursor-pointer shadow-xs" 
-                                            title="Consola Telnet ({{ $d->ip }}:{{ $accPort }})">
-                                        <span class="material-symbols-outlined text-[11px]">terminal</span>
-                                        <span>Tel</span>
-                                    </button>
-                                @elseif($accType === 'WEB')
-                                    <a href="http://{{ $d->ip }}:{{ $accPort }}" target="_blank" 
-                                       class="px-1.5 py-0.5 rounded bg-blue-950/80 border border-blue-500/50 text-blue-300 hover:bg-blue-500 hover:text-black transition text-[9.5px] font-bold inline-flex items-center gap-0.5 shadow-xs" 
-                                       title="Interfaz Web ({{ $d->ip }}:{{ $accPort }})">
-                                        <span class="material-symbols-outlined text-[11px]">open_in_browser</span>
-                                        <span>Web</span>
-                                    </a>
-                                @elseif($accType === 'VNC')
-                                    <a href="/vnc.html?host={{ $d->ip }}&port={{ $accPort }}" target="_blank" 
-                                       class="px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/50 text-purple-300 hover:bg-purple-500 hover:text-black transition text-[9.5px] font-bold inline-flex items-center gap-0.5 shadow-xs" 
-                                       title="Sesión VNC ({{ $d->ip }}:{{ $accPort }})">
-                                        <span class="material-symbols-outlined text-[11px]">desktop_windows</span>
-                                        <span>VNC</span>
-                                    </a>
-                                @endif
 
                                 <!-- BOTÓN: FICHA TÉCNICA DETALLADA (ICONO COMPACTO) -->
                                 <button type="button" 
@@ -914,6 +894,33 @@
         }
     }
 
+    async function openVncViewer(ip, name = '', site = '') {
+        try {
+            const res = await fetch("{{ route('admin.vnc.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ip, name, site })
+            });
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                const w = 1280;
+                const h = 800;
+                const left = (screen.width/2)-(w/2);
+                const top = (screen.height/2)-(h/2);
+                window.open(data.viewer_url, `vnc_${ip.replace(/\./g, '_')}`, `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=no,status=no`);
+            } else {
+                alert('No se pudo inicializar la sesión VNC: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error VNC:', err);
+            alert('Error de comunicación con el servicio VNC.');
+        }
+    }
+
     // --- AUTODETECT DE PUERTOS POR PROTOCOLO ---
     function handleCreateAccessChange(type) {
         const pInput = document.getElementById('create-access-port');
@@ -987,10 +994,10 @@
             `;
         } else if (acc === 'VNC') {
             connectContainer.innerHTML = `
-                <a href="/vnc.html?host=${dev.ip}&port=${port}" target="_blank" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs font-mono transition flex items-center gap-1.5 shadow-md">
+                <button type="button" onclick="openVncViewer('${dev.ip}', '${encodeURIComponent(dev.name || '')}', '${encodeURIComponent(siteName || '')}')" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs font-mono transition flex items-center gap-1.5 shadow-md cursor-pointer">
                     <span class="material-symbols-outlined text-sm">desktop_windows</span>
                     Abrir VNC (${port})
-                </a>
+                </button>
             `;
         } else {
             connectContainer.innerHTML = '';
