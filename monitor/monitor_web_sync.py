@@ -174,8 +174,8 @@ async def check_ping(host: str, count: int = 2, timeout: float = 2.5) -> tuple[b
             pass
         return False, 0.0
 
-async def check_tcp_port(host: str, port: int, timeout: float = 2.5) -> tuple[bool, float]:
-    """Comprueba conexión TCP a un puerto específico."""
+async def check_tcp_port(host: str, port: int, timeout: float = 4.0) -> tuple[bool, float]:
+    """Comprueba conexión TCP a un puerto específico con tolerancia de latencia WAN."""
     if not host or not port:
         return False, 0.0
     start = time.perf_counter()
@@ -191,13 +191,13 @@ async def check_tcp_port(host: str, port: int, timeout: float = 2.5) -> tuple[bo
     except Exception:
         return False, 0.0
 
-async def check_web_service(url: str, timeout: float = 4.0) -> tuple[bool, int, float]:
-    """Comprueba un aplicativo web vía HTTP/HTTPS con soporte TLS 1.0+ legacy."""
+async def check_web_service(url: str, timeout: float = 7.0) -> tuple[bool, int, float]:
+    """Comprueba un aplicativo web vía HTTP/HTTPS con soporte TLS 1.0+ legacy y follow_redirects."""
     if not url:
         return False, 0, 0.0
     start = time.perf_counter()
     try:
-        async with httpx.AsyncClient(verify=SSL_PERMISSIVE_CTX, timeout=timeout) as client:
+        async with httpx.AsyncClient(verify=SSL_PERMISSIVE_CTX, timeout=timeout, follow_redirects=True) as client:
             r = await client.get(url)
             elapsed = (time.perf_counter() - start) * 1000.0
             is_ok = (r.status_code in (200, 301, 302, 304, 307, 308, 401))
@@ -255,7 +255,7 @@ def get_known_proxy_auth(proxy_str: str) -> str:
             return v
     return ""
 
-async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_url: str = "https://core.telegram.org/bots", timeout: float = 4.0) -> tuple[bool, float]:
+async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_url: str = "https://core.telegram.org/bots", timeout: float = 5.0) -> tuple[bool, float]:
     """Comprueba la operatividad de un proxy corporativo con autenticación sanitizada, URL encoding y caché."""
     if not proxy_str:
         return False, 0.0
