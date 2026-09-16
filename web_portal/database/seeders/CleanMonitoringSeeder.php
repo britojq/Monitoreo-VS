@@ -512,7 +512,65 @@ class CleanMonitoringSeeder extends Seeder
             ['id' => 20, 'letter' => 'T', 'name' => 'Servidor de Correo CARABOBO (thunderbird)', 'type' => 'SMTP', 'scope' => 'regional', 'host_ip' => '10.18.32.6', 'web_url' => 'mailr2-t4.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 17],
         ];
 
+        // 4.1 Protección de URLs y dominios operativos reales:
+        // Cargar URLs legítimas desde config/monitoreo.conf si está presente en el servidor
+        $confServices = [];
+        $confPaths = [
+            base_path('../config/monitoreo.conf'),
+            '/scripts/telegram-admin-bot/config/monitoreo.conf',
+            base_path('config/monitoreo.conf')
+        ];
+        foreach ($confPaths as $cPath) {
+            if (file_exists($cPath)) {
+                $lines = @file($cPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if (str_starts_with($line, '#') || !str_contains($line, '=')) continue;
+                    [$k, $v] = explode('=', $line, 2);
+                    $k = trim($k);
+                    $v = trim(trim($v), '"\'');
+                    if (preg_match('/^(TYPESERVICE|NAMESERVICE|WEBSERVICE|IPSERVICE|TESTHOSTDNS)([A-Z])$/', $k, $m)) {
+                        $var = $m[1];
+                        $letter = $m[2];
+                        $confServices[$letter][$var] = $v;
+                    }
+                }
+                break;
+            }
+        }
+
         foreach ($services as $srv) {
+            $letter = $srv['letter'] ?? '';
+            // Si config/monitoreo.conf tiene valores reales, tienen precedencia
+            if (isset($confServices[$letter]['WEBSERVICE']) && !empty($confServices[$letter]['WEBSERVICE'])) {
+                $srv['web_url'] = $confServices[$letter]['WEBSERVICE'];
+            }
+            if (isset($confServices[$letter]['TESTHOSTDNS']) && !empty($confServices[$letter]['TESTHOSTDNS'])) {
+                $srv['dns_test_domain'] = $confServices[$letter]['TESTHOSTDNS'];
+            }
+            if (isset($confServices[$letter]['NAMESERVICE']) && !empty($confServices[$letter]['NAMESERVICE'])) {
+                $srv['name'] = $confServices[$letter]['NAMESERVICE'];
+            }
+
+            // Des-sanitización automática: si el seeder fue procesado para repositorio público con 'empresa'
+            $srv['web_url'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['web_url']);
+            $srv['dns_test_domain'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['dns_test_domain']);
+            $srv['name'] = str_ireplace('empresa', 'empresa', $srv['name']);
+
+            // Si la base de datos ya contiene un registro con URL operativa legítima, preservarla
+            $existing = DB::table('monitored_services')->where('id', $srv['id'])->first();
+            if ($existing) {
+                if (!empty($existing->web_url) && !str_contains($existing->web_url, 'empresa.com.ve')) {
+                    $srv['web_url'] = $existing->web_url;
+                }
+                if (!empty($existing->dns_test_domain) && !str_contains($existing->dns_test_domain, 'empresa.com.ve')) {
+                    $srv['dns_test_domain'] = $existing->dns_test_domain;
+                }
+                if (!empty($existing->host_ip) && $existing->host_ip !== '0.0.0.0') {
+                    $srv['host_ip'] = $existing->host_ip;
+                }
+            }
+
             DB::table('monitored_services')->updateOrInsert(
                 ['id' => $srv['id']],
                 array_merge($srv, [

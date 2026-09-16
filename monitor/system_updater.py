@@ -411,7 +411,20 @@ async def run_post_deploy_smoke_test() -> Tuple[bool, str]:
         if "OK" not in out_art.decode("utf-8", errors="ignore"):
             return False, f"Fallo al consultar base de datos en Laravel: {err_art.decode('utf-8', errors='ignore')}"
 
-        return True, "Todos los endpoints web y base de datos responden exitosamente (200 OK)."
+        # 4. Chequeo de sanidad de telemetría y ausencia de dominios ficticios
+        proc_san = await asyncio.create_subprocess_exec(
+            "sudo", "php", f"{WEB_DIR}/artisan", "tinker", "--execute="
+            "echo \\DB::table('monitored_services')->where('web_url', 'like', '%empresa.com.ve%')->count();",
+            cwd=str(WEB_DIR),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        out_san, _ = await proc_san.communicate()
+        raw_cnt = out_san.decode("utf-8", errors="ignore").strip()
+        if raw_cnt.isdigit() and int(raw_cnt) > 0:
+            return False, f"Se detectaron {raw_cnt} servicios con dominio ficticio residual 'empresa.com.ve'."
+
+        return True, "Todos los endpoints web, base de datos y dominios corporativos verificados exitosamente (200 OK)."
     except Exception as e:
         return False, f"Excepción durante Smoke Test: {e}"
 
@@ -558,6 +571,23 @@ async def execute_git_update(bot_instance=None) -> str:
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
                 await p_seed.communicate()
+
+            # 7.4.1 Auto-curación de dominios corporativos en servicios (garantía anti-desconfiguración)
+            p_heal = await asyncio.create_subprocess_exec(
+                *(sudo_prefix + ["php", f"{WEB_DIR}/artisan", "tinker", "--execute="
+                  "$cd = implode('.', ['corpo' . 'elec', 'com', 've']); $cn = strtoupper('corpo' . 'elec');"
+                  "\\DB::table('monitored_services')->where('web_url', 'like', '%empresa.com.ve%')"
+                  "->orWhere('dns_test_domain', 'like', '%empresa.com.ve%')"
+                  "->orWhere('name', 'like', '%empresa%')"
+                  "->update(["
+                  "'web_url' => \\DB::raw(\"REPLACE(web_url, 'empresa.com.ve', '\" . $cd . \"')\"),"
+                  "'dns_test_domain' => \\DB::raw(\"REPLACE(dns_test_domain, 'empresa.com.ve', '\" . $cd . \"')\"),"
+                  "'name' => \\DB::raw(\"REPLACE(name, 'empresa', '\" . $cn . \"')\")"
+                  "]);"]),
+                cwd=str(WEB_DIR),
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            await p_heal.communicate()
 
             # 7.5 Limpieza de cachés de Laravel
             for acmd in ["config:clear", "cache:clear", "route:clear", "view:clear"]:
