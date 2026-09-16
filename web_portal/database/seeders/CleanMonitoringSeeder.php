@@ -569,6 +569,18 @@ class CleanMonitoringSeeder extends Seeder
                 if (!empty($existing->host_ip) && $existing->host_ip !== '0.0.0.0') {
                     $srv['host_ip'] = $existing->host_ip;
                 }
+                if (!empty($existing->credentials) && $existing->credentials !== 'USUARIO:CLAVE') {
+                    $srv['credentials'] = $existing->credentials;
+                }
+            }
+
+            // Para servicios tipo PROXY: si no tienen credenciales o son dummy, heredar de monitored_proxies
+            if (($srv['type'] ?? '') === 'PROXY' && (empty($srv['credentials']) || $srv['credentials'] === 'USUARIO:CLAVE')) {
+                $proxyHost = $srv['host_ip'] ?? '';
+                $realProxy = DB::table('monitored_proxies')->where('ip_port', 'like', "{$proxyHost}:%")->first();
+                if ($realProxy && !empty($realProxy->auth_userpass) && $realProxy->auth_userpass !== 'USUARIO:CLAVE') {
+                    $srv['credentials'] = $realProxy->auth_userpass;
+                }
             }
 
             DB::table('monitored_services')->updateOrInsert(

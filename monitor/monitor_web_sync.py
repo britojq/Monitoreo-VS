@@ -19,6 +19,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 import ssl
+import urllib.parse
 import httpx
 import pymysql
 
@@ -204,12 +205,67 @@ async def check_web_service(url: str, timeout: float = 4.0) -> tuple[bool, int, 
     except Exception:
         return False, 0, 0.0
 
-async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_url: str = "https://core.telegram.org/bots", timeout: float = 3.5) -> tuple[bool, float]:
-    """Comprueba la operatividad de un proxy corporativo con caché en memoria compartida y protección anti-colisión."""
+_KNOWN_PROXY_AUTH_CACHE = {}
+
+def get_known_proxy_auth(proxy_str: str) -> str:
+    """Recupera credenciales reales de proxies corporativos evitando placeholders 'USUARIO:CLAVE'."""
+    global _KNOWN_PROXY_AUTH_CACHE
+    if not _KNOWN_PROXY_AUTH_CACHE:
+        # 1. Intentar desde config/bot.conf
+        for candidate in [BASE_DIR / "config" / "bot.conf", BASE_DIR / "bot.conf"]:
+            if candidate.exists():
+                try:
+                    content = candidate.read_text(encoding="utf-8", errors="ignore")
+                    data = {}
+                    for l in content.splitlines():
+                        if "=" in l and not l.strip().startswith("#"):
+                            k, v = l.split("=", 1)
+                            data[k.strip()] = v.strip().strip("'\"")
+                    for letter in ("A", "B", "C", "D"):
+                        ip = data.get(f"IPADDRPORTPROXY{letter}")
+                        auth = data.get(f"USERPASSWDPROXY{letter}")
+                        if ip and auth and ":" in auth and auth != "USUARIO:CLAVE":
+                            _KNOWN_PROXY_AUTH_CACHE[ip.strip()] = auth.strip()
+                    break
+                except Exception:
+                    pass
+
+        # 2. Intentar desde monitored_proxies en MariaDB
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute("SELECT ip_port, auth_userpass FROM monitored_proxies WHERE auth_userpass IS NOT NULL AND auth_userpass != '' AND auth_userpass != 'USUARIO:CLAVE'")
+                for row in cur.fetchall():
+                    ip_p = (row.get("ip_port") or "").strip()
+                    auth_p = (row.get("auth_userpass") or "").strip()
+                    if ip_p and auth_p:
+                        _KNOWN_PROXY_AUTH_CACHE[ip_p] = auth_p
+            conn.close()
+        except Exception:
+            pass
+
+    if not proxy_str:
+        return ""
+    cleaned = proxy_str.strip()
+    if cleaned in _KNOWN_PROXY_AUTH_CACHE:
+        return _KNOWN_PROXY_AUTH_CACHE[cleaned]
+    ip_only = cleaned.split(":")[0]
+    for k, v in _KNOWN_PROXY_AUTH_CACHE.items():
+        if k == ip_only or k.startswith(ip_only + ":"):
+            return v
+    return ""
+
+async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_url: str = "https://core.telegram.org/bots", timeout: float = 4.0) -> tuple[bool, float]:
+    """Comprueba la operatividad de un proxy corporativo con autenticación sanitizada, URL encoding y caché."""
     if not proxy_str:
         return False, 0.0
 
     target = test_url if test_url else "https://core.telegram.org/bots"
+
+    # Resolver credenciales reales si vienen vacías o con placeholder dummy 'USUARIO:CLAVE'
+    effective_auth = auth_userpass
+    if not effective_auth or effective_auth == "USUARIO:CLAVE":
+        effective_auth = get_known_proxy_auth(proxy_str)
 
     # 1. Comprobar caché de corto plazo (60s) en memoria RAM compartida (/dev/shm)
     cached = get_cached_proxy_result(proxy_str, target, max_age_seconds=60.0)
@@ -222,22 +278,28 @@ async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_ur
     if waited_cached:
         return waited_cached["is_ok"], float(waited_cached.get("latency_ms", 0.0))
 
-    proxy_url = f"http://{proxy_str}"
-    if auth_userpass and ":" in auth_userpass:
-        proxy_url = f"http://{auth_userpass}@{proxy_str}"
+    if effective_auth and ":" in effective_auth and effective_auth != "USUARIO:CLAVE":
+        user, pwd = effective_auth.split(":", 1)
+        user_enc = urllib.parse.quote(user)
+        pwd_enc = urllib.parse.quote(pwd)
+        proxy_url = f"http://{user_enc}:{pwd_enc}@{proxy_str}"
+    else:
+        proxy_url = f"http://{proxy_str}"
 
     start = time.perf_counter()
     try:
         async with httpx.AsyncClient(proxy=proxy_url, verify=SSL_PERMISSIVE_CTX, timeout=timeout) as client:
             r = await client.get(target)
             elapsed = (time.perf_counter() - start) * 1000.0
-            is_ok = (r.status_code == 200)
+            is_ok = (r.status_code in (200, 301, 302))
             detail = f"Proxy operativo (HTTP {r.status_code})" if is_ok else f"HTTP {r.status_code}"
             save_cached_proxy_result(proxy_str, target, is_ok, str(r.status_code), detail, elapsed, source="web_sync")
             return is_ok, round(elapsed, 1)
     except Exception:
         elapsed = (time.perf_counter() - start) * 1000.0
-        save_cached_proxy_result(proxy_str, target, False, "0", "Fallo de conexión", elapsed, source="web_sync")
+        # No envenenar la memoria compartida si no se tenían credenciales válidas
+        if effective_auth and effective_auth != "USUARIO:CLAVE":
+            save_cached_proxy_result(proxy_str, target, False, "0", "Fallo de conexión", elapsed, source="web_sync")
         return False, 0.0
     finally:
         guard.release()
@@ -271,7 +333,10 @@ async def evaluate_service(s: dict) -> dict:
         proxy_target = ip
         if ":" not in proxy_target and proxy_target:
             proxy_target = f"{proxy_target}:{port or 8080}"
-        is_up, latency = await check_proxy_service(proxy_target, s.get("credentials"))
+        auth = s.get("credentials")
+        if not auth or auth == "USUARIO:CLAVE":
+            auth = get_known_proxy_auth(proxy_target)
+        is_up, latency = await check_proxy_service(proxy_target, auth)
     else: # PING / OTRO
         is_up, latency = await check_ping(ip)
 
