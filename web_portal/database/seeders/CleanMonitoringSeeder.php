@@ -155,7 +155,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'EQUIPO MONITOREO ATIT',
-                'ip' => '10.20.23.66',
+                'ip' => '10.20.23.252',
                 'mac' => '00:0C:29:4F:8E:1A',
                 'vendor_data' => 'VMware / Debian Linux',
                 'access_type' => 'VNC',
