@@ -85,13 +85,146 @@
             </button>
         </form>
 
-        <!-- VOLVER AL SITIO PÚBLICO -->
-        <div class="mt-6 pt-6 border-t border-obsidian-border/60 text-center">
-            <a href="{{ route('home') }}" class="inline-flex items-center gap-1.5 text-xs font-mono text-obsidian-cyan hover:underline">
-                <span class="material-symbols-outlined text-sm">arrow_back</span>
-                Volver a la vista pública de monitoreo
-            </a>
+        <!-- REDIRECCIÓN AUTOMÁTICA A VISTA PÚBLICA (15s) -->
+        <div id="redirect-widget" class="mt-6 pt-5 border-t border-obsidian-border/60 space-y-3">
+            <div class="flex items-center justify-between text-[11px] font-mono">
+                <div class="flex items-center gap-1.5 text-obsidian-muted" id="redirect-status-text">
+                    <span class="material-symbols-outlined text-sm text-obsidian-cyan animate-pulse" id="redirect-icon">schedule</span>
+                    <span>Retornando a la vista pública en <strong id="redirect-countdown" class="text-obsidian-cyan font-bold">15</strong>s</span>
+                </div>
+                <button type="button" id="btn-pause-redirect" class="text-[10px] px-2 py-0.5 rounded border border-obsidian-border text-obsidian-muted hover:text-white hover:border-obsidian-cyan/50 hover:bg-obsidian-panel transition">
+                    Pausar
+                </button>
+            </div>
+
+            <!-- BARRA DE PROGRESO DE CUENTA REGRESIVA -->
+            <div class="w-full bg-obsidian-panel/80 rounded-full h-1 overflow-hidden border border-obsidian-border/50">
+                <div id="redirect-progress-bar" class="h-full bg-gradient-to-r from-obsidian-cyan to-emerald-400 transition-all duration-1000 ease-linear" style="width: 100%;"></div>
+            </div>
+
+            <div class="text-center pt-1">
+                <a href="{{ route('home') }}" class="inline-flex items-center gap-1.5 text-xs font-mono text-obsidian-cyan hover:underline group">
+                    <span class="material-symbols-outlined text-sm group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Volver a la vista pública de monitoreo ahora
+                </a>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const TOTAL_SECONDS = 15;
+    let remaining = TOTAL_SECONDS;
+    let isPaused = false;
+    let timerId = null;
+
+    const countdownEl = document.getElementById('redirect-countdown');
+    const progressBar = document.getElementById('redirect-progress-bar');
+    const pauseBtn = document.getElementById('btn-pause-redirect');
+    const statusText = document.getElementById('redirect-status-text');
+    const loginInput = document.getElementById('login');
+    const passwordInput = document.getElementById('password');
+
+    function updateDisplay() {
+        if (countdownEl) {
+            countdownEl.textContent = remaining;
+        }
+        if (progressBar) {
+            const pct = Math.max(0, (remaining / TOTAL_SECONDS) * 100);
+            progressBar.style.width = pct + '%';
+        }
+    }
+
+    function pauseTimer() {
+        if (isPaused) return;
+        isPaused = true;
+        clearInterval(timerId);
+        if (pauseBtn) {
+            pauseBtn.textContent = 'Reanudar';
+            pauseBtn.classList.add('border-amber-500/50', 'text-amber-300');
+        }
+        if (statusText) {
+            statusText.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-400">pause_circle</span> <span>Temporizador pausado</span>`;
+        }
+        if (progressBar) {
+            progressBar.classList.remove('from-obsidian-cyan', 'to-emerald-400');
+            progressBar.classList.add('from-amber-500', 'to-yellow-400');
+        }
+    }
+
+    function resumeTimer() {
+        if (!isPaused) return;
+        isPaused = false;
+        if (pauseBtn) {
+            pauseBtn.textContent = 'Pausar';
+            pauseBtn.classList.remove('border-amber-500/50', 'text-amber-300');
+        }
+        if (statusText) {
+            statusText.innerHTML = `<span class="material-symbols-outlined text-sm text-obsidian-cyan animate-pulse">schedule</span> <span>Retornando a la vista pública en <strong id="redirect-countdown" class="text-obsidian-cyan font-bold">${remaining}</strong>s</span>`;
+        }
+        if (progressBar) {
+            progressBar.classList.remove('from-amber-500', 'to-yellow-400');
+            progressBar.classList.add('from-obsidian-cyan', 'to-emerald-400');
+        }
+        startTimer();
+    }
+
+    function tick() {
+        if (isPaused) return;
+
+        // Si el usuario ya comenzó a escribir en el formulario, pausar automáticamente para no interrumpirlo
+        if ((loginInput && loginInput.value.trim().length > 0) || (passwordInput && passwordInput.value.trim().length > 0)) {
+            pauseTimer();
+            return;
+        }
+
+        remaining--;
+        updateDisplay();
+
+        if (remaining <= 0) {
+            clearInterval(timerId);
+            if (statusText) {
+                statusText.innerHTML = `<span class="material-symbols-outlined text-sm text-obsidian-cyan animate-spin">sync</span> <span class="text-obsidian-cyan font-bold">Redireccionando...</span>`;
+            }
+            window.location.href = "{{ route('home') }}";
+        }
+    }
+
+    function startTimer() {
+        clearInterval(timerId);
+        timerId = setInterval(tick, 1000);
+    }
+
+    // Eventos de pausa interactiva
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (isPaused) {
+                resumeTimer();
+            } else {
+                pauseTimer();
+            }
+        });
+    }
+
+    // Auto-pausar si el usuario interactúa o escribe en el formulario de login
+    [loginInput, passwordInput].forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                pauseTimer();
+            });
+            input.addEventListener('focus', () => {
+                if (input.value.trim().length > 0) {
+                    pauseTimer();
+                }
+            });
+        }
+    });
+
+    // Iniciar temporizador
+    updateDisplay();
+    startTimer();
+});
+</script>
 @endsection
