@@ -11,6 +11,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
             CleanMonitoringSeeder::class,
+            OuiVendorsSeeder::class,
+            SnmpOidsSeeder::class,
+            DiscoverySubnetsSeeder::class,
+            AlertRulesSeeder::class,
         ]);
     }
 }
