@@ -400,6 +400,15 @@ async def run_post_deploy_smoke_test() -> Tuple[bool, str]:
             if r_login.status_code != 200:
                 return False, f"Endpoint /login retornó HTTP {r_login.status_code} (esperado 200)"
 
+            # 2.1 Probar disponibilidad de Logo Corporativo
+            r_logo = await client.get("http://127.0.0.1/img/logo.png")
+            if r_logo.status_code != 200:
+                src_l = BASE_DIR / "web_portal" / "public" / "img" / "logo.png"
+                dst_l = WEB_DIR / "public" / "img" / "logo.png"
+                if src_l.exists():
+                    dst_l.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_l, dst_l)
+
         # 3. Comprobar consulta a MariaDB vía Artisan
         proc_art = await asyncio.create_subprocess_exec(
             "sudo", "php", f"{WEB_DIR}/artisan", "tinker", "--execute=echo \\App\\Models\\User::count() > 0 ? 'OK' : 'EMPTY';",
@@ -497,6 +506,16 @@ async def execute_git_update(bot_instance=None) -> str:
         if portal_env.exists():
             shutil.copy2(portal_env, temp_backup_dir / "web_portal.env")
 
+        # Preservar branding y logo corporativo si existen
+        for asset_rel in ["web_portal/public/img/logo.png", "web_portal/public/favicon.ico"]:
+            src_asset = BASE_DIR / asset_rel
+            if src_asset.exists():
+                shutil.copy2(src_asset, temp_backup_dir / Path(asset_rel).name)
+            elif (WEB_DIR / "public" / Path(asset_rel).name).exists():
+                shutil.copy2(WEB_DIR / "public" / Path(asset_rel).name, temp_backup_dir / Path(asset_rel).name)
+            elif (WEB_DIR / "public" / "img" / Path(asset_rel).name).exists():
+                shutil.copy2(WEB_DIR / "public" / "img" / Path(asset_rel).name, temp_backup_dir / Path(asset_rel).name)
+
         # 5. Git Fetch
         rc_fetch, out_fetch, err_fetch = await _run_git_command(["fetch", "origin", IMMUTABLE_GIT_BRANCH], timeout=35.0, proxy_args=proxy_args)
         if rc_fetch != 0:
@@ -517,6 +536,20 @@ async def execute_git_update(bot_instance=None) -> str:
         await _run_git_command(["clean", "-fd", "-e", "config/", "-e", "audit/", "-e", "venv/", "-e", "logs/", "-e", "docs/", "-e", "database/backups/", "-e", "web_portal/.env"])
         logs.append("⬇️ <i>Código base sincronizado con GitHub.</i>")
 
+        # 6.1 Actualizar dependencias de Python en entorno virtual si existe
+        venv_pip = BASE_DIR / "venv" / "bin" / "pip"
+        req_file = BASE_DIR / "requirements.txt"
+        if venv_pip.exists() and req_file.exists():
+            try:
+                p_pip = await asyncio.create_subprocess_exec(
+                    str(venv_pip), "install", "-q", "-r", str(req_file),
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await p_pip.communicate()
+                logs.append("📦 <i>Dependencias de Python verificadas en entorno virtual.</i>")
+            except Exception as e_pip:
+                logger.warning(f"Aviso actualizando dependencias pip: {e_pip}")
+
         # Restaurar configuraciones locales preservadas
         if temp_backup_dir.exists():
             for item in temp_backup_dir.iterdir():
@@ -524,9 +557,18 @@ async def execute_git_update(bot_instance=None) -> str:
                     shutil.copy2(item, BASE_DIR / "audit" / ".sys_anchor")
                 elif item.name == "web_portal.env":
                     shutil.copy2(item, BASE_DIR / "web_portal" / ".env")
+                elif item.name == "logo.png":
+                    target_logo = BASE_DIR / "web_portal" / "public" / "img" / "logo.png"
+                    target_logo.parent.mkdir(parents=True, exist_ok=True)
+                    if not target_logo.exists() or target_logo.stat().st_size == 0:
+                        shutil.copy2(item, target_logo)
+                elif item.name == "favicon.ico":
+                    target_fav = BASE_DIR / "web_portal" / "public" / "favicon.ico"
+                    if not target_fav.exists() or target_fav.stat().st_size == 0:
+                        shutil.copy2(item, target_fav)
                 elif item.is_file():
                     shutil.copy2(item, CONFIG_DIR / item.name)
-            logs.append("🔒 <i>Archivos de configuración locales preservados.</i>")
+            logs.append("🔒 <i>Archivos de configuración locales y branding preservados.</i>")
 
         # 7. Sincronizar Portal Web hacia /var/www/monitoreo
         if WEB_DIR.exists():
@@ -538,6 +580,13 @@ async def execute_git_update(bot_instance=None) -> str:
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             await p_rsync.communicate()
+
+            # Asegurar que el logo corporativo exista en /var/www/monitoreo/public/img/logo.png
+            prod_logo = WEB_DIR / "public" / "img" / "logo.png"
+            src_logo = BASE_DIR / "web_portal" / "public" / "img" / "logo.png"
+            if src_logo.exists() and (not prod_logo.exists() or prod_logo.stat().st_size == 0):
+                prod_logo.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_logo, prod_logo)
 
             # 7.2 Permisos www-data
             p_chown = await asyncio.create_subprocess_exec(
@@ -564,7 +613,14 @@ async def execute_git_update(bot_instance=None) -> str:
                 raise RuntimeError(f"Fallo ejecutando migraciones de Laravel:\n{err_m.decode('utf-8', errors='ignore')}")
 
             # 7.4 Seeder idempotente de infraestructura si está disponible
-            if (WEB_DIR / "database" / "seeders" / "CleanMonitoringSeeder.php").exists():
+            if (WEB_DIR / "database" / "seeders" / "DatabaseSeeder.php").exists():
+                p_seed = await asyncio.create_subprocess_exec(
+                    *(sudo_prefix + ["php", f"{WEB_DIR}/artisan", "db:seed", "--force"]),
+                    cwd=str(WEB_DIR),
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await p_seed.communicate()
+            elif (WEB_DIR / "database" / "seeders" / "CleanMonitoringSeeder.php").exists():
                 p_seed = await asyncio.create_subprocess_exec(
                     *(sudo_prefix + ["php", f"{WEB_DIR}/artisan", "db:seed", "--class=CleanMonitoringSeeder", "--force"]),
                     cwd=str(WEB_DIR),

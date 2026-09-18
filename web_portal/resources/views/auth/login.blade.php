@@ -12,7 +12,8 @@
         <!-- LOGO & CABECERA -->
         <div class="text-center space-y-3">
             <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 text-obsidian-cyan glow-cyan mb-2 p-2.5 shadow-lg shadow-cyan-500/20">
-                <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">
+                <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+                <span class="material-symbols-outlined text-3xl text-obsidian-cyan hidden">monitoring</span>
             </div>
             <h2 class="text-2xl font-bold text-white tracking-tight">Acceso Administrativo</h2>
             <p class="text-xs font-mono text-obsidian-muted">
