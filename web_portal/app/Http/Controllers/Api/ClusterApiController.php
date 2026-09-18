@@ -64,8 +64,41 @@ class ClusterApiController extends Controller
                 'sites' => MonitoredSite::with('devices')->orderBy('sort_order')->get(),
                 'proxies' => MonitoredProxy::orderBy('letter')->get(),
                 'network_devices' => MonitoredNetworkDevice::orderBy('sort_order')->get(),
+                'discovery_subnets' => \App\Models\DiscoverySubnet::all(),
+                'snmp_oids' => \App\Models\SnmpOid::all(),
+                'snmp_devices' => \App\Models\SnmpDevice::select([
+                    'id', 'name', 'ip_address', 'snmp_version', 'snmp_port',
+                    'snmp_timeout_seconds', 'snmp_retries', 'device_type',
+                    'vendor', 'model', 'firmware_version', 'serial_number',
+                    'sys_name', 'sys_description', 'sys_object_id', 'sys_uptime',
+                    'sys_location', 'sys_contact', 'site_id', 'discovered_device_id',
+                    'network_device_id', 'poll_interval_seconds', 'is_active',
+                    'last_poll_at', 'last_poll_status', 'consecutive_failures',
+                    'ssh_enabled', 'ssh_username', 'ssh_port', 'custom_oids',
+                    'notes', 'created_at', 'updated_at'
+                ])->get(),
+                'snmp_device_oids' => \App\Models\SnmpDeviceOid::all(),
+                'snmp_interfaces' => \App\Models\SnmpInterface::all(),
+                'ssl_certificates' => \App\Models\SslCertificate::all(),
+                'alert_rules' => \App\Models\AlertRule::all(),
+                'alert_escalation_levels' => \App\Models\AlertEscalationLevel::all(),
+                'alert_correlation_groups' => \App\Models\AlertCorrelationGroup::all(),
+                'alert_correlation_members' => \App\Models\AlertCorrelationMember::all(),
+                'maintenance_windows' => \App\Models\MaintenanceWindow::all(),
             ],
+            'snmp_metrics_history' => \App\Models\SnmpMetricHistory::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
+            'snmp_interface_metrics' => \App\Models\SnmpInterfaceMetric::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
+            'ssl_certificate_history' => \App\Models\SslCertificateHistory::latest('id')->take(500)->get(),
+            'alerts' => \App\Models\Alert::whereIn('status', ['firing', 'acknowledged', 'suppressed'])->orWhere('fired_at', '>=', now()->subHours(24))->latest('id')->take(500)->get(),
+            'alert_notifications' => \App\Models\AlertNotification::latest('id')->take(200)->get(),
+            'device_configurations' => \App\Models\DeviceConfiguration::select([
+                'id', 'network_device_id', 'snmp_device_id', 'device_name', 'device_ip',
+                'device_type', 'config_hash', 'config_size_bytes', 'captured_at', 'captured_by',
+                'status', 'notes', 'created_at', 'updated_at'
+            ])->latest('captured_at')->take(100)->get(),
+            'config_change_logs' => \App\Models\ConfigChangeLog::latest('detected_at')->take(100)->get(),
             'audit_logs' => \App\Models\AuditLog::latest()->take(100)->get(),
         ]);
     }
 }
+

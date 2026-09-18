@@ -35,7 +35,7 @@
 
     <!-- CUERPO PRINCIPAL (3 COLUMNAS: ACTIVOS, SEDES Y BLOQUE DE CAÍDAS) -->
 
-<div class="{{ ($isDashboard ?? false) ? 'flex flex-col lg:flex-row gap-3 sm:gap-4 lg:h-[750px]' : 'flex-1 p-3 sm:p-4 overflow-hidden flex flex-col lg:flex-row gap-3 sm:gap-4 min-h-0' }}">
+<div class="{{ ($isDashboard ?? false) ? 'flex flex-col lg:flex-row gap-3 sm:gap-4 lg:h-[580px]' : 'flex-1 p-3 sm:p-4 overflow-hidden flex flex-col lg:flex-row gap-3 sm:gap-4 min-h-0' }}">
         
         <!-- ========================================================================= -->
         <!-- COLUMNA 1: SERVICIOS ACTIVOS (32% ANCHO)                                 -->
@@ -81,11 +81,40 @@
                         <div class="flex items-center gap-2 min-w-0">
                             <!-- LED VERDE COMPACTO -->
                             <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-400 glow-green"></div>
+
+                            @php
+                                $svcCert = isset($sslMapByService) ? $sslMapByService->get($s->id) : null;
+                                if (!$svcCert && isset($sslMapByDomain) && $s->web_url) {
+                                    $parsedDomain = parse_url($s->web_url, PHP_URL_HOST);
+                                    if ($parsedDomain) {
+                                        $svcCert = $sslMapByDomain->get($parsedDomain);
+                                    }
+                                }
+                                $isHttps = str_starts_with(strtolower($s->web_url ?? ''), 'https://') || ($s->port == 443);
+                            @endphp
+
+                            @if($svcCert)
+                                @if($svcCert->days_remaining < 0 || $svcCert->last_check_status === 'expired')
+                                    <span class="material-symbols-outlined text-[12.5px] text-red-400 shrink-0 animate-pulse" title="SSL EXPIRADO (hace {{ abs($svcCert->days_remaining) }} días) • Emisor: {{ $svcCert->issuer_cn ?: 'N/A' }}">lock_open</span>
+                                @elseif($svcCert->last_check_status === 'error')
+                                    <span class="material-symbols-outlined text-[12.5px] text-red-400 shrink-0" title="Error de Inspección SSL/TLS">lock_open</span>
+                                @elseif($svcCert->days_remaining <= 7)
+                                    <span class="material-symbols-outlined text-[12.5px] text-rose-400 shrink-0 animate-pulse" title="SSL CRÍTICO: expira en {{ $svcCert->days_remaining }} días ({{ $svcCert->valid_to ? $svcCert->valid_to->timezone('America/Caracas')->format('d/m/Y') : '' }}) • Emisor: {{ $svcCert->issuer_cn ?: 'N/A' }}">lock_clock</span>
+                                @elseif($svcCert->days_remaining <= 30)
+                                    <span class="material-symbols-outlined text-[12.5px] text-amber-400 shrink-0" title="SSL POR VENCER: expira en {{ $svcCert->days_remaining }} días ({{ $svcCert->valid_to ? $svcCert->valid_to->timezone('America/Caracas')->format('d/m/Y') : '' }}) • Emisor: {{ $svcCert->issuer_cn ?: 'N/A' }}">lock_clock</span>
+                                @else
+                                    <span class="material-symbols-outlined text-[12.5px] text-emerald-400 shrink-0" title="SSL VÁLIDO: {{ $svcCert->days_remaining }} días restantes (Vence: {{ $svcCert->valid_to ? $svcCert->valid_to->timezone('America/Caracas')->format('d/m/Y') : '' }}) • Emisor: {{ $svcCert->issuer_cn ?: 'Corporativo' }}">lock</span>
+                                @endif
+                            @elseif($isHttps)
+                                <span class="material-symbols-outlined text-[12.5px] text-cyan-400 shrink-0" title="Servicio Web Seguro HTTPS / TLS">lock</span>
+                            @endif
+
                             <!-- NOMBRE DEL SERVICIO -->
                             <span class="text-[11px] font-semibold text-white group-hover:text-emerald-300 transition-colors truncate">
                                 {{ $s->name }}
                             </span>
                         </div>
+
 
                         <!-- LATENCIA & BADGE DE PROTOCOLO -->
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -112,12 +141,9 @@
         </section>
 
         <!-- ========================================================================= -->
-        <!-- COLUMNA 2: SEDES REGIONALES Y DISPOSITIVOS SEDE VALLE SECO (34% ANCHO) -->
+        <!-- COLUMNA 2: SEDES REGIONALES CONECTADAS (34% ANCHO)                        -->
         <!-- ========================================================================= -->
-        <section class="flex flex-col w-full lg:w-[34%] h-full gap-3 overflow-hidden">
-
-            <!-- BLOQUE SUPERIOR: SEDES REGIONALES CONECTADAS (50% ALTURA) -->
-            <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-obsidian-border/80">
+        <section class="glass-panel rounded-xl flex flex-col w-full lg:w-[34%] h-full overflow-hidden border border-obsidian-border/80">
                 <!-- CABECERA -->
                 <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
                     <div class="flex items-center gap-2">
@@ -141,6 +167,12 @@
                             });
                             $cleanAddress = ($site->address && !str_contains(strtoupper($site->address), 'NO CONFIGURADO')) ? $site->address : '';
                             $cleanPhone = ($site->phone_1 && !str_contains(strtoupper($site->phone_1), 'NO CONFIGURADO')) ? $site->phone_1 : '';
+                            
+                            $stHist = isset($siteHistoryMap[$site->id]) ? $siteHistoryMap[$site->id] : null;
+                            $jitter = $stHist ? ($stHist['jitter_ms'] ?? 0) : 0;
+                            $loss = $stHist ? ($stHist['packet_loss_pct'] ?? 0) : 0;
+                            $minRtt = $stHist ? ($stHist['min_rtt_ms'] ?? 0) : 0;
+                            $maxRtt = $stHist ? ($stHist['max_rtt_ms'] ?? 0) : 0;
                         @endphp
                         <div class="rounded-xl bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-purple/50 transition overflow-hidden group item-searchable"
                              data-search="{{ strtolower($site->name . ' ' . $cleanAddress) }}">
@@ -175,6 +207,14 @@
                                 </div>
 
                                 <div class="flex items-center gap-1.5 shrink-0">
+                                    @if(Auth::check() && ($jitter > 0 || $loss > 0))
+                                    <span class="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8.5px] font-mono {{ $loss > 0 ? 'bg-red-950/80 text-red-400 border border-red-500/30' : 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/30' }}" title="Calidad WAN: Jitter {{ $jitter }}ms • Pérdida {{ $loss }}%">
+                                        <span>Jitter: {{ $jitter }}ms</span>
+                                        @if($loss > 0)
+                                            <span class="text-red-400 font-bold">• {{ $loss }}% Pérdida</span>
+                                        @endif
+                                    </span>
+                                    @endif
                                     @if(!Auth::check())
                                     <span class="text-amber-400/90 flex items-center justify-center p-0.5" title="DEBE INICIAR SESIÓN PARA VER LOS DATOS">
                                         <span class="material-symbols-outlined text-[13px]">lock</span>
@@ -192,10 +232,24 @@
                             <!-- CONTENIDO DESPLEGABLE CON EQUIPOS EN SITIO (OCULTO POR DEFECTO) -->
                             <div id="site-details-{{ $site->letter }}" class="hidden px-2.5 pb-2.5 pt-1 border-t border-obsidian-border/40 bg-obsidian-bg/40 space-y-2">
                                 @if(Auth::check())
-                                <!-- METRICAS DE LATENCIA -->
-                                <div class="flex items-center justify-between text-[10px] font-mono bg-obsidian-bg/80 px-2 py-1 rounded-lg border border-obsidian-border/40">
-                                    <span class="text-[9px] text-obsidian-muted">Latencia Gateway:</span>
-                                    <span class="font-bold text-emerald-400 text-[10px]">{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}</span>
+                                <!-- METRICAS DE CALIDAD WAN (FASE 5) -->
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[9px] font-mono bg-obsidian-bg/80 p-2 rounded-lg border border-obsidian-border/40">
+                                    <div class="flex flex-col">
+                                        <span class="text-[8px] text-obsidian-muted uppercase">Latencia (Avg)</span>
+                                        <span class="font-bold text-emerald-400">{{ $latency > 0 ? $latency . ' ms' : '< 15 ms' }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[8px] text-obsidian-muted uppercase">Jitter / mdev</span>
+                                        <span class="font-bold {{ $jitter > 15 ? 'text-red-400' : ($jitter > 5 ? 'text-amber-400' : 'text-cyan-300') }}">{{ $jitter > 0 ? $jitter . ' ms' : '< 1.0 ms' }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[8px] text-obsidian-muted uppercase">Pérdida Paq.</span>
+                                        <span class="font-bold {{ $loss > 0 ? 'text-red-400' : 'text-emerald-400' }}">{{ $loss }}%</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[8px] text-obsidian-muted uppercase">Rango RTT</span>
+                                        <span class="text-slate-300">{{ $minRtt > 0 ? $minRtt . ' - ' . $maxRtt . ' ms' : '--' }}</span>
+                                    </div>
                                 </div>
 
                                 <!-- CUADRICULA DE EQUIPOS EN SITIO -->
@@ -207,17 +261,28 @@
                                                 @php
                                                     $dSnap = $devicesSnapshot->get($dev->device_number);
                                                     $devUp = $dSnap ? ($dSnap['is_up'] ?? false) : false;
-                                                    $canVnc = in_array(Auth::user()->role, ['admin', 'operator']);
+                                                    $canRemote = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
+                                                    $devAcc = strtoupper(trim($dev->access_type ?? 'SIN SOPORTE'));
+                                                    $devPort = $dev->access_port ?: ($devAcc === 'SSH' ? 22 : ($devAcc === 'TELNET' ? 23 : ($devAcc === 'WEB' ? 80 : ($devAcc === 'VNC' ? 5900 : ''))));
+
+                                                    $deviceDetailParts = [];
+                                                    if ($dev->vendor_data) $deviceDetailParts[] = 'Fabricante / Info: ' . $dev->vendor_data;
+                                                    if ($dev->model) $deviceDetailParts[] = 'Modelo: ' . $dev->model;
+                                                    if ($dev->serial) $deviceDetailParts[] = 'Serial: ' . $dev->serial;
+                                                    if ($dev->ports) $deviceDetailParts[] = 'Puertos: ' . $dev->ports;
+                                                    if ($dev->notes) $deviceDetailParts[] = "Notas:\n" . $dev->notes;
+                                                    if ($devAcc !== 'SIN SOPORTE') $deviceDetailParts[] = 'Acceso: ' . $devAcc . ($devPort ? ':' . $devPort : '');
+                                                    $devDetails = !empty($deviceDetailParts) ? implode("\n", $deviceDetailParts) : 'Dispositivo interno vinculado a la red de ' . $site->name . '.';
                                                 @endphp
                                                 <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
                                                      data-tech-title="{{ $site->name }} - {{ $dev->name }}"
                                                      data-tech-type="EQUIPO SECUNDARIO"
                                                      data-tech-ip="{{ $dev->ip }}"
-                                                     data-tech-port="Slot #{{ $dev->device_number }}"
+                                                     data-tech-port="{{ $devAcc !== 'SIN SOPORTE' ? $devAcc . ':' . $devPort : 'Slot #' . $dev->device_number }}"
                                                      data-tech-protocol="ICMP Echo Ping"
                                                      data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
                                                      data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
-                                                     data-tech-details="Dispositivo interno vinculado a la red local de {{ $site->name }}."
+                                                     data-tech-details="{{ $devDetails }}"
                                                      data-tech-id="{{ $site->id }}"
                                                      data-tech-kind="site">
                                                     <div class="flex items-center space-x-1.5 min-w-0 pr-1 truncate">
@@ -225,23 +290,84 @@
                                                         <span class="text-white truncate" title="{{ $dev->name }}">{{ $dev->name }}</span>
                                                     </div>
 
-                                                    <!-- BOTÓN VNC CON CONDICIÓN DE ROL Y LOGIN -->
-                                                    @if($canVnc)
-                                                        <button type="button"
-                                                                onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', true)"
-                                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
-                                                                title="Conectar Escritorio Remoto VNC ({{ $dev->ip }})">
-                                                            <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
-                                                            <span>VNC</span>
-                                                        </button>
+                                                    <!-- BOTÓN DE ACCESO REMOTO SEGÚN PROTOCOLO (SSH / TELNET / WEB / VNC) -->
+                                                    @if($devAcc === 'SSH')
+                                                        @if($canRemote)
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openSshTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-950/90 hover:bg-emerald-500 hover:text-black border border-emerald-500/50 text-emerald-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
+                                                                    title="Conectar Terminal SSH ({{ $dev->ip }}:{{ $devPort }})">
+                                                                <span class="material-symbols-outlined text-[10px]">terminal</span>
+                                                                <span>SSH</span>
+                                                            </button>
+                                                        @else
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openAccessModal('SSH', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                                    title="Debe iniciar sesión para acceder por SSH">
+                                                                <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                                <span>SSH</span>
+                                                            </button>
+                                                        @endif
+                                                    @elseif($devAcc === 'TELNET')
+                                                        @if($canRemote)
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openTelnetTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-cyan-500 hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
+                                                                    title="Conectar Terminal Telnet ({{ $dev->ip }}:{{ $devPort }})">
+                                                                <span class="material-symbols-outlined text-[10px]">terminal</span>
+                                                                <span>TELNET</span>
+                                                            </button>
+                                                        @else
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                                    title="Debe iniciar sesión para acceder por Telnet">
+                                                                <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                                <span>TELNET</span>
+                                                            </button>
+                                                        @endif
+                                                    @elseif($devAcc === 'WEB')
+                                                        @if($canRemote)
+                                                            <a href="http://{{ $dev->ip }}:{{ $devPort }}" target="_blank"
+                                                               onclick="event.stopPropagation();"
+                                                               class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-blue-950/90 hover:bg-blue-500 hover:text-white border border-blue-500/50 text-blue-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
+                                                               title="Abrir Panel Web (http://{{ $dev->ip }}:{{ $devPort }})">
+                                                                <span class="material-symbols-outlined text-[10px]">language</span>
+                                                                <span>WEB</span>
+                                                            </a>
+                                                        @else
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                                    title="Debe iniciar sesión para acceder al panel web">
+                                                                <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                                <span>WEB</span>
+                                                            </button>
+                                                        @endif
+                                                    @elseif($devAcc === 'VNC')
+                                                        @if($canRemote)
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openVncViewer('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-purple-950/90 hover:bg-purple-500 hover:text-white border border-purple-500/50 text-purple-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
+                                                                    title="Conectar Escritorio Remoto VNC ({{ $dev->ip }}:{{ $devPort }})">
+                                                                <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
+                                                                <span>VNC</span>
+                                                            </button>
+                                                        @else
+                                                            <button type="button"
+                                                                    onclick="event.stopPropagation(); openAccessModal('VNC', 5900, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                                    title="Debe iniciar sesión para conectar por VNC">
+                                                                <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
+                                                                <span>VNC</span>
+                                                            </button>
+                                                        @endif
                                                     @else
-                                                        <button type="button"
-                                                                onclick="event.stopPropagation(); openVncModal('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
-                                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                                title="Debe iniciar sesión para conectar por VNC">
-                                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
-                                                            <span>VNC</span>
-                                                        </button>
+                                                        <span class="px-1 py-0.5 rounded text-[7.5px] font-mono bg-obsidian-card/70 border border-obsidian-border text-obsidian-muted inline-flex items-center gap-0.5" title="Sin soporte de acceso remoto">
+                                                            <span class="material-symbols-outlined text-[9px]">power_off</span>
+                                                            <span>S/S</span>
+                                                        </span>
                                                     @endif
                                                 </div>
                                             @endforeach
@@ -267,142 +393,6 @@
                         </div>
                     @endforelse
                 </div>
-            </div>
-
-            <!-- BLOQUE INFERIOR: DISPOSITIVOS SEDE VALLE SECO (50% ALTURA) -->
-            <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-obsidian-border/80 bg-obsidian-panel/20">
-                <!-- CABECERA -->
-                <div class="p-3 border-b border-obsidian-border flex items-center justify-between bg-obsidian-panel/50">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-obsidian-cyan text-lg">lan</span>
-                        <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">DISPOSITIVOS SEDE VALLE SECO</h2>
-                    </div>
-                    <span id="badge-count-valle-seco-devices" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-obsidian-cyan/20 text-obsidian-cyan border border-obsidian-border/30">
-                        {{ $netDevicesOnlineCount }} / {{ $activeNetDevices->count() }} Online
-                    </span>
-                </div>
-
-                <!-- LISTA DE DISPOSITIVOS SEDE VALLE SECO -->
-                <div class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scroll" id="valle-seco-devices-container">
-                    @forelse($activeNetDevices as $netDev)
-                        @php
-                            $isUp = $netDev->is_up_evaluated ?? false;
-                            $latStr = ($netDev->latency_evaluated ?? 0) > 0 ? ($netDev->latency_evaluated . ' ms') : '< 1 ms';
-                            $canRemote = Auth::check() && in_array(Auth::user()->role, ['admin', 'operator']);
-                            $accessType = strtoupper(trim($netDev->access_type ?? 'SIN SOPORTE'));
-                            $accessPort = $netDev->access_port ?: ($accessType === 'TELNET' ? 23 : ($accessType === 'WEB' ? 80 : 5900));
-
-                            $deviceDetailParts = [];
-                            if ($netDev->vendor_data) $deviceDetailParts[] = 'Fabricante / Info: ' . $netDev->vendor_data;
-                            if ($netDev->model) $deviceDetailParts[] = 'Modelo: ' . $netDev->model;
-                            if ($netDev->serial) $deviceDetailParts[] = 'Serial: ' . $netDev->serial;
-                            if ($netDev->ports) $deviceDetailParts[] = 'Puertos: ' . $netDev->ports;
-                            if ($netDev->notes) $deviceDetailParts[] = "Notas:\n" . $netDev->notes;
-                            if ($accessType !== 'SIN SOPORTE') $deviceDetailParts[] = 'Acceso: ' . $accessType;
-                            $deviceDetails = !empty($deviceDetailParts) ? implode("\n", $deviceDetailParts) : 'Equipo de red local Valle Seco.';
-                        @endphp
-                        <div class="py-1.5 px-2.5 rounded-lg bg-obsidian-panel/60 hover:bg-obsidian-panel border border-obsidian-border/60 hover:border-obsidian-cyan/50 transition cursor-pointer flex items-center justify-between group item-searchable select-none"
-                             data-search="{{ strtolower($netDev->name . ' ' . $netDev->ip . ' ' . ($netDev->vendor_data ?? '') . ' ' . ($netDev->model ?? '') . ' ' . ($netDev->serial ?? '') . ' ' . ($netDev->ports ?? '') . ' ' . ($netDev->notes ?? '')) }}"
-                             data-tech-title="{{ $netDev->name }}"
-                             data-tech-type="DISPOSITIVO LAN VALLE SECO"
-                             @if(Auth::check())
-                             data-tech-ip="{{ $netDev->ip }}"
-                             data-tech-port="MAC: {{ $netDev->mac ?: 'No disponible' }}{{ $accessType !== 'SIN SOPORTE' ? ' • ' . $accessType . ':' . $accessPort : '' }}"
-                             data-tech-protocol="ICMP Ping Directo"
-                             data-tech-latency="{{ $isUp ? $latStr : 'Timeout / Sin respuesta' }}"
-                             data-tech-status="{{ $isUp ? 'OPERATIVO (Enlace Local LAN Activo)' : 'OFFLINE (Dispositivo no responde en LAN)' }}"
-                             data-tech-details="{{ $deviceDetails }}"
-                             data-tech-id="{{ $netDev->id }}"
-                             data-tech-kind="device"
-                             @else
-                             data-tech-auth-required="true"
-                             title="DEBE INICIAR SESIÓN PARA VER LOS DATOS"
-                             @endif>
-                            
-                            <div class="flex items-center gap-2 min-w-0 pr-2">
-                                <div class="w-2 h-2 rounded-full shrink-0 {{ $isUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></div>
-                                <div class="flex items-center gap-1.5 min-w-0 truncate">
-                                    <h3 class="text-[11px] font-bold text-white group-hover:text-obsidian-cyan transition-colors truncate">
-                                        {{ $netDev->name }}
-                                    </h3>
-                                    @if($netDev->model)
-                                        <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 truncate shrink-0">
-                                            {{ $netDev->model }}
-                                        </span>
-                                    @elseif($netDev->vendor_data)
-                                        <span class="px-1 py-0.2 rounded text-[7.5px] font-mono text-obsidian-muted bg-obsidian-bg/80 border border-obsidian-border/40 truncate shrink-0">
-                                            {{ $netDev->vendor_data }}
-                                        </span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                @if($accessType === 'TELNET')
-                                    @if($canRemote)
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
-                                                title="Abrir Terminal Telnet ({{ $netDev->ip }}:{{ $accessPort }})">
-                                            <span class="material-symbols-outlined text-[10px]">terminal</span>
-                                            <span>TELNET</span>
-                                        </button>
-                                    @else
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                title="Debe iniciar sesión para acceder por Telnet">
-                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
-                                            <span>TELNET</span>
-                                        </button>
-                                    @endif
-                                @elseif($accessType === 'WEB')
-                                    @if($canRemote)
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
-                                                title="Abrir Panel Web (http://{{ $netDev->ip }}:{{ $accessPort }})">
-                                            <span class="material-symbols-outlined text-[10px]">language</span>
-                                            <span>WEB</span>
-                                        </button>
-                                    @else
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $netDev->ip }}', {{ $accessPort }}, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                title="Debe iniciar sesión para acceder al panel web">
-                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
-                                            <span>WEB</span>
-                                        </button>
-                                    @endif
-                                @elseif($accessType === 'VNC')
-                                    @if($canRemote)
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('VNC', '{{ $netDev->ip }}', 5900, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', true)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-obsidian-cyan hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm shadow-cyan-950 cursor-pointer"
-                                                title="Conectar Escritorio Remoto VNC ({{ $netDev->ip }})">
-                                            <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
-                                            <span>VNC</span>
-                                        </button>
-                                    @else
-                                        <button type="button"
-                                                onclick="event.stopPropagation(); openAccessModal('VNC', '{{ $netDev->ip }}', 5900, '{{ addslashes($netDev->name) }}', 'Red Valle Seco', false)"
-                                                class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                title="Debe iniciar sesión para conectar por VNC">
-                                            <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
-                                            <span>VNC</span>
-                                        </button>
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
-                    @empty
-                        <div class="p-8 text-center text-xs font-mono text-obsidian-muted">
-                            No hay dispositivos registrados en red Valle Seco.
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-
         </section>
 
         <!-- ========================================================================= -->
@@ -543,8 +533,10 @@
                 </div>
             </div>
 
-            <!-- BLOQUE INFERIOR DE TELEMETRÍA: ESTADO GLOBAL & SALUD DE RED -->
+            @if(!($isDashboard ?? false))
+            <!-- BLOQUE INFERIOR DE TELEMETRÍA: ESTADO GLOBAL & SALUD DE RED (SOLO VISTA PÚBLICA) -->
             <div class="glass-panel rounded-xl shrink-0 p-3 border border-obsidian-border/80 bg-[#07172b]/95 space-y-2.5 shadow-xl">
+
                 <!-- CABECERA DE TELEMETRÍA -->
                 <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/60">
                     <div class="flex items-center gap-1.5">
@@ -672,10 +664,348 @@
                     </div>
                 </div>
             </div>
+            @endif
 
         </section>
 
 </div>
+
+@if($isDashboard ?? false)
+<!-- ========================================================================= -->
+<!-- NIVEL INFERIOR: 4 COLUMNAS DE AUDITORÍA, ALERTAS, GITOPS Y TELEMETRÍA     -->
+<!-- ========================================================================= -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
+
+    <!-- ========================================================================= -->
+    <!-- COLUMNA 1: CERTIFICADOS SSL/TLS                                           -->
+    <!-- ========================================================================= -->
+    @php
+        $expiringList = isset($expiringSslCerts) ? $expiringSslCerts : collect();
+        $hasExpiring = $expiringList->count() > 0;
+    @endphp
+    <div class="glass-panel rounded-xl p-3 border {{ $hasExpiring ? 'border-amber-500/40 bg-amber-950/10' : 'border-obsidian-border/80 bg-[#07172b]/95' }} flex flex-col justify-between shadow-md min-h-[170px]">
+        <div>
+            <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/50">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base {{ $hasExpiring ? 'text-amber-400 animate-pulse' : 'text-cyan-400' }}">lock_clock</span>
+                    <h3 class="text-[11px] font-bold text-white uppercase font-mono tracking-wider">Certificados SSL/TLS</h3>
+                </div>
+                @if(Auth::check())
+                    <a href="{{ route('admin.ssl.index') }}" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold {{ $hasExpiring ? 'bg-amber-950/90 text-amber-300 border border-amber-500/40 hover:bg-amber-800' : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900' }} transition" title="{{ $hasExpiring ? $expiringList->count() . ' certificado(s) por vencer' : 'Ver consola SSL' }}">
+                        {{ $hasExpiring ? $expiringList->count() . ' por Vencer →' : 'Vigentes (>30d) →' }}
+                    </a>
+                @else
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold {{ $hasExpiring ? 'bg-amber-950/90 text-amber-300 border border-amber-500/40' : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30' }}">
+                        {{ $hasExpiring ? $expiringList->count() . ' por Vencer' : 'Vigentes (>30d)' }}
+                    </span>
+                @endif
+            </div>
+
+            <div class="mt-2">
+                @if($hasExpiring)
+                    <div class="space-y-1 max-h-24 overflow-y-auto custom-scroll">
+                        @foreach($expiringList->take(3) as $c)
+                            <div class="flex items-center justify-between py-1 px-1.5 rounded bg-obsidian-panel/60 border border-obsidian-border/50 text-[10px] font-mono" title="Dominio: {{ $c->domain }} • Emisor: {{ $c->issuer_cn ?: 'N/A' }} • Vence: {{ $c->valid_to ? $c->valid_to->timezone('America/Caracas')->format('d/m/Y') : 'N/A' }}">
+                                <span class="truncate max-w-[150px] text-gray-200">{{ $c->domain }}</span>
+                                <span class="font-bold {{ $c->days_remaining < 0 ? 'text-red-400' : ($c->days_remaining <= 7 ? 'text-rose-400' : 'text-amber-400') }}">
+                                    {{ $c->days_remaining < 0 ? 'Expirado' : $c->days_remaining . 'd' }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-[10px] font-mono text-obsidian-muted flex items-center gap-1.5 py-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Cadenas criptográficas e integridad HTTPS en regla.
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        <div class="pt-1.5 border-t border-obsidian-border/40 flex items-center justify-between text-[8px] font-mono text-obsidian-muted">
+            <span>Auditoría X.509</span>
+            <span class="text-cyan-400/80">TLS 1.2 / 1.3</span>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COLUMNA 2: ALERTAS ACTIVAS ⛈️ TORMENTA                                   -->
+    <!-- ========================================================================= -->
+    @php
+        $alertsCount = isset($activeAlertsList) ? $activeAlertsList->count() : 0;
+        $hasActiveAlerts = $alertsCount > 0;
+        $hasStorm = isset($stormSuppressedCount) && $stormSuppressedCount > 0;
+    @endphp
+    <div class="glass-panel rounded-xl p-3 border {{ $hasActiveAlerts ? 'border-amber-500/40 bg-amber-950/10' : 'border-obsidian-border/80 bg-[#07172b]/95' }} flex flex-col justify-between shadow-md min-h-[170px]">
+        <div>
+            <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/50">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base {{ $hasActiveAlerts ? 'text-amber-400 animate-pulse' : 'text-cyan-400' }}">notifications_active</span>
+                    <h3 class="text-[11px] font-bold text-white uppercase font-mono tracking-wider">Alertas Activas</h3>
+                    @if($hasStorm)
+                        <span class="px-1 py-0.2 rounded bg-purple-950 border border-purple-500/40 text-purple-300 font-mono text-[8.5px]" title="Control de Tormentas Activo">⛈️ Tormenta</span>
+                    @endif
+                </div>
+                <div>
+                    @if($hasActiveAlerts)
+                        <a href="{{ route('admin.alerts.index', ['tab' => 'active']) }}" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/40 hover:bg-amber-800 transition" title="Ver consola completa de incidentes">
+                            {{ $alertsCount }} Activas →
+                        </a>
+                    @else
+                        <a href="{{ route('admin.alerts.index') }}" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900 transition" title="Sin alarmas activas">
+                            0 Incidentes →
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            <div class="mt-2">
+                @if($hasActiveAlerts)
+                    <div class="space-y-1 max-h-24 overflow-y-auto custom-scroll">
+                        @foreach($activeAlertsList->take(3) as $al)
+                            @php
+                                $alColors = [
+                                    'emergency' => 'text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-950/40',
+                                    'critical' => 'text-red-400 border-red-500/30 bg-red-950/40',
+                                    'warning' => 'text-amber-400 border-amber-500/30 bg-amber-950/40',
+                                    'info' => 'text-sky-400 border-sky-500/30 bg-sky-950/40',
+                                ];
+                                $alCol = $alColors[$al->severity] ?? 'text-slate-300 border-slate-700 bg-slate-900/40';
+                            @endphp
+                            <div class="flex items-center justify-between py-1 px-1.5 rounded border text-[10px] font-mono {{ $alCol }}" title="{{ $al->message }}">
+                                <div class="flex items-center gap-1 truncate max-w-[150px]">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $al->severity === 'critical' || $al->severity === 'emergency' ? 'bg-red-500 animate-ping' : 'bg-amber-400' }}"></span>
+                                    <span class="truncate font-bold text-white">{{ $al->entity_name }}</span>
+                                    <span class="text-[8.5px] opacity-75">({{ $al->condition_type }})</span>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <span class="text-[9px] font-bold">{{ $al->duration_formatted }}</span>
+                                    @if(Auth::check() && $al->status === 'firing')
+                                        <form action="{{ route('admin.alerts.ack', $al->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="px-1 py-0.2 rounded bg-sky-900/80 hover:bg-sky-500 text-sky-200 hover:text-black transition text-[8.5px]" title="Reconocer Alerta">ACK</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-[10px] font-mono text-obsidian-muted flex items-center gap-1.5 py-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Infraestructura operando sin alarmas activas.
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        <div class="pt-1.5 border-t border-obsidian-border/40 flex items-center justify-between text-[8px] font-mono text-obsidian-muted">
+            <span>Motor de Correlación</span>
+            <span class="text-amber-400/80">Anti-Flapping</span>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COLUMNA 3: RESPALDOS & GITOPS                                             -->
+    <!-- ========================================================================= -->
+    @php
+        $configChangesList = isset($recentConfigChanges) ? $recentConfigChanges : collect();
+        $hasRecentChanges = $configChangesList->count() > 0;
+        $totBackups = isset($totalConfigBackupsCount) ? $totalConfigBackupsCount : 0;
+    @endphp
+    <div class="glass-panel rounded-xl p-3 border border-obsidian-border/80 bg-[#07172b]/95 flex flex-col justify-between shadow-md min-h-[170px]">
+        <div>
+            <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/50">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base text-cyan-400">settings_backup_restore</span>
+                    <h3 class="text-[11px] font-bold text-white uppercase font-mono tracking-wider">Respaldos &amp; GitOps</h3>
+                </div>
+                <div>
+                    @if(Auth::check())
+                        <a href="{{ route('admin.configs.index') }}" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-800 transition" title="Ver consola de respaldos y diffs">
+                            {{ $totBackups }} Versiones →
+                        </a>
+                    @else
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" title="Versiones de configuración resguardadas">
+                            {{ $totBackups }} Versiones
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="mt-2">
+                @if($hasRecentChanges)
+                    <div class="space-y-1 max-h-24 overflow-y-auto custom-scroll">
+                        @foreach($configChangesList->take(3) as $cchg)
+                            <div class="flex items-center justify-between py-1 px-1.5 rounded bg-obsidian-panel/60 border border-obsidian-border/50 text-[10px] font-mono" title="{{ $cchg->diff_summary }}">
+                                <div class="flex items-center gap-1 truncate max-w-[150px]">
+                                    <span class="material-symbols-outlined text-xs {{ $cchg->change_type === 'modified' ? 'text-amber-400' : 'text-emerald-400' }}">
+                                        {{ $cchg->change_type === 'modified' ? 'difference' : 'flag' }}
+                                    </span>
+                                    <span class="truncate font-bold text-white">{{ $cchg->configuration?->resolved_name ?? 'Dispositivo' }}</span>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    @if($cchg->change_type === 'modified')
+                                        <span class="text-[9px] text-emerald-400 font-bold">+{{ $cchg->lines_added }}</span>
+                                        <span class="text-[9px] text-red-400 font-bold">-{{ $cchg->lines_removed }}</span>
+                                    @else
+                                        <span class="text-[9px] text-cyan-300 font-mono">Base</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-[10px] font-mono text-obsidian-muted flex items-center gap-1.5 py-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Configuraciones de switches y routers sincronizadas.
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        <div class="pt-1.5 border-t border-obsidian-border/40 flex items-center justify-between text-[8px] font-mono text-obsidian-muted">
+            <span>Auditoría GitOps</span>
+            <span class="text-cyan-400/80">Diff SHA-256</span>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COLUMNA 4: TELEMETRÍA Y ESTATUS GLOBAL                                    -->
+    <!-- ========================================================================= -->
+    <div class="glass-panel rounded-xl p-3 border border-obsidian-border/80 bg-[#07172b]/95 flex flex-col justify-between shadow-md min-h-[170px]">
+        <div>
+            <!-- CABECERA DE TELEMETRÍA -->
+            <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/60">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-obsidian-cyan text-base">monitor_heart</span>
+                    <h3 class="text-[11px] font-bold text-white uppercase font-mono tracking-wider">Telemetría y Estatus Global</h3>
+                </div>
+                @php
+                    $gStatus = $latestSnapshot ? $latestSnapshot->global_status : ($downServices->count() == 0 && $downSites->count() == 0 ? 'OPERACIONAL' : 'DEGRADADO');
+                    $badgeClass = ($gStatus == 'OPERACIONAL') 
+                        ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50 glow-green' 
+                        : (($gStatus == 'DEGRADADO') 
+                            ? 'bg-amber-950/80 text-amber-400 border-amber-500/50' 
+                            : 'bg-red-950/80 text-red-400 border-red-500/50 glow-red');
+                @endphp
+                <span id="telemetry-status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border flex items-center gap-1 {{ $badgeClass }}"
+                      data-tech-title="DIAGNÓSTICO DE SALUD"
+                      data-tech-type="ESTADO GLOBAL"
+                      @if(Auth::check())
+                      data-tech-ip="Red Corporativa Nacional"
+                      data-tech-protocol="Orquestador Asíncrono Python"
+                      data-tech-latency="< 5.0s ciclo"
+                      data-tech-status="{{ $gStatus }}"
+                      data-tech-details="{{ $gStatus == 'OPERACIONAL' ? '100% de la infraestructura respondiendo.' : ($gStatus == 'DEGRADADO' ? 'Plataforma disponible con incidentes parciales.' : 'Afectación severa de infraestructura.') }}"
+                      @else
+                      data-tech-auth-required="true"
+                      @endif>
+                    <span class="w-1.5 h-1.5 rounded-full {{ $gStatus == 'OPERACIONAL' ? 'bg-emerald-400 pulse-dot' : ($gStatus == 'DEGRADADO' ? 'bg-amber-400 pulse-dot' : 'bg-red-400 pulse-dot') }}"></span>
+                    {{ $gStatus }}
+                </span>
+            </div>
+
+            <!-- TARJETAS DE DISPONIBILIDAD (3 MINI COLUMNAS DENTRO DE LA TARJETA) -->
+            <div class="grid grid-cols-3 gap-1.5 mt-2">
+                @php
+                    $totServ = $activeServices->count() + $downServices->count();
+                    $servPct = $totServ > 0 ? round(($activeServices->count() / $totServ) * 100, 1) : 100;
+                    
+                    $totSites = $activeSites->count() + $downSites->count();
+                    $sitesPct = $totSites > 0 ? round(($activeSites->count() / $totSites) * 100, 1) : 100;
+                    
+                    $totProxies = $latestSnapshot ? $latestSnapshot->proxies_total : 4;
+                    $onlProxies = $latestSnapshot ? $latestSnapshot->proxies_online : 4;
+                @endphp
+                <!-- SERVICIOS -->
+                <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
+                     data-tech-title="DISPONIBILIDAD DE SERVICIOS"
+                     data-tech-type="MÉTRICA"
+                     @if(Auth::check())
+                     data-tech-ip="18 Hosts Registrados"
+                     data-tech-protocol="HTTP / LDAP / SMTP / DNS"
+                     data-tech-latency="{{ $servPct }}% Up"
+                     data-tech-status="{{ $activeServices->count() }} de {{ $totServ }} Operativos"
+                     data-tech-details="{{ $downServices->count() }} servicios caídos detectados en el último ciclo de escaneo."
+                     @else
+                     data-tech-auth-required="true"
+                     @endif>
+                    <span class="text-[8px] uppercase font-mono text-obsidian-muted block truncate">Servicios</span>
+                    <div id="metric-services-count" class="mt-0.5 flex items-baseline justify-center gap-0.5 font-mono">
+                        <span class="text-[11px] font-bold text-white">{{ $activeServices->count() }}</span>
+                        <span class="text-[8px] text-obsidian-muted">/ {{ $totServ }}</span>
+                    </div>
+                    <span id="metric-services-pct" class="text-[8px] font-mono font-bold {{ $servPct == 100 ? 'text-emerald-400' : ($servPct >= 70 ? 'text-amber-400' : 'text-red-400') }}">
+                        {{ $servPct }}%
+                    </span>
+                </div>
+
+                <!-- SEDES -->
+                <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
+                     data-tech-title="DISPONIBILIDAD DE SEDES REGIONALES"
+                     data-tech-type="MÉTRICA"
+                     @if(Auth::check())
+                     data-tech-ip="5 Nodos Regionales"
+                     data-tech-protocol="ICMP Echo / Enlaces WAN"
+                     data-tech-latency="{{ $sitesPct }}% Up"
+                     data-tech-status="{{ $activeSites->count() }} de {{ $totSites }} Conectadas"
+                     data-tech-details="{{ $downSites->count() }} sedes sin conexión actualmente."
+                     @else
+                     data-tech-auth-required="true"
+                     @endif>
+                    <span class="text-[8px] uppercase font-mono text-obsidian-muted block truncate">Sedes</span>
+                    <div id="metric-sites-count" class="mt-0.5 flex items-baseline justify-center gap-0.5 font-mono">
+                        <span class="text-[11px] font-bold text-white">{{ $activeSites->count() }}</span>
+                        <span class="text-[8px] text-obsidian-muted">/ {{ $totSites }}</span>
+                    </div>
+                    <span id="metric-sites-pct" class="text-[8px] font-mono font-bold {{ $sitesPct == 100 ? 'text-emerald-400' : ($sitesPct >= 70 ? 'text-amber-400' : 'text-red-400') }}">
+                        {{ $sitesPct }}%
+                    </span>
+                </div>
+
+                <!-- PROXIES -->
+                <div class="bg-obsidian-panel/80 border border-obsidian-border/80 rounded-lg p-1 text-center cursor-pointer hover:border-obsidian-cyan/40 transition"
+                     data-tech-title="DISPONIBILIDAD DE PROXIES"
+                     data-tech-type="MÉTRICA"
+                     @if(Auth::check())
+                     data-tech-ip="Salidas PfSense + Directa"
+                     data-tech-protocol="HTTP CONNECT (8080)"
+                     data-tech-latency="100% Up"
+                     data-tech-status="{{ $onlProxies }} de {{ $totProxies }} Operativos"
+                     data-tech-details="Todos los túneles proxy corporativos autentican con éxito."
+                     @else
+                     data-tech-auth-required="true"
+                     @endif>
+                    <span class="text-[8px] uppercase font-mono text-obsidian-muted block truncate">Proxies</span>
+                    <div id="metric-proxies-count" class="mt-0.5 flex items-baseline justify-center gap-0.5 font-mono">
+                        <span class="text-[11px] font-bold text-white">{{ $onlProxies }}</span>
+                        <span class="text-[8px] text-obsidian-muted">/ {{ $totProxies }}</span>
+                    </div>
+                    <span id="metric-proxies-pct" class="text-[8px] font-mono font-bold text-emerald-400">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEYENDA EXPLICATIVA COMPACTA -->
+        <div class="pt-1.5 border-t border-obsidian-border/40 flex items-center justify-between text-[8px] font-mono text-obsidian-muted">
+            <div class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Operacional</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                <span>Degradado</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                <span>Crítico</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+@endif
 
 <!-- ========================================================================= -->
 <!-- ========================================================================= -->
@@ -1207,18 +1537,81 @@
 </div>
 
 <script>
+    function openSshTerminal(ip, port = 22, name = '', site = '') {
+        const url = `/admin/ssh/terminal?ip=${encodeURIComponent(ip)}&port=${port}&name=${encodeURIComponent(name)}&site=${encodeURIComponent(site)}`;
+        const w = 1100;
+        const h = 700;
+        const left = (screen.width/2)-(w/2);
+        const top = (screen.height/2)-(h/2);
+        window.open(url, `ssh_${ip.replace(/\./g, '_')}`, `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=no,status=no`);
+    }
+
+    async function openTelnetTerminal(ip, port = 23, name = '', site = '') {
+        try {
+            const res = await fetch("{{ route('admin.telnet.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ip, port, name, site })
+            });
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                const w = 1100;
+                const h = 700;
+                const left = (screen.width/2)-(w/2);
+                const top = (screen.height/2)-(h/2);
+                window.open(data.viewer_url, `telnet_${ip.replace(/\./g, '_')}`, `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=no,status=no`);
+            } else {
+                alert('No se pudo inicializar la sesión Telnet: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error Telnet:', err);
+            alert('Error de comunicación con el proxy Telnet.');
+        }
+    }
+
+    async function openVncViewer(ip, name = '', site = '') {
+        try {
+            const res = await fetch("{{ route('admin.vnc.session') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ip, name, site })
+            });
+            const data = await res.json();
+            if (data.success && data.viewer_url) {
+                const w = 1280;
+                const h = 800;
+                const left = (screen.width/2)-(w/2);
+                const top = (screen.height/2)-(h/2);
+                window.open(data.viewer_url, `vnc_${ip.replace(/\./g, '_')}`, `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=no,status=no`);
+            } else {
+                alert('No se pudo inicializar la sesión VNC: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error VNC:', err);
+            alert('Error de comunicación con el servicio VNC.');
+        }
+    }
+
     function openAccessModal(type, ip, port, name, siteName, isAuth) {
         var tooltip = document.getElementById('tech-tooltip');
         if (tooltip) {
             tooltip.classList.remove('show');
         }
 
-        type = (type || 'VNC').toUpperCase();
-        port = port || (type === 'TELNET' ? 23 : (type === 'WEB' ? 80 : 5900));
+        type = (type || 'TELNET').toUpperCase();
+        port = port || (type === 'SSH' ? 22 : (type === 'TELNET' ? 23 : (type === 'WEB' ? 80 : 5900)));
 
         if (!isAuth) {
-            const svcTitle = type === 'TELNET' ? 'Terminal Telnet CLI' : (type === 'WEB' ? 'Panel Web Administrativo' : 'Control Remoto VNC');
-            const actionText = type === 'TELNET' ? 'a la consola de comandos Telnet' : (type === 'WEB' ? 'al panel de administración web' : 'al escritorio remoto VNC');
+            const svcTitle = type === 'SSH' ? 'Terminal SSH Cifrada' : (type === 'TELNET' ? 'Terminal Telnet CLI' : (type === 'WEB' ? 'Panel Web Administrativo' : 'Control Remoto VNC'));
+            const actionText = type === 'SSH' ? 'a la terminal interactiva SSH' : (type === 'TELNET' ? 'a la consola de comandos Telnet' : (type === 'WEB' ? 'al panel de administración web' : 'al escritorio remoto VNC'));
             
             const pSvc = document.getElementById('access-prompt-service');
             if (pSvc) pSvc.innerText = svcTitle;
@@ -1237,53 +1630,16 @@
             return;
         }
 
-        if (type === 'TELNET') {
-            document.getElementById('telnet-session-device').innerText = name;
-            document.getElementById('telnet-session-site').innerText = siteName;
-            document.getElementById('telnet-session-ip').innerText = ip;
-            document.getElementById('telnet-session-port').innerText = port + ' (Telnet RFC 854)';
-            document.getElementById('telnet-native-link').href = 'telnet://' + ip + ':' + port;
-            window._currentTelnetTarget = { ip: ip, port: port, name: name, site: siteName };
-            const m = document.getElementById('modal-telnet-session');
-            if (m) {
-                m.classList.remove('hidden');
-                m.classList.add('flex');
-            }
+        if (type === 'SSH') {
+            openSshTerminal(ip, port, name, siteName);
+        } else if (type === 'TELNET') {
+            openTelnetTerminal(ip, port, name, siteName);
         } else if (type === 'WEB') {
             const proto = (port === 443 || port === 8443) ? 'https' : 'http';
             const url = proto + '://' + ip + ((port === 80 || port === 443) ? '' : ':' + port);
-            document.getElementById('web-session-device').innerText = name;
-            document.getElementById('web-session-site').innerText = siteName;
-            document.getElementById('web-session-ip').innerText = ip;
-            document.getElementById('web-session-port').innerText = port + ' (' + proto.toUpperCase() + ')';
-            const aUrl = document.getElementById('web-session-url');
-            if (aUrl) {
-                aUrl.innerText = url;
-                aUrl.href = url;
-            }
-            const btnWeb = document.getElementById('btn-launch-web-admin');
-            if (btnWeb) {
-                btnWeb.onclick = function() {
-                    window.open(url, '_blank');
-                    closeWebSessionModal();
-                };
-            }
-            const m = document.getElementById('modal-web-session');
-            if (m) {
-                m.classList.remove('hidden');
-                m.classList.add('flex');
-            }
-        } else { // VNC
-            document.getElementById('vnc-session-device').innerText = name;
-            document.getElementById('vnc-session-site').innerText = siteName;
-            document.getElementById('vnc-session-ip').innerText = ip;
-            document.getElementById('vnc-native-link').href = 'vnc://' + ip + ':5900';
-            window._currentVncTarget = { ip: ip, port: 5900, name: name, site: siteName };
-            const m = document.getElementById('modal-vnc-session');
-            if (m) {
-                m.classList.remove('hidden');
-                m.classList.add('flex');
-            }
+            window.open(url, '_blank');
+        } else if (type === 'VNC') {
+            openVncViewer(ip, name, siteName);
         }
     }
 

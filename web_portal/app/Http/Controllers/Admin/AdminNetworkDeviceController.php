@@ -61,6 +61,9 @@ class AdminNetworkDeviceController extends Controller
             'vendor_data' => ['nullable', 'string', 'max:255'],
             'access_type' => ['required', 'string', Rule::in(['TELNET', 'SSH', 'WEB', 'VNC', 'SIN SOPORTE'])],
             'access_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'ssh_username' => ['nullable', 'string', 'max:100'],
+            'ssh_password' => ['nullable', 'string', 'max:255'],
+            'ssh_enable_secret' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],
             'serial' => ['nullable', 'string', 'max:100'],
             'ports' => ['nullable', 'string', 'max:100'],
@@ -81,6 +84,13 @@ class AdminNetworkDeviceController extends Controller
             } else {
                 $validated['access_port'] = null;
             }
+        }
+
+        if ($request->filled('ssh_password')) {
+            $validated['ssh_password_encrypted'] = $request->input('ssh_password');
+        }
+        if ($request->filled('ssh_enable_secret')) {
+            $validated['ssh_enable_secret_encrypted'] = $request->input('ssh_enable_secret');
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -133,6 +143,10 @@ class AdminNetworkDeviceController extends Controller
             'vendor_data' => ['nullable', 'string', 'max:255'],
             'access_type' => ['required', 'string', Rule::in(['TELNET', 'SSH', 'WEB', 'VNC', 'SIN SOPORTE'])],
             'access_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'ssh_username' => ['nullable', 'string', 'max:100'],
+            'ssh_password' => ['nullable', 'string', 'max:255'],
+            'ssh_enable_secret' => ['nullable', 'string', 'max:255'],
+            'clear_ssh_credentials' => ['nullable', 'boolean'],
             'model' => ['nullable', 'string', 'max:255'],
             'serial' => ['nullable', 'string', 'max:100'],
             'ports' => ['nullable', 'string', 'max:100'],
@@ -153,6 +167,18 @@ class AdminNetworkDeviceController extends Controller
             } else {
                 $validated['access_port'] = null;
             }
+        }
+
+        if ($request->filled('ssh_password')) {
+            $validated['ssh_password_encrypted'] = $request->input('ssh_password');
+        }
+        if ($request->filled('ssh_enable_secret')) {
+            $validated['ssh_enable_secret_encrypted'] = $request->input('ssh_enable_secret');
+        }
+        if ($request->boolean('clear_ssh_credentials')) {
+            $validated['ssh_username'] = null;
+            $validated['ssh_password_encrypted'] = null;
+            $validated['ssh_enable_secret_encrypted'] = null;
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);

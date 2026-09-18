@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'Comandos y Parámetros del Bot - ATIT Valle Seco')
+@section('page_title', 'Comandos y Parámetros del Bot')
 
-@section('content')
+@section('admin_content')
 <div class="space-y-6">
     <!-- ENCABEZADO -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-obsidian-card p-6 rounded-2xl border border-obsidian-border shadow-xl">

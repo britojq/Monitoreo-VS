@@ -174,6 +174,59 @@ async def check_ping(host: str, count: int = 2, timeout: float = 2.5) -> tuple[b
             pass
         return False, 0.0
 
+async def check_wan_quality(host: str, count: int = 5, timeout: float = 3.5) -> dict:
+    """Realiza un ping ICMP multiráfaga para calcular latencia, pérdida de paquetes y jitter (mdev)."""
+    default_res = {
+        "is_up": False,
+        "latency_ms": 0.0,
+        "packet_loss_pct": 100.0,
+        "jitter_ms": 0.0,
+        "min_rtt_ms": 0.0,
+        "max_rtt_ms": 0.0,
+        "mdev_ms": 0.0
+    }
+    if not host or host.strip() in ("0.0.0.0", "NO CONFIGURADO"):
+        return default_res
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ping", "-c", str(count), "-i", "0.2", "-W", "1", host,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL
+        )
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            out_str = stdout.decode("utf-8", errors="ignore")
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            return default_res
+
+        loss_m = re.search(r"(\d+(?:\.\d+)?)%\s+packet loss", out_str)
+        rtt_m = re.search(r"rtt min/avg/max/mdev = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+)", out_str)
+
+        loss = float(loss_m.group(1)) if loss_m else 100.0
+        if rtt_m:
+            min_rtt, avg_rtt, max_rtt, mdev = map(float, rtt_m.groups())
+        else:
+            min_rtt = avg_rtt = max_rtt = mdev = 0.0
+
+        is_ok = (loss < 100.0)
+        return {
+            "is_up": is_ok,
+            "latency_ms": round(avg_rtt, 2),
+            "packet_loss_pct": round(loss, 2),
+            "jitter_ms": round(mdev, 4),
+            "min_rtt_ms": round(min_rtt, 4),
+            "max_rtt_ms": round(max_rtt, 4),
+            "mdev_ms": round(mdev, 4)
+        }
+    except Exception as e:
+        logger.warning(f"Error evaluando calidad WAN para {host}: {e}")
+        return default_res
+
 async def check_tcp_port(host: str, port: int, timeout: float = 4.0) -> tuple[bool, float]:
     """Comprueba conexión TCP a un puerto específico con tolerancia de latencia WAN."""
     if not host or not port:
@@ -356,7 +409,9 @@ async def evaluate_service(s: dict) -> dict:
 
 async def evaluate_site(site: dict, devices: list) -> dict:
     ip = site.get("ip") or ""
-    is_up, latency = await check_ping(ip)
+    wan = await check_wan_quality(ip, count=5)
+    is_up = wan["is_up"]
+    latency = wan["latency_ms"]
 
     # Evaluar dispositivos secundarios concurrentemente (solo configurados y activos)
     valid_devices = [d for d in devices if d.get("is_active") and "NO CONFIGURADO" not in (d.get("name") or "").upper() and d.get("ip") not in ("0.0.0.0", "127.0.0.1", "")]
@@ -371,6 +426,8 @@ async def evaluate_site(site: dict, devices: list) -> dict:
             "device_number": d["device_number"],
             "name": d["name"],
             "ip": d["ip"],
+            "access_type": d.get("access_type") or "SIN SOPORTE",
+            "access_port": d.get("access_port"),
             "status": "ACTIVO" if d_up else "APAGADO",
             "is_up": d_up,
             "latency_ms": d_lat
@@ -385,6 +442,11 @@ async def evaluate_site(site: dict, devices: list) -> dict:
         "status": "ACTIVO" if is_up else "APAGADO",
         "is_up": is_up,
         "latency_ms": latency,
+        "packet_loss_pct": wan["packet_loss_pct"],
+        "jitter_ms": wan["jitter_ms"],
+        "min_rtt_ms": wan["min_rtt_ms"],
+        "max_rtt_ms": wan["max_rtt_ms"],
+        "mdev_ms": wan["mdev_ms"],
         "devices": evaluated_devices,
     }
 
@@ -774,8 +836,8 @@ async def run_full_scan():
             # 3. Histórico de chequeos individuales por sede
             site_hist_sql = """
                 INSERT INTO site_check_histories 
-                (monitored_site_id, is_up, latency_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                (monitored_site_id, is_up, latency_ms, packet_loss_pct, jitter_ms, min_rtt_ms, max_rtt_ms, mdev_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
             """
             site_hist_records = []
             for st in all_sites:
@@ -788,6 +850,11 @@ async def run_full_scan():
                         st["id"],
                         1 if st.get("is_up") else 0,
                         float(st.get("latency_ms", 0.0) or 0.0),
+                        float(st.get("packet_loss_pct", 0.0) or 0.0),
+                        float(st.get("jitter_ms", 0.0) or 0.0),
+                        float(st.get("min_rtt_ms", 0.0) or 0.0),
+                        float(st.get("max_rtt_ms", 0.0) or 0.0),
+                        float(st.get("mdev_ms", 0.0) or 0.0),
                         devs_online,
                         devs_total,
                         status_msg
@@ -942,8 +1009,8 @@ async def sync_from_master() -> bool:
                     all_sites = snapshot_payload.get("sites", [])
                     site_hist_sql = """
                         INSERT INTO site_check_histories 
-                        (monitored_site_id, is_up, latency_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                        (monitored_site_id, is_up, latency_ms, packet_loss_pct, jitter_ms, min_rtt_ms, max_rtt_ms, mdev_ms, devices_online, devices_total, status_message, checked_at, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
                     """
                     site_hist_records = []
                     for st in all_sites:
@@ -956,6 +1023,11 @@ async def sync_from_master() -> bool:
                                 st["id"],
                                 1 if st.get("is_up") else 0,
                                 float(st.get("latency_ms", 0.0) or 0.0),
+                                float(st.get("packet_loss_pct", 0.0) or 0.0),
+                                float(st.get("jitter_ms", 0.0) or 0.0),
+                                float(st.get("min_rtt_ms", 0.0) or 0.0),
+                                float(st.get("max_rtt_ms", 0.0) or 0.0),
+                                float(st.get("mdev_ms", 0.0) or 0.0),
                                 devs_online,
                                 devs_total,
                                 status_msg
@@ -1041,7 +1113,374 @@ async def sync_from_master() -> bool:
                                 ))
                         if audit_records:
                             cursor.executemany(audit_sql, audit_records)
+
+                    # 2.6 Sincronización de Subredes de Auto-Discovery (discovery_subnets)
+                    disc_subnets = data.get("config", {}).get("discovery_subnets", [])
+                    if disc_subnets:
+                        subnet_sql = """
+                            INSERT INTO discovery_subnets 
+                            (id, subnet, site_id, scan_method, scan_interval_minutes, is_active, last_scan_at, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            site_id=VALUES(site_id), scan_method=VALUES(scan_method),
+                            scan_interval_minutes=VALUES(scan_interval_minutes),
+                            is_active=VALUES(is_active), last_scan_at=VALUES(last_scan_at), updated_at=VALUES(updated_at)
+                        """
+                        s_records = []
+                        for s in disc_subnets:
+                            s_records.append((
+                                s["id"],
+                                s["subnet"],
+                                s.get("site_id"),
+                                s.get("scan_method", "arp_sweep"),
+                                s.get("scan_interval_minutes", 15),
+                                1 if s.get("is_active") else 0,
+                                s.get("last_scan_at"),
+                                s.get("created_at"),
+                                s.get("updated_at") or s.get("created_at")
+                            ))
+                        if s_records:
+                            cursor.executemany(subnet_sql, s_records)
+
+                    # 2.7 Sincronización SNMP (Fase 2)
+                    # 2.7.1 OIDs estándar y de fabricantes
+                    snmp_oids = data.get("config", {}).get("snmp_oids", [])
+                    if snmp_oids:
+                        oid_sql = """
+                            INSERT INTO snmp_oids 
+                            (id, name, oid, mib, vendor, data_type, unit, is_standard, is_counter_wrap, description, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            name=VALUES(name), oid=VALUES(oid), mib=VALUES(mib), vendor=VALUES(vendor),
+                            data_type=VALUES(data_type), unit=VALUES(unit), is_standard=VALUES(is_standard),
+                            is_counter_wrap=VALUES(is_counter_wrap), description=VALUES(description),
+                            is_active=VALUES(is_active), updated_at=VALUES(updated_at)
+                        """
+                        oid_records = []
+                        for o in snmp_oids:
+                            oid_records.append((
+                                o["id"], o["name"], o["oid"], o.get("mib"), o.get("vendor"),
+                                o.get("data_type", "string"), o.get("unit"), 1 if o.get("is_standard") else 0,
+                                1 if o.get("is_counter_wrap") else 0, o.get("description"),
+                                1 if o.get("is_active", True) else 0, o.get("created_at"),
+                                o.get("updated_at") or o.get("created_at")
+                            ))
+                        if oid_records:
+                            cursor.executemany(oid_sql, oid_records)
+
+                    # 2.7.2 Dispositivos SNMP
+                    snmp_devs = data.get("config", {}).get("snmp_devices", [])
+                    if snmp_devs:
+                        dev_sql = """
+                            INSERT INTO snmp_devices 
+                            (id, name, ip_address, snmp_version, snmp_port, snmp_timeout_seconds, snmp_retries,
+                             device_type, vendor, model, firmware_version, serial_number, sys_name, sys_description,
+                             sys_object_id, sys_uptime, sys_location, sys_contact, site_id, discovered_device_id,
+                             network_device_id, poll_interval_seconds, is_active, last_poll_at, last_poll_status,
+                             consecutive_failures, ssh_enabled, ssh_username, ssh_port, custom_oids, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            name=VALUES(name), snmp_version=VALUES(snmp_version), snmp_port=VALUES(snmp_port),
+                            snmp_timeout_seconds=VALUES(snmp_timeout_seconds), snmp_retries=VALUES(snmp_retries),
+                            device_type=VALUES(device_type), vendor=VALUES(vendor), model=VALUES(model),
+                            firmware_version=VALUES(firmware_version), serial_number=VALUES(serial_number),
+                            sys_name=VALUES(sys_name), sys_description=VALUES(sys_description),
+                            sys_object_id=VALUES(sys_object_id), sys_uptime=VALUES(sys_uptime),
+                            sys_location=VALUES(sys_location), sys_contact=VALUES(sys_contact),
+                            site_id=VALUES(site_id), discovered_device_id=VALUES(discovered_device_id),
+                            network_device_id=VALUES(network_device_id), poll_interval_seconds=VALUES(poll_interval_seconds),
+                            is_active=VALUES(is_active), last_poll_at=VALUES(last_poll_at),
+                            last_poll_status=VALUES(last_poll_status), consecutive_failures=VALUES(consecutive_failures),
+                            ssh_enabled=VALUES(ssh_enabled), ssh_username=VALUES(ssh_username),
+                            ssh_port=VALUES(ssh_port), custom_oids=VALUES(custom_oids), notes=VALUES(notes),
+                            updated_at=VALUES(updated_at)
+                        """
+                        dev_records = []
+                        for d in snmp_devs:
+                            dev_records.append((
+                                d["id"], d["name"], d["ip_address"], d.get("snmp_version", "v2c"),
+                                d.get("snmp_port", 161), d.get("snmp_timeout_seconds", 5), d.get("snmp_retries", 2),
+                                d.get("device_type", "unknown"), d.get("vendor"), d.get("model"),
+                                d.get("firmware_version"), d.get("serial_number"), d.get("sys_name"),
+                                d.get("sys_description"), d.get("sys_object_id"), d.get("sys_uptime"),
+                                d.get("sys_location"), d.get("sys_contact"), d.get("site_id"),
+                                d.get("discovered_device_id"), d.get("network_device_id"),
+                                d.get("poll_interval_seconds", 60), 1 if d.get("is_active") else 0,
+                                d.get("last_poll_at"), d.get("last_poll_status"), d.get("consecutive_failures", 0),
+                                1 if d.get("ssh_enabled") else 0, d.get("ssh_username"), d.get("ssh_port", 22),
+                                json.dumps(d.get("custom_oids")) if isinstance(d.get("custom_oids"), (dict, list)) else d.get("custom_oids"),
+                                d.get("notes"), d.get("created_at"), d.get("updated_at") or d.get("created_at")
+                            ))
+                        if dev_records:
+                            cursor.executemany(dev_sql, dev_records)
+
+                    # 2.7.3 Interfaces SNMP
+                    snmp_ifs = data.get("config", {}).get("snmp_interfaces", [])
+                    if snmp_ifs:
+                        if_sql = """
+                            INSERT INTO snmp_interfaces
+                            (id, snmp_device_id, if_index, if_name, if_description, if_alias, if_type, if_speed,
+                             if_high_speed, if_physical_address, if_admin_status, if_oper_status, is_monitored,
+                             last_in_octets, last_out_octets, last_polled_at, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            if_name=VALUES(if_name), if_description=VALUES(if_description), if_alias=VALUES(if_alias),
+                            if_type=VALUES(if_type), if_speed=VALUES(if_speed), if_high_speed=VALUES(if_high_speed),
+                            if_physical_address=VALUES(if_physical_address), if_admin_status=VALUES(if_admin_status),
+                            if_oper_status=VALUES(if_oper_status), is_monitored=VALUES(is_monitored),
+                            last_in_octets=VALUES(last_in_octets), last_out_octets=VALUES(last_out_octets),
+                            last_polled_at=VALUES(last_polled_at), updated_at=VALUES(updated_at)
+                        """
+                        if_records = []
+                        for i in snmp_ifs:
+                            if_records.append((
+                                i["id"], i["snmp_device_id"], i["if_index"], i.get("if_name"),
+                                i.get("if_description"), i.get("if_alias"), i.get("if_type"),
+                                i.get("if_speed"), i.get("if_high_speed"), i.get("if_physical_address"),
+                                i.get("if_admin_status"), i.get("if_oper_status"), 1 if i.get("is_monitored") else 0,
+                                i.get("last_in_octets"), i.get("last_out_octets"), i.get("last_polled_at"),
+                                i.get("created_at"), i.get("updated_at") or i.get("created_at")
+                            ))
+                        if if_records:
+                            cursor.executemany(if_sql, if_records)
+
+                    # 2.7.4 Históricos de Métricas OID e Interfaces (últimas 24h)
+                    snmp_met = data.get("snmp_metrics_history", [])
+                    if snmp_met:
+                        met_sql = """
+                            INSERT IGNORE INTO snmp_metrics_history
+                            (id, snmp_device_id, snmp_oid_id, metric_value, metric_value_raw, collected_at)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """
+                        m_records = [
+                            (m["id"], m["snmp_device_id"], m["snmp_oid_id"], m.get("metric_value"),
+                             m.get("metric_value_raw"), m.get("collected_at"))
+                            for m in snmp_met if "id" in m
+                        ]
+                        if m_records:
+                            cursor.executemany(met_sql, m_records)
+
+                    snmp_if_met = data.get("snmp_interface_metrics", [])
+                    if snmp_if_met:
+                        if_met_sql = """
+                            INSERT IGNORE INTO snmp_interface_metrics
+                            (id, snmp_interface_id, in_octets, out_octets, in_unicast_pkts, out_unicast_pkts,
+                             in_discards, out_discards, in_errors, out_errors, in_bps, out_bps,
+                             in_utilization_pct, out_utilization_pct, collected_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        ifm_records = [
+                            (im["id"], im["snmp_interface_id"], im.get("in_octets"), im.get("out_octets"),
+                             im.get("in_unicast_pkts"), im.get("out_unicast_pkts"), im.get("in_discards"),
+                             im.get("out_discards"), im.get("in_errors"), im.get("out_errors"),
+                             im.get("in_bps"), im.get("out_bps"), im.get("in_utilization_pct"),
+                             im.get("out_utilization_pct"), im.get("collected_at"))
+                            for im in snmp_if_met if "id" in im
+                        ]
+                        if ifm_records:
+                            cursor.executemany(if_met_sql, ifm_records)
+
+                    # 2.7.4 Certificados SSL/TLS y su Historial
+                    ssl_certs = data.get("config", {}).get("ssl_certificates", [])
+                    if ssl_certs:
+                        ssl_sql = """
+                            INSERT INTO ssl_certificates
+                            (id, service_id, domain, port, subject_cn, subject_org, subject_ou, subject_country,
+                             subject_state, subject_locality, issuer_cn, issuer_org, issuer_country, serial_number,
+                             signature_algorithm, public_key_algorithm, public_key_bits, version, valid_from, valid_to,
+                             days_remaining, is_self_signed, is_wildcard, is_ev, san_entries, fingerprint_sha256,
+                             fingerprint_sha1, alert_threshold_warning, alert_threshold_critical, last_checked_at,
+                             last_check_status, consecutive_errors, renewal_count, notes, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            service_id=VALUES(service_id), domain=VALUES(domain), port=VALUES(port),
+                            subject_cn=VALUES(subject_cn), subject_org=VALUES(subject_org), issuer_cn=VALUES(issuer_cn),
+                            issuer_org=VALUES(issuer_org), serial_number=VALUES(serial_number),
+                            signature_algorithm=VALUES(signature_algorithm), public_key_algorithm=VALUES(public_key_algorithm),
+                            public_key_bits=VALUES(public_key_bits), version=VALUES(version),
+                            valid_from=VALUES(valid_from), valid_to=VALUES(valid_to), days_remaining=VALUES(days_remaining),
+                            is_self_signed=VALUES(is_self_signed), is_wildcard=VALUES(is_wildcard), is_ev=VALUES(is_ev),
+                            san_entries=VALUES(san_entries), fingerprint_sha256=VALUES(fingerprint_sha256),
+                            fingerprint_sha1=VALUES(fingerprint_sha1), last_checked_at=VALUES(last_checked_at),
+                            last_check_status=VALUES(last_check_status), consecutive_errors=VALUES(consecutive_errors),
+                            renewal_count=VALUES(renewal_count), is_active=VALUES(is_active), updated_at=VALUES(updated_at)
+                        """
+                        ssl_records = []
+                        for sc in ssl_certs:
+                            sans = sc.get("san_entries")
+                            if isinstance(sans, (dict, list)):
+                                sans = json.dumps(sans)
+                            ssl_records.append((
+                                sc["id"], sc.get("service_id"), sc["domain"], sc.get("port", 443),
+                                sc.get("subject_cn"), sc.get("subject_org"), sc.get("subject_ou"), sc.get("subject_country"),
+                                sc.get("subject_state"), sc.get("subject_locality"), sc.get("issuer_cn"), sc.get("issuer_org"),
+                                sc.get("issuer_country"), sc.get("serial_number"), sc.get("signature_algorithm"),
+                                sc.get("public_key_algorithm"), sc.get("public_key_bits"), sc.get("version"),
+                                sc.get("valid_from"), sc.get("valid_to"), sc.get("days_remaining", 0),
+                                1 if sc.get("is_self_signed") else 0, 1 if sc.get("is_wildcard") else 0,
+                                1 if sc.get("is_ev") else 0, sans, sc.get("fingerprint_sha256"),
+                                sc.get("fingerprint_sha1"), sc.get("alert_threshold_warning", 30),
+                                sc.get("alert_threshold_critical", 7), sc.get("last_checked_at"),
+                                sc.get("last_check_status"), sc.get("consecutive_errors", 0),
+                                sc.get("renewal_count", 0), sc.get("notes"), 1 if sc.get("is_active", True) else 0,
+                                sc.get("created_at"), sc.get("updated_at")
+                            ))
+                        if ssl_records:
+                            cursor.executemany(ssl_sql, ssl_records)
+
+                    ssl_hist = data.get("ssl_certificate_history", [])
+                    if ssl_hist:
+                        ssl_h_sql = """
+                            INSERT IGNORE INTO ssl_certificate_history
+                            (id, ssl_certificate_id, event_type, previous_fingerprint, new_fingerprint,
+                             previous_valid_to, new_valid_to, days_remaining_at_event, error_message, occurred_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        ssl_h_records = [
+                            (sh["id"], sh["ssl_certificate_id"], sh["event_type"], sh.get("previous_fingerprint"),
+                             sh.get("new_fingerprint"), sh.get("previous_valid_to"), sh.get("new_valid_to"),
+                             sh.get("days_remaining_at_event"), sh.get("error_message"), sh.get("occurred_at"))
+                            for sh in ssl_hist if "id" in sh and "ssl_certificate_id" in sh
+                        ]
+                        if ssl_h_records:
+                            cursor.executemany(ssl_h_sql, ssl_h_records)
+
+                    # 2.7.5 Reglas de Alerta, Ventanas de Mantenimiento y Alarmas (Fase 4)
+                    alert_rules = data.get("config", {}).get("alert_rules", [])
+                    if alert_rules:
+                        ar_sql = """
+                            INSERT INTO alert_rules
+                            (id, name, description, entity_type, entity_id, condition_type, threshold_value,
+                             comparison, duration_seconds, severity, cooldown_minutes, max_alerts_per_hour,
+                             auto_resolve, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            name=VALUES(name), description=VALUES(description), entity_type=VALUES(entity_type),
+                            entity_id=VALUES(entity_id), condition_type=VALUES(condition_type),
+                            threshold_value=VALUES(threshold_value), comparison=VALUES(comparison),
+                            duration_seconds=VALUES(duration_seconds), severity=VALUES(severity),
+                            cooldown_minutes=VALUES(cooldown_minutes), max_alerts_per_hour=VALUES(max_alerts_per_hour),
+                            auto_resolve=VALUES(auto_resolve), is_active=VALUES(is_active), updated_at=VALUES(updated_at)
+                        """
+                        ar_records = [
+                            (r["id"], r["name"], r.get("description"), r["entity_type"], r.get("entity_id"),
+                             r["condition_type"], r.get("threshold_value"), r.get("comparison"),
+                             r.get("duration_seconds", 0), r["severity"], r.get("cooldown_minutes", 30),
+                             r.get("max_alerts_per_hour", 5), 1 if r.get("auto_resolve", True) else 0,
+                             1 if r.get("is_active", True) else 0, r.get("created_at"), r.get("updated_at"))
+                            for r in alert_rules if "id" in r and "name" in r
+                        ]
+                        if ar_records:
+                            cursor.executemany(ar_sql, ar_records)
+
+                    maints = data.get("config", {}).get("maintenance_windows", [])
+                    if maints:
+                        mw_sql = """
+                            INSERT INTO maintenance_windows
+                            (id, title, description, entity_type, entity_id, suppress_severities,
+                             starts_at, ends_at, created_by, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            title=VALUES(title), description=VALUES(description), starts_at=VALUES(starts_at),
+                            ends_at=VALUES(ends_at), is_active=VALUES(is_active), updated_at=VALUES(updated_at)
+                        """
+                        mw_records = []
+                        for m in maints:
+                            sups = m.get("suppress_severities")
+                            if isinstance(sups, (list, dict)):
+                                sups = json.dumps(sups)
+                            mw_records.append((
+                                m["id"], m["title"], m.get("description"), m.get("entity_type", "all"),
+                                m.get("entity_id"), sups, m.get("starts_at"), m.get("ends_at"),
+                                m.get("created_by"), 1 if m.get("is_active", True) else 0,
+                                m.get("created_at"), m.get("updated_at")
+                            ))
+                        if mw_records:
+                            cursor.executemany(mw_sql, mw_records)
+
+                    alerts_list = data.get("alerts", [])
+                    if alerts_list:
+                        al_sql = """
+                            INSERT INTO alerts
+                            (id, alert_rule_id, entity_type, entity_id, entity_name, condition_type,
+                             severity, status, current_escalation_level, value_at_trigger, threshold_value,
+                             message, correlation_group_id, is_correlated_suppressed, parent_alert_id,
+                             fired_at, acknowledged_at, resolved_at, acknowledged_by, resolved_by,
+                             last_notified_at, notification_count, duration_seconds, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            severity=VALUES(severity), status=VALUES(status),
+                            current_escalation_level=VALUES(current_escalation_level),
+                            value_at_trigger=VALUES(value_at_trigger), message=VALUES(message),
+                            acknowledged_at=VALUES(acknowledged_at), resolved_at=VALUES(resolved_at),
+                            duration_seconds=VALUES(duration_seconds), notes=VALUES(notes),
+                            updated_at=VALUES(updated_at)
+                        """
+                        al_records = [
+                            (a["id"], a.get("alert_rule_id"), a["entity_type"], a["entity_id"],
+                             a.get("entity_name"), a["condition_type"], a["severity"], a.get("status", "firing"),
+                             a.get("current_escalation_level", 1), a.get("value_at_trigger"),
+                             a.get("threshold_value"), a.get("message"), a.get("correlation_group_id"),
+                             1 if a.get("is_correlated_suppressed") else 0, a.get("parent_alert_id"),
+                             a.get("fired_at"), a.get("acknowledged_at"), a.get("resolved_at"),
+                             a.get("acknowledged_by"), a.get("resolved_by"), a.get("last_notified_at"),
+                             a.get("notification_count", 0), a.get("duration_seconds", 0),
+                             a.get("notes"), a.get("created_at"), a.get("updated_at"))
+                            for a in alerts_list if "id" in a and "entity_type" in a
+                        ]
+                        if al_records:
+                            cursor.executemany(al_sql, al_records)
+
+                    # 2.8 Sincronización de respaldos de configuraciones y cambios
+                    configs_list = data.get("device_configurations", [])
+                    if configs_list:
+                        cfg_sql = """
+                            INSERT INTO device_configurations
+                            (id, network_device_id, snmp_device_id, device_name, device_ip,
+                             device_type, config_text, config_hash, config_size_bytes, captured_at,
+                             captured_by, status, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, '', %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            config_hash=VALUES(config_hash), config_size_bytes=VALUES(config_size_bytes),
+                            captured_at=VALUES(captured_at), status=VALUES(status), updated_at=VALUES(updated_at)
+                        """
+                        cfg_records = [
+                            (c["id"], c.get("network_device_id"), c.get("snmp_device_id"),
+                             c.get("device_name"), c.get("device_ip"), c.get("device_type", "other"),
+                             c.get("config_hash", ""), c.get("config_size_bytes", 0),
+                             c.get("captured_at"), c.get("captured_by", "cron"),
+                             c.get("status", "success"), c.get("notes"),
+                             c.get("created_at"), c.get("updated_at"))
+                            for c in configs_list if "id" in c
+                        ]
+                        if cfg_records:
+                            cursor.executemany(cfg_sql, cfg_records)
+
+                    logs_list = data.get("config_change_logs", [])
+                    if logs_list:
+                        log_sql = """
+                            INSERT INTO config_change_logs
+                            (id, device_configuration_id, previous_config_id, network_device_id,
+                             snmp_device_id, change_type, diff_summary, diff_unified, lines_added,
+                             lines_removed, detected_at, alerted, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            diff_summary=VALUES(diff_summary), detected_at=VALUES(detected_at), updated_at=VALUES(updated_at)
+                        """
+                        log_records = [
+                            (l["id"], l.get("device_configuration_id"), l.get("previous_config_id"),
+                             l.get("network_device_id"), l.get("snmp_device_id"),
+                             l.get("change_type", "modified"), l.get("diff_summary"),
+                             l.get("diff_unified"), l.get("lines_added", 0),
+                             l.get("lines_removed", 0), l.get("detected_at"),
+                             1 if l.get("alerted") else 0,
+                             l.get("created_at"), l.get("updated_at"))
+                            for l in logs_list if "id" in l
+                        ]
+                        if log_records:
+                            cursor.executemany(log_sql, log_records)
                 conn.close()
+
             except Exception as e_db:
                 print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")
 

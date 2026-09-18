@@ -39,6 +39,21 @@ elif [ "${1:-}" = "recursos" ] || [ "${1:-}" = "optimizar" ] || [ "${1:-}" = "me
 elif [ "${1:-}" = "temperatura" ] || [ "${1:-}" = "temp" ] || [ "${1:-}" = "termal" ]; then
     shift
     exec "$PROJECT_DIR/temperatura" "$@"
+elif [ "${1:-}" = "discovery" ] || [ "${1:-}" = "descubrimiento" ] || [ "${1:-}" = "scan" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/network_discovery.py" "$@"
+elif [ "${1:-}" = "snmp" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/snmp_poller.py" "$@"
+elif [ "${1:-}" = "ssl" ] || [ "${1:-}" = "certificados" ] || [ "${1:-}" = "certs" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/ssl_checker.py" "$@"
+elif [ "${1:-}" = "alertas" ] || [ "${1:-}" = "alert" ] || [ "${1:-}" = "alerta" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/alert_engine.py" "$@"
+elif [ "${1:-}" = "configs" ] || [ "${1:-}" = "config" ] || [ "${1:-}" = "respaldos" ] || [ "${1:-}" = "backup" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/config_backup.py" "$@"
 elif [ "${1:-}" = "cluster" ] || [ "${1:-}" = "nodo" ] || [ "${1:-}" = "rol" ]; then
     shift
     exec "$PYTHON_EXEC" -c "

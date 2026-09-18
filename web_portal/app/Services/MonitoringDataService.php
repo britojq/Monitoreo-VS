@@ -203,6 +203,13 @@ class MonitoringDataService
                 $hasData = true;
             }
 
+            $lastRecord = $records->last();
+            $jitter = $lastRecord && $lastRecord->jitter_ms !== null ? (float)$lastRecord->jitter_ms : 0.0;
+            $loss = $lastRecord && $lastRecord->packet_loss_pct !== null ? (float)$lastRecord->packet_loss_pct : 0.0;
+            $minRtt = $lastRecord && $lastRecord->min_rtt_ms !== null ? (float)$lastRecord->min_rtt_ms : $minLatency;
+            $maxRtt = $lastRecord && $lastRecord->max_rtt_ms !== null ? (float)$lastRecord->max_rtt_ms : $maxLatency;
+            $mdev = $lastRecord && $lastRecord->mdev_ms !== null ? (float)$lastRecord->mdev_ms : $jitter;
+
             $siteHistoryMap[$st->id] = [
                 'labels' => $labels,
                 'latencies' => $latencies,
@@ -212,6 +219,11 @@ class MonitoringDataService
                 'avg_latency' => $avgLatency,
                 'min_latency' => $minLatency,
                 'max_latency' => $maxLatency,
+                'jitter_ms' => $jitter,
+                'packet_loss_pct' => $loss,
+                'min_rtt_ms' => $minRtt,
+                'max_rtt_ms' => $maxRtt,
+                'mdev_ms' => $mdev,
                 'has_data' => $hasData,
             ];
         }
@@ -306,6 +318,31 @@ class MonitoringDataService
         });
         $netDevicesOnlineCount = $activeNetDevices->where('is_up_evaluated', true)->count();
 
+        // 9. Certificados SSL/TLS para el tablero
+
+        $sslCertificates = \App\Models\SslCertificate::where('is_active', true)->get();
+        $sslMapByService = $sslCertificates->whereNotNull('service_id')->keyBy('service_id');
+        $sslMapByDomain = $sslCertificates->keyBy('domain');
+        $expiringSslCerts = $sslCertificates->filter(function($c) {
+            return $c->days_remaining <= 30 || $c->last_check_status === 'expired';
+        })->sortBy('days_remaining');
+
+        // Fase 4: Alertas activas e incidentes para el Dashboard
+        $activeAlertsList = \App\Models\Alert::whereIn('status', ['firing', 'acknowledged'])
+            ->orderByRaw("FIELD(severity, 'emergency', 'critical', 'warning', 'info')")
+            ->orderBy('fired_at', 'desc')
+            ->take(10)
+            ->get();
+        $stormSuppressedCount = \App\Models\AlertStormSuppression::where('next_allowed_at', '>', now())->count();
+
+        // Fase 5: Respaldos y Control de Cambios GitOps
+        $recentConfigChanges = \App\Models\ConfigChangeLog::with(['configuration', 'previousConfiguration'])
+            ->orderBy('detected_at', 'desc')
+            ->take(4)
+            ->get();
+        $totalConfigBackupsCount = \App\Models\DeviceConfiguration::where('status', 'success')->count();
+        $totalConfigDevicesCount = \App\Models\DeviceConfiguration::distinct('device_ip')->count('device_ip');
+
         return compact(
             'services',
             'sites',
@@ -324,7 +361,17 @@ class MonitoringDataService
             'activeSites',
             'downSites',
             'activeNetDevices',
-            'netDevicesOnlineCount'
+            'netDevicesOnlineCount',
+            'sslCertificates',
+            'sslMapByService',
+            'sslMapByDomain',
+            'expiringSslCerts',
+            'activeAlertsList',
+            'stormSuppressedCount',
+            'recentConfigChanges',
+            'totalConfigBackupsCount',
+            'totalConfigDevicesCount'
         );
     }
 }
+

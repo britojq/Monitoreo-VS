@@ -1,18 +1,23 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminAdvancedSettingsController;
+use App\Http\Controllers\Admin\AdminAlertController;
 use App\Http\Controllers\Admin\AdminAuditController;
 use App\Http\Controllers\Admin\AdminBanController;
 use App\Http\Controllers\Admin\AdminBotCommandController;
 use App\Http\Controllers\Admin\AdminBotTemplateController;
 use App\Http\Controllers\Admin\AdminClusterController;
+use App\Http\Controllers\Admin\AdminConfigController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminDiscoveryController;
 use App\Http\Controllers\Admin\AdminLdapController;
 use App\Http\Controllers\Admin\AdminNetworkDeviceController;
 use App\Http\Controllers\Admin\AdminProxyController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminSiteController;
+use App\Http\Controllers\Admin\AdminSnmpController;
+use App\Http\Controllers\Admin\AdminSslController;
 use App\Http\Controllers\Admin\AdminTelegramDispatchController;
 use App\Http\Controllers\Admin\AdminTermsController;
 use App\Http\Controllers\Admin\AdminUserController;
@@ -59,6 +64,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // 1. RUTAS DE MONITOREO Y CONSULTA (Accesibles para Operadores y Administradores)
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
     Route::get('services', [AdminServiceController::class, 'index'])->name('services.index');
     Route::get('services/{service}/history', [AdminServiceController::class, 'history'])->name('services.history');
@@ -95,6 +101,32 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // Aceptación de Términos de Uso y Seguridad (Accesible para todos los usuarios autenticados)
     Route::post('terms/accept', [AdminTermsController::class, 'accept'])->name('terms.accept');
+
+    // Auto-Discovery de Red y Detección Anti-Rogue (Consulta para Operador y Administrador)
+    Route::get('discovery', [AdminDiscoveryController::class, 'index'])->name('discovery.index');
+    Route::get('discovery/history/{id}', [AdminDiscoveryController::class, 'history'])->name('discovery.history');
+
+    // Monitoreo y Telemetría SNMP (Consulta para Operador y Administrador)
+    Route::get('snmp', [AdminSnmpController::class, 'index'])->name('snmp.index');
+    Route::get('snmp/{id}', [AdminSnmpController::class, 'show'])->name('snmp.show');
+    Route::get('snmp/{id}/interfaces', [AdminSnmpController::class, 'interfaces'])->name('snmp.interfaces');
+    Route::get('snmp/interfaces/{id}/metrics', [AdminSnmpController::class, 'interfaceMetrics'])->name('snmp.interface.metrics');
+
+    // Monitoreo de Certificados SSL/TLS (Consulta para Operador y Administrador)
+    Route::get('ssl', [AdminSslController::class, 'index'])->name('ssl.index');
+    Route::get('ssl/{id}', [AdminSslController::class, 'show'])->name('ssl.show');
+
+    // Sistema de Alertas, Escalación y Correlación (Consulta y Gestión para Operador y Administrador)
+    Route::get('alerts', [AdminAlertController::class, 'index'])->name('alerts.index');
+    Route::get('alerts/{id}', [AdminAlertController::class, 'show'])->name('alerts.show');
+    Route::post('alerts/{id}/ack', [AdminAlertController::class, 'acknowledge'])->name('alerts.ack');
+    Route::post('alerts/{id}/silence', [AdminAlertController::class, 'silence'])->name('alerts.silence');
+
+    // Respaldos y Auditoría de Configuraciones de Red (Consulta para Operador y Administrador)
+    Route::get('configs', [AdminConfigController::class, 'index'])->name('configs.index');
+    Route::get('configs/{id}', [AdminConfigController::class, 'show'])->name('configs.show');
+    Route::get('configs/{id}/diff', [AdminConfigController::class, 'diff'])->name('configs.diff');
+
 
     // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN (Protegidas por Middleware 'admin')
     // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO
@@ -134,6 +166,44 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('bot/commands/{command}', [AdminBotCommandController::class, 'update'])->name('bot.commands.update');
         Route::post('bot/commands/{command}/toggle', [AdminBotCommandController::class, 'toggle'])->name('bot.commands.toggle');
         Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update');
+
+        // Auto-Discovery de Red y Detección Anti-Rogue (Acciones Mutantes - Exclusivo Administrador)
+        Route::post('discovery/authorize/{id}', [AdminDiscoveryController::class, 'authorizeDevice'])->name('discovery.authorize');
+        Route::post('discovery/rogue/{id}', [AdminDiscoveryController::class, 'markRogue'])->name('discovery.rogue');
+        Route::post('discovery/update/{id}', [AdminDiscoveryController::class, 'update'])->name('discovery.update');
+        Route::post('discovery/scan', [AdminDiscoveryController::class, 'scanNow'])->name('discovery.scan');
+        Route::post('discovery/subnet', [AdminDiscoveryController::class, 'storeSubnet'])->name('discovery.subnet.store');
+
+        // Gestión y Configuración SNMP (Acciones Mutantes - Exclusivo Administrador)
+        Route::post('snmp', [AdminSnmpController::class, 'store'])->name('snmp.store');
+        Route::put('snmp/{id}', [AdminSnmpController::class, 'update'])->name('snmp.update');
+        Route::delete('snmp/{id}', [AdminSnmpController::class, 'destroy'])->name('snmp.destroy');
+        Route::post('snmp/{id}/poll', [AdminSnmpController::class, 'triggerPoll'])->name('snmp.poll');
+        Route::post('snmp/{id}/discover-interfaces', [AdminSnmpController::class, 'triggerInterfaceDiscovery'])->name('snmp.discover-interfaces');
+        Route::post('snmp/{id}/toggle-interface', [AdminSnmpController::class, 'toggleInterfaceMonitoring'])->name('snmp.toggle-interface');
+        Route::post('snmp/activate', [AdminSnmpController::class, 'activateRemote'])->name('snmp.activate');
+
+        // Gestión y Re-inspección de Certificados SSL/TLS (Acciones Mutantes - Exclusivo Administrador)
+        Route::post('ssl', [AdminSslController::class, 'store'])->name('ssl.store');
+        Route::post('ssl/recheck-all', [AdminSslController::class, 'recheckAll'])->name('ssl.recheck_all');
+        Route::post('ssl/{id}/recheck', [AdminSslController::class, 'recheck'])->name('ssl.recheck');
+        Route::delete('ssl/{id}', [AdminSslController::class, 'destroy'])->name('ssl.destroy');
+
+        // Gestión y Configuración de Alertas, Reglas, Ventanas y Correlación (Exclusivo Administrador)
+        Route::post('alerts/evaluate-now', [AdminAlertController::class, 'evaluateNow'])->name('alerts.evaluate_now');
+        Route::post('alerts/{id}/resolve', [AdminAlertController::class, 'resolve'])->name('alerts.resolve');
+        Route::post('alerts/rules', [AdminAlertController::class, 'storeRule'])->name('alerts.rules.store');
+        Route::delete('alerts/rules/{id}', [AdminAlertController::class, 'destroyRule'])->name('alerts.rules.destroy');
+        Route::post('alerts/maintenance', [AdminAlertController::class, 'storeMaintenance'])->name('alerts.maintenance.store');
+        Route::delete('alerts/maintenance/{id}', [AdminAlertController::class, 'destroyMaintenance'])->name('alerts.maintenance.destroy');
+        Route::post('alerts/correlation', [AdminAlertController::class, 'storeCorrelation'])->name('alerts.correlation.store');
+        Route::delete('alerts/correlation/{id}', [AdminAlertController::class, 'destroyCorrelation'])->name('alerts.correlation.destroy');
+
+        // Gestión y Ejecución de Respaldos de Configuraciones (Acciones Mutantes - Exclusivo Administrador)
+        Route::post('configs/backup-all', [AdminConfigController::class, 'backupAll'])->name('configs.backup_all');
+        Route::post('configs/backup-device', [AdminConfigController::class, 'backupDevice'])->name('configs.backup_device');
+        Route::delete('configs/{id}', [AdminConfigController::class, 'destroy'])->name('configs.destroy');
+
 
         // Configuración Avanzada del Sistema & Telemetría (Exclusivo Administrador)
         Route::get('settings/advanced', [AdminAdvancedSettingsController::class, 'index'])->name('settings.advanced');

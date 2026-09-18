@@ -191,13 +191,18 @@
                             <!-- PROTOCOLO DE ACCESO / CONEXIÓN DIRECTA -->
                             <td class="px-2.5 py-1.5 whitespace-nowrap text-center">
                                 @if($accType === 'SSH')
-                                    <button type="button" 
-                                            onclick="openSshTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
-                                            class="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black transition text-[9px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-xs" 
-                                            title="Consola SSH Web ({{ $d->ip }}:{{ $accPort }})">
-                                        <span class="material-symbols-outlined text-[10px]">terminal</span>
-                                        <span>SSH:{{ $accPort }}</span>
-                                    </button>
+                                    <div class="inline-flex items-center gap-1">
+                                        <button type="button" 
+                                                onclick="openSshTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
+                                                class="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black transition text-[9px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-xs" 
+                                                title="Consola SSH Web ({{ $d->ip }}:{{ $accPort }})">
+                                            <span class="material-symbols-outlined text-[10px]">terminal</span>
+                                            <span>SSH:{{ $accPort }}</span>
+                                        </button>
+                                        @if($d->has_ssh_credentials)
+                                            <span class="text-[11px] text-emerald-400 cursor-help" title="Credenciales SSH cifradas listas para respaldos GitOps">🔑</span>
+                                        @endif
+                                    </div>
                                 @elseif($accType === 'TELNET')
                                     <button type="button" 
                                             onclick="openTelnetTerminal('{{ $d->ip }}', {{ $accPort }}, '{{ addslashes($d->name) }}', '{{ addslashes($siteName) }}')" 
@@ -538,6 +543,77 @@
                             <input type="number" name="access_port" id="create-access-port" value="22" min="1" max="65535" class="w-full px-2 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-hidden">
                         </div>
                     </div>
+
+                    <!-- CREDENCIALES SSH DE GESTIÓN Y RESPALDO (GITOPS) -->
+                    <div class="col-span-1 sm:col-span-2 p-3.5 rounded-xl bg-[#030d1a] border border-emerald-500/30 space-y-2.5">
+                        <div class="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                            <div class="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400">
+                                <span class="material-symbols-outlined text-base">key</span>
+                                <span>Credenciales SSH / Respaldo Automático (Cifrado AES-256)</span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">GitOps Ready</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Usuario SSH</label>
+                                <input type="text" name="ssh_username" placeholder="Ej: admin / cisco" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Contraseña SSH</label>
+                                <div class="relative">
+                                    <input type="password" name="ssh_password" placeholder="Contraseña de acceso" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden pr-8">
+                                    <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-2 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Enable Secret (Cisco)</label>
+                                <div class="relative">
+                                    <input type="password" name="ssh_enable_secret" placeholder="Clave privilegiada (opcional)" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden pr-8">
+                                    <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-2 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GUÍA TÉCNICA CISCO IOS: HABILITACIÓN DE SSH (PUERTO 22) -->
+                        <div class="rounded-xl bg-[#01060e] border border-cyan-500/25 overflow-hidden">
+                            <div class="px-3 py-1.5 bg-cyan-950/40 border-b border-cyan-500/20 flex items-center justify-between">
+                                <span class="text-[11px] font-mono text-cyan-300 font-semibold flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-sm text-cyan-400">terminal</span>
+                                    <span>Comandos Cisco IOS para habilitar SSH (Puerto 22)</span>
+                                </span>
+                                <button type="button" onclick="copyCiscoSshCommands('cisco-ssh-create-code', 'copy-btn-create-text')" class="text-[10px] font-mono text-cyan-300 hover:text-white px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-1 transition cursor-pointer">
+                                    <span class="material-symbols-outlined text-xs">content_copy</span>
+                                    <span id="copy-btn-create-text">Copiar</span>
+                                </button>
+                            </div>
+                            <div class="p-2.5 bg-black/50">
+                                <pre id="cisco-ssh-create-code" class="text-[10.5px] font-mono text-cyan-200/90 leading-relaxed overflow-x-auto select-all"><code>configure terminal
+! 1. Definir nombre y dominio (obligatorios para generar llaves)
+hostname SW-VALLE-SECO
+ip domain-name empresa.gob.ve
+
+! 2. Generar el par de llaves criptográficas RSA
+crypto key generate rsa modulus 2048
+
+! 3. Forzar versión 2 de SSH (más segura)
+ip ssh version 2
+
+! 4. Habilitar SSH en las líneas virtuales de acceso
+line vty 0 15
+ transport input ssh telnet
+ login local
+exit</code></pre>
+                            </div>
+                        </div>
+
+                        <p class="text-[10px] font-mono text-slate-400 leading-tight">
+                            🔐 Las claves se almacenan cifradas en base de datos. Se utilizan exclusivamente para la extracción de 'show running-config' y auditoría de cambios.
+                        </p>
+                    </div>
                 </div>
 
                 <!-- NOTAS TÉCNICAS (MULTILÍNEA) -->
@@ -672,6 +748,85 @@
                         <div>
                             <label class="block text-xs font-mono text-obsidian-muted mb-1 font-semibold uppercase">Puerto</label>
                             <input type="number" name="access_port" id="edit-access-port" placeholder="22" min="1" max="65535" class="w-full px-2 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-hidden">
+                        </div>
+                    </div>
+
+                    <!-- CREDENCIALES SSH DE GESTIÓN Y RESPALDO (GITOPS) -->
+                    <div class="col-span-1 sm:col-span-2 p-3.5 rounded-xl bg-[#030d1a] border border-emerald-500/30 space-y-2.5">
+                        <div class="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                            <div class="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400">
+                                <span class="material-symbols-outlined text-base">key</span>
+                                <span>Credenciales SSH / Respaldo Automático (Cifrado AES-256)</span>
+                            </div>
+                            <div id="edit-ssh-cred-status">
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">Sin Credenciales Guardadas</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Usuario SSH</label>
+                                <input type="text" name="ssh_username" id="edit-ssh-username" placeholder="Ej: admin / cisco" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Nueva Contraseña SSH</label>
+                                <div class="relative">
+                                    <input type="password" name="ssh_password" id="edit-ssh-password" placeholder="En blanco = mantener actual" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden pr-8">
+                                    <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-2 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-mono text-slate-300 mb-1">Nuevo Enable Secret (Cisco)</label>
+                                <div class="relative">
+                                    <input type="password" name="ssh_enable_secret" id="edit-ssh-enable-secret" placeholder="En blanco = mantener actual" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-hidden pr-8">
+                                    <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-2 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GUÍA TÉCNICA CISCO IOS: HABILITACIÓN DE SSH (PUERTO 22) -->
+                        <div class="rounded-xl bg-[#01060e] border border-cyan-500/25 overflow-hidden">
+                            <div class="px-3 py-1.5 bg-cyan-950/40 border-b border-cyan-500/20 flex items-center justify-between">
+                                <span class="text-[11px] font-mono text-cyan-300 font-semibold flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-sm text-cyan-400">terminal</span>
+                                    <span>Comandos Cisco IOS para habilitar SSH (Puerto 22)</span>
+                                </span>
+                                <button type="button" onclick="copyCiscoSshCommands('cisco-ssh-edit-code', 'copy-btn-edit-text')" class="text-[10px] font-mono text-cyan-300 hover:text-white px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-1 transition cursor-pointer">
+                                    <span class="material-symbols-outlined text-xs">content_copy</span>
+                                    <span id="copy-btn-edit-text">Copiar</span>
+                                </button>
+                            </div>
+                            <div class="p-2.5 bg-black/50">
+                                <pre id="cisco-ssh-edit-code" class="text-[10.5px] font-mono text-cyan-200/90 leading-relaxed overflow-x-auto select-all"><code>configure terminal
+! 1. Definir nombre y dominio (obligatorios para generar llaves)
+hostname SW-VALLE-SECO
+ip domain-name empresa.gob.ve
+
+! 2. Generar el par de llaves criptográficas RSA
+crypto key generate rsa modulus 2048
+
+! 3. Forzar versión 2 de SSH (más segura)
+ip ssh version 2
+
+! 4. Habilitar SSH en las líneas virtuales de acceso
+line vty 0 15
+ transport input ssh telnet
+ login local
+exit</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <p class="text-[10px] font-mono text-slate-400 leading-tight">
+                                🔐 Cifrado AES-256. Deje los campos de contraseña en blanco si no desea modificarlas.
+                            </p>
+                            <label class="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-rose-400 cursor-pointer select-none">
+                                <input type="checkbox" name="clear_ssh_credentials" value="1" class="rounded bg-obsidian-panel border-rose-500/40 text-rose-500 focus:ring-0">
+                                <span>Eliminar credenciales</span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -1055,9 +1210,70 @@
         document.getElementById('edit-notes').value = dev.notes || '';
         document.getElementById('edit-is-active').checked = !!dev.is_active;
 
+        document.getElementById('edit-ssh-username').value = dev.ssh_username || '';
+        document.getElementById('edit-ssh-password').value = '';
+        document.getElementById('edit-ssh-enable-secret').value = '';
+        const credBadge = document.getElementById('edit-ssh-cred-status');
+        if (credBadge) {
+            if (dev.has_ssh_credentials) {
+                credBadge.innerHTML = '<span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"><span class="material-symbols-outlined text-xs">verified_user</span> Credenciales Activas</span>';
+            } else {
+                credBadge.innerHTML = '<span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">Sin Credenciales Guardadas</span>';
+            }
+        }
+
         const m = document.getElementById('modal-device-edit');
         m.classList.remove('hidden');
         m.classList.add('flex');
+    }
+
+    function togglePasswordVisibility(btn) {
+        const input = btn.parentElement.querySelector('input');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            input.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    }
+
+    function copyCiscoSshCommands(elementId = 'cisco-ssh-create-code', btnTextId = 'copy-btn-create-text') {
+        const pre = document.getElementById(elementId);
+        if (!pre) return;
+        const text = pre.innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btnText = document.getElementById(btnTextId);
+                if (btnText) {
+                    btnText.textContent = '¡Copiado!';
+                    setTimeout(() => { btnText.textContent = 'Copiar'; }, 2000);
+                }
+            }).catch(() => {
+                fallbackCopyText(text, btnTextId);
+            });
+        } else {
+            fallbackCopyText(text, btnTextId);
+        }
+    }
+
+    function fallbackCopyText(text, btnTextId) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            const btnText = document.getElementById(btnTextId);
+            if (btnText) {
+                btnText.textContent = '¡Copiado!';
+                setTimeout(() => { btnText.textContent = 'Copiar'; }, 2000);
+            }
+        } catch (err) {
+            console.error('Fallback copy error:', err);
+        }
+        document.body.removeChild(ta);
     }
 
     function closeDeviceEditModal() {

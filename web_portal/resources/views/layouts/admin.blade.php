@@ -104,6 +104,36 @@
                 Dispositivos de Red
             </a>
 
+            <!-- AUTO-DISCOVERY & ANTI-ROGUE -->
+            <a href="{{ route('admin.discovery.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.discovery.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">radar</span>
+                Auto-Discovery (Red)
+            </a>
+
+            <!-- TELEMETRÍA SNMP -->
+            <a href="{{ route('admin.snmp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.snmp.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">sensors</span>
+                Telemetría SNMP
+            </a>
+
+            <!-- CERTIFICADOS SSL/TLS -->
+            <a href="{{ route('admin.ssl.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.ssl.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">lock</span>
+                Certificados SSL/TLS
+            </a>
+
+            <!-- ALERTAS Y CORRELACIÓN -->
+            <a href="{{ route('admin.alerts.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.alerts.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">notifications_active</span>
+                Alertas y Correlación
+            </a>
+
+            <!-- RESPALDOS Y CONFIGS (Fase 5) -->
+            <a href="{{ route('admin.configs.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.configs.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+                <span class="material-symbols-outlined text-lg">settings_backup_restore</span>
+                Respaldos y Configs
+            </a>
+
             <!-- PROXIES -->
             <a href="{{ route('admin.proxies.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.proxies.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
                 <span class="material-symbols-outlined text-lg">public</span>
@@ -235,6 +265,25 @@
                     </div>
                 </div>
 
+                <!-- BADGE DE ALERTAS CRÍTICAS / EMERGENCIA (TOPBAR) -->
+                @php
+                    $criticalAlertsCount = \App\Models\Alert::whereIn('status', ['firing', 'acknowledged'])
+                        ->whereIn('severity', ['critical', 'emergency'])->count();
+                @endphp
+                <a href="{{ route('admin.alerts.index', ['tab' => 'active', 'severity' => 'critical']) }}" 
+                   class="relative flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 rounded-full transition text-xs font-mono font-semibold {{ $criticalAlertsCount > 0 ? 'bg-red-950/60 border border-red-500/60 text-red-400 hover:bg-red-900/60 shadow-md shadow-red-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-slate-400 hover:text-white' }}"
+                   title="{{ $criticalAlertsCount > 0 ? $criticalAlertsCount . ' incidentes críticos o de emergencia activos' : 'Sin alertas críticas activas' }}">
+                    <span class="material-symbols-outlined text-sm {{ $criticalAlertsCount > 0 ? 'text-red-400 animate-pulse' : 'text-slate-400' }}">notifications_active</span>
+                    @if($criticalAlertsCount > 0)
+                        <span class="hidden sm:inline text-red-300 font-bold ml-1">{{ $criticalAlertsCount }} Críticas</span>
+                        <span class="sm:hidden absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-red-600 text-white text-[8.5px] font-bold">
+                            {{ $criticalAlertsCount }}
+                        </span>
+                    @else
+                        <span class="hidden sm:inline text-slate-400 ml-1">0 Alertas</span>
+                    @endif
+                </a>
+
                 @if(request()->routeIs('admin.dashboard'))
                     <!-- BOTÓN ASISTENTE IA -->
                     <button type="button" 
@@ -266,7 +315,7 @@
                     <!-- RELOJ & SINCRONIZACIÓN -->
                     <div class="hidden xl:flex flex-col text-right font-mono text-[10px] text-obsidian-muted">
                         <span class="text-[8px] uppercase tracking-wider text-obsidian-cyan">Último Escaneo</span>
-                        <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->format('H:i:s') : '--:--:--' }}</span>
+                        <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->timezone('America/Caracas')->format('h:i:s A') : '--:--:--' }}</span>
                     </div>
 
                     <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>

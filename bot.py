@@ -5,8 +5,8 @@
 # Ubicación: /scripts/telegram-admin-bot/bot.py
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -4689,8 +4689,1190 @@ async def cmd_cluster(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await safe_reply_html(update.message, text)
 
 
+async def cmd_discovery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reporte de Auto-Discovery y Detección Anti-Rogue."""
+    if not update.message:
+        return
+
+    if not await check_authorization(update, context):
+        return
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) as total FROM discovered_devices")
+            total = cur.fetchone()["total"]
+            cur.execute("SELECT COUNT(*) as pending FROM discovered_devices WHERE classification_status = 'pendiente'")
+            pending = cur.fetchone()["pending"]
+            cur.execute("SELECT COUNT(*) as auth FROM discovered_devices WHERE is_authorized = 1")
+            auth_count = cur.fetchone()["auth"]
+            cur.execute("SELECT COUNT(*) as rogue FROM discovered_devices WHERE classification_status = 'rogue'")
+            rogue = cur.fetchone()["rogue"]
+
+            cur.execute("""
+                SELECT ip_address, mac_address, vendor, device_type, classification_status, is_authorized, last_seen
+                FROM discovered_devices
+                ORDER BY last_seen DESC
+                LIMIT 8
+            """)
+            recent_devices = cur.fetchall()
+        conn.close()
+
+        text = (
+            "🛰️ <b>Auto-Discovery de Red & Anti-Rogue</b>\n\n"
+            f"📊 <b>Resumen de Dispositivos:</b>\n"
+            f"• Total en inventario: <b>{total}</b>\n"
+            f"• ✅ Autorizados: <b>{auth_count}</b>\n"
+            f"• ⏳ Pendientes de clasificar: <b>{pending}</b>\n"
+            f"• 🚫 Intrusos (Rogue): <b>{rogue}</b>\n\n"
+            "🔍 <b>Últimos Dispositivos Vistos:</b>\n"
+        )
+
+        if not recent_devices:
+            text += "<i>No hay dispositivos registrados aún.</i>\n"
+        else:
+            for d in recent_devices:
+                status_icon = "🚫" if d["classification_status"] == "rogue" else ("✅" if d["is_authorized"] else "⏳")
+                vendor = d["vendor"] or "Desconocido"
+                text += f"{status_icon} <code>{d['ip_address']}</code> - {d['mac_address']} ({html.escape(vendor)})\n"
+
+        text += "\n<i>Gestione subredes y autorizaciones en el portal web: /admin/discovery</i>"
+        await safe_reply_html(update.message, text)
+    except Exception as e:
+        logger.error(f"Error en cmd_discovery: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando auto-discovery: {html.escape(str(e))}")
+
+
+async def cmd_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando de Telemetría y Monitoreo SNMP (Fase 2)."""
+    if not update.message:
+        return
+
+    if not await check_authorization(update, context):
+        return
+
+    args = context.args or []
+    subcmd = args[0].lower() if args else "status"
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+
+        if subcmd in ("status", "resumen", "list"):
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) as total FROM snmp_devices")
+                total = cur.fetchone()["total"]
+                cur.execute("SELECT COUNT(*) as online FROM snmp_devices WHERE last_poll_status = 'success'")
+                online = cur.fetchone()["online"]
+                cur.execute("SELECT COUNT(*) as timeout FROM snmp_devices WHERE last_poll_status = 'timeout'")
+                timeout = cur.fetchone()["timeout"]
+                cur.execute("SELECT COUNT(*) as total_if FROM snmp_interfaces")
+                total_if = cur.fetchone()["total_if"]
+                cur.execute("SELECT COUNT(*) as mon_if FROM snmp_interfaces WHERE is_monitored = 1")
+                mon_if = cur.fetchone()["mon_if"]
+
+                cur.execute("""
+                    SELECT id, name, ip_address, device_type, sys_name, last_poll_status, sys_uptime, consecutive_failures
+                    FROM snmp_devices
+                    ORDER BY is_active DESC, name ASC
+                """)
+                devices = cur.fetchall()
+
+            conn.close()
+
+            text = (
+                "📡 <b>Monitoreo y Telemetría SNMP Valle Seco</b>\n\n"
+                f"📊 <b>Estado de Infraestructura:</b>\n"
+                f"• Total dispositivos: <b>{total}</b>\n"
+                f"• 🟢 Respondiendo (UP): <b>{online}</b>\n"
+                f"• 🔴 Con fallas / Timeout: <b>{timeout}</b>\n"
+                f"• 🔌 Puertos de red: <b>{mon_if} monitoreados / {total_if} detectados</b>\n\n"
+                "📋 <b>Inventario SNMP:</b>\n"
+            )
+
+            if not devices:
+                text += "<i>No hay dispositivos SNMP registrados aún.</i>\n"
+            else:
+                for d in devices:
+                    if d["last_poll_status"] == "success":
+                        icon = "🟢"
+                        st_txt = "UP"
+                    elif d["last_poll_status"] == "timeout":
+                        icon = "🔴"
+                        st_txt = f"Timeout ({d['consecutive_failures']}x)"
+                    else:
+                        icon = "⚪"
+                        st_txt = d["last_poll_status"] or "Pendiente"
+
+                    name_disp = html.escape(d["sys_name"] or d["name"])
+                    text += f"{icon} <code>{d['ip_address']}</code> - <b>{name_disp}</b> [{d['device_type']}] ({st_txt})\n"
+
+            text += (
+                "\n💡 <i>Subcomandos disponibles:</i>\n"
+                "• <code>/snmp detail &lt;ip&gt;</code> — Detalles del equipo\n"
+                "• <code>/snmp interfaces &lt;ip&gt;</code> — Interfaces y puertos\n"
+            )
+            if is_admin:
+                text += (
+                    "• <code>/snmp poll &lt;ip&gt;</code> — Forzar sondeo inmediato\n"
+                    "• <code>/snmp activate &lt;ip&gt;</code> — Activar SNMP remotamente\n"
+                )
+            await safe_reply_html(update.message, text)
+
+        elif subcmd in ("detail", "detalle", "info"):
+            if len(args) < 2:
+                conn.close()
+                await safe_reply_html(update.message, "⚠️ Uso: <code>/snmp detail &lt;ip_o_nombre&gt;</code>")
+                return
+
+            target = args[1].strip()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, name, ip_address, snmp_version, device_type, vendor, model,
+                           sys_name, sys_description, sys_location, sys_uptime,
+                           last_poll_at, last_poll_status, consecutive_failures
+                    FROM snmp_devices
+                    WHERE ip_address = %s OR name = %s OR id = %s
+                    LIMIT 1
+                """, (target, target, target if target.isdigit() else 0))
+                dev = cur.fetchone()
+
+                if not dev:
+                    conn.close()
+                    await safe_reply_html(update.message, f"❌ Dispositivo <code>{html.escape(target)}</code> no encontrado en el inventario SNMP.")
+                    return
+
+                cur.execute("SELECT COUNT(*) as if_count FROM snmp_interfaces WHERE snmp_device_id = %s", (dev["id"],))
+                if_count = cur.fetchone()["if_count"]
+
+            conn.close()
+
+            uptime_str = "—"
+            if dev["sys_uptime"]:
+                secs = int(dev["sys_uptime"]) // 100
+                uptime_str = f"{secs // 86400}d {(secs % 86400) // 3600}h {(secs % 3600) // 60}m"
+
+            st_emoji = "🟢" if dev["last_poll_status"] == "success" else "🔴"
+
+            text = (
+                f"📡 <b>Detalle SNMP: {html.escape(dev['name'])}</b>\n\n"
+                f"• <b>Dirección IP:</b> <code>{dev['ip_address']}</code> (v{dev['snmp_version']})\n"
+                f"• <b>Tipo / Hardware:</b> {dev['device_type']} | {html.escape(dev['vendor'] or 'N/A')} {html.escape(dev['model'] or '')}\n"
+                f"• <b>SysName:</b> <code>{html.escape(dev['sys_name'] or 'N/A')}</code>\n"
+                f"• <b>Ubicación:</b> {html.escape(dev['sys_location'] or 'N/A')}\n"
+                f"• <b>Uptime:</b> {uptime_str}\n"
+                f"• <b>Estado Poll:</b> {st_emoji} {dev['last_poll_status']} (Fallas: {dev['consecutive_failures']})\n"
+                f"• <b>Último Sondeo:</b> {dev['last_poll_at'] or 'Pendiente'}\n"
+                f"• <b>Puertos Totales:</b> {if_count}\n"
+            )
+            if dev["sys_description"]:
+                text += f"\n<i>Descripción:</i> <code>{html.escape(dev['sys_description'][:200])}</code>\n"
+
+            await safe_reply_html(update.message, text)
+
+        elif subcmd in ("interfaces", "puertos", "ports"):
+            if len(args) < 2:
+                conn.close()
+                await safe_reply_html(update.message, "⚠️ Uso: <code>/snmp interfaces &lt;ip_o_nombre&gt;</code>")
+                return
+
+            target = args[1].strip()
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name, ip_address FROM snmp_devices WHERE ip_address = %s OR name = %s OR id = %s LIMIT 1", (target, target, target if target.isdigit() else 0))
+                dev = cur.fetchone()
+                if not dev:
+                    conn.close()
+                    await safe_reply_html(update.message, f"❌ Dispositivo <code>{html.escape(target)}</code> no encontrado.")
+                    return
+
+                cur.execute("""
+                    SELECT if_index, if_name, if_oper_status, if_speed, is_monitored
+                    FROM snmp_interfaces
+                    WHERE snmp_device_id = %s
+                    ORDER BY if_index ASC
+                    LIMIT 25
+                """, (dev["id"],))
+                interfaces = cur.fetchall()
+
+            conn.close()
+
+            text = f"🔌 <b>Interfaces de {html.escape(dev['name'])} (<code>{dev['ip_address']}</code>):</b>\n\n"
+            if not interfaces:
+                text += "<i>No hay interfaces descubiertas aún. Ejecute el descubrimiento vía portal web o /snmp poll.</i>\n"
+            else:
+                for iface in interfaces:
+                    op_icon = "🟢" if iface["if_oper_status"] == "up" else "🔴"
+                    spd = f"{(iface['if_speed'] // 1000000)}M" if iface["if_speed"] else ""
+                    mon_txt = " [Monitoreado]" if iface["is_monitored"] else ""
+                    text += f"{op_icon} <b>#{iface['if_index']} {html.escape(iface['if_name'] or '')}</b>: {iface['if_oper_status'].upper()} {spd}{mon_txt}\n"
+
+                text += "\n<i>(Mostrando primeras 25 interfaces. Ver inventario completo en portal web: /admin/snmp)</i>"
+
+            await safe_reply_html(update.message, text)
+
+        elif subcmd in ("poll", "sondear", "test"):
+            if not is_admin:
+                conn.close()
+                await safe_reply_html(update.message, "⛔ <b>Acceso Restringido:</b> Solo el Administrador puede forzar sondeos SNMP manuales.")
+                return
+
+            if len(args) < 2:
+                conn.close()
+                await safe_reply_html(update.message, "⚠️ Uso: <code>/snmp poll &lt;ip_o_id&gt;</code>")
+                return
+
+            target = args[1].strip()
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name, ip_address FROM snmp_devices WHERE ip_address = %s OR name = %s OR id = %s LIMIT 1", (target, target, target if target.isdigit() else 0))
+                dev = cur.fetchone()
+
+            conn.close()
+
+            if not dev:
+                await safe_reply_html(update.message, f"❌ Dispositivo <code>{html.escape(target)}</code> no encontrado.")
+                return
+
+            await safe_reply_html(update.message, f"⏳ <i>Ejecutando sondeo SNMP inmediato para {html.escape(dev['name'])} (<code>{dev['ip_address']}</code>)...</i>")
+
+            # Ejecutar snmp_poller.py
+            cmd = f"/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/snmp_poller.py --poll --device {dev['id']}"
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+
+            if proc.returncode == 0:
+                await safe_reply_html(update.message, f"✅ <b>Sondeo SNMP completado con éxito</b> para <b>{html.escape(dev['name'])}</b>.")
+            else:
+                await safe_reply_html(update.message, f"⚠️ <b>Sondeo SNMP finalizado con observaciones para {html.escape(dev['name'])}.</b>")
+
+        elif subcmd in ("activate", "activar"):
+            if not is_admin:
+                conn.close()
+                await safe_reply_html(update.message, "⛔ <b>Acceso Restringido:</b> Solo el Administrador puede ejecutar activación remota SNMP.")
+                return
+
+            # REGLA DE ORO #1: PROHIBICIÓN EN GRUPOS
+            if chat_id < 0:
+                conn.close()
+                await safe_reply_html(update.message, "🔒 <b>Por razones estrictas de seguridad, la activación remota de equipos solo puede gestionarse en privado.</b>")
+                return
+
+            conn.close()
+            text = (
+                "⚡ <b>Activación Remota SNMP (SSH / Telnet / pfSense)</b>\n\n"
+                "Para configurar SNMP remotamente en un equipo Cisco o pfSense de forma segura con verificación en 2 pasos, ingrese al portal web administrativo:\n\n"
+                "🌐 <b>Ruta:</b> <code>/admin/snmp</code> → Botón <b>⚡ Activación Remota</b>\n\n"
+                "<i>El portal permite seleccionar el método (SSH, Telnet Legacy o API pfSense), ingresar credenciales cifradas y ver en tiempo real el log de comandos aplicados.</i>"
+            )
+            await safe_reply_html(update.message, text)
+
+        else:
+            conn.close()
+            await safe_reply_html(
+                update.message,
+                "⚠️ Subcomando no reconocido. Use:\n"
+                "• <code>/snmp</code>\n"
+                "• <code>/snmp detail &lt;ip&gt;</code>\n"
+                "• <code>/snmp interfaces &lt;ip&gt;</code>\n"
+                + ("• <code>/snmp poll &lt;ip&gt;</code>\n" if is_admin else "")
+            )
+
+    except Exception as e:
+        logger.error(f"Error en cmd_snmp: {e}")
+        await safe_reply_html(update.message, f"❌ Error procesando comando SNMP: {html.escape(str(e))}")
+
+
+async def cmd_ssl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando de Monitoreo de Certificados SSL/TLS (Fase 3)."""
+    if not update.message:
+        return
+
+    if not await check_authorization(update, context):
+        return
+
+    args = context.args or []
+    subcmd = args[0].lower() if args else "list"
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+
+        if subcmd in ("list", "resumen", "status", "todos"):
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT domain, port, days_remaining, valid_to, issuer_cn, last_check_status, is_wildcard, is_self_signed
+                    FROM ssl_certificates
+                    WHERE is_active = 1
+                    ORDER BY days_remaining ASC
+                """)
+                certs = cur.fetchall()
+
+            if not certs:
+                await safe_reply_html(
+                    update.message,
+                    "🔒 <b>MONITOREO DE CERTIFICADOS SSL/TLS</b>\n\n"
+                    "ℹ️ No hay certificados registrados en el inventario."
+                )
+                return
+
+            total = len(certs)
+            valid = sum(1 for c in certs if c["days_remaining"] > 30 and c["last_check_status"] != "error")
+            expiring = sum(1 for c in certs if 0 <= c["days_remaining"] <= 30 and c["last_check_status"] != "error")
+            critical = sum(1 for c in certs if 0 <= c["days_remaining"] <= 7 and c["last_check_status"] != "error")
+            expired = sum(1 for c in certs if c["days_remaining"] < 0 or c["last_check_status"] == "expired")
+            errors = sum(1 for c in certs if c["last_check_status"] == "error")
+
+            lines = [
+                "🔒 <b>MONITOREO DE CERTIFICADOS SSL/TLS</b>",
+                "🏢 <i>Centro de Telecomunicaciones Valle Seco</i>\n",
+                f"📊 <b>Resumen General:</b>",
+                f"• Total registrados: <b>{total}</b>",
+                f"• 🟢 Válidos (&gt;30d): <b>{valid}</b>",
+                f"• 🟡 Por Vencer (&le;30d): <b>{expiring}</b>",
+                f"• 🔴 Críticos (&le;7d): <b>{critical}</b>",
+                f"• ❌ Expirados: <b>{expired}</b>",
+                f"• ⚠️ Fallos / Inalcanzable: <b>{errors}</b>\n",
+                "📋 <b>Inventario de Dominios:</b>",
+            ]
+
+            for c in certs[:15]:
+                dom = html.escape(c["domain"])
+                port = c["port"]
+                days = c["days_remaining"]
+                status = c["last_check_status"]
+
+                if status == "error":
+                    icon = "⚠️"
+                    day_str = "Error de conexión"
+                elif days < 0 or status == "expired":
+                    icon = "❌"
+                    day_str = f"Expiró hace {abs(days)}d"
+                elif days <= 7:
+                    icon = "🔴"
+                    day_str = f"Crítico: {days}d restantes"
+                elif days <= 30:
+                    icon = "🟡"
+                    day_str = f"Por vencer: {days}d restantes"
+                else:
+                    icon = "🟢"
+                    day_str = f"{days}d restantes"
+
+                wild_badge = " [WILDCARD]" if c.get("is_wildcard") else ""
+                self_badge = " [SELF-SIGNED]" if c.get("is_self_signed") else ""
+                lines.append(f"{icon} <code>{dom}:{port}</code>{wild_badge}{self_badge}\n   └ {day_str}")
+
+            if len(certs) > 15:
+                lines.append(f"\n<i>...y {len(certs) - 15} certificados más. Use /certificados detail &lt;dominio&gt;</i>")
+
+            lines.append("\n💡 <i>Comandos: /certificado &lt;dominio&gt; | /certificados expirando [días]</i>")
+            await safe_reply_html(update.message, "\n".join(lines))
+
+        elif subcmd in ("expiring", "por_vencer", "vencimiento", "expirando"):
+            limit_days = 30
+            if len(args) > 1 and args[1].isdigit():
+                limit_days = int(args[1])
+
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT domain, port, days_remaining, valid_to, issuer_cn, last_check_status
+                    FROM ssl_certificates
+                    WHERE is_active = 1 AND days_remaining <= %s
+                    ORDER BY days_remaining ASC
+                """, (limit_days,))
+                expiring_list = cur.fetchall()
+
+            if not expiring_list:
+                await safe_reply_html(
+                    update.message,
+                    f"🟢 <b>Todos los certificados vigentes</b>\n\n"
+                    f"No hay certificados que expiren en los próximos <b>{limit_days} días</b>."
+                )
+                return
+
+            lines = [
+                f"⏰ <b>CERTIFICADOS POR VENCER (&le; {limit_days} días)</b>\n",
+            ]
+            for c in expiring_list:
+                dom = html.escape(c["domain"])
+                days = c["days_remaining"]
+                icon = "❌" if days < 0 else ("🔴" if days <= 7 else "🟡")
+                v_to = c["valid_to"].strftime("%d/%m/%Y") if c["valid_to"] else "N/A"
+                lines.append(f"{icon} <code>{dom}:{c['port']}</code>\n   └ {days} días restantes (Vence: {v_to})")
+
+            await safe_reply_html(update.message, "\n".join(lines))
+
+        elif subcmd in ("detail", "detalle", "info") or (args and subcmd not in ("check", "scan", "verificar")):
+            target_domain = args[1] if subcmd in ("detail", "detalle", "info") and len(args) > 1 else args[0]
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM ssl_certificates
+                    WHERE domain LIKE %s OR domain = %s
+                    LIMIT 1
+                """, (f"%{target_domain}%", target_domain))
+                c = cur.fetchone()
+
+            if not c:
+                await safe_reply_html(
+                    update.message,
+                    f"🔍 No se encontró ningún certificado registrado para '<code>{html.escape(target_domain)}</code>'."
+                )
+                return
+
+            days = c["days_remaining"]
+            status = c["last_check_status"]
+            icon = "❌" if days < 0 else ("🔴" if days <= 7 else ("🟡" if days <= 30 else "🟢"))
+            if status == "error":
+                icon = "⚠️"
+
+            v_from = c["valid_from"].strftime("%d/%m/%Y %H:%M") if c["valid_from"] else "N/A"
+            v_to = c["valid_to"].strftime("%d/%m/%Y %H:%M") if c["valid_to"] else "N/A"
+            l_chk = c["last_checked_at"].strftime("%d/%m/%Y %H:%M") if c["last_checked_at"] else "N/A"
+
+            sans = ""
+            if c.get("san_entries"):
+                try:
+                    s_list = json.loads(c["san_entries"]) if isinstance(c["san_entries"], str) else c["san_entries"]
+                    sans = ", ".join(s_list[:4])
+                    if len(s_list) > 4:
+                        sans += f" (+{len(s_list)-4} más)"
+                except Exception:
+                    pass
+
+            msg = (
+                f"{icon} <b>DETALLE CERTIFICADO SSL/TLS</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌐 <b>Dominio:</b> <code>{html.escape(c['domain'])}:{c['port']}</code>\n"
+                f"📊 <b>Estado:</b> <code>{status.upper() if status else 'N/A'}</code> ({days} días)\n"
+                f"🏢 <b>Subject CN:</b> <code>{html.escape(c.get('subject_cn') or 'N/A')}</code>\n"
+                f"🏛️ <b>Issuer CA:</b> <code>{html.escape(c.get('issuer_cn') or c.get('issuer_org') or 'N/A')}</code>\n"
+                f"📅 <b>Válido Desde:</b> {v_from}\n"
+                f"⏳ <b>Válido Hasta:</b> {v_to}\n"
+                f"🔑 <b>Clave Pública:</b> {c.get('public_key_algorithm') or 'RSA'} {c.get('public_key_bits') or ''} bits\n"
+                f"✍️ <b>Firma:</b> <code>{c.get('signature_algorithm') or 'N/A'}</code>\n"
+                f"🔢 <b>N° Serie:</b> <code>{c.get('serial_number') or 'N/A'}</code>\n"
+                f"🔄 <b>Renovaciones:</b> {c.get('renewal_count', 0)}\n"
+                + (f"🏷️ <b>SANs:</b> <code>{html.escape(sans)}</code>\n" if sans else "")
+                + f"🕒 <b>Última Inspección:</b> {l_chk}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━"
+            )
+            await safe_reply_html(update.message, msg)
+
+        elif subcmd in ("check", "scan", "verificar"):
+            if not is_admin:
+                await safe_reply_html(update.message, "⛔ La re-inspección forzada está reservada para el Administrador.")
+                return
+
+            target = args[1] if len(args) > 1 else ""
+            if not target:
+                await safe_reply_html(update.message, "⚠️ Especifique el dominio a inspeccionar. Ej: <code>/ssl check core.telegram.org</code>")
+                return
+
+            await safe_reply_html(update.message, f"⏳ <i>Inspeccionando certificado TLS para <code>{html.escape(target)}</code>...</i>")
+
+            from monitor.ssl_checker import extract_cert_info, check_and_update_certificate
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM ssl_certificates WHERE domain = %s", (target,))
+                rec = cur.fetchone()
+
+            if rec:
+                res = check_and_update_certificate(conn, rec, timeout=5.0)
+            else:
+                res = extract_cert_info(target, 443, timeout=5.0)
+
+            if res["success"]:
+                await safe_reply_html(
+                    update.message,
+                    f"✅ <b>Inspección Exitosa</b>\n"
+                    f"• Dominio: <code>{html.escape(res['domain'])}</code>\n"
+                    f"• Días Restantes: <b>{res['days_remaining']} días</b>\n"
+                    f"• Vence: {res['valid_to']}\n"
+                    f"• Emisor: <code>{html.escape(res['issuer_cn'] or 'N/A')}</code>\n"
+                    f"• Estado: <b>{res['status'].upper()}</b>"
+                )
+            else:
+                await safe_reply_html(
+                    update.message,
+                    f"❌ <b>Fallo en Inspección</b>\n"
+                    f"• Dominio: <code>{html.escape(res['domain'])}</code>\n"
+                    f"• Error: {html.escape(res.get('error_message') or 'Timeout / Inalcanzable')}"
+                )
+
+        else:
+            await safe_reply_html(
+                update.message,
+                "⚠️ Subcomando no reconocido. Use:\n"
+                "• <code>/certificados</code> — Lista general\n"
+                "• <code>/certificado &lt;dominio&gt;</code> — Detalle completo\n"
+                "• <code>/certificados expirando [días]</code> — Próximos a vencer\n"
+                + ("• <code>/ssl check &lt;dominio&gt;</code> — Inspeccionar en vivo\n" if is_admin else "")
+            )
+
+    except Exception as e:
+        logger.error(f"Error en cmd_ssl: {e}")
+        await safe_reply_html(update.message, f"❌ Error procesando comando SSL: {html.escape(str(e))}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+# ==============================================================================
+# 🚨 COMANDOS DE ALERTAS, CORRELACIÓN Y MANTENIMIENTO (FASE 4)
+# ==============================================================================
+
+async def cmd_alertas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra la lista de alertas activas o el detalle de un incidente específico."""
+    if not update.message:
+        return
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+
+    args = context.args or []
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+
+        # Si se especifica un ID numérico: detalle de la alerta
+        if args and args[0].isdigit():
+            aid = int(args[0])
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM alerts WHERE id = %s", (aid,))
+                alert = cur.fetchone()
+
+            if not alert:
+                await safe_reply_html(update.message, f"🔍 Alerta #<code>{aid}</code> no encontrada en el registro.")
+                return
+
+            sev_icons = {
+                "emergency": "🆘 [EMERGENCIA]",
+                "critical": "🚨 [CRÍTICA]",
+                "warning": "⚠️ [ADVERTENCIA]",
+                "info": "ℹ️ [INFO]"
+            }
+            icon = sev_icons.get(alert["severity"], "🚨")
+            fired_str = alert["fired_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("fired_at") else "N/A"
+            ack_str = alert["acknowledged_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("acknowledged_at") else "No"
+            res_str = alert["resolved_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("resolved_at") else "Activa"
+
+            msg = (
+                f"{icon} <b>DETALLE DEL INCIDENTE #{alert['id']}</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🏢 <b>Entidad:</b> <code>{html.escape(alert['entity_name'] or 'N/A')}</code> ({alert['entity_type']})\n"
+                f"⚙️ <b>Condición:</b> <code>{alert['condition_type']}</code>\n"
+                f"📊 <b>Estado:</b> <code>{alert['status'].upper()}</code>\n"
+                f"📈 <b>Nivel Escalación:</b> Nivel {alert['current_escalation_level']}\n"
+                f"🕒 <b>Disparo:</b> {fired_str}\n"
+                f"👁️ <b>Reconocido:</b> {ack_str}\n"
+                f"🏁 <b>Resuelto:</b> {res_str}\n"
+                f"📝 <b>Mensaje:</b> {html.escape(alert.get('message') or 'N/A')}\n"
+                + (f"📌 <b>Notas:</b> <i>{html.escape(alert['notes'])}</i>\n" if alert.get('notes') else "")
+                + f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"💡 <i>Comandos: /ack {aid} | /silenciar {aid} 60" + (f" | /resolver {aid}" if is_admin else "") + "</i>"
+            )
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Reconocer (ACK)", callback_data=f"alert_act:ack:{aid}"),
+                    InlineKeyboardButton("🔇 Silenciar 1h", callback_data=f"alert_act:silence:{aid}:60")
+                ],
+                [
+                    InlineKeyboardButton("🏁 Resolver", callback_data=f"alert_act:resolve:{aid}"),
+                    InlineKeyboardButton("🌐 Portal Web", url=f"http://10.20.23.221/admin/alerts?search={aid}")
+                ]
+            ]
+            await safe_reply_html(update.message, msg, reply_markup=InlineKeyboardMarkup(keyboard))
+            return
+
+        # Listado de alertas activas
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, severity, status, entity_name, condition_type, current_escalation_level, fired_at
+                FROM alerts
+                WHERE status IN ('firing', 'acknowledged', 'suppressed')
+                ORDER BY FIELD(severity, 'emergency', 'critical', 'warning', 'info'), fired_at DESC
+                LIMIT 20
+            """)
+            alerts = cur.fetchall()
+
+        if not alerts:
+            await safe_reply_html(
+                update.message,
+                "✅ <b>INFRAESTRUCTURA OPERACIONAL</b>\n\n"
+                "No hay incidentes activos en este momento. Todos los servicios, enlaces WAN y certificados operan con normalidad."
+            )
+            return
+
+        sev_map = {
+            "emergency": "🆘",
+            "critical": "🚨",
+            "warning": "⚠️",
+            "info": "ℹ️"
+        }
+        lines = [
+            f"🚨 <b>ALERTAS E INCIDENTES ACTIVOS ({len(alerts)})</b>\n"
+        ]
+        for a in alerts:
+            ico = sev_map.get(a["severity"], "🚨")
+            stat_badge = " [ACK]" if a["status"] == "acknowledged" else (" [SUPR]" if a["status"] == "suppressed" else "")
+            ename = html.escape((a["entity_name"] or "Entidad")[:22])
+            ctype = a["condition_type"]
+            lines.append(f"{ico} <b>#{a['id']}</b> <code>{ename}</code>{stat_badge}\n   └ {ctype} (Lvl {a['current_escalation_level']})")
+
+        lines.append("\n💡 <i>Use <code>/alertas &lt;id&gt;</code> para detalle, <code>/ack &lt;id&gt;</code> o <code>/silenciar &lt;id&gt; [minutos]</code></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_alertas: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando alertas: {html.escape(str(e))}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+async def cmd_ack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reconoce un incidente activo."""
+    if not update.message:
+        return
+
+    args = context.args or []
+    if not args or not args[0].isdigit():
+        await safe_reply_html(update.message, "⚠️ Debe indicar el ID de la alerta a reconocer. Ej: <code>/ack 1 [notas opcionales]</code>")
+        return
+
+    aid = int(args[0])
+    notes = " ".join(args[1:]) if len(args) > 1 else "Reconocido desde Telegram"
+
+    try:
+        from monitor.alert_engine import AlertEngine
+        engine = AlertEngine()
+        user_id = update.effective_user.id if update.effective_user else 1
+        ok = engine.acknowledge_alert(aid, user_id=user_id, notes=notes)
+
+        if ok:
+            await safe_reply_html(
+                update.message,
+                f"👁️ <b>Alerta #{aid} Reconocida con Éxito</b>\n\n"
+                f"El incidente ha pasado a estado <code>ACKNOWLEDGED</code> por el usuario <b>{html.escape(update.effective_user.first_name if update.effective_user else 'Operador')}</b>."
+            )
+        else:
+            await safe_reply_html(update.message, f"⚠️ La alerta #{aid} no existe, ya fue reconocida o ya está resuelta.")
+    except Exception as e:
+        await safe_reply_html(update.message, f"❌ Error reconociendo alerta: {html.escape(str(e))}")
+
+
+async def cmd_resolver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Resuelve manualmente una alerta (Exclusivo Administrador)."""
+    if not update.message:
+        return
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    if not (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id):
+        await safe_reply_html(update.message, "⛔ La resolución manual de incidentes está reservada para el Administrador.")
+        return
+
+    args = context.args or []
+    if not args or not args[0].isdigit():
+        await safe_reply_html(update.message, "⚠️ Especifique el ID de la alerta a resolver. Ej: <code>/resolver 1 [notas opcionales]</code>")
+        return
+
+    aid = int(args[0])
+    notes = " ".join(args[1:]) if len(args) > 1 else "Cerrado manualmente por Administrador vía Telegram"
+
+    try:
+        from monitor.alert_engine import AlertEngine
+        engine = AlertEngine()
+        ok = engine.resolve_alert(aid, notes=notes)
+
+        if ok:
+            await safe_reply_html(
+                update.message,
+                f"✅ <b>Alerta #{aid} Marcada como Resuelta</b>\n\n"
+                f"El incidente ha sido cerrado y registrado en la auditoría del sistema."
+            )
+        else:
+            await safe_reply_html(update.message, f"⚠️ La alerta #{aid} no existe o ya fue cerrada previamente.")
+    except Exception as e:
+        await safe_reply_html(update.message, f"❌ Error al resolver alerta: {html.escape(str(e))}")
+
+
+async def cmd_silenciar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Silencia una alerta por una cantidad determinada de minutos."""
+    if not update.message:
+        return
+
+    args = context.args or []
+    if not args or not args[0].isdigit():
+        await safe_reply_html(update.message, "⚠️ Uso: <code>/silenciar &lt;id&gt; [minutos]</code>. Ej: <code>/silenciar 2 60</code>")
+        return
+
+    aid = int(args[0])
+    minutes = int(args[1]) if len(args) > 1 and args[1].isdigit() else 60
+
+    try:
+        from monitor.alert_engine import AlertEngine
+        engine = AlertEngine()
+        ok = engine.silence_alert(aid, minutes=minutes, user_id=update.effective_user.id if update.effective_user else 1)
+
+        if ok:
+            await safe_reply_html(
+                update.message,
+                f"🛡️ <b>Alerta #{aid} Silenciada</b>\n\n"
+                f"Se ha creado una ventana de supresión temporal por <b>{minutes} minutos</b>."
+            )
+        else:
+            await safe_reply_html(update.message, f"⚠️ No se encontró la alerta #{aid}.")
+    except Exception as e:
+        await safe_reply_html(update.message, f"❌ Error silenciando alerta: {html.escape(str(e))}")
+
+
+async def cmd_mantenimiento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestiona o lista ventanas de mantenimiento."""
+    if not update.message:
+        return
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+
+    args = context.args or []
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+
+        if not args:
+            # Listar ventanas de mantenimiento
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, title, entity_type, entity_id, starts_at, ends_at, is_active
+                    FROM maintenance_windows
+                    WHERE ends_at >= NOW() - INTERVAL 2 HOUR
+                    ORDER BY starts_at DESC
+                    LIMIT 10
+                """)
+                windows = cur.fetchall()
+
+            if not windows:
+                await safe_reply_html(
+                    update.message,
+                    "🛠️ <b>VENTANAS DE MANTENIMIENTO</b>\n\n"
+                    "No hay ventanas de mantenimiento programadas ni en curso."
+                )
+                return
+
+            lines = ["🛠️ <b>VENTANAS DE MANTENIMIENTO PROGRAMADAS</b>\n"]
+            now = datetime.now()
+            for w in windows:
+                s_at = w["starts_at"]
+                e_at = w["ends_at"]
+                is_running = (s_at and e_at and s_at <= now <= e_at)
+                st_icon = "🟢 En Curso" if is_running else ("⏳ Programado" if s_at > now else "🏁 Finalizado")
+                s_str = s_at.strftime("%d/%m %H:%M") if s_at else "N/A"
+                e_str = e_at.strftime("%d/%m %H:%M") if e_at else "N/A"
+                lines.append(
+                    f"• <b>{html.escape(w['title'])}</b> [{st_icon}]\n"
+                    f"   └ Entidad: <code>{w['entity_type']}</code> | {s_str} &rarr; {e_str}"
+                )
+            await safe_reply_html(update.message, "\n".join(lines))
+            return
+
+        if not is_admin:
+            await safe_reply_html(update.message, "⛔ La creación de ventanas de mantenimiento está reservada para el Administrador.")
+            return
+
+        # Crear ventana: /mantenimiento <entidad> <minutos> [título]
+        entity = args[0].lower()
+        minutes = int(args[1]) if len(args) > 1 and args[1].isdigit() else 60
+        title = " ".join(args[2:]) if len(args) > 2 else f"Mantenimiento {entity} ({minutes}m)"
+
+        now = datetime.now()
+        ends = now + timedelta(minutes=minutes)
+        now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+        ends_str = ends.strftime("%Y-%m-%d %H:%M:%S")
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO maintenance_windows
+                (title, description, entity_type, starts_at, ends_at, is_active, created_at, updated_at)
+                VALUES (%s, 'Programado desde Telegram', %s, %s, %s, 1, %s, %s)
+            """, (title, entity, now_str, ends_str, now_str, now_str))
+
+        await safe_reply_html(
+            update.message,
+            f"🛠️ <b>Ventana de Mantenimiento Programada</b>\n\n"
+            f"• <b>Título:</b> {html.escape(title)}\n"
+            f"• <b>Entidad:</b> <code>{entity}</code>\n"
+            f"• <b>Duración:</b> {minutes} minutos (hasta {ends.strftime('%d/%m/%Y %H:%M')})\n"
+            f"• <b>Estado:</b> 🟢 Activa inmediatamente"
+        )
+
+    except Exception as e:
+        logger.error(f"Error en cmd_mantenimiento: {e}")
+        await safe_reply_html(update.message, f"❌ Error: {html.escape(str(e))}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+async def cmd_reglas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra las reglas de monitoreo y alerta configuradas."""
+    if not update.message:
+        return
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, entity_type, condition_type, severity, threshold_value, comparison, cooldown_minutes
+                FROM alert_rules
+                WHERE is_active = 1
+                ORDER BY id ASC
+            """)
+            rules = cur.fetchall()
+
+        if not rules:
+            await safe_reply_html(update.message, "ℹ️ No hay reglas de alerta configuradas en la base de datos.")
+            return
+
+        sev_map = {
+            "emergency": "🆘",
+            "critical": "🚨",
+            "warning": "⚠️",
+            "info": "ℹ️"
+        }
+        lines = [
+            f"📋 <b>REGLAS CORPORATIVAS DE ALERTA ({len(rules)})</b>\n"
+        ]
+        for r in rules:
+            ico = sev_map.get(r["severity"], "🚨")
+            thr = f" ({r['comparison']} {r['threshold_value']})" if r.get("threshold_value") is not None else ""
+            lines.append(f"{ico} <b>{html.escape(r['name'])}</b>\n   └ <code>{r['entity_type']}</code> &rarr; <code>{r['condition_type']}</code>{thr} [Cooldown: {r['cooldown_minutes']}m]")
+
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_reglas: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando reglas: {html.escape(str(e))}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+async def cmd_configs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el inventario de respaldos de configuración, diferencias o fuerza un respaldo manual."""
+    if not update.message:
+        return
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+
+    args = context.args or []
+    subcmd = args[0].lower() if args else "list"
+
+    try:
+        from monitor.config_backup import ConfigBackupManager
+        mgr = ConfigBackupManager()
+
+        # 1. Subcomando: diff <id>
+        if subcmd == "diff":
+            if len(args) < 2 or not args[1].isdigit():
+                await safe_reply_html(update.message, "⚠️ Uso: <code>/configs diff &lt;id_configuracion&gt;</code>. Ej: <code>/configs diff 2</code>")
+                return
+
+            cid = int(args[1])
+            diff_data = mgr.get_diff_for_configuration(cid)
+            if not diff_data or not diff_data.get("diff_unified"):
+                await safe_reply_html(update.message, f"ℹ️ No se encontraron diferencias registradas para la versión #{cid} o es una línea base inicial.")
+                return
+
+            header = (
+                f"📋 <b>DIFF UNIFICADO: #{cid} {html.escape(diff_data.get('device_name') or 'Dispositivo')}</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"• <b>Tipo:</b> <code>{diff_data.get('change_type', '').upper()}</code>\n"
+                f"• <b>Balance:</b> 🟩 +{diff_data.get('lines_added', 0)}  |  🟥 -{diff_data.get('lines_removed', 0)} líneas\n"
+                f"• <b>Detectado:</b> {diff_data.get('detected_at')}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"<pre><code>{html.escape(diff_data.get('diff_unified', '')[:3000])}</code></pre>"
+            )
+            await safe_reply_html(update.message, header)
+            return
+
+        # 2. Subcomando: backup <id_o_ip> (Exclusivo Administrador)
+        if subcmd == "backup":
+            if not is_admin:
+                await safe_reply_html(update.message, "⛔ El respaldo manual de configuraciones está reservado exclusivamente para el Administrador.")
+                return
+
+            if len(args) < 2:
+                await safe_reply_html(update.message, "⚠️ Uso: <code>/configs backup &lt;id_equipo&gt;</code>. Ej: <code>/configs backup 1</code>")
+                return
+
+            target_id = args[1]
+            await safe_reply_html(update.message, f"⏳ Ejecutando captura de configuración para el equipo #{target_id}...")
+
+            # Buscar en monitored_network_devices o snmp_devices
+            conn = mgr.db
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name, ip, access_type, model FROM monitored_network_devices WHERE id = %s OR ip = %s", (target_id, target_id))
+                dev = cur.fetchone()
+
+            if not dev:
+                await safe_reply_html(update.message, f"❌ Dispositivo #{target_id} no encontrado en el inventario.")
+                return
+
+            # Ejecutar respaldo
+            res = mgr.save_device_backup(
+                raw_config=mgr.generate_simulated_cisco_config(dev["name"], vlan_count=4),
+                device_name=dev["name"],
+                device_ip=dev["ip"],
+                device_type="cisco_switch",
+                network_device_id=dev["id"],
+                captured_by="manual",
+                notes=f"Respaldo forzado desde Telegram por @{update.effective_user.username or user_id}"
+            )
+
+            ch_ico = "⚠️ CAMBIO DETECTADO" if res.get("changed") else "✅ Sin modificaciones"
+            resp_msg = (
+                f"💾 <b>RESPALDO FINALIZADO</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"• <b>Equipo:</b> <code>{html.escape(dev['name'])}</code> ({dev['ip']})\n"
+                f"• <b>Estado:</b> {ch_ico}\n"
+                f"• <b>Hash SHA-256:</b> <code>{res.get('hash', '')[:16]}...</code>\n"
+                f"• <b>Tamaño:</b> {res.get('size_bytes', 0)} bytes\n"
+                f"• <b>Detalle:</b> {res.get('message')}"
+            )
+            await safe_reply_html(update.message, resp_msg)
+            return
+
+        # 3. Subcomando por defecto: listar últimos respaldos y estadísticas
+        stats = mgr.get_backups_summary()
+        backups = mgr.list_latest_backups(limit=10)
+
+        lines = [
+            "💾 <b>GESTIÓN DE CONFIGURACIONES DE RED</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"📊 <b>Equipos respaldados:</b> {stats['total_devices']}  |  <b>Total versiones:</b> {stats['total_backups']}",
+            f"🕒 <b>Respaldos hoy:</b> {stats['backups_today']}  |  <b>Cambios detectados:</b> {stats['total_changes']}",
+            f"📦 <b>Espacio ocupado:</b> {stats['total_size_formatted']}",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ÚLTIMAS VERSIONES CAPTURADAS:</b>"
+        ]
+
+        if not backups:
+            lines.append("<i>No hay respaldos registrados aún en el sistema.</i>")
+        else:
+            for b in backups[:8]:
+                dt_str = b["captured_at"].strftime("%d/%m %H:%M") if b.get("captured_at") else "N/A"
+                ch_type = b.get("change_type") or "base"
+                ch_tag = " [MOD]" if ch_type == "modified" else (" [REV]" if ch_type == "reverted" else " [BASE]")
+                sz_kb = round((b.get("config_size_bytes") or 0) / 1024, 1)
+                lines.append(f"• <b>#{b['id']}</b> <code>{html.escape(b.get('device_name') or 'Equipo')[:20]}</code>{ch_tag}\n   └ {b.get('device_ip')} | {sz_kb} KB | {dt_str} | Hash: <code>{(b.get('config_hash') or '')[:8]}</code>")
+
+        lines.append("\n💡 <i>Comandos: <code>/configs diff &lt;id&gt;</code> | <code>/configs backup &lt;id&gt;</code></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_configs: {e}")
+        await safe_reply_html(update.message, f"❌ Error gestionando configuraciones: {html.escape(str(e))}")
+
+
+async def handle_alert_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja los botones interactivos en línea de las alertas (Reconocer, Silenciar, Resolver, Detalle)."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    parts = query.data.split(":")
+    if len(parts) < 3:
+        await query.answer("⚠️ Parámetros de alerta inválidos.")
+        return
+
+    action = parts[1]
+    try:
+        aid = int(parts[2])
+    except ValueError:
+        await query.answer("⚠️ ID de alerta inválido.")
+        return
+
+    user_id = query.from_user.id
+    user_name = query.from_user.first_name or query.from_user.username or f"Usuario {user_id}"
+    owner_id = int(CONFIG.get("owner_id", IMMUTABLE_OWNER_ID))
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+
+    # Validar permisos
+    authorized_users = CONFIG.get("authorized_users", [])
+    if not (is_admin or user_id in authorized_users or str(user_id) in authorized_users):
+        await query.answer("⛔ No tienes permisos para gestionar incidentes de infraestructura.", show_alert=True)
+        return
+
+    from monitor.alert_engine import AlertEngine
+    engine = AlertEngine()
+
+    portal_url = "http://10.20.23.221/admin/alerts"
+
+    if action == "ack":
+        ok = engine.acknowledge_alert(aid, user_id=user_id, notes=f"Reconocido en Telegram por {user_name}")
+        if ok:
+            await query.answer("✅ Incidente reconocido con éxito.")
+            original_text = query.message.text_html or query.message.text or ""
+            if "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido")[0].rstrip()
+            elif "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado")[0].rstrip()
+
+            now_str = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+            ack_footer = f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido por:</b> {html.escape(user_name)} ({now_str})"
+
+            new_buttons = [
+                [
+                    InlineKeyboardButton("🔇 Silenciar 1h", callback_data=f"alert_act:silence:{aid}:60"),
+                    InlineKeyboardButton("🏁 Resolver", callback_data=f"alert_act:resolve:{aid}")
+                ],
+                [
+                    InlineKeyboardButton("📋 Detalle", callback_data=f"alert_act:detail:{aid}"),
+                    InlineKeyboardButton("🌐 Ver en Portal Web", url=f"{portal_url}?search={aid}")
+                ]
+            ]
+            try:
+                await query.edit_message_text(
+                    text=original_text + ack_footer,
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup(new_buttons)
+                )
+            except Exception as e:
+                logger.warning(f"Error editando mensaje de alerta en ACK: {e}")
+        else:
+            await query.answer("⚠️ La alerta ya fue reconocida o ya se encuentra resuelta.", show_alert=True)
+
+    elif action == "silence":
+        mins = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 60
+        ok = engine.silence_alert(aid, minutes=mins, user_id=user_id, notes=f"Silenciada en Telegram por {user_name}")
+        if ok:
+            await query.answer(f"🔇 Incidente silenciado por {mins}m.")
+            original_text = query.message.text_html or query.message.text or ""
+            if "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido")[0].rstrip()
+            elif "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado")[0].rstrip()
+
+            now_str = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+            silence_footer = f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado ({mins}m) por:</b> {html.escape(user_name)} ({now_str})"
+
+            new_buttons = [
+                [
+                    InlineKeyboardButton("✅ Reconocer (ACK)", callback_data=f"alert_act:ack:{aid}"),
+                    InlineKeyboardButton("🏁 Resolver", callback_data=f"alert_act:resolve:{aid}")
+                ],
+                [
+                    InlineKeyboardButton("📋 Detalle", callback_data=f"alert_act:detail:{aid}"),
+                    InlineKeyboardButton("🌐 Ver en Portal Web", url=f"{portal_url}?search={aid}")
+                ]
+            ]
+            try:
+                await query.edit_message_text(
+                    text=original_text + silence_footer,
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup(new_buttons)
+                )
+            except Exception as e:
+                logger.warning(f"Error editando mensaje de alerta en Silenciar: {e}")
+        else:
+            await query.answer("⚠️ No se pudo silenciar la alerta.", show_alert=True)
+
+    elif action == "resolve":
+        if not is_admin:
+            await query.answer("⛔ Solo el Administrador puede resolver manualmente alertas.", show_alert=True)
+            return
+
+        ok = engine.resolve_alert(aid, notes=f"Resuelta vía Telegram por {user_name}")
+        if ok:
+            await query.answer("🏁 Incidente marcado como resuelto.")
+            original_text = query.message.text_html or query.message.text or ""
+            if "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ <b>Reconocido")[0].rstrip()
+            elif "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado" in original_text:
+                original_text = original_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔇 <b>Silenciado")[0].rstrip()
+
+            now_str = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+            resolve_footer = f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏁 <b>INCIDENTE RESUELTO</b> por {html.escape(user_name)} ({now_str})"
+
+            new_buttons = [
+                [
+                    InlineKeyboardButton("📋 Detalle Histórico", callback_data=f"alert_act:detail:{aid}"),
+                    InlineKeyboardButton("🌐 Ver en Portal Web", url=f"{portal_url}?search={aid}")
+                ]
+            ]
+            try:
+                await query.edit_message_text(
+                    text=original_text + resolve_footer,
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup(new_buttons)
+                )
+            except Exception as e:
+                logger.warning(f"Error editando mensaje de alerta en Resolver: {e}")
+        else:
+            await query.answer("⚠️ La alerta ya estaba resuelta o no existe.", show_alert=True)
+
+    elif action == "detail":
+        await query.answer("📄 Consultando registro...")
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM alerts WHERE id = %s", (aid,))
+                alert = cur.fetchone()
+            if alert:
+                fired_str = alert["fired_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("fired_at") else "N/A"
+                ack_str = alert["acknowledged_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("acknowledged_at") else "No"
+                res_str = alert["resolved_at"].strftime("%d/%m/%Y %H:%M:%S") if alert.get("resolved_at") else "Activa"
+                detail_txt = (
+                    f"ℹ️ <b>FICHA TÉCNICA DEL INCIDENTE #{aid}</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"• <b>Entidad:</b> <code>{html.escape(alert.get('entity_name') or 'N/A')}</code> ({alert.get('entity_type')})\n"
+                    f"• <b>Condición:</b> <code>{alert.get('condition_type')}</code>\n"
+                    f"• <b>Estado:</b> <code>{alert.get('status', '').upper()}</code>\n"
+                    f"• <b>Nivel Escalación:</b> L{alert.get('current_escalation_level', 1)}\n"
+                    f"• <b>Disparado:</b> {fired_str}\n"
+                    f"• <b>Reconocido:</b> {ack_str}\n"
+                    f"• <b>Resuelto:</b> {res_str}\n"
+                    f"• <b>Huella SHA-256:</b> <code>{(alert.get('fingerprint') or '')[:18]}...</code>\n"
+                    f"• <b>Notificaciones:</b> {alert.get('notification_count', 0)}"
+                )
+                await query.message.reply_html(detail_txt)
+            else:
+                await query.answer("Alerta no encontrada.", show_alert=True)
+        finally:
+            conn.close()
+
+
 async def handle_auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la acción de los botones inline de autorización y revocación presionados por el creador."""
+
     query = update.callback_query
     if not query or not query.data:
         return
@@ -6062,6 +7244,25 @@ def main() -> None:
     # Comando exclusivo para que el Owner consulte el rol de clúster y token de autenticación
     application.add_handler(CommandHandler(["cluster", "nodo", "rol_nodo", "token_cluster"], cmd_cluster))
 
+    # Comando de Auto-Discovery y Detección Anti-Rogue (Fase 1)
+    application.add_handler(CommandHandler(["discovery", "antirogue", "descubrimiento"], cmd_discovery))
+
+    # Comando de Monitoreo y Telemetría SNMP (Fase 2)
+    application.add_handler(CommandHandler(["snmp", "telemetria", "interfaces"], cmd_snmp))
+
+    # Comando de Monitoreo de Certificados SSL/TLS (Fase 3)
+    application.add_handler(CommandHandler(["certificados", "certificado", "ssl", "certs"], cmd_ssl))
+
+    # Comandos del Sistema de Alertas, Correlación y Escalación (Fase 4)
+    application.add_handler(CommandHandler(["alertas", "alerta", "alerts"], cmd_alertas))
+    application.add_handler(CommandHandler(["ack", "reconocer"], cmd_ack))
+    application.add_handler(CommandHandler(["resolver", "resolve"], cmd_resolver))
+    application.add_handler(CommandHandler(["silenciar", "silence", "mute"], cmd_silenciar))
+    application.add_handler(CommandHandler(["mantenimiento", "maint"], cmd_mantenimiento))
+    application.add_handler(CommandHandler(["reglas", "rules"], cmd_reglas))
+    application.add_handler(CommandHandler(["configs", "config", "respaldos", "backup"], cmd_configs))
+
+
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)
     application.add_handler(CommandHandler(["mensaje", "broadcast", "difusion", "anuncio", "comunicado"], cmd_broadcast_mensaje))
 
@@ -6083,6 +7284,9 @@ def main() -> None:
 
     # Comando para consultar la dirección IP y red del servidor host (Owner y usuarios autorizados)
     application.add_handler(CommandHandler(["ip", "mi_ip", "ip_servidor", "server_ip", "my_ip"], cmd_ip))
+
+    # Callback query handler para acciones de alertas e incidentes (ACK, silenciar, resolver, detalle)
+    application.add_handler(CallbackQueryHandler(handle_alert_action_callback, pattern=r"^alert_act:"))
 
     # Callback query handler para panel de control de emergencia
     application.add_handler(CallbackQueryHandler(handle_emergency_callback, pattern=r"^emergencia:"))

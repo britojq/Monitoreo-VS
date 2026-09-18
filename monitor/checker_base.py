@@ -5,8 +5,8 @@
 # Ubicación: /scripts/telegram-admin-bot/monitor/checker_base.py
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -336,6 +336,16 @@ def markdown_to_telegram_html(text: str) -> str:
 
     text = re.sub(r'`([^`\n]+)`', _save_inline_code, text)
 
+    # 2.1 Proteger etiquetas HTML válidas de Telegram preexistentes
+    html_tags = []
+    def _save_html_tag(match):
+        idx = len(html_tags)
+        html_tags.append(match.group(0))
+        return f"QQQVALIDHTMLTAG{idx}ZZZ"
+
+    valid_tag_pattern = r"</?(?:b|strong|i|em|code|pre|u|s|strike|del|tg-spoiler|tg-emoji|blockquote)(?:\s+[^>]*)?>|<a\s+href=[\'\"][^\'\"]*[\'\"]>"
+    text = re.sub(valid_tag_pattern, _save_html_tag, text, flags=re.IGNORECASE)
+
     # 3. Escapar caracteres HTML básicos en el texto general
     text = html.escape(text)
 
@@ -357,7 +367,11 @@ def markdown_to_telegram_html(text: str) -> str:
     text = re.sub(r'(?<!\*)\*([^\*\n]+)\*(?!\*)', r'<i>\1</i>', text)
     text = re.sub(r'(?<![a-zA-Z0-9_])_([^_\n]+)_(?![a-zA-Z0-9_])', r'<i>\1</i>', text)
 
-    # 9. Restaurar bloques de código multilínea <pre><code>...</code></pre>
+    # 9. Restaurar etiquetas HTML válidas preexistentes
+    for idx, tag in enumerate(html_tags):
+        text = text.replace(f"QQQVALIDHTMLTAG{idx}ZZZ", tag)
+
+    # 10. Restaurar bloques de código multilínea <pre><code>...</code></pre>
     for idx, (lang, code_content) in enumerate(code_blocks):
         escaped_code = html.escape(code_content.strip('\r\n'))
         if lang:
@@ -366,7 +380,7 @@ def markdown_to_telegram_html(text: str) -> str:
             replacement = f'<pre><code>{escaped_code}</code></pre>'
         text = text.replace(f"QQQBLOCKCODE{idx}ZZZ", replacement)
 
-    # 10. Restaurar código inline <code>...</code>
+    # 11. Restaurar código inline <code>...</code>
     for idx, inline_content in enumerate(inline_codes):
         escaped_inline = html.escape(inline_content)
         replacement = f'<code>{escaped_inline}</code>'

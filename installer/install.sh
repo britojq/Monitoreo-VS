@@ -5,8 +5,8 @@
 # Ubicación: /scripts/telegram-admin-bot/installer/install.sh
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 set -e
@@ -446,8 +446,8 @@ cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
-# 6. Cron Runner Dinámico de Monitoreo cada minuto
-(crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1") | crontab -u "$SYS_USER" -
+# 6. Cron Runner Dinámico de Monitoreo cada minuto y Auto-Discovery cada 15 min
+(crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" | grep -v "estatus discovery" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1" ; echo "*/15 * * * * $PROJECT_DIR/estatus discovery --all >/dev/null 2>&1") | crontab -u "$SYS_USER" -
 
 systemctl daemon-reload
 systemctl enable boot-alert.service

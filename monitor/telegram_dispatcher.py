@@ -5,8 +5,8 @@
 # Ubicación: /scripts/telegram-admin-bot/monitor/telegram_dispatcher.py
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -66,12 +66,14 @@ class TelegramDispatcher:
         self,
         chat_id: int | str,
         text: str,
-        parse_mode: Optional[str] = "HTML"
+        parse_mode: Optional[str] = "HTML",
+        reply_markup: Optional[dict | str] = None
     ) -> Tuple[bool, str]:
-        """Envía un mensaje de texto formateado a Telegram."""
+        """Envía un mensaje de texto formateado a Telegram con soporte opcional de teclado en línea."""
         if not self.token:
             return False, "Token de Telegram no configurado"
 
+        import json
         from monitor.checker_base import markdown_to_telegram_html
 
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
@@ -83,6 +85,11 @@ class TelegramDispatcher:
         }
         if parse_mode:
             payload["parse_mode"] = parse_mode
+        if reply_markup:
+            if isinstance(reply_markup, (dict, list)):
+                payload["reply_markup"] = json.dumps(reply_markup)
+            else:
+                payload["reply_markup"] = reply_markup
 
         client = await self.get_active_client(timeout=12.0)
         try:

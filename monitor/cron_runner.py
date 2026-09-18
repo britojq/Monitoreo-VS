@@ -4,8 +4,8 @@
 # Orquestación de ejecuciones periódicas basadas en horarios dinámicos configurables
 # Ubicación: /scripts/telegram-admin-bot/monitor/cron_runner.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -117,8 +117,16 @@ async def run_scheduled_dispatch(force: bool = False) -> bool:
 
     logger.info(f"⏰ [DISPARO PROGRAMADO] Iniciando escaneo y despacho para las {current_time_str}...")
 
+    # Ejecutar verificación de certificados SSL/TLS en paralelo
+    try:
+        from monitor.ssl_checker import run_all_ssl_checks
+        await asyncio.to_thread(run_all_ssl_checks, True, 3.0)
+    except Exception as e_ssl:
+        logger.warning(f"Aviso en verificación SSL durante cron: {e_ssl}")
+
     # Ejecutar monitoreo de servicios corporativos
     result = await execute_monitoring(target="servicios", debug_mode=False)
+
 
     dispatcher = TelegramDispatcher()
     target_chats = get_default_telegram_chats()

@@ -22,28 +22,40 @@ if str(BASE_DIR) not in sys.path:
 
 WEB_DIR = Path("/var/www/monitoreo") if Path("/var/www/monitoreo").exists() else BASE_DIR / "web_portal"
 
+PROTECTED_TABLES = [
+    # Monitoreo Base
+    'monitored_services', 'monitored_sites', 'monitored_site_devices',
+    'monitored_network_devices', 'monitored_proxies', 'monitoring_snapshots',
+    # Fase 1: Network Discovery & Anti-Rogue
+    'discovery_subnets', 'discovery_scans', 'discovered_devices',
+    'discovered_device_history', 'oui_vendors',
+    # Fase 2: SNMP Monitoring
+    'snmp_oids', 'snmp_devices', 'snmp_device_oids',
+    'snmp_metrics_history', 'snmp_interfaces',
+    'snmp_interface_metrics', 'snmp_activation_log',
+    'snmp_traps_received',
+    # Fase 3: Certificados SSL/TLS
+    'ssl_certificates', 'ssl_certificate_history',
+    # Fase 4: Alertas, Escalación y Correlación
+    'alert_rules', 'alert_escalation_levels', 'alert_correlation_groups',
+    'alert_correlation_members', 'alerts', 'alert_notifications',
+    'maintenance_windows', 'alert_storm_suppression',
+    # Fase 5: Calidad WAN y Respaldo de Configuraciones
+    'device_configurations', 'config_change_logs',
+]
+
+
 def log(msg: str):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [AUTO-HEAL] {msg}")
 
 def desanitize_local_files():
-    """Restaura dominios legítimos en seeders locales para evitar daños por db:seed."""
-    seeders_dir = BASE_DIR / "web_portal" / "database" / "seeders"
-    if not seeders_dir.exists():
-        return
-
-    corp_dom = ".".join(["corpo" + "elec", "com", "ve"])
-    corp_name = "CORPO" + "ELEC"
-
-    for php_file in seeders_dir.glob("*.php"):
-        try:
-            content = php_file.read_text(encoding="utf-8", errors="ignore")
-            if "empresa.com.ve" in content or "empresa" in content.lower():
-                new_content = content.replace("empresa.com.ve", corp_dom).replace("empresa", corp_name)
-                php_file.write_text(new_content, encoding="utf-8")
-                log(f"Archivo seeder saneado: {php_file.name}")
-        except Exception as e:
-            log(f"Aviso leyendo {php_file.name}: {e}")
+    """Restaura dominios legítimos en seeders locales para evitar daños por db:seed.
+    Nota: CleanMonitoringSeeder ya realiza la des-sanitización y protección de URLs
+    en memoria en tiempo de ejecución, por lo que no se deben mutar archivos rastreados
+    por Git para evitar conflictos de árbol sucio en futuros pulls o merges.
+    """
+    pass
 
 def heal_mariadb():
     """Ejecuta consulta de auto-curación atómica en MariaDB."""

@@ -67,7 +67,7 @@
             <!-- RELOJ & SINCRONIZACIÓN -->
             <div class="hidden lg:flex flex-col text-right font-mono text-[11px] text-obsidian-muted">
                 <span class="text-[9px] uppercase tracking-wider text-obsidian-cyan">Último Escaneo</span>
-                <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->format('H:i:s') : '--:--:--' }}</span>
+                <span id="last-sync-time" class="text-white font-bold">{{ $latestSnapshot ? $latestSnapshot->created_at->timezone('America/Caracas')->format('h:i:s A') : '--:--:--' }}</span>
             </div>
 
             <!-- BOTÓN INICIO DE SESIÓN / USUARIO EN SESIÓN -->

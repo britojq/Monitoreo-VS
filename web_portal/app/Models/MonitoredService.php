@@ -44,4 +44,15 @@ class MonitoredService extends Model
     {
         return $this->hasMany(ServiceCheckHistory::class, 'monitored_service_id')->orderBy('checked_at', 'desc');
     }
+
+    public function sslCertificates()
+    {
+        return $this->hasMany(SslCertificate::class, 'service_id');
+    }
+
+    public function sslCertificate()
+    {
+        return $this->hasOne(SslCertificate::class, 'service_id')->where('is_active', true);
+    }
 }
+
