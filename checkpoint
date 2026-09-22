@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🛡️ SISTEMA DE RESILIENCIA: checkpoint (@IA_ValleSeco_bot)
+# Generador de Puntos de Control y Respaldo de Estado Funcional
+# Ubicación: /scripts/telegram-admin-bot/checkpoint
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+
+set -euo pipefail
+
+BASE_DIR="/scripts/telegram-admin-bot"
+cd "$BASE_DIR"
+
+CHECKPOINTS_DIR="$BASE_DIR/config/.checkpoints"
+GOLDEN_DIR="$BASE_DIR/config/.backup_golden"
+PYTHON_EXEC="$BASE_DIR/venv/bin/python"
+MAX_CHECKPOINTS=10
+
+# Colores para salida interactiva
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+RED="\033[0;31m"
+BLUE="\033[0;34m"
+CYAN="\033[0;36m"
+NC="\033[0m" # No Color
+
+# ------------------------------------------------------------------------------
+# 1. VERIFICACIÓN PREVIA DE INTEGRIDAD
+# ------------------------------------------------------------------------------
+verify_integrity() {
+    # 1.1 Verificar sintaxis Python del bot
+    if [ -f "$PYTHON_EXEC" ]; then
+        if ! "$PYTHON_EXEC" -m py_compile bot.py >/dev/null 2>&1; then
+            echo -e "${RED}[ERROR] No se puede crear un checkpoint: "bot.py" tiene errores de sintaxis.${NC}" >&2
+            return 1
+        fi
+    fi
+
+    # 1.2 Verificar sintaxis JSON de config.json
+    if [ -f "$BASE_DIR/config/config.json" ]; then
+        if command -v jq >/dev/null 2>&1; then
+            if ! jq empty "$BASE_DIR/config/config.json" >/dev/null 2>&1; then
+                echo -e "${RED}[ERROR] No se puede crear un checkpoint: "config.json" está corrupto o malformado.${NC}" >&2
+                return 1
+            fi
+        fi
+    fi
+
+    # 1.3 Verificar que archivos clave no tengan 0 bytes
+    for f in "bot.py" "config/config.json" "config/mensajes.conf"; do
+        if [ -f "$BASE_DIR/$f" ] && [ ! -s "$BASE_DIR/$f" ]; then
+            echo -e "${RED}[ERROR] No se puede crear un checkpoint: "$f" está vacío (0 bytes).${NC}" >&2
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# ------------------------------------------------------------------------------
+# 2. LISTAR CHECKPOINTS EXISTENTES
+# ------------------------------------------------------------------------------
+list_checkpoints() {
+    echo -e "${CYAN}=================================================================${NC}"
+    echo -e "${CYAN}📋 HISTORIAL DE PUNTOS DE CONTROL (CHECKPOINTS)${NC}"
+    echo -e "${CYAN}=================================================================${NC}"
+
+    if [ ! -d "$CHECKPOINTS_DIR" ] || [ -z "$(ls -A "$CHECKPOINTS_DIR" 2>/dev/null)" ]; then
+        echo -e "${YELLOW}No existen checkpoints guardados aún.${NC}"
+        return 0
+    fi
+
+    latest_id=""
+    if [ -f "$CHECKPOINTS_DIR/LATEST" ]; then
+        latest_id=$(cat "$CHECKPOINTS_DIR/LATEST" | tr -d "[:space:]")
+    fi
+
+    printf "%-18s | %-19s | %-10s | %s\n" "ID CHECKPOINT" "FECHA / HORA" "COMMIT GIT" "DESCRIPCIÓN"
+    echo "--------------------------------------------------------------------------------"
+
+    # Listar carpetas ordenadas
+    for cp_dir in $(ls -dt "$CHECKPOINTS_DIR"/*/ 2>/dev/null); do
+        cp_id=$(basename "$cp_dir")
+        if [ "$cp_id" = "LATEST" ]; then continue; fi
+
+        meta_file="$cp_dir/metadata.json"
+        if [ -f "$meta_file" ] && command -v jq >/dev/null 2>&1; then
+            dt=$(jq -r ".datetime // \"N/A\"" "$meta_file")
+            commit=$(jq -r ".commit_short // \"N/A\"" "$meta_file")
+            desc=$(jq -r ".description // \"Sin descripción\"" "$meta_file")
+        else
+            dt="N/A"
+            commit="N/A"
+            desc="Snapshot local"
+        fi
+
+        marker=""
+        if [ "$cp_id" = "$latest_id" ]; then
+            marker=" ${GREEN}(LATEST ⭐)${NC}"
+        fi
+
+        printf "%-18s | %-19s | %-10s | %s%b\n" "$cp_id" "$dt" "$commit" "$desc" "$marker"
+    done
+    echo -e "${CYAN}=================================================================${NC}"
+    echo -e "Para restaurar a un punto específico: ${YELLOW}rollback --to <ID_CHECKPOINT>${NC}"
+}
+
+# ------------------------------------------------------------------------------
+# 3. CREAR CHECKPOINT
+# ------------------------------------------------------------------------------
+create_checkpoint() {
+    local desc="${1:-\"Punto de control manual\"}"
+    local is_auto=0
+
+    if [ "$desc" = "--auto" ]; then
+        is_auto=1
+        desc="Snapshot automático de estado operativo"
+    fi
+
+    # Validar integridad antes de respaldar
+    if ! verify_integrity; then
+        if [ $is_auto -eq 1 ]; then
+            exit 1
+        fi
+        echo -e "${RED}[ABORTADO] El estado actual no es válido. Corrija los errores antes de crear el checkpoint.${NC}" >&2
+        exit 1
+    fi
+
+    mkdir -p "$CHECKPOINTS_DIR"
+    mkdir -p "$GOLDEN_DIR"
+
+    TS=$(date +%Y%m%d_%H%M%S)
+    TARGET_DIR="$CHECKPOINTS_DIR/$TS"
+    mkdir -p "$TARGET_DIR"
+
+    # Obtener información de Git
+    COMMIT_HASH=""
+    COMMIT_SHORT=""
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "initial")
+        COMMIT_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "initial")
+        # Crear tag local de Git
+        git tag -f "checkpoint-latest" HEAD >/dev/null 2>&1 || true
+        git tag "checkpoint-$TS" HEAD >/dev/null 2>&1 || true
+    fi
+
+    # Copiar archivos de configuración críticos
+    for cfg in "config/config.json" "config/commands.json" "config/mensajes.conf" ".env" "config/hardware.lock"; do
+        if [ -f "$BASE_DIR/$cfg" ]; then
+            mkdir -p "$TARGET_DIR/$(dirname "$cfg")"
+            cp -p "$BASE_DIR/$cfg" "$TARGET_DIR/$cfg"
+            # Actualizar también copia dorada
+            mkdir -p "$GOLDEN_DIR/$(dirname "$cfg")"
+            cp -p "$BASE_DIR/$cfg" "$GOLDEN_DIR/$cfg"
+        fi
+    done
+
+    # Escribir metadatos JSON
+    NOW_FORMATTED=$(date "+%Y-%m-%d %H:%M:%S")
+    python3 -c "import sys, json; json.dump({'id': sys.argv[1], 'datetime': sys.argv[2], 'commit_hash': sys.argv[3], 'commit_short': sys.argv[4], 'user': sys.argv[5], 'description': sys.argv[6]}, open(sys.argv[7], 'w', encoding='utf-8'), indent=2)" \
+        "$TS" "$NOW_FORMATTED" "$COMMIT_HASH" "$COMMIT_SHORT" "${USER:-unknown}" "$desc" "$TARGET_DIR/metadata.json"
+
+    # Actualizar puntero LATEST
+    echo "$TS" > "$CHECKPOINTS_DIR/LATEST"
+
+    # Rotación: Mantener solo los últimos MAX_CHECKPOINTS
+    local count=0
+    for old_cp in $(ls -dt "$CHECKPOINTS_DIR"/*/ 2>/dev/null); do
+        count=$((count + 1))
+        if [ $count -gt $MAX_CHECKPOINTS ]; then
+            rm -rf "$old_cp"
+        fi
+    done
+
+    # Forzar escritura a disco
+    sync
+
+    if [ $is_auto -eq 0 ]; then
+        echo -e "${GREEN}✅ Checkpoint creado exitosamente:${NC}"
+        echo -e "   🆔 ID:          ${CYAN}$TS${NC}"
+        echo -e "   📅 Fecha:       $NOW_FORMATTED"
+        echo -e "   🔖 Commit Git:  $COMMIT_SHORT"
+        echo -e "   📝 Descripción: ${YELLOW}$desc${NC}"
+        echo -e "   📁 Ubicación:   $TARGET_DIR"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 4. ENTRADA PRINCIPAL
+# ------------------------------------------------------------------------------
+case "${1:-}" in
+    -l|--list|list)
+        list_checkpoints
+        ;;
+    -h|--help|help)
+        echo "Uso: checkpoint [OPCIÓN] [\"Descripción\"]"
+        echo ""
+        echo "Opciones:"
+        echo "  \"Descripción\"    Crea un nuevo checkpoint con la descripción indicada."
+        echo "  --list, -l        Muestra la lista de checkpoints existentes."
+        echo "  --auto            Crea un checkpoint silencioso (usado por automatizaciones)."
+        echo "  --help, -h        Muestra esta ayuda."
+        ;;
+    *)
+        create_checkpoint "${*:-"Punto de control manual"}"
+        ;;
+esac

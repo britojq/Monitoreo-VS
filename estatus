@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🚀 CLI Y WRAPPER DE MONITOREO: estatus (@IA_ValleSeco_bot)
+# Ubicación: /scripts/telegram-admin-bot/estatus
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
+# ==============================================================================
+
+PROJECT_DIR="/scripts/telegram-admin-bot"
+PYTHON_EXEC="$PROJECT_DIR/venv/bin/python"
+ENGINE_SCRIPT="$PROJECT_DIR/monitor/monitor_engine.py"
+
+if [ ! -f "$PYTHON_EXEC" ] || [ ! -f "$ENGINE_SCRIPT" ]; then
+    echo "[ERROR] Entorno de ejecución no encontrado en $PROJECT_DIR." >&2
+    exit 1
+fi
+
+# Soporte para subcomandos directos de resiliencia y sincronización web
+if [ "${1:-}" = "rollback" ]; then
+    shift
+    exec "$PROJECT_DIR/rollback" "$@"
+elif [ "${1:-}" = "checkpoint" ]; then
+    shift
+    exec "$PROJECT_DIR/checkpoint" "$@"
+elif [ "${1:-}" = "activar" ]; then
+    shift
+    exec "$PROJECT_DIR/activar" "$@"
+elif [ "${1:-}" = "web" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/monitor_web_sync.py" "$@"
+elif [ "${1:-}" = "cron" ] || [ "${1:-}" = "cron-runner" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/cron_runner.py" "$@"
+elif [ "${1:-}" = "recursos" ] || [ "${1:-}" = "optimizar" ] || [ "${1:-}" = "memoria" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/system_optimizer.py" "$@"
+elif [ "${1:-}" = "temperatura" ] || [ "${1:-}" = "temp" ] || [ "${1:-}" = "termal" ]; then
+    shift
+    exec "$PROJECT_DIR/temperatura" "$@"
+elif [ "${1:-}" = "discovery" ] || [ "${1:-}" = "descubrimiento" ] || [ "${1:-}" = "scan" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/network_discovery.py" "$@"
+elif [ "${1:-}" = "radar" ] || [ "${1:-}" = "netradar" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/net_radar_engine.py" "$@"
+elif [ "${1:-}" = "snmp" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/snmp_poller.py" "$@"
+elif [ "${1:-}" = "ssl" ] || [ "${1:-}" = "certificados" ] || [ "${1:-}" = "certs" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/ssl_checker.py" "$@"
+elif [ "${1:-}" = "alertas" ] || [ "${1:-}" = "alert" ] || [ "${1:-}" = "alerta" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/alert_engine.py" "$@"
+elif [ "${1:-}" = "configs" ] || [ "${1:-}" = "config" ] || [ "${1:-}" = "respaldos" ] || [ "${1:-}" = "backup" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/config_backup.py" "$@"
+elif [ "${1:-}" = "cluster" ] || [ "${1:-}" = "nodo" ] || [ "${1:-}" = "rol" ]; then
+    shift
+    exec "$PYTHON_EXEC" -c "
+import json
+from pathlib import Path
+cfg_path = Path('$PROJECT_DIR/config/config.json')
+if cfg_path.exists():
+    cfg = json.loads(cfg_path.read_text())
+    print('=====================================================')
+    print('       ARQUITECTURA DE CLÚSTER (MASTER / SLAVE)       ')
+    print('=====================================================')
+    print(f' Rol del Nodo:       {cfg.get(\"node_role\", \"master\").upper()}')
+    print(f' Servidor Master:    {cfg.get(\"master_api_url\", \"http://10.20.23.252\")}')
+    print(f' Estado de Enlace:   {cfg.get(\"cluster_last_sync_status\", \"N/A\")}')
+    print(f' Última Sincronía:   {cfg.get(\"cluster_last_sync_at\", \"N/A\")}')
+    print('-----------------------------------------------------')
+    print(' Token de Clúster (X-Cluster-Token):')
+    print(f' {cfg.get(\"cluster_token\", \"N/A\")}')
+    print('=====================================================')
+else:
+    print('Error: Archivo de configuración no encontrado.')
+" "$@"
+fi
+
+# Pasar todos los argumentos al motor de Python
+exec "$PYTHON_EXEC" "$ENGINE_SCRIPT" "$@"

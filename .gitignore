@@ -1,0 +1,54 @@
+# Entorno virtual
+venv/
+__pycache__/
+*.pyc
+
+# Archivos de configuración con tokens o credenciales sensibles
+.env
+config.json
+config/config.json
+OLD-config.json
+*.token
+config/*.token
+config/.backup_golden/
+config/.checkpoints/
+
+# Logs de auditoría, anclajes y ejecución
+*.log
+logs/*.log
+logs/*
+!logs/.gitkeep
+audit/*.log
+audit/*.txt
+audit/*.html
+audit/*.md
+audit/*.pcap
+audit/.sys_anchor
+intentos_acceso.log
+!audit/.gitkeep
+
+# Documentación interna (Se respalda en el repositorio privado)
+
+# Agentes y Habilidades Locales
+.agents/skills/
+.agents/skills/*
+.agents/
+
+# Web Portal Laravel exclusions
+web_portal/vendor/
+web_portal/node_modules/
+web_portal/.env
+web_portal/storage/logs/*.log
+web_portal/storage/framework/cache/data/*
+web_portal/storage/framework/sessions/*
+web_portal/storage/framework/views/*
+web_portal/storage/app/public/*
+web_portal/bootstrap/cache/*.php
+!web_portal/bootstrap/cache/.gitignore
+# Scratch scripts
+scratch/
+
+# GitOps y Respaldos de Base de Datos
+.update_lock
+database/backups/*.sql.gz
+!database/backups/.gitkeep

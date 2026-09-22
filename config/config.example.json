@@ -1,0 +1,34 @@
+{
+  "bot_token": "TU_TOKEN_DE_TELEGRAM",
+  "owner_id": 123456789,
+  "allowed_user_ids": [
+    123456789
+  ],
+  "allowed_group_ids": [],
+  "commands_enabled": true,
+
+  "notify_unauthorized_to_owner": true,
+  "reply_unauthorized_user": true,
+  "log_unauthorized_to_file": true,
+  "audit_log_file": "audit/intentos_acceso.log",
+  "auto_proxy_failover": true,
+  "proxies": [],
+  "monitor_debug_mode": false,
+
+  "ollama_enabled": true,
+  "ollama_allow_all": false,
+  "ollama_base_url": "http://localhost:11434",
+  "ollama_model": "qwen-empresa",
+  "ollama_timeout": 180,
+  "ollama_temperature": 0.3,
+  "ollama_num_ctx": 4096,
+  "ollama_max_history": 12,
+  "ollama_include_system_prompt": false,
+  "ollama_system_prompt": "",
+
+  "cron_reports_enabled": true,
+  "cron_schedules": [
+    "07:30",
+    "16:00"
+  ]
+}

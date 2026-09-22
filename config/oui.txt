@@ -1,0 +1,13 @@
+00270d	Cisco Systems, Inc
+bcf1f2	Cisco Systems, Inc
+00141c	Cisco Systems, Inc
+0013c4	Cisco Systems, Inc
+6c3c7c	Canon Inc.
+001b4f	Avaya Inc
+e848b8	TP-Link Corporation
+24be05	Hewlett Packard
+ecb1d7	Hewlett Packard
+8cdcd4	Hewlett Packard
+00d861	Micro-Star INTL CO., LTD.
+309c23	Micro-Star INTL CO., LTD.
+f4939f	Hon Hai Precision Industry
