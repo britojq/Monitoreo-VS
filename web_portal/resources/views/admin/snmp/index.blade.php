@@ -350,6 +350,10 @@
                                             <span class="material-symbols-outlined text-sm">travel_explore</span>
                                         </button>
 
+                                        <button type="button" onclick="openEditDeviceModal({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-cyan-500 hover:text-black border border-obsidian-border text-cyan-400 transition cursor-pointer" title="Editar Dispositivo">
+                                            <span class="material-symbols-outlined text-sm">edit</span>
+                                        </button>
+
                                         <form method="POST" action="{{ route('admin.snmp.destroy', $dev->id) }}" class="inline" onsubmit="return confirm('¿Está seguro de eliminar el dispositivo {{ $dev->name }}?')">
                                             @csrf
                                             @method('DELETE')
@@ -590,6 +594,108 @@
             <div class="flex items-center justify-end gap-2 pt-2">
                 <button type="button" onclick="closeNewDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold">Guardar Dispositivo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL EDITAR DISPOSITIVO SNMP (ADMIN) -->
+<!-- ========================================================================= -->
+<div id="editDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
+    <div class="w-full max-w-lg rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-lg">edit</span>
+                <span>Editar Dispositivo SNMP</span>
+                <span id="edit-modal-ip-badge" class="ml-2 px-2 py-0.5 rounded bg-obsidian-bg border border-obsidian-border text-[11px] font-mono text-cyan-400"></span>
+            </h3>
+            <button type="button" onclick="closeEditDeviceModal()" class="text-obsidian-muted hover:text-white text-xl leading-none cursor-pointer">&times;</button>
+        </div>
+        <form id="editDeviceForm" method="POST" action="" class="p-6 space-y-4">
+            @csrf
+            @method('PUT')
+            
+            <div id="editModalLoading" class="hidden py-8 text-center text-obsidian-muted">
+                <div class="flex items-center justify-center gap-2 text-cyan-400 font-mono text-xs">
+                    <span class="material-symbols-outlined text-xl animate-spin">progress_activity</span>
+                    <span>Cargando datos del dispositivo...</span>
+                </div>
+            </div>
+
+            <div id="editModalFields" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Nombre Identificador *</label>
+                    <input type="text" id="edit_name" name="name" required placeholder="Ej. Switch-Core-C3750" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
+                        <input type="text" id="edit_ip_address" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Puerto SNMP *</label>
+                        <input type="number" id="edit_snmp_port" name="snmp_port" value="161" min="1" max="65535" required class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Versión SNMP *</label>
+                        <select id="edit_snmp_version" name="snmp_version" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="v2c">v2c (Recomendado)</option>
+                            <option value="v3">v3 (Cifrado USM)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Comunidad SNMP *</label>
+                        <input type="text" id="edit_community" name="community" placeholder="public" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Tipo de Equipo *</label>
+                        <select id="edit_device_type" name="device_type" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="switch">Switch</option>
+                            <option value="router">Router</option>
+                            <option value="firewall">Firewall</option>
+                            <option value="server">Servidor</option>
+                            <option value="ups">UPS</option>
+                            <option value="unknown">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Sede Asignada</label>
+                        <select id="edit_site_id" name="site_id" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="">Valle Seco (Principal)</option>
+                            @foreach($sites as $site)
+                            <option value="{{ $site->id }}">{{ $site->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Intervalo de Sondeo (seg)</label>
+                        <input type="number" id="edit_poll_interval_seconds" name="poll_interval_seconds" min="10" max="3600" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div class="flex items-center pt-6">
+                        <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-mono text-white">
+                            <input type="checkbox" id="edit_is_active" name="is_active" value="1" class="rounded bg-obsidian-bg border-obsidian-border text-cyan-500 focus:ring-0">
+                            <span>Dispositivo Activo</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Notas u Observaciones</label>
+                    <textarea id="edit_notes" name="notes" rows="2" placeholder="Detalles de ubicación de rack, VLANs..." class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none"></textarea>
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeEditDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">save</span>
+                        <span>Actualizar Cambios</span>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -937,6 +1043,55 @@
 
     function openNewDeviceModal() { document.getElementById('newDeviceModal').classList.remove('hidden'); }
     function closeNewDeviceModal() { document.getElementById('newDeviceModal').classList.add('hidden'); }
+    function openEditDeviceModal(deviceId) {
+        const modal = document.getElementById('editDeviceModal');
+        const form = document.getElementById('editDeviceForm');
+        const loading = document.getElementById('editModalLoading');
+        const fields = document.getElementById('editModalFields');
+        const ipBadge = document.getElementById('edit-modal-ip-badge');
+
+        if (!modal) return;
+
+        modal.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        fields.classList.add('hidden');
+        form.action = `/admin/snmp/${deviceId}`;
+
+        fetch(`/admin/snmp/${deviceId}`)
+            .then(res => res.json())
+            .then(data => {
+                loading.classList.add('hidden');
+                fields.classList.remove('hidden');
+
+                if (data.success && data.device) {
+                    const dev = data.device;
+                    ipBadge.textContent = dev.ip_address || '';
+                    document.getElementById('edit_name').value = dev.name || '';
+                    document.getElementById('edit_ip_address').value = dev.ip_address || '';
+                    document.getElementById('edit_snmp_port').value = dev.snmp_port || 161;
+                    document.getElementById('edit_snmp_version').value = dev.snmp_version || 'v2c';
+                    document.getElementById('edit_community').value = dev.community || '';
+                    document.getElementById('edit_device_type').value = dev.device_type || 'switch';
+                    document.getElementById('edit_site_id').value = dev.site_id || '';
+                    document.getElementById('edit_poll_interval_seconds').value = dev.poll_interval_seconds || 60;
+                    document.getElementById('edit_is_active').checked = !!dev.is_active;
+                    document.getElementById('edit_notes').value = dev.notes || '';
+                } else {
+                    alert('No se pudieron obtener los datos del dispositivo.');
+                    closeEditDeviceModal();
+                }
+            })
+            .catch(err => {
+                loading.classList.add('hidden');
+                alert('Error al conectar con el servidor: ' + err);
+                closeEditDeviceModal();
+            });
+    }
+
+    function closeEditDeviceModal() {
+        const modal = document.getElementById('editDeviceModal');
+        if (modal) modal.classList.add('hidden');
+    }
     function openRemoteActivationModal() { document.getElementById('remoteActivationModal').classList.remove('hidden'); }
     function closeRemoteActivationModal() { document.getElementById('remoteActivationModal').classList.add('hidden'); }
 

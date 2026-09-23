@@ -90,9 +90,12 @@ class AdminSnmpController extends Controller
         $device = SnmpDevice::with(['site', 'networkDevice', 'interfaces.latestMetric', 'deviceOids.oid'])
             ->findOrFail($id);
 
+        $payload = $device->toArray();
+        $payload['community'] = $device->getCommunity();
+
         return response()->json([
             'success' => true,
-            'device' => $device,
+            'device' => $payload,
         ]);
     }
 
@@ -241,18 +244,24 @@ class AdminSnmpController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'ip_address' => 'required|ip|unique:snmp_devices,ip_address,' . $device->id,
+            'snmp_port' => 'nullable|integer|min:1|max:65535',
             'snmp_version' => 'required|in:v2c,v3',
             'community' => 'nullable|string|max:255',
             'device_type' => 'required|in:router,switch,firewall,server,ups,ap,unknown',
             'site_id' => 'nullable|exists:monitored_sites,id',
             'poll_interval_seconds' => 'nullable|integer|min:10|max:3600',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable',
             'notes' => 'nullable|string|max:500',
         ]);
 
         $oldValues = $device->toArray();
 
         $device->name = $validated['name'];
+        $device->ip_address = $validated['ip_address'];
+        if (!empty($validated['snmp_port'])) {
+            $device->snmp_port = (int)$validated['snmp_port'];
+        }
         $device->snmp_version = $validated['snmp_version'];
         if (!empty($validated['community'])) {
             $device->setCommunity($validated['community']);
@@ -260,7 +269,7 @@ class AdminSnmpController extends Controller
         $device->device_type = $validated['device_type'];
         $device->site_id = $validated['site_id'] ?? null;
         $device->poll_interval_seconds = $validated['poll_interval_seconds'] ?? 60;
-        $device->is_active = $request->has('is_active');
+        $device->is_active = $request->has('is_active') && ($request->input('is_active') == '1' || $request->input('is_active') === true);
         $device->notes = $validated['notes'] ?? null;
         $device->save();
 
