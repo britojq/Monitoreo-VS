@@ -562,10 +562,28 @@ def save_deployment_audit_manifest(manifest: dict, log_text: str):
         logger.warning(f"Error escribiendo log de auditoría: {e}")
 
 
+def set_pending_restart_notification(manifest: dict, chat_id: Optional[int] = None):
+    """Guarda metadatos para que el bot notifique al Owner inmediatamente tras arrancar con la nueva versión."""
+    import json
+    pending_path = BASE_DIR / "audit" / ".pending_restart_notification"
+    try:
+        pending_path.parent.mkdir(parents=True, exist_ok=True)
+        data = dict(manifest)
+        if chat_id:
+            data["chat_id"] = chat_id
+        pending_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Error guardando .pending_restart_notification: {e}")
+
+
 # =========================================================================
 # 🚀 EJECUCIÓN DEL DESPLIEGUE SEGURO CON AUTO-ROLLBACK Y RESPALDO DE BD
 # =========================================================================
-async def execute_git_update(bot_instance=None) -> str:
+async def execute_git_update(
+    bot_instance=None,
+    auto_restart: bool = False,
+    restart_delay: float = 6.0
+) -> str:
     """
     Ejecuta el ciclo de actualización forzada con el repositorio oficial:
     1. Comprobación de Circuit Breaker.
@@ -903,8 +921,11 @@ async def execute_git_update(bot_instance=None) -> str:
             f"• <b>Servicios Web:</b> Apache2, MariaDB, PHP-FPM, Bot activos ✅\n"
             f"• <b>Endpoints HTTP:</b> 100% Operativos (Status, Login, Topology API)\n\n"
             f"📋 <i>Registro detallado generado en <code>logs/last_deploy_audit.log</code>.</i>\n"
-            f"⚡ <i>Reiniciando demonio del bot en segundo plano...</i>"
+            f"⚡ <i>Reiniciando servicio del bot en segundo plano para cargar el nuevo código...</i>"
         )
+
+        # Guardar notificación pendiente post-reinicio para confirmar arranque
+        set_pending_restart_notification(manifest, chat_id=IMMUTABLE_OWNER_ID)
 
         # Enviar documento de auditoría al Owner vía Telegram si hay bot_instance disponible
         if bot_instance and IMMUTABLE_OWNER_ID:
@@ -922,8 +943,9 @@ async def execute_git_update(bot_instance=None) -> str:
             except Exception as e_doc:
                 logger.warning(f"Aviso enviando documento de auditoría al owner: {e_doc}")
 
-        # Reiniciar servicios en segundo plano
-        asyncio.create_task(_restart_service_delayed())
+        # Reiniciar servicios en segundo plano solo si auto_restart está habilitado
+        if auto_restart:
+            asyncio.create_task(restart_service_delayed(delay_seconds=restart_delay))
 
     except Exception as e:
         err_str = str(e)
@@ -1003,7 +1025,9 @@ async def execute_git_update(bot_instance=None) -> str:
 async def execute_rollback(
     bot_instance=None,
     target_commit: Optional[str] = None,
-    backup_path: Optional[str] = None
+    backup_path: Optional[str] = None,
+    auto_restart: bool = False,
+    restart_delay: float = 6.0
 ) -> str:
     """
     Restaura el sistema al estado anterior:
@@ -1049,9 +1073,10 @@ async def execute_rollback(
     _, cur_m, _ = await _run_git_command(["log", "-1", "--format=%s", "HEAD"])
 
     logs.append(f"✅ <b>Rollback completado exitosamente a la versión</b> <code>{cur_h}</code> (<i>{html.escape(cur_m)}</i>).")
-    logs.append("⚡ <i>Reiniciando bot de Telegram...</i>")
+    logs.append("⚡ <i>Reiniciando servicio del bot en segundo plano...</i>")
 
-    asyncio.create_task(_restart_service_delayed())
+    if auto_restart:
+        asyncio.create_task(restart_service_delayed(delay_seconds=restart_delay))
     return "\n\n".join(logs)
 
 
@@ -1128,9 +1153,9 @@ async def build_deployment_dashboard() -> Tuple[str, InlineKeyboardMarkup]:
 
 
 
-async def _restart_service_delayed():
-    """Espera 2 segundos para asegurar el envío del mensaje y reinicia los servicios del bot."""
-    await asyncio.sleep(2.0)
+async def restart_service_delayed(delay_seconds: float = 5.0):
+    """Espera delay_seconds para asegurar el envío del mensaje y reinicia los servicios del bot."""
+    await asyncio.sleep(delay_seconds)
     try:
         proc = await asyncio.create_subprocess_exec(
             "sudo", "systemctl", "restart", "tg-admin-bot.service"
@@ -1138,6 +1163,8 @@ async def _restart_service_delayed():
         await proc.communicate()
     except Exception as e:
         logger.error(f"Error al reiniciar tg-admin-bot.service: {e}")
+
+_restart_service_delayed = restart_service_delayed
 
 
 # =========================================================================
@@ -1195,12 +1222,15 @@ async def auto_update_worker(bot_instance=None, get_owner_id_func=None, get_conf
                     except Exception as e:
                         logger.error(f"Error notificando al Owner: {e}")
 
-                res_text = await execute_git_update(bot_instance=bot_instance)
+                res_text = await execute_git_update(bot_instance=bot_instance, auto_restart=False)
                 if bot_instance:
+                    if len(res_text) > 4000:
+                        res_text = res_text[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
                     try:
                         await bot_instance.send_message(chat_id=IMMUTABLE_OWNER_ID, text=res_text, parse_mode='HTML')
                     except Exception as e:
                         logger.error(f"Error enviando resultado: {e}")
+                asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
             else:
                 consecutive_git_failures = 0
 

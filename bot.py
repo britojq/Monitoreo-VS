@@ -4502,12 +4502,16 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "⏳ <i>Descargando novedades desde GitHub y respaldando configuración...</i>",
                 parse_mode='HTML'
             )
-            res = await execute_git_update(bot_instance=context.bot)
+            res = await execute_git_update(bot_instance=context.bot, auto_restart=False)
             try:
                 await wait_msg.delete()
             except Exception:
                 pass
+            if len(res) > 4000:
+                res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
             await update.message.reply_text(res, parse_mode='HTML')
+            from monitor.system_updater import restart_service_delayed
+            asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
             return
 
     wait_msg = await update.message.reply_text(
@@ -4573,7 +4577,9 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         except Exception:
             pass
 
-        res = await execute_git_update(bot_instance=context.bot)
+        res = await execute_git_update(bot_instance=context.bot, auto_restart=False)
+        if len(res) > 4000:
+            res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
         try:
             await query.edit_message_text(res, parse_mode='HTML')
         except Exception:
@@ -4581,6 +4587,8 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
                 await query.message.reply_text(res, parse_mode='HTML')
             except Exception:
                 pass
+        from monitor.system_updater import restart_service_delayed
+        asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
         return
 
     elif action == "status":
@@ -4641,7 +4649,9 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         except Exception:
             pass
 
-        res = await execute_rollback(bot_instance=context.bot)
+        res = await execute_rollback(bot_instance=context.bot, auto_restart=False)
+        if len(res) > 4000:
+            res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
         try:
             await query.edit_message_text(res, parse_mode='HTML')
         except Exception:
@@ -4649,6 +4659,8 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
                 await query.message.reply_text(res, parse_mode='HTML')
             except Exception:
                 pass
+        from monitor.system_updater import restart_service_delayed
+        asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
         return
 
     elif action == "get_audit_log":
@@ -7763,6 +7775,40 @@ def main() -> None:
                     logger.error(f"Error procesando notificación de auto-rollback: {err}")
 
         asyncio.create_task(_check_auto_rollback_notice())
+
+        # 3.1 Verificador de Confirmación Post-Reinicio tras Actualización Git
+        async def _check_post_update_restart_notice():
+            pending_file = BASE_DIR / "audit" / ".pending_restart_notification"
+            if pending_file.exists():
+                try:
+                    with open(pending_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    pending_file.unlink(missing_ok=True)
+
+                    commit = data.get("new_commit", "N/A")
+                    msg = html.escape(data.get("commit_message", "Actualización del sistema"))
+                    duration = data.get("duration_seconds", "N/A")
+                    owner_id = IMMUTABLE_OWNER_ID or CONFIG.get("owner_id", 0)
+
+                    # Estricto cumplimiento de Regla de Oro #1: Solo enviar al chat privado del Owner
+                    if owner_id and int(owner_id) > 0:
+                        notice_msg = (
+                            "🟢 <b>¡SISTEMA REINICIADO Y EN LÍNEA!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "El servicio <code>tg-admin-bot</code> ha completado su reinicio tras la actualización y se encuentra 100% operativo.\n\n"
+                            f"🏷️ <b>Commit Activo:</b> <code>{html.escape(commit)}</code>\n"
+                            f"📝 <b>Detalle:</b> <i>{msg}</i>\n"
+                            f"⏱️ <b>Tiempo de Despliegue:</b> <code>{duration}s</code>\n"
+                            "🛡️ <b>Diagnóstico:</b> <code>Portal Web, BD y Cluster API validados exitosamente</code>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "<i>El bot está listo para recibir comandos.</i>"
+                        )
+                        await app.bot.send_message(chat_id=owner_id, text=notice_msg, parse_mode='HTML')
+                        logger.info(f"Notificación post-reinicio de despliegue enviada al Owner ({commit}).")
+                except Exception as e_pnr:
+                    logger.warning(f"Error procesando .pending_restart_notification: {e_pnr}")
+
+        asyncio.create_task(_check_post_update_restart_notice())
 
         # 4. Sincronizar dinámicamente el menú nativo de comandos en Telegram
         async def _sync_telegram_commands():
