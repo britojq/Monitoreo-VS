@@ -110,5 +110,101 @@ class ClusterApiController extends Controller
             'predictive_anomalies' => \App\Models\PredictiveAnomaly::latest('id')->take(100)->get(),
         ]);
     }
+
+    /**
+     * Entrega diagnóstico completo del sistema, censo de base de datos,
+     * estado de servicios y auditoría del último despliegue (Solo Lectura, protegido).
+     */
+    public function diagnostics(Request $request): JsonResponse
+    {
+        $baseDir = is_dir('/scripts/telegram-admin-bot') ? '/scripts/telegram-admin-bot' : base_path('..');
+        $auditJsonPath = $baseDir . '/audit/last_deployment.json';
+        $storageJsonPath = storage_path('app/last_deployment.json');
+        $auditLogPath = $baseDir . '/logs/last_deploy_audit.log';
+        $pipelineLogPath = $baseDir . '/logs/deploy_pipeline.log';
+
+        // 1. Cargar manifiesto del último despliegue si existe
+        $lastDeployment = null;
+        if (file_exists($auditJsonPath)) {
+            $lastDeployment = json_decode(@file_get_contents($auditJsonPath), true);
+        } elseif (file_exists($storageJsonPath)) {
+            $lastDeployment = json_decode(@file_get_contents($storageJsonPath), true);
+        }
+
+        // 2. Extraer fragmento reciente del log de auditoría
+        $logSnippet = '';
+        $targetLog = file_exists($auditLogPath) ? $auditLogPath : (file_exists($pipelineLogPath) ? $pipelineLogPath : null);
+        if ($targetLog) {
+            $lines = @file($targetLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $logSnippet = implode("\n", array_slice($lines, -35));
+        }
+
+        // 3. Censo en tiempo real de entidades críticas de base de datos
+        $snmpCount = \App\Models\SnmpDevice::count();
+        $linksCount = \App\Models\NetworkTopologyLink::count();
+        $servicesCount = \App\Models\MonitoredService::count();
+        $devicesCount = \App\Models\MonitoredNetworkDevice::count();
+        $sitesCount = \App\Models\MonitoredSite::count();
+        $proxiesCount = \App\Models\MonitoredProxy::count();
+        $usersCount = \App\Models\User::count();
+        $firingAlerts = \App\Models\Alert::whereIn('status', ['firing', 'acknowledged'])->count();
+
+        // 4. Estado de servicios del sistema (systemd)
+        $services = [
+            'tg-admin-bot' => trim(@shell_exec('systemctl is-active tg-admin-bot 2>/dev/null') ?: 'unknown'),
+            'apache2' => trim(@shell_exec('systemctl is-active apache2 2>/dev/null') ?: 'unknown'),
+            'mariadb' => trim(@shell_exec('systemctl is-active mariadb 2>/dev/null') ?: 'unknown'),
+            'php-fpm' => trim(@shell_exec('systemctl is-active php8.4-fpm 2>/dev/null') ?: (@shell_exec('systemctl is-active php8.2-fpm 2>/dev/null') ?: 'unknown')),
+        ];
+
+        // 5. Metadatos de Git local
+        $gitSafe = 'git -C ' . escapeshellarg($baseDir) . ' -c safe.directory=* ';
+        $gitCommit = trim(@shell_exec($gitSafe . 'rev-parse --short HEAD 2>/dev/null') ?: 'unknown');
+        $gitBranch = trim(@shell_exec($gitSafe . 'rev-parse --abbrev-ref HEAD 2>/dev/null') ?: 'unknown');
+        $gitMsg = trim(@shell_exec($gitSafe . 'log -1 --format=%s 2>/dev/null') ?: '');
+        $gitDate = trim(@shell_exec($gitSafe . 'log -1 --format=%cd --date=iso 2>/dev/null') ?: '');
+
+        // 6. Evaluación de salud general
+        $isServicesOk = ($services['apache2'] === 'active' && $services['mariadb'] === 'active');
+        $isTopologyOk = ($linksCount >= 26);
+        $isSnmpOk = ($snmpCount >= 9);
+
+        $healthStatus = 'healthy';
+        if (!$isServicesOk) {
+            $healthStatus = 'critical';
+        } elseif (!$isTopologyOk || !$isSnmpOk) {
+            $healthStatus = 'warning';
+        }
+
+        return response()->json([
+            'success' => true,
+            'node_role' => $this->clusterService->getNodeRole(),
+            'hostname' => gethostname(),
+            'timestamp' => date('Y-m-d H:i:s'),
+            'overall_health' => $healthStatus,
+            'git' => [
+                'commit' => $gitCommit,
+                'branch' => $gitBranch,
+                'last_commit_msg' => $gitMsg,
+                'last_commit_date' => $gitDate,
+            ],
+            'database_census' => [
+                'snmp_devices' => $snmpCount,
+                'snmp_status' => $isSnmpOk ? 'ok' : 'incomplete',
+                'network_topology_links' => $linksCount,
+                'topology_status' => $isTopologyOk ? 'ok' : 'degraded',
+                'monitored_services' => $servicesCount,
+                'monitored_network_devices' => $devicesCount,
+                'monitored_sites' => $sitesCount,
+                'monitored_proxies' => $proxiesCount,
+                'users' => $usersCount,
+                'active_alerts' => $firingAlerts,
+            ],
+            'services' => $services,
+            'last_deployment' => $lastDeployment,
+            'audit_log_snippet' => $logSnippet,
+        ]);
+    }
 }
+
 

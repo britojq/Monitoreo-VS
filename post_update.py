@@ -339,6 +339,25 @@ def configure_pam_hardening():
             log(f"⚠️ Aviso configurando blindaje PAM en {p_path}: {ep}")
 
 
+def ensure_snmp_devices():
+    """Garantiza que la tabla snmp_devices esté sincronizada con los switches y equipos base."""
+    web_dir = Path("/var/www/monitoreo")
+    if web_dir.exists():
+        cmd_prefix = get_cmd_prefix()
+        try:
+            subprocess.run(
+                cmd_prefix + ["php", str(web_dir / "artisan"), "db:seed", "--class=SnmpOidsSeeder", "--force"],
+                cwd=str(web_dir),
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False
+            )
+            log("✅ Dispositivos y OIDs de SNMP sincronizados con SnmpOidsSeeder.")
+        except Exception as e:
+            log(f"⚠️ Aviso sincronizando SnmpOidsSeeder: {e}")
+
+
 def ensure_network_topology():
     """Garantiza que la topología de red física y lógica esté construida."""
     top_script = BASE_DIR / "monitor" / "topology_builder.py"
@@ -364,6 +383,7 @@ def main():
     configure_cli_symlink()
     configure_radar_cron()
     run_initial_radar_cycle()
+    ensure_snmp_devices()
     ensure_network_topology()
     # Re-asegurar permisos de todos los archivos generados tras el ciclo inicial
     configure_system_directories()

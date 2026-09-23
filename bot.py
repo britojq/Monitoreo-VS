@@ -4651,6 +4651,22 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
                 pass
         return
 
+    elif action == "get_audit_log":
+        await query.answer("📋 Obteniendo log de auditoría...")
+        audit_file = BASE_DIR / "logs" / "last_deploy_audit.log"
+        if audit_file.exists():
+            with open(audit_file, "rb") as f_doc:
+                await context.bot.send_document(
+                    chat_id=clicker_id,
+                    document=f_doc,
+                    filename="last_deploy_audit.log",
+                    caption="📋 <b>Registro de Auditoría del Último Despliegue GitOps</b>",
+                    parse_mode='HTML'
+                )
+        else:
+            await query.message.reply_text("ℹ️ No se ha encontrado un registro de despliegue reciente.")
+        return
+
 
 async def cmd_rollback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando exclusivo para que el Owner revierta actualizaciones del sistema de forma segura (Exclusivo en privado)."""
@@ -4763,6 +4779,33 @@ async def cmd_desbloquear_update(update: Update, context: ContextTypes.DEFAULT_T
         )
     await safe_reply_html(update.message, msg)
 
+
+async def cmd_log_actualizacion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Envía el archivo de auditoría del último despliegue al Owner (Exclusivo en privado)."""
+    if not await require_private_chat(update, context):
+        return
+
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id and user_id != IMMUTABLE_OWNER_ID:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    audit_file = BASE_DIR / "logs" / "last_deploy_audit.log"
+    if audit_file.exists():
+        with open(audit_file, "rb") as f_doc:
+            await context.bot.send_document(
+                chat_id=user_id,
+                document=f_doc,
+                filename="last_deploy_audit.log",
+                caption="📋 <b>Registro de Auditoría del Último Despliegue GitOps</b>",
+                parse_mode='HTML'
+            )
+    else:
+        await safe_reply_html(update.message, "ℹ️ No se ha encontrado un registro de despliegue reciente.")
 
 
 async def cmd_cluster(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -7984,6 +8027,7 @@ def main() -> None:
     application.add_handler(CommandHandler(["rollback", "revertir", "git_rollback"], cmd_rollback))
     application.add_handler(CommandHandler(["estado_deploy", "deploy_status", "git_status"], cmd_estado_deploy))
     application.add_handler(CommandHandler(["desbloquear_update", "unlock_update"], cmd_desbloquear_update))
+    application.add_handler(CommandHandler(["log_actualizacion", "log_deploy", "deploy_log", "auditoria_deploy"], cmd_log_actualizacion))
 
     # Comando exclusivo para que el Owner consulte el rol de clúster y token de autenticación
     application.add_handler(CommandHandler(["cluster", "nodo", "rol_nodo", "token_cluster"], cmd_cluster))
