@@ -279,6 +279,66 @@ def configure_terminal_shield():
         log(f"⚠️ Aviso configurando Sentinel Terminal Shield: {e}")
 
 
+def configure_pam_hardening():
+    """Configura y audita el blindaje PAM para SSH, sudo y su / su - en tiempo real."""
+    cmd_prefix = get_cmd_prefix()
+    hook_script = BASE_DIR / "monitor" / "ssh_alert.sh"
+    if not hook_script.exists():
+        log("⚠️ No se encontró monitor/ssh_alert.sh para blindaje PAM.")
+        return
+
+    # Asegurar permisos de ejecución en scripts PAM
+    for s in ["ssh_alert.sh", "ssh_alert.py", "terminal_shield.sh", "terminal_shield.py"]:
+        sp = BASE_DIR / "monitor" / s
+        if sp.exists():
+            sp.chmod(0o755)
+
+    pam_configs = [
+        (
+            Path("/etc/pam.d/sshd"),
+            "session optional pam_exec.so seteuid /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh",
+            "# Alerta de conexion SSH a Telegram (Monitor Valle Seco)"
+        ),
+        (
+            Path("/etc/pam.d/sudo"),
+            "session requisite pam_exec.so seteuid stdout /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh",
+            "# Alerta y contencion estricta de sesiones sudo a Telegram y MariaDB"
+        ),
+        (
+            Path("/etc/pam.d/su"),
+            "session requisite pam_exec.so seteuid stdout /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh",
+            "# Alerta y contencion de sesiones su / su - a Telegram y MariaDB (Opcion B)"
+        )
+    ]
+
+    for p_path, p_rule, p_comment in pam_configs:
+        try:
+            if not p_path.exists():
+                continue
+            res = subprocess.run(cmd_prefix + ["cat", str(p_path)], capture_output=True, text=True)
+            if res.returncode != 0:
+                continue
+            content = res.stdout
+
+            # Si ya contiene exactamente la regla esperada, no alterar
+            if p_rule in content:
+                log(f"Blindaje PAM en {p_path.name} ya está al día.")
+                continue
+
+            # Limpiar versiones antiguas o incorrectas del hook
+            lines = [l for l in content.splitlines() if "ssh_alert.sh" not in l and "Monitor Valle Seco" not in l and "Alerta y contencion" not in l and "Alerta y auditoria" not in l]
+            new_content = "\n".join(lines).rstrip() + f"\n\n{p_comment}\n{p_rule}\n"
+
+            temp_p = Path(f"/tmp/{p_path.name}.pam.tmp")
+            temp_p.write_text(new_content, encoding="utf-8")
+            subprocess.run(cmd_prefix + ["cp", "-f", str(temp_p), str(p_path)], check=True)
+            subprocess.run(cmd_prefix + ["chmod", "0644", str(p_path)], check=False)
+            temp_p.unlink(missing_ok=True)
+            log(f"✅ Blindaje PAM {p_path.name} actualizado y verificado.")
+        except Exception as ep:
+            log(f"⚠️ Aviso configurando blindaje PAM en {p_path}: {ep}")
+
+
 def main():
     log("=================================================================")
     log("🚀 EJECUTANDO HOOK DE POST-ACTUALIZACIÓN MAYOR (post_update.py)")
@@ -286,6 +346,7 @@ def main():
 
     configure_sudoers()
     configure_terminal_shield()
+    configure_pam_hardening()
     configure_system_directories()
     configure_network_capabilities()
     configure_cli_symlink()

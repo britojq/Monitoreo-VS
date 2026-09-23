@@ -239,6 +239,17 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
     scan_id = None
 
     try:
+        # Si site_id no fue provisto, buscar si la subred tiene una sede asociada en discovery_subnets
+        if site_id is None:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT site_id FROM discovery_subnets WHERE subnet = %s LIMIT 1", (subnet_str,))
+                    sub_row = cur.fetchone()
+                    if sub_row and sub_row.get("site_id"):
+                        site_id = sub_row["site_id"]
+            except Exception as e:
+                logger.warning(f"No se pudo consultar site_id para subred {subnet_str}: {e}")
+
         # 1. Registrar inicio de escaneo en discovery_scans
         with conn.cursor() as cur:
             cur.execute("""
@@ -351,6 +362,10 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
                             linked_network_device_id = COALESCE(%s, linked_network_device_id)
                         WHERE id = %s
                     """, (ip, hostname, vendor, oui_prefix, linked_id, dev_id))
+
+                    # Si el dispositivo no tiene sede asignada pero la subred tiene una definida, poblarla
+                    if not existing.get("site_id") and site_id is not None:
+                        cur.execute("UPDATE discovered_devices SET site_id = %s WHERE id = %s", (site_id, dev_id))
 
         duration = round(time.time() - start_time, 2)
 

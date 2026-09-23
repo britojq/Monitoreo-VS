@@ -39,115 +39,119 @@
                 Mi Perfil
             </a>
 
-            @if(auth()->user()->isAdmin())
-            <!-- GESTIÓN DE USUARIOS (Solo Administrador) -->
-            <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">group</span>
-                Usuarios
-            </a>
-
-            <!-- AUDITORÍA DEL SISTEMA (Solo Administrador) -->
-            <a href="{{ route('admin.audit.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.audit.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">policy</span>
-                Auditoría
-            </a>
-
-            <!-- TÉRMINOS DE USO & SEGURIDAD (Solo Administrador) -->
-            <a href="{{ route('admin.terms.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.terms.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">verified_user</span>
-                Términos de Uso
-            </a>
-
-            <!-- BANEOS & SEGURIDAD (Solo Administrador) -->
-            <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}">
-                <span class="material-symbols-outlined text-lg">gavel</span>
-                Baneos & Seguridad
-            </a>
-
-            <!-- PLANTILLAS DE MENSAJERÍA BOT (Solo Administrador) -->
-            <a href="{{ route('admin.bot.templates.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.templates.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">edit_note</span>
-                Plantillas Bot
-            </a>
-
-            <!-- COMANDOS DEL BOT (Solo Administrador) -->
-            <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">terminal</span>
-                Comandos Bot
-            </a>
-
-            <!-- CONFIGURACIÓN AVANZADA (Solo Administrador) -->
-            <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">tune</span>
-                Configuración Avanzada
-            </a>
-            @endif
-
-            <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider text-obsidian-muted/60 font-bold">
-                Infraestructura Monitoreada
+            <!-- ============================================================= -->
+            <!-- SECCIÓN: GESTIÓN OPERATIVA & MONITOREO                        -->
+            <!-- ============================================================= -->
+            <div class="pt-3 pb-1 px-3 flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-cyan-400 border-t border-obsidian-border/50 mt-1">
+                <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[13px] text-cyan-400">tune</span>
+                    GESTIÓN
+                </span>
+                <span class="text-[9px] font-mono text-obsidian-muted/60 lowercase">operación</span>
             </div>
 
-            <!-- SERVICIOS -->
-            <a href="{{ route('admin.services.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.services.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">dns</span>
-                Servicios
+            <!-- TOPOLOGÍA DE RED -->
+            <a href="{{ route('admin.topology.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.topology.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Diagrama y mapa interactivo de topología">
+                <span class="material-symbols-outlined text-lg">hub</span>
+                Topología de Red
             </a>
 
-            <!-- SEDES -->
-            <a href="{{ route('admin.sites.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.sites.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- SERVICIOS & CONECTIVIDAD -->
+            <a href="{{ route('admin.services.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.services.*', 'admin.proxies.*', 'admin.ssl.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Servicios, Proxies y Certificados SSL/TLS">
+                <span class="material-symbols-outlined text-lg">dns</span>
+                Servicios & Conectividad
+            </a>
+
+            <!-- SEDES & ENLACES -->
+            <a href="{{ route('admin.sites.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.sites.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Sedes remotas y enlaces de fibra/radio">
                 <span class="material-symbols-outlined text-lg">domain</span>
                 Sedes & Enlaces
             </a>
 
-            <!-- DISPOSITIVOS DE RED -->
-            <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- EQUIPOS & HARDWARE -->
+            <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*', 'admin.lifecycle.*', 'admin.wol.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Switches, Routers, Ciclo de Vida y WoL">
                 <span class="material-symbols-outlined text-lg">router</span>
-                Dispositivos de Red
+                Equipos & Hardware
             </a>
 
-            <!-- AUTO-DISCOVERY & ANTI-ROGUE -->
-            <a href="{{ route('admin.discovery.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.discovery.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- RADAR & DESCUBRIMIENTO -->
+            <a href="{{ route('admin.discovery.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.discovery.*', 'admin.netradar.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Auto-Discovery y NET Radar de tráfico">
                 <span class="material-symbols-outlined text-lg">radar</span>
-                Auto-Discovery (Red)
+                Radar & Descubrimiento
             </a>
 
-            <!-- NET RADAR (TRÁFICO & ACTUALIZACIONES) -->
-            @if(!auth()->user() || auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('netradar.view')))
-            <a href="{{ route('admin.netradar.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.netradar.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">troubleshoot</span>
-                NET Radar
-            </a>
-            @endif
-
-            <!-- TELEMETRÍA SNMP -->
-            <a href="{{ route('admin.snmp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.snmp.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- CONSOLA SNMP 360° -->
+            <a href="{{ route('admin.snmp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.snmp.*', 'admin.traps.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Telemetría SNMP, OIDs y Trampas Push (UDP 162)">
                 <span class="material-symbols-outlined text-lg">sensors</span>
-                Telemetría SNMP
+                Consola SNMP 360°
             </a>
 
-            <!-- CERTIFICADOS SSL/TLS -->
-            <a href="{{ route('admin.ssl.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.ssl.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">lock</span>
-                Certificados SSL/TLS
+            <!-- TRÁFICO & LOGS DE RED -->
+            <a href="{{ route('admin.netflow.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.netflow.*', 'admin.syslog.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="NetFlow v5/v9 y Syslog en vivo">
+                <span class="material-symbols-outlined text-lg">swap_vert</span>
+                Tráfico & Logs de Red
             </a>
 
-            <!-- ALERTAS Y CORRELACIÓN -->
-            <a href="{{ route('admin.alerts.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.alerts.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- CENTRO DE ALERTAS & IA -->
+            <a href="{{ route('admin.alerts.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.alerts.*', 'admin.predictive.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Correlación de incidentes e IA predictiva">
                 <span class="material-symbols-outlined text-lg">notifications_active</span>
-                Alertas y Correlación
+                Centro de Alertas & IA
             </a>
 
-            <!-- RESPALDOS Y CONFIGS (Fase 5) -->
-            <a href="{{ route('admin.configs.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.configs.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
+            <!-- RESPALDOS Y CONFIGS (NCM) -->
+            <a href="{{ route('admin.configs.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.configs.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Gestión de configuraciones (NCM) y respaldos">
                 <span class="material-symbols-outlined text-lg">settings_backup_restore</span>
                 Respaldos y Configs
             </a>
 
-            <!-- PROXIES -->
-            <a href="{{ route('admin.proxies.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.proxies.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
-                <span class="material-symbols-outlined text-lg">public</span>
-                Proxies
+            @if(auth()->user()->isAdmin())
+            <!-- ============================================================= -->
+            <!-- SECCIÓN: SISTEMA & GOBERNANZA (EXCLUSIVO ADMINISTRADOR)       -->
+            <!-- ============================================================= -->
+            <div class="pt-4 pb-1 px-3 flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-purple-400 border-t border-obsidian-border/50 mt-2">
+                <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[13px] text-purple-400">shield_person</span>
+                    SISTEMA
+                </span>
+                <span class="text-[9px] font-mono text-obsidian-muted/60 lowercase">admin</span>
+            </div>
+
+            <!-- USUARIOS & ROLES -->
+            <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Control de cuentas, roles y permisos LDAP/Locales">
+                <span class="material-symbols-outlined text-lg">group</span>
+                Usuarios & Roles
             </a>
+
+            <!-- AUDITORÍA DEL SISTEMA -->
+            <a href="{{ route('admin.audit.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.audit.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Pistas de auditoría y bitácora forense">
+                <span class="material-symbols-outlined text-lg">policy</span>
+                Auditoría del Sistema
+            </a>
+
+            <!-- BANEOS & SEGURIDAD -->
+            <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}" title="Bloqueo preventivo de IPs y jaulas Fail2Ban">
+                <span class="material-symbols-outlined text-lg">gavel</span>
+                Baneos & Seguridad
+            </a>
+
+            <!-- TÉRMINOS DE USO -->
+            <a href="{{ route('admin.terms.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.terms.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Políticas corporativas y firmas de aceptación">
+                <span class="material-symbols-outlined text-lg">verified_user</span>
+                Términos de Uso
+            </a>
+
+            <!-- COMANDOS & PLANTILLAS BOT -->
+            <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*', 'admin.bot.templates.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Gestor de comandos y plantillas de Telegram">
+                <span class="material-symbols-outlined text-lg">terminal</span>
+                Comandos & Plantillas Bot
+            </a>
+
+            <!-- CONFIGURACIÓN AVANZADA -->
+            <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Ajustes de cluster, umbrales y timeouts">
+                <span class="material-symbols-outlined text-lg">tune</span>
+                Configuración Avanzada
+            </a>
+            @endif
         </nav>
 
         <!-- PIE DE SIDEBAR (FIJO) -->
@@ -353,6 +357,49 @@
                         <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-black" title="En línea"></span>
                     </div>
                 </button>
+
+                <!-- BOTÓN DE ASISTENCIA Y ACERCA DE (?) -->
+                <div class="relative shrink-0" id="help-menu-container">
+                    <button type="button" 
+                            onclick="toggleHelpDropdown(event)" 
+                            id="btn-help-dropdown" 
+                            class="w-8 h-8 rounded-full bg-obsidian-panel/80 hover:bg-obsidian-border border border-obsidian-border hover:border-obsidian-cyan/60 text-obsidian-muted hover:text-obsidian-cyan transition shadow-sm flex items-center justify-center cursor-pointer focus:outline-none focus:ring-1 focus:ring-obsidian-cyan/50" 
+                            title="Ayuda del Sistema y Acerca">
+                        <span class="material-symbols-outlined text-[19px] leading-none">help</span>
+                    </button>
+
+                    <!-- MENÚ POPUP FLOTANTE (DROPDOWN) -->
+                    <div id="help-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 rounded-2xl bg-[#07172b]/95 border border-obsidian-border/80 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-xl z-50 py-2 divide-y divide-obsidian-border/50 animate-in fade-in zoom-in-95 duration-150">
+                        <div class="px-4 py-2">
+                            <p class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold">Centro de Asistencia</p>
+                            <p class="text-[11px] text-obsidian-muted">Recursos y documentación</p>
+                        </div>
+                        
+                        <div class="py-1">
+                            <!-- OPCIÓN 1: MANUAL DE AYUDA -->
+                            <a href="{{ route('admin.help.index') }}" class="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-200 hover:text-obsidian-cyan hover:bg-obsidian-panel/80 transition group">
+                                <span class="w-7 h-7 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                    <span class="material-symbols-outlined text-base">menu_book</span>
+                                </span>
+                                <div class="flex-1 min-w-0">
+                                    <span class="font-bold block leading-tight">Ayuda</span>
+                                    <span class="text-[10px] font-mono text-obsidian-muted block truncate">Manual de usuario</span>
+                                </div>
+                            </a>
+
+                            <!-- OPCIÓN 2: ACERCA -->
+                            <button type="button" onclick="openAboutSystemModal(); toggleHelpDropdown();" class="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-slate-200 hover:text-purple-300 hover:bg-obsidian-panel/80 transition text-left cursor-pointer group">
+                                <span class="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                    <span class="material-symbols-outlined text-base">info</span>
+                                </span>
+                                <div class="flex-1 min-w-0">
+                                    <span class="font-bold block leading-tight">Acerca</span>
+                                    <span class="text-[10px] font-mono text-obsidian-muted block truncate">Versión y autoría</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -664,4 +711,222 @@
     }
 </script>
 @endif
+
+<!-- ========================================================================= -->
+<!-- MODAL: ACERCA DEL SISTEMA                                                  -->
+<!-- ========================================================================= -->
+<div id="about-system-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md transition-all duration-300">
+    <div class="w-full max-w-4xl lg:max-w-5xl glass-panel rounded-2xl border border-obsidian-border bg-[#07172b]/98 p-5 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.85)] relative text-left space-y-4 animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- CABECERA -->
+        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-obsidian-cyan/20 to-purple-500/30 border border-obsidian-cyan/50 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-2 shadow-lg shadow-cyan-500/20">
+                    <img src="{{ asset('img/logo.png') }}" alt="Logo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+                    <span class="material-symbols-outlined text-2xl text-obsidian-cyan hidden">info</span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
+                            v3.0.0
+                        </span>
+                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ config('monitoring.cluster.role') === 'master' ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : 'bg-blue-950/80 text-blue-300 border border-blue-500/40' }}">
+                            MODO {{ strtoupper(config('monitoring.cluster.role', 'slave')) }}
+                        </span>
+                    </div>
+                    <h2 class="text-base sm:text-lg font-bold text-white tracking-tight leading-tight mt-0.5">
+                        Plataforma Integral Valle Seco
+                    </h2>
+                    <p class="text-[11px] font-mono text-obsidian-muted">
+                        Centro de Operaciones y Monitoreo de Infraestructura de Red
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="closeAboutSystemModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none p-1 transition cursor-pointer" title="Cerrar">&times;</button>
+        </div>
+
+        <!-- CUERPO HORIZONTAL EN 2 COLUMNAS (TODO VISIBLE SIN DESPLAZAMIENTO) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono text-xs">
+            <!-- COLUMNA IZQUIERDA: DATOS INSTITUCIONALES (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col justify-between space-y-3">
+                <!-- TARJETA DE CRÉDITOS Y DESARROLLO -->
+                <div class="p-3.5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border space-y-2.5">
+                    <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold pb-1 border-b border-obsidian-border/40 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">engineering</span>
+                        Desarrollo & Créditos
+                    </div>
+                    <div class="space-y-1.5 text-[11px]">
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Desarrollado por:</span>
+                            <span class="text-white font-bold">Operador ATIT</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Usuario GitHub:</span>
+                            <a href="https://github.com/britojab" target="_blank" class="text-obsidian-cyan hover:underline font-bold">@britojab</a>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Organización:</span>
+                            <span class="text-white font-semibold">ATIT Valle Seco</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Período de Desarrollo:</span>
+                            <span class="text-amber-300 font-bold">2018 – 2026</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Versión del Sistema:</span>
+                            <span class="text-obsidian-cyan font-bold">v3.0.0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Módulos de la Plataforma:</span>
+                            <span class="inline-flex items-center gap-1 font-bold text-slate-200">
+                                <span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[10px]">1 / 5</span>
+                                <span>Activo</span>
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Módulo Actual:</span>
+                            <span class="text-white font-bold">Sistema de Monitoreo</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-obsidian-muted">Licencia:</span>
+                            <span class="text-emerald-400 font-semibold">GNU AGPLv3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AVISO INSTITUCIONAL -->
+                <div class="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-[10px] text-cyan-200 leading-relaxed font-mono flex items-start gap-2">
+                    <span class="material-symbols-outlined text-base text-obsidian-cyan shrink-0 mt-0.5">verified_user</span>
+                    <span>Módulo concebido y optimizado para supervisar la continuidad operativa e infraestructura crítica de la red corporativa.</span>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: FUNCIONES PRINCIPALES (7 cols) -->
+            <div class="lg:col-span-7 space-y-2">
+                <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">hub</span>
+                    Funciones Principales del Sistema
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">monitoring</span>
+                            Telemetría & Conectividad
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Monitoreo 24/7 de servicios web, DNS, ICMP, sedes remotas y proxies Squid.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-purple-400">hub</span>
+                            Topología & Descubrimiento
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Mapeo interactivo de enlaces, detección de anomalías ARP y equipos no autorizados.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-amber-400">power_settings_new</span>
+                            Energía & Control Remoto
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Despacho de paquetes Wake-on-LAN (WoL) y terminales web seguras SSH, Telnet y VNC.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-emerald-400">psychology</span>
+                            Motor Local de IA
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Asistencia diagnóstica, análisis predictivo de saturación y consultas en lenguaje natural.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-blue-400">dns</span>
+                            SNMP 360° & NCM
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Recolección de métricas por interfaces, recepción de trampas UDP 162 y respaldos de configuración.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                        <div class="font-bold text-white flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-red-400">security</span>
+                            Blindaje & Clúster
+                        </div>
+                        <p class="text-obsidian-muted text-[10px] leading-tight">
+                            Replicación Master/Slave, trazabilidad forense, alertas PAM y autenticación LDAP.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PIE DEL MODAL -->
+        <div class="shrink-0 pt-3 border-t border-obsidian-border flex items-center justify-between">
+            <a href="{{ route('admin.help.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">menu_book</span>
+                <span>Ir al Manual de Ayuda</span>
+            </a>
+            <button type="button" onclick="closeAboutSystemModal()" class="px-6 py-2 rounded-xl bg-obsidian-panel border border-obsidian-border text-white hover:bg-obsidian-border text-xs font-mono font-semibold transition cursor-pointer">
+                Cerrar
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function toggleHelpDropdown(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        const menu = document.getElementById('help-dropdown-menu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+        }
+    }
+
+    function openAboutSystemModal() {
+        const modal = document.getElementById('about-system-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeAboutSystemModal() {
+        const modal = document.getElementById('about-system-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Cerrar dropdown al hacer click afuera
+    document.addEventListener('click', function(event) {
+        const container = document.getElementById('help-menu-container');
+        const menu = document.getElementById('help-dropdown-menu');
+        if (container && menu && !container.contains(event.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // Cerrar modal al presionar Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAboutSystemModal();
+            const menu = document.getElementById('help-dropdown-menu');
+            if (menu) menu.classList.add('hidden');
+        }
+    });
+</script>
 @endsection

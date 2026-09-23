@@ -10,6 +10,7 @@ use App\Models\SnmpDevice;
 use App\Models\SnmpInterface;
 use App\Models\SnmpInterfaceMetric;
 use App\Models\SnmpOid;
+use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -172,6 +173,11 @@ class AdminSnmpController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de dispositivos SNMP deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'ip_address' => 'required|ip|unique:snmp_devices,ip_address',
@@ -226,6 +232,11 @@ class AdminSnmpController extends Controller
      */
     public function update(Request $request, int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de dispositivos SNMP deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $device = SnmpDevice::findOrFail($id);
 
         $validated = $request->validate([
@@ -280,6 +291,11 @@ class AdminSnmpController extends Controller
      */
     public function destroy(Request $request, int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de dispositivos SNMP deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $device = SnmpDevice::findOrFail($id);
         $name = $device->name;
         $ip = $device->ip_address;
@@ -343,6 +359,14 @@ class AdminSnmpController extends Controller
      */
     public function toggleInterfaceMonitoring(Request $request, int $id): JsonResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Acción Bloqueada: Servidor en modo ESCLAVO. Gestione interfaces en el Master ({$cluster->getMasterApiUrl()}).",
+            ], 403);
+        }
+
         $interface = SnmpInterface::findOrFail($id);
         $interface->is_monitored = !$interface->is_monitored;
         $interface->save();
@@ -359,6 +383,14 @@ class AdminSnmpController extends Controller
      */
     public function activateRemote(Request $request): JsonResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return response()->json([
+                'status' => 'failed',
+                'error' => "Acción Bloqueada: Servidor en modo ESCLAVO. La activación remota debe ejecutarse desde el Master ({$cluster->getMasterApiUrl()}).",
+            ], 403);
+        }
+
         $validated = $request->validate([
             'ip_address' => 'required|ip',
             'method' => 'required|in:ssh,telnet,pfsense',

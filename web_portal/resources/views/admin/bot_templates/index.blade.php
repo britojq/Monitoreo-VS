@@ -4,6 +4,18 @@
 
 @section('admin_content')
 <div class="space-y-6">
+    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.bot.commands.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">terminal</span>
+            <span>Comandos & Políticas</span>
+        </a>
+        <a href="{{ route('admin.bot.templates.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">edit_note</span>
+            <span>Plantillas de Mensajería</span>
+        </a>
+    </div>
+
     <!-- CABECERA DE LA PÁGINA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-obsidian-border/80">
         <div class="flex items-center gap-3">
@@ -24,6 +36,12 @@
         </div>
 
         <div class="flex items-center gap-2">
+            @if($isClusterSlave)
+            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                <span class="material-symbols-outlined text-xs">lock</span>
+                <span>Solo Lectura (Modo Esclavo)</span>
+            </span>
+            @endif
             <a href="{{ route('admin.dashboard') }}" class="px-3.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-xs font-mono text-obsidian-muted hover:text-white transition flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-sm">arrow_back</span>
                 <span>Dashboard</span>
@@ -186,14 +204,22 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        @if(!$isClusterSlave)
                         <button type="submit" class="px-5 py-2.5 rounded-xl bg-obsidian-cyan text-black font-mono font-bold text-xs uppercase tracking-wide flex items-center gap-2 hover:bg-cyan-300 transition shadow-lg shadow-cyan-950/40 cursor-pointer">
                             <span class="material-symbols-outlined text-base">save</span>
                             <span>Guardar Cambios</span>
                         </button>
+                        @else
+                        <button type="button" disabled class="px-5 py-2.5 rounded-xl bg-gray-800 text-gray-500 font-mono font-bold text-xs uppercase tracking-wide flex items-center gap-2 cursor-not-allowed border border-gray-700">
+                            <span class="material-symbols-outlined text-base">lock</span>
+                            <span>Modo Esclavo (Solo Lectura)</span>
+                        </button>
+                        @endif
                     </div>
                 </div>
             </form>
 
+            @if(!$isClusterSlave)
             <!-- FORMULARIO SEPARADO PARA RESTAURAR VALORES DE FÁBRICA -->
             <div class="pt-2 flex justify-end">
                 <form action="{{ route('admin.bot.templates.reset', $currentTemplate) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas restaurar la plantilla \'{{ $currentTemplate->title }}\' a sus valores originales de fábrica?');">
@@ -204,6 +230,7 @@
                     </button>
                 </form>
             </div>
+            @endif
         </div>
 
         <!-- COLUMNA DERECHA: PREVISUALIZACIÓN EN VIVO TIPO TELEGRAM (5 COLS) -->

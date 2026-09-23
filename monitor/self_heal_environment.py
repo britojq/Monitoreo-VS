@@ -42,6 +42,10 @@ PROTECTED_TABLES = [
     'maintenance_windows', 'alert_storm_suppression',
     # Fase 5: Calidad WAN y Respaldo de Configuraciones
     'device_configurations', 'config_change_logs',
+    # Fase 6: Telemetría Push en Tiempo Real (Traps, NetFlow, Syslog)
+    'netflow_records', 'syslog_events', 'netflow_top_talkers',
+    # Fase 7: Topología Visual, Wake-on-LAN, IA Predictiva y Ciclo de Vida
+    'network_topology_links', 'wol_devices', 'predictive_anomalies', 'hardware_lifecycle',
 ]
 
 

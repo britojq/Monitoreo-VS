@@ -3,7 +3,7 @@ venv/
 __pycache__/
 *.pyc
 
-# Archivos de configuración con tokens o credenciales sensibles
+# Archivos de configuración con credenciales sensibles
 .env
 config.json
 config/config.json
@@ -27,7 +27,9 @@ audit/.sys_anchor
 intentos_acceso.log
 !audit/.gitkeep
 
-# Documentación interna (Se respalda en el repositorio privado)
+# Documentación interna confidencial (Excluida de repo público)
+docs/
+docs/*
 
 # Agentes y Habilidades Locales
 .agents/skills/
@@ -38,6 +40,7 @@ intentos_acceso.log
 web_portal/vendor/
 web_portal/node_modules/
 web_portal/.env
+web_portal/database/database.sqlite
 web_portal/storage/logs/*.log
 web_portal/storage/framework/cache/data/*
 web_portal/storage/framework/sessions/*
@@ -45,10 +48,9 @@ web_portal/storage/framework/views/*
 web_portal/storage/app/public/*
 web_portal/bootstrap/cache/*.php
 !web_portal/bootstrap/cache/.gitignore
-# Scratch scripts
 scratch/
 
-# GitOps y Respaldos de Base de Datos
+# GitOps y Respaldos de BD
 .update_lock
 database/backups/*.sql.gz
 !database/backups/.gitkeep

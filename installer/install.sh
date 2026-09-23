@@ -111,6 +111,7 @@ if command -v arp-scan >/dev/null 2>&1; then
 fi
 
 if id "$SYS_USER" >/dev/null 2>&1; then
+    usermod -aG sudo "$SYS_USER" 2>/dev/null || true
     usermod -aG wireshark "$SYS_USER" 2>/dev/null || true
     usermod -aG www-data "$SYS_USER" 2>/dev/null || true
 fi
@@ -397,6 +398,25 @@ RestartSec=10
 WantedBy=multi-user.target
 SERVICE_EOF
 
+# 2.1 Servicio Sentinel Bot (Demonio de Onboarding Seguro y Validación de Hardware)
+cat <<SERVICE_EOF > /etc/systemd/system/sentinel_bot.service
+[Unit]
+Description=Sentinel Bot (Demonio de Onboarding y Desbloqueo Seguro de Servidor)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=$SYS_USER
+Group=$SYS_USER
+WorkingDirectory=$PROJECT_DIR
+ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/sentinel_bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
 # 3. Proxy WebSocket Websockify para noVNC
 mkdir -p /etc/websockify
 touch /etc/websockify/tokens.cfg
@@ -452,36 +472,75 @@ chmod 644 /etc/cron.d/monitoreo_web
 
 systemctl daemon-reload
 systemctl enable boot-alert.service
-systemctl enable tg-admin-bot.service
 systemctl enable tg-thermal-guard.service
 systemctl restart tg-thermal-guard.service || true
 systemctl enable websockify.service
 systemctl restart websockify.service || true
-echo -e "${GREEN}[+] Servicios Systemd (Bot, Guardián Térmico) y Cron configurados y habilitados.${NC}\n"
+
+# Verificación inteligente de estado de validación de hardware
+IS_OPERATIONAL=0
+if [ -f "$PROJECT_DIR/monitor/core_shield.py" ] && [ -f "$PROJECT_DIR/venv/bin/python" ]; then
+    if "$PROJECT_DIR/venv/bin/python" -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from monitor.core_shield import is_core_operational; sys.exit(0 if is_core_operational() else 1)" 2>/dev/null; then
+        IS_OPERATIONAL=1
+    fi
+fi
+
+if [ "$IS_OPERATIONAL" -eq 1 ]; then
+    systemctl enable tg-admin-bot.service
+    systemctl restart tg-admin-bot.service || true
+    systemctl disable --now sentinel_bot.service 2>/dev/null || true
+    echo -e "${GREEN}[+] Sistema ya validado con firma criptográfica. Bot Principal (tg-admin-bot) activo.${NC}"
+else
+    # En nueva instalación limpia:
+    # Desactivar tg-admin-bot para evitar colisión de polling con producción
+    systemctl stop tg-admin-bot.service 2>/dev/null || true
+    systemctl disable tg-admin-bot.service 2>/dev/null || true
+    # Activar Sentinel Bot para el onboarding y autorización remota
+    systemctl enable sentinel_bot.service
+    systemctl restart sentinel_bot.service || true
+    echo -e "${YELLOW}[!] Nueva instalación detectada. Sentinel Bot activado para Onboarding Seguro.${NC}"
+    echo -e "${YELLOW}[!] Bot principal desactivado preventivamente para evitar colisiones.${NC}"
+    echo -e "${GREEN}[+] Alerta despachada al Telegram privado del Administrador para su validación.${NC}"
+fi
+echo -e "${GREEN}[+] Servicios Systemd y Cron configurados y sincronizados correctamente.${NC}\n"
 
 # =========================================================================
-# PASO 10: ALERTA DE CONEXIONES SSH EN TIEMPO REAL (PAM)
+# PASO 10: ALERTA Y BLINDAJE DE SEGURIDAD EN TIEMPO REAL (PAM: SSH, SUDO, SU)
 # =========================================================================
-echo -e "${BLUE}[*] Paso 10: Configurando alertas SSH en PAM (/etc/pam.d/sshd)...${NC}"
+echo -e "${BLUE}[*] Paso 10: Configurando blindaje y alertas en PAM (SSH, sudo, su)...${NC}"
 chmod +x "$PROJECT_DIR/monitor/ssh_alert.sh" "$PROJECT_DIR/monitor/ssh_alert.py" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/monitor/terminal_shield.sh" "$PROJECT_DIR/monitor/terminal_shield.py" 2>/dev/null || true
 
+# 1. Alertas de conexión SSH (optional)
 PAM_SSHD="/etc/pam.d/sshd"
-PAM_HOOK="session optional pam_exec.so seteuid /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+PAM_SSHD_RULE="session optional pam_exec.so seteuid /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+if [ -f "$PAM_SSHD" ]; then
+    sed -i '\|/ssh_alert.sh|d' "$PAM_SSHD" 2>/dev/null || true
+    echo "" >> "$PAM_SSHD"
+    echo "# Alerta de conexion SSH a Telegram (Monitor Valle Seco)" >> "$PAM_SSHD"
+    echo "$PAM_SSHD_RULE" >> "$PAM_SSHD"
+fi
 
-sed -i '\|/scripts/monitor/ssh_alert.sh|d' "$PAM_SSHD" 2>/dev/null || true
-sed -i '\|/scripts/telegram-admin-bot/monitor/ssh_alert.sh|d' "$PAM_SSHD" 2>/dev/null || true
-
-echo "" >> "$PAM_SSHD"
-echo "# Alerta de conexion SSH a Telegram (Monitor Valle Seco)" >> "$PAM_SSHD"
-echo "$PAM_HOOK" >> "$PAM_SSHD"
-
+# 2. Alerta y contención estricta de sesiones sudo
 PAM_SUDO="/etc/pam.d/sudo"
-if [ -f "$PAM_SUDO" ] && ! grep -q "ssh_alert.sh" "$PAM_SUDO"; then
+PAM_SUDO_RULE="session requisite pam_exec.so seteuid stdout /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+if [ -f "$PAM_SUDO" ]; then
+    sed -i '\|/ssh_alert.sh|d' "$PAM_SUDO" 2>/dev/null || true
     echo "" >> "$PAM_SUDO"
     echo "# Alerta y auditoria de sesiones sudo a Telegram y MariaDB" >> "$PAM_SUDO"
-    echo "$PAM_HOOK" >> "$PAM_SUDO"
+    echo "$PAM_SUDO_RULE" >> "$PAM_SUDO"
 fi
-echo -e "${GREEN}[+] Hooks de PAM para alertas SSH y sudo configurados exitosamente.${NC}\n"
+
+# 3. Alerta y contención de sesiones su / su - / su -l
+PAM_SU="/etc/pam.d/su"
+PAM_SU_RULE="session requisite pam_exec.so seteuid stdout /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+if [ -f "$PAM_SU" ]; then
+    sed -i '\|/ssh_alert.sh|d' "$PAM_SU" 2>/dev/null || true
+    echo "" >> "$PAM_SU"
+    echo "# Alerta y contencion de sesiones su / su - a Telegram y MariaDB (Opcion B)" >> "$PAM_SU"
+    echo "$PAM_SU_RULE" >> "$PAM_SU"
+fi
+echo -e "${GREEN}[+] Hooks de PAM para alertas SSH, sudo y su configurados con blindaje activo.${NC}\n"
 
 # =========================================================================
 # PASO 10B: CONFIGURACIÓN DEFENSIVA FAIL2BAN (SSH, APACHE, VNC)
@@ -603,6 +662,15 @@ echo "www-data ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client, /usr/bin/fail2ban-c
 chmod 0440 "$SUDOERS_F2B" 2>/dev/null || true
 visudo -c -f "$SUDOERS_F2B" 2>/dev/null || rm -f "$SUDOERS_F2B"
 
+# 3. Reglas sudoers para ejecución desatendida de NET Radar y Monitoreo Web
+SUDOERS_RADAR="/etc/sudoers.d/www-data-netradar"
+cat << 'RADAR_EOF' > "$SUDOERS_RADAR"
+# Reglas de ejecucion desatendida para NET Radar y Monitoreo Web
+www-data ALL=(ALL) NOPASSWD: /scripts/telegram-admin-bot/venv/bin/python *, /usr/bin/tcpdump *, /usr/bin/tshark *, /bin/kill *, /usr/bin/kill *
+RADAR_EOF
+chmod 0440 "$SUDOERS_RADAR" 2>/dev/null || true
+visudo -c -f "$SUDOERS_RADAR" 2>/dev/null || rm -f "$SUDOERS_RADAR"
+
 echo -e "${GREEN}[+] Sentinel Terminal Shield y reglas sudoers desplegados exitosamente.${NC}\n"
 
 # =========================================================================
@@ -633,13 +701,22 @@ echo -e "${NC}"
 echo -e "🌐 ${BOLD}Portal Web:${NC}              http://${DOMAIN_NAME}/"
 echo -e "🗄️ ${BOLD}Base de Datos:${NC}            ${DB_NAME} (Usuario: ${DB_USER})"
 echo -e "🖥️ ${BOLD}Escritorio Remoto VNC:${NC}   noVNC + Websockify activo (systemctl status websockify)"
-echo -e "📡 ${BOLD}Bot de Monitoreo:${NC}         Habilitado (systemctl status tg-admin-bot)"
-echo -e "🔔 ${BOLD}Notificador SSH & Boot:${NC}   Activos en PAM y systemd"
+if [ "$IS_OPERATIONAL" -eq 1 ]; then
+    echo -e "📡 ${BOLD}Bot de Monitoreo:${NC}         Activo y Validado (systemctl status tg-admin-bot)"
+else
+    echo -e "🛡️ ${BOLD}Sentinel Bot (Onboarding):${NC} Activo (systemctl status sentinel_bot)"
+    echo -e "📡 ${BOLD}Bot Principal:${NC}            Pendiente de activación (evita colisiones con producción)"
+fi
+echo -e "🔔 ${BOLD}Notificador SSH & Boot:${NC}   Activos con blindaje PAM y systemd"
 echo -e "⏱️ ${BOLD}Cron de Sincronización:${NC}   Dinámico / Configurable desde Portal Web (/etc/cron.d/monitoreo_web)"
 echo ""
-echo -e "${CYAN}Si este es un servidor nuevo o clonado, revise el Serial recibido en su"
-echo -e "Telegram privado y ejecute la validación por consola:${NC}"
-echo -e "${BOLD}  activar [SERIAL]${NC}"
-echo -e "${CYAN}Para verificar el estado del servicio ejecute:${NC}"
-echo -e "${BOLD}  sudo systemctl status tg-admin-bot.service${NC}"
+if [ "$IS_OPERATIONAL" -eq 0 ]; then
+    echo -e "${YELLOW}${BOLD}⚠️  PASO FINAL OBLIGATORIO DE ACTIVACIÓN (NUEVA INSTALACIÓN):${NC}"
+    echo -e "${CYAN}Revise el Serial recibido en su Telegram privado y autorice mediante:${NC}"
+    echo -e "  1️⃣  ${BOLD}Vía Telegram:${NC}  /activar [SERIAL] <TOKEN_BOT>"
+    echo -e "  2️⃣  ${BOLD}Vía Consola:${NC}   activar [SERIAL] [TOKEN_BOT]"
+    echo -e "${CYAN}Al activarse, Sentinel Bot transferirá el control automáticamente al Bot Principal.${NC}"
+else
+    echo -e "${GREEN}El servidor se encuentra validado y 100% operativo.${NC}"
+fi
 echo ""

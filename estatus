@@ -57,6 +57,30 @@ elif [ "${1:-}" = "alertas" ] || [ "${1:-}" = "alert" ] || [ "${1:-}" = "alerta"
 elif [ "${1:-}" = "configs" ] || [ "${1:-}" = "config" ] || [ "${1:-}" = "respaldos" ] || [ "${1:-}" = "backup" ]; then
     shift
     exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/config_backup.py" "$@"
+elif [ "${1:-}" = "traps" ] || [ "${1:-}" = "trap" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/snmp_trap_receiver.py" "$@"
+elif [ "${1:-}" = "syslog" ] || [ "${1:-}" = "syslogs" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/syslog_receiver.py" "$@"
+elif [ "${1:-}" = "netflow" ] || [ "${1:-}" = "flows" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/netflow_collector.py" "$@"
+elif [ "${1:-}" = "push" ] || [ "${1:-}" = "telemetria" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/push_telemetry_daemon.py" "$@"
+elif [ "${1:-}" = "topologia" ] || [ "${1:-}" = "topology" ] || [ "${1:-}" = "grafo" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/topology_builder.py" "$@"
+elif [ "${1:-}" = "wol" ] || [ "${1:-}" = "wake" ] || [ "${1:-}" = "encender" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/wol_sender.py" "$@"
+elif [ "${1:-}" = "predicciones" ] || [ "${1:-}" = "predictivo" ] || [ "${1:-}" = "capacidad" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/predictive_analyzer.py" "$@"
+elif [ "${1:-}" = "inventario" ] || [ "${1:-}" = "ciclovida" ] || [ "${1:-}" = "garantias" ] || [ "${1:-}" = "lifecycle" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/lifecycle_manager.py" "$@"
 elif [ "${1:-}" = "cluster" ] || [ "${1:-}" = "nodo" ] || [ "${1:-}" = "rol" ]; then
     shift
     exec "$PYTHON_EXEC" -c "

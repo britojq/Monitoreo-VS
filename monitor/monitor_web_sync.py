@@ -18,6 +18,7 @@ import time
 import warnings
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Optional
 import ssl
 import urllib.parse
 import httpx
@@ -942,6 +943,19 @@ async def run_full_scan():
     update_last_scan_time()
     print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total} | Disp. Valle Seco: {net_online}/{net_total}")
 
+def _clean_mysql_dt(val: Any, date_only: bool = False) -> Optional[str]:
+    """Convierte timestamps ISO 8601 (ej: '2026-09-22T18:29:57.000000Z') a formato DATETIME o DATE compatible con MariaDB/MySQL."""
+    if not val:
+        return None
+    s = str(val).strip()
+    if not s or s.lower() in ("null", "none"):
+        return None
+    if "T" in s:
+        s = s.replace("T", " ").split(".")[0].rstrip("Z")
+    if date_only:
+        return s[:10]
+    return s[:19] if len(s) >= 19 else s
+
 async def sync_from_master() -> bool:
     """
     MODO ESCLAVO (SLAVE):
@@ -994,7 +1008,9 @@ async def sync_from_master() -> bool:
             # 2. Guardar en base de datos MySQL local
             try:
                 conn = get_db_connection()
-                with conn.cursor() as cursor:
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
                     sql = """
                         INSERT INTO monitoring_snapshots 
                         (global_status, services_online, services_total, sites_online, sites_total, proxies_online, proxies_total, payload_json, created_at, updated_at)
@@ -1011,7 +1027,119 @@ async def sync_from_master() -> bool:
                         sumry.get("proxies_total", 0),
                         json.dumps(snapshot_payload, ensure_ascii=False)
                     ))
+                    # 2.0 Sincronización del catálogo base (Sedes, Servicios, Proxies, Dispositivos de Red)
+                    cfg = data.get("config", {})
+
+                    # 2.0.1 Sedes
+                    cfg_sites = cfg.get("sites", [])
+                    if cfg_sites:
+                        st_sql = """
+                            INSERT INTO monitored_sites
+                            (id, letter, name, ip, phone_1, phone_2, phone_3, phone_4, phone_5, phone_6,
+                             phone_7, phone_8, address, normal_state_msg, error_state_msg, is_active,
+                             sort_order, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            letter=VALUES(letter), name=VALUES(name), ip=VALUES(ip),
+                            phone_1=VALUES(phone_1), phone_2=VALUES(phone_2), phone_3=VALUES(phone_3),
+                            phone_4=VALUES(phone_4), phone_5=VALUES(phone_5), phone_6=VALUES(phone_6),
+                            phone_7=VALUES(phone_7), phone_8=VALUES(phone_8), address=VALUES(address),
+                            normal_state_msg=VALUES(normal_state_msg), error_state_msg=VALUES(error_state_msg),
+                            is_active=VALUES(is_active), sort_order=VALUES(sort_order), updated_at=VALUES(updated_at)
+                        """
+                        st_records = [
+                            (st["id"], st.get("letter"), st["name"], st.get("ip"), st.get("phone_1"),
+                             st.get("phone_2"), st.get("phone_3"), st.get("phone_4"), st.get("phone_5"),
+                             st.get("phone_6"), st.get("phone_7"), st.get("phone_8"), st.get("address"),
+                             st.get("normal_state_msg"), st.get("error_state_msg"), 1 if st.get("is_active", True) else 0,
+                             st.get("sort_order", 0), _clean_mysql_dt(st.get("created_at")), _clean_mysql_dt(st.get("updated_at") or st.get("created_at")))
+                            for st in cfg_sites if "id" in st and "name" in st
+                        ]
+                        if st_records:
+                            cursor.executemany(st_sql, st_records)
+
+                    # 2.0.2 Servicios
+                    cfg_services = cfg.get("services", [])
+                    if cfg_services:
+                        srv_sql = """
+                            INSERT INTO monitored_services
+                            (id, letter, name, type, scope, host_ip, web_url, port, credentials,
+                             check_interface, dns_test_domain, normal_state_msg, error_state_msg,
+                             is_active, sort_order, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            letter=VALUES(letter), name=VALUES(name), type=VALUES(type), scope=VALUES(scope),
+                            host_ip=VALUES(host_ip), web_url=VALUES(web_url), port=VALUES(port),
+                            credentials=VALUES(credentials), check_interface=VALUES(check_interface),
+                            dns_test_domain=VALUES(dns_test_domain), normal_state_msg=VALUES(normal_state_msg),
+                            error_state_msg=VALUES(error_state_msg), is_active=VALUES(is_active),
+                            sort_order=VALUES(sort_order), updated_at=VALUES(updated_at)
+                        """
+                        srv_records = [
+                            (s["id"], s.get("letter"), s["name"], s.get("type", "WEB"), s.get("scope", "LOCAL"),
+                             s.get("host_ip"), s.get("web_url"), s.get("port"), s.get("credentials"),
+                             s.get("check_interface"), s.get("dns_test_domain"), s.get("normal_state_msg"),
+                             s.get("error_state_msg"), 1 if s.get("is_active", True) else 0,
+                             s.get("sort_order", 0), _clean_mysql_dt(s.get("created_at")), _clean_mysql_dt(s.get("updated_at") or s.get("created_at")))
+                            for s in cfg_services if "id" in s and "name" in s
+                        ]
+                        if srv_records:
+                            cursor.executemany(srv_sql, srv_records)
+
+                    # 2.0.3 Proxies
+                    cfg_proxies = cfg.get("proxies", [])
+                    if cfg_proxies:
+                        pxy_sql = """
+                            INSERT INTO monitored_proxies
+                            (id, letter, name, ip_port, auth_userpass, test_url, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            letter=VALUES(letter), name=VALUES(name), ip_port=VALUES(ip_port),
+                            auth_userpass=VALUES(auth_userpass), test_url=VALUES(test_url),
+                            is_active=VALUES(is_active), updated_at=VALUES(updated_at)
+                        """
+                        pxy_records = [
+                            (p["id"], p.get("letter"), p["name"], p.get("ip_port"), p.get("auth_userpass"),
+                             p.get("test_url"), 1 if p.get("is_active", True) else 0,
+                             _clean_mysql_dt(p.get("created_at")), _clean_mysql_dt(p.get("updated_at") or p.get("created_at")))
+                            for p in cfg_proxies if "id" in p and "name" in p
+                        ]
+                        if pxy_records:
+                            cursor.executemany(pxy_sql, pxy_records)
+
+                    # 2.0.4 Dispositivos de Red (Garantizar paridad de catálogo antes de históricos)
+                    cfg_net_devs = cfg.get("network_devices", [])
+                    if cfg_net_devs:
+                        net_dev_sql = """
+                            INSERT INTO monitored_network_devices
+                            (id, monitored_site_id, device_number, name, ip, mac, vendor_data,
+                             access_type, access_port, model, serial, ports, notes,
+                             normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            monitored_site_id=VALUES(monitored_site_id), device_number=VALUES(device_number),
+                            name=VALUES(name), ip=VALUES(ip), mac=VALUES(mac), vendor_data=VALUES(vendor_data),
+                            access_type=VALUES(access_type), access_port=VALUES(access_port),
+                            model=VALUES(model), serial=VALUES(serial), ports=VALUES(ports), notes=VALUES(notes),
+                            normal_state_msg=VALUES(normal_state_msg), error_state_msg=VALUES(error_state_msg),
+                            is_active=VALUES(is_active), sort_order=VALUES(sort_order), updated_at=VALUES(updated_at)
+                        """
+                        net_dev_records = [
+                            (nd["id"], nd.get("monitored_site_id"), nd.get("device_number", 1),
+                             nd.get("name"), nd.get("ip"), nd.get("mac"), nd.get("vendor_data"),
+                             nd.get("access_type", "SSH"), nd.get("access_port", 22),
+                             nd.get("model"), nd.get("serial"), nd.get("ports"), nd.get("notes"),
+                             nd.get("normal_state_msg"), nd.get("error_state_msg"),
+                             1 if nd.get("is_active", True) else 0, nd.get("sort_order", 0),
+                             _clean_mysql_dt(nd.get("created_at")), _clean_mysql_dt(nd.get("updated_at") or nd.get("created_at")))
+                            for nd in cfg_net_devs if "id" in nd and "name" in nd
+                        ]
+                        if net_dev_records:
+                            cursor.executemany(net_dev_sql, net_dev_records)
+
                     # 2.1 Histórico de servicios
+                    cursor.execute("SELECT id FROM monitored_services")
+                    valid_srv_ids = {r["id"] for r in cursor.fetchall()}
                     all_services = snapshot_payload.get("services", [])
                     hist_sql = """
                         INSERT INTO service_check_histories 
@@ -1020,7 +1148,7 @@ async def sync_from_master() -> bool:
                     """
                     hist_records = []
                     for s in all_services:
-                        if "id" in s and s["id"]:
+                        if "id" in s and s["id"] in valid_srv_ids:
                             hist_records.append((
                                 s["id"],
                                 1 if s.get("is_up") else 0,
@@ -1033,6 +1161,8 @@ async def sync_from_master() -> bool:
                     cursor.execute("DELETE FROM service_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
 
                     # 2.2 Histórico de sedes
+                    cursor.execute("SELECT id FROM monitored_sites")
+                    valid_site_ids = {r["id"] for r in cursor.fetchall()}
                     all_sites = snapshot_payload.get("sites", [])
                     site_hist_sql = """
                         INSERT INTO site_check_histories 
@@ -1041,7 +1171,7 @@ async def sync_from_master() -> bool:
                     """
                     site_hist_records = []
                     for st in all_sites:
-                        if "id" in st and st["id"]:
+                        if "id" in st and st["id"] in valid_site_ids:
                             devs = st.get("devices", [])
                             devs_online = sum(1 for d in devs if d.get("is_up"))
                             devs_total = len(devs)
@@ -1064,6 +1194,8 @@ async def sync_from_master() -> bool:
                     cursor.execute("DELETE FROM site_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
 
                     # 2.3 Histórico de proxies
+                    cursor.execute("SELECT id FROM monitored_proxies")
+                    valid_proxy_ids = {r["id"] for r in cursor.fetchall()}
                     all_proxies = snapshot_payload.get("proxies", [])
                     proxy_hist_sql = """
                         INSERT INTO proxy_check_histories 
@@ -1072,7 +1204,7 @@ async def sync_from_master() -> bool:
                     """
                     proxy_hist_records = []
                     for p in all_proxies:
-                        if "id" in p and p["id"]:
+                        if "id" in p and p["id"] in valid_proxy_ids:
                             status_msg = "Proxy Operativo / Respondiendo" if p.get("is_up") else "Proxy Inaccesible / Falló Túnel"
                             proxy_hist_records.append((
                                 p["id"],
@@ -1086,6 +1218,8 @@ async def sync_from_master() -> bool:
                     cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
 
                     # 2.4 Histórico de dispositivos de red Valle Seco
+                    cursor.execute("SELECT id FROM monitored_network_devices")
+                    valid_net_ids = {r["id"] for r in cursor.fetchall()}
                     all_net_devices = snapshot_payload.get("network_devices", [])
                     net_hist_sql = """
                         INSERT INTO network_device_check_histories 
@@ -1094,7 +1228,7 @@ async def sync_from_master() -> bool:
                     """
                     net_hist_records = []
                     for nd in all_net_devices:
-                        if "id" in nd and nd["id"]:
+                        if "id" in nd and nd["id"] in valid_net_ids:
                             status_msg = "Dispositivo Operativo / Enlace Activo" if nd.get("is_up") else "Dispositivo Caído / Inalcanzable"
                             net_hist_records.append((
                                 nd["id"],
@@ -1135,8 +1269,8 @@ async def sync_from_master() -> bool:
                                     json.dumps(al.get("changed_fields")) if isinstance(al.get("changed_fields"), (dict, list)) else al.get("changed_fields"),
                                     al.get("ip_address"),
                                     al.get("user_agent"),
-                                    al.get("created_at"),
-                                    al.get("updated_at") or al.get("created_at")
+                                    _clean_mysql_dt(al.get("created_at")),
+                                    _clean_mysql_dt(al.get("updated_at") or al.get("created_at"))
                                 ))
                         if audit_records:
                             cursor.executemany(audit_sql, audit_records)
@@ -1162,9 +1296,9 @@ async def sync_from_master() -> bool:
                                 s.get("scan_method", "arp_sweep"),
                                 s.get("scan_interval_minutes", 15),
                                 1 if s.get("is_active") else 0,
-                                s.get("last_scan_at"),
-                                s.get("created_at"),
-                                s.get("updated_at") or s.get("created_at")
+                                _clean_mysql_dt(s.get("last_scan_at")),
+                                _clean_mysql_dt(s.get("created_at")),
+                                _clean_mysql_dt(s.get("updated_at") or s.get("created_at"))
                             ))
                         if s_records:
                             cursor.executemany(subnet_sql, s_records)
@@ -1189,8 +1323,8 @@ async def sync_from_master() -> bool:
                                 o["id"], o["name"], o["oid"], o.get("mib"), o.get("vendor"),
                                 o.get("data_type", "string"), o.get("unit"), 1 if o.get("is_standard") else 0,
                                 1 if o.get("is_counter_wrap") else 0, o.get("description"),
-                                1 if o.get("is_active", True) else 0, o.get("created_at"),
-                                o.get("updated_at") or o.get("created_at")
+                                1 if o.get("is_active", True) else 0, _clean_mysql_dt(o.get("created_at")),
+                                _clean_mysql_dt(o.get("updated_at") or o.get("created_at"))
                             ))
                         if oid_records:
                             cursor.executemany(oid_sql, oid_records)
@@ -1233,10 +1367,10 @@ async def sync_from_master() -> bool:
                                 d.get("sys_location"), d.get("sys_contact"), d.get("site_id"),
                                 d.get("discovered_device_id"), d.get("network_device_id"),
                                 d.get("poll_interval_seconds", 60), 1 if d.get("is_active") else 0,
-                                d.get("last_poll_at"), d.get("last_poll_status"), d.get("consecutive_failures", 0),
+                                _clean_mysql_dt(d.get("last_poll_at")), d.get("last_poll_status"), d.get("consecutive_failures", 0),
                                 1 if d.get("ssh_enabled") else 0, d.get("ssh_username"), d.get("ssh_port", 22),
                                 json.dumps(d.get("custom_oids")) if isinstance(d.get("custom_oids"), (dict, list)) else d.get("custom_oids"),
-                                d.get("notes"), d.get("created_at"), d.get("updated_at") or d.get("created_at")
+                                d.get("notes"), _clean_mysql_dt(d.get("created_at")), _clean_mysql_dt(d.get("updated_at") or d.get("created_at"))
                             ))
                         if dev_records:
                             cursor.executemany(dev_sql, dev_records)
@@ -1265,8 +1399,8 @@ async def sync_from_master() -> bool:
                                 i.get("if_description"), i.get("if_alias"), i.get("if_type"),
                                 i.get("if_speed"), i.get("if_high_speed"), i.get("if_physical_address"),
                                 i.get("if_admin_status"), i.get("if_oper_status"), 1 if i.get("is_monitored") else 0,
-                                i.get("last_in_octets"), i.get("last_out_octets"), i.get("last_polled_at"),
-                                i.get("created_at"), i.get("updated_at") or i.get("created_at")
+                                i.get("last_in_octets"), i.get("last_out_octets"), _clean_mysql_dt(i.get("last_polled_at")),
+                                _clean_mysql_dt(i.get("created_at")), _clean_mysql_dt(i.get("updated_at") or i.get("created_at"))
                             ))
                         if if_records:
                             cursor.executemany(if_sql, if_records)
@@ -1281,7 +1415,7 @@ async def sync_from_master() -> bool:
                         """
                         m_records = [
                             (m["id"], m["snmp_device_id"], m["snmp_oid_id"], m.get("metric_value"),
-                             m.get("metric_value_raw"), m.get("collected_at"))
+                             m.get("metric_value_raw"), _clean_mysql_dt(m.get("collected_at")))
                             for m in snmp_met if "id" in m
                         ]
                         if m_records:
@@ -1301,7 +1435,7 @@ async def sync_from_master() -> bool:
                              im.get("in_unicast_pkts"), im.get("out_unicast_pkts"), im.get("in_discards"),
                              im.get("out_discards"), im.get("in_errors"), im.get("out_errors"),
                              im.get("in_bps"), im.get("out_bps"), im.get("in_utilization_pct"),
-                             im.get("out_utilization_pct"), im.get("collected_at"))
+                             im.get("out_utilization_pct"), _clean_mysql_dt(im.get("collected_at")))
                             for im in snmp_if_met if "id" in im
                         ]
                         if ifm_records:
@@ -1310,6 +1444,19 @@ async def sync_from_master() -> bool:
                     # 2.7.4 Certificados SSL/TLS y su Historial
                     ssl_certs = data.get("config", {}).get("ssl_certificates", [])
                     if ssl_certs:
+                        # Si existen dominios cuyos IDs locales difieren del Master, limpiarlos para adopción limpia
+                        master_cert_map = {sc["domain"]: sc["id"] for sc in ssl_certs if "id" in sc and "domain" in sc}
+                        cursor.execute("SELECT id, domain FROM ssl_certificates")
+                        local_certs = cursor.fetchall()
+                        mismatched_ids = [
+                            lc["id"] for lc in local_certs 
+                            if lc["domain"] in master_cert_map and lc["id"] != master_cert_map[lc["domain"]]
+                        ]
+                        if mismatched_ids:
+                            format_strings = ','.join(['%s'] * len(mismatched_ids))
+                            cursor.execute(f"DELETE FROM ssl_certificate_history WHERE ssl_certificate_id IN ({format_strings})", tuple(mismatched_ids))
+                            cursor.execute(f"DELETE FROM ssl_certificates WHERE id IN ({format_strings})", tuple(mismatched_ids))
+
                         ssl_sql = """
                             INSERT INTO ssl_certificates
                             (id, service_id, domain, port, subject_cn, subject_org, subject_ou, subject_country,
@@ -1343,14 +1490,14 @@ async def sync_from_master() -> bool:
                                 sc.get("subject_state"), sc.get("subject_locality"), sc.get("issuer_cn"), sc.get("issuer_org"),
                                 sc.get("issuer_country"), sc.get("serial_number"), sc.get("signature_algorithm"),
                                 sc.get("public_key_algorithm"), sc.get("public_key_bits"), sc.get("version"),
-                                sc.get("valid_from"), sc.get("valid_to"), sc.get("days_remaining", 0),
+                                _clean_mysql_dt(sc.get("valid_from")), _clean_mysql_dt(sc.get("valid_to")), sc.get("days_remaining", 0),
                                 1 if sc.get("is_self_signed") else 0, 1 if sc.get("is_wildcard") else 0,
                                 1 if sc.get("is_ev") else 0, sans, sc.get("fingerprint_sha256"),
                                 sc.get("fingerprint_sha1"), sc.get("alert_threshold_warning", 30),
-                                sc.get("alert_threshold_critical", 7), sc.get("last_checked_at"),
+                                sc.get("alert_threshold_critical", 7), _clean_mysql_dt(sc.get("last_checked_at")),
                                 sc.get("last_check_status"), sc.get("consecutive_errors", 0),
                                 sc.get("renewal_count", 0), sc.get("notes"), 1 if sc.get("is_active", True) else 0,
-                                sc.get("created_at"), sc.get("updated_at")
+                                _clean_mysql_dt(sc.get("created_at")), _clean_mysql_dt(sc.get("updated_at") or sc.get("created_at"))
                             ))
                         if ssl_records:
                             cursor.executemany(ssl_sql, ssl_records)
@@ -1365,8 +1512,8 @@ async def sync_from_master() -> bool:
                         """
                         ssl_h_records = [
                             (sh["id"], sh["ssl_certificate_id"], sh["event_type"], sh.get("previous_fingerprint"),
-                             sh.get("new_fingerprint"), sh.get("previous_valid_to"), sh.get("new_valid_to"),
-                             sh.get("days_remaining_at_event"), sh.get("error_message"), sh.get("occurred_at"))
+                             sh.get("new_fingerprint"), _clean_mysql_dt(sh.get("previous_valid_to")), _clean_mysql_dt(sh.get("new_valid_to")),
+                             sh.get("days_remaining_at_event"), sh.get("error_message"), _clean_mysql_dt(sh.get("occurred_at")))
                             for sh in ssl_hist if "id" in sh and "ssl_certificate_id" in sh
                         ]
                         if ssl_h_records:
@@ -1394,7 +1541,7 @@ async def sync_from_master() -> bool:
                              r["condition_type"], r.get("threshold_value"), r.get("comparison"),
                              r.get("duration_seconds", 0), r["severity"], r.get("cooldown_minutes", 30),
                              r.get("max_alerts_per_hour", 5), 1 if r.get("auto_resolve", True) else 0,
-                             1 if r.get("is_active", True) else 0, r.get("created_at"), r.get("updated_at"))
+                             1 if r.get("is_active", True) else 0, _clean_mysql_dt(r.get("created_at")), _clean_mysql_dt(r.get("updated_at") or r.get("created_at")))
                             for r in alert_rules if "id" in r and "name" in r
                         ]
                         if ar_records:
@@ -1418,9 +1565,9 @@ async def sync_from_master() -> bool:
                                 sups = json.dumps(sups)
                             mw_records.append((
                                 m["id"], m["title"], m.get("description"), m.get("entity_type", "all"),
-                                m.get("entity_id"), sups, m.get("starts_at"), m.get("ends_at"),
+                                m.get("entity_id"), sups, _clean_mysql_dt(m.get("starts_at")), _clean_mysql_dt(m.get("ends_at")),
                                 m.get("created_by"), 1 if m.get("is_active", True) else 0,
-                                m.get("created_at"), m.get("updated_at")
+                                _clean_mysql_dt(m.get("created_at")), _clean_mysql_dt(m.get("updated_at") or m.get("created_at"))
                             ))
                         if mw_records:
                             cursor.executemany(mw_sql, mw_records)
@@ -1449,10 +1596,10 @@ async def sync_from_master() -> bool:
                              a.get("current_escalation_level", 1), a.get("value_at_trigger"),
                              a.get("threshold_value"), a.get("message"), a.get("correlation_group_id"),
                              1 if a.get("is_correlated_suppressed") else 0, a.get("parent_alert_id"),
-                             a.get("fired_at"), a.get("acknowledged_at"), a.get("resolved_at"),
-                             a.get("acknowledged_by"), a.get("resolved_by"), a.get("last_notified_at"),
+                             _clean_mysql_dt(a.get("fired_at")), _clean_mysql_dt(a.get("acknowledged_at")), _clean_mysql_dt(a.get("resolved_at")),
+                             a.get("acknowledged_by"), a.get("resolved_by"), _clean_mysql_dt(a.get("last_notified_at")),
                              a.get("notification_count", 0), a.get("duration_seconds", 0),
-                             a.get("notes"), a.get("created_at"), a.get("updated_at"))
+                             a.get("notes"), _clean_mysql_dt(a.get("created_at")), _clean_mysql_dt(a.get("updated_at") or a.get("created_at")))
                             for a in alerts_list if "id" in a and "entity_type" in a
                         ]
                         if al_records:
@@ -1475,9 +1622,9 @@ async def sync_from_master() -> bool:
                             (c["id"], c.get("network_device_id"), c.get("snmp_device_id"),
                              c.get("device_name"), c.get("device_ip"), c.get("device_type", "other"),
                              c.get("config_hash", ""), c.get("config_size_bytes", 0),
-                             c.get("captured_at"), c.get("captured_by", "cron"),
+                             _clean_mysql_dt(c.get("captured_at")), c.get("captured_by", "cron"),
                              c.get("status", "success"), c.get("notes"),
-                             c.get("created_at"), c.get("updated_at"))
+                             _clean_mysql_dt(c.get("created_at")), _clean_mysql_dt(c.get("updated_at") or c.get("created_at")))
                             for c in configs_list if "id" in c
                         ]
                         if cfg_records:
@@ -1499,9 +1646,9 @@ async def sync_from_master() -> bool:
                              l.get("network_device_id"), l.get("snmp_device_id"),
                              l.get("change_type", "modified"), l.get("diff_summary"),
                              l.get("diff_unified"), l.get("lines_added", 0),
-                             l.get("lines_removed", 0), l.get("detected_at"),
+                             l.get("lines_removed", 0), _clean_mysql_dt(l.get("detected_at")),
                              1 if l.get("alerted") else 0,
-                             l.get("created_at"), l.get("updated_at"))
+                             _clean_mysql_dt(l.get("created_at")), _clean_mysql_dt(l.get("updated_at") or l.get("created_at")))
                             for l in logs_list if "id" in l
                         ]
                         if log_records:
@@ -1530,8 +1677,8 @@ async def sync_from_master() -> bool:
                              h.get("os_detected", "Desconocido"), h.get("bytes_in", 0), h.get("bytes_out", 0),
                              h.get("total_bytes", 0), h.get("packet_count", 0), 1 if h.get("is_local", True) else 0,
                              h.get("update_status", "none"), h.get("last_update_type"), h.get("last_update_target"),
-                             h.get("update_bytes", 0), h.get("last_update_at"), h.get("first_seen_at"),
-                             h.get("last_seen_at"), h.get("created_at"), h.get("updated_at") or h.get("created_at"))
+                             h.get("update_bytes", 0), _clean_mysql_dt(h.get("last_update_at")), _clean_mysql_dt(h.get("first_seen_at")),
+                             _clean_mysql_dt(h.get("last_seen_at")), _clean_mysql_dt(h.get("created_at")), _clean_mysql_dt(h.get("updated_at") or h.get("created_at")))
                             for h in nr_hosts if "id" in h and "ip" in h
                         ]
                         if nr_host_records:
@@ -1547,7 +1694,7 @@ async def sync_from_master() -> bool:
                         nr_ev_records = [
                             (e["id"], e["host_ip"], e["event_type"], e.get("severity", "info"),
                              e.get("target_domain"), e.get("bytes_transferred", 0), e.get("description", ""),
-                             e.get("created_at"))
+                             _clean_mysql_dt(e.get("created_at")))
                             for e in nr_events if "id" in e and "host_ip" in e
                         ]
                         if nr_ev_records:
@@ -1574,11 +1721,160 @@ async def sync_from_master() -> bool:
                                     s["id"], s.get("total_hosts", 0), s.get("active_hosts", 0),
                                     s.get("windows_updating_hosts", 0), s.get("linux_updating_hosts", 0),
                                     s.get("total_bytes_in", 0), s.get("total_bytes_out", 0),
-                                    top_p, top_t, s.get("created_at")
+                                    top_p, top_t, _clean_mysql_dt(s.get("created_at"))
                                 ))
                         if nr_snap_records:
                             cursor.executemany(nr_snap_sql, nr_snap_records)
-                conn.close()
+
+                    # 2.9 Sincronización de SNMP Traps recibidos (Fase 6)
+                    snmp_traps = data.get("snmp_traps_received", [])
+                    if snmp_traps:
+                        trap_sql = """
+                            INSERT IGNORE INTO snmp_traps_received
+                            (id, snmp_device_id, source_ip, trap_oid, trap_type, varbinds, severity, processed, alert_id, received_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        trap_records = [
+                            (t["id"], t.get("snmp_device_id"), t["source_ip"], t["trap_oid"],
+                             t.get("trap_type"), json.dumps(t.get("varbinds")) if isinstance(t.get("varbinds"), (dict, list)) else t.get("varbinds"),
+                             t.get("severity", "info"), 1 if t.get("processed") else 0, t.get("alert_id"), _clean_mysql_dt(t.get("received_at")))
+                            for t in snmp_traps if "id" in t and "source_ip" in t and "trap_oid" in t
+                        ]
+                        if trap_records:
+                            cursor.executemany(trap_sql, trap_records)
+
+                    # 2.10 Sincronización de Syslog Events (Fase 6)
+                    sys_events = data.get("syslog_events", [])
+                    if sys_events:
+                        sys_sql = """
+                            INSERT IGNORE INTO syslog_events
+                            (id, source_ip, hostname, facility, severity, program, message, raw_message, received_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        sys_records = [
+                            (se["id"], se["source_ip"], se.get("hostname"), se.get("facility"),
+                             se.get("severity"), se.get("program"), se.get("message", ""),
+                             se.get("raw_message"), _clean_mysql_dt(se.get("received_at")))
+                            for se in sys_events if "id" in se and "source_ip" in se
+                        ]
+                        if sys_records:
+                            cursor.executemany(sys_sql, sys_records)
+
+                    # 2.11 Sincronización de NetFlow Top Talkers (Fase 6)
+                    top_talkers = data.get("netflow_top_talkers", [])
+                    if top_talkers:
+                        tt_sql = """
+                            INSERT IGNORE INTO netflow_top_talkers
+                            (id, window_start, window_end, rank_type, rank_value, bytes, packets, percentage)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        tt_records = [
+                            (tt["id"], _clean_mysql_dt(tt.get("window_start")), _clean_mysql_dt(tt.get("window_end")),
+                             tt["rank_type"], tt["rank_value"], tt.get("bytes", 0),
+                             tt.get("packets", 0), tt.get("percentage"))
+                            for tt in top_talkers if "id" in tt and "rank_type" in tt and "rank_value" in tt
+                        ]
+                        if tt_records:
+                            cursor.executemany(tt_sql, tt_records)
+
+                    # 2.12 Sincronización de Topología de Red (Fase 7)
+                    topo_links = data.get("network_topology_links", [])
+                    if topo_links:
+                        topo_sql = """
+                            INSERT INTO network_topology_links
+                            (id, source_device_id, source_interface_id, target_device_id, target_mac,
+                             target_hostname, link_type, link_status, last_seen_at, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            link_status=VALUES(link_status), last_seen_at=VALUES(last_seen_at), updated_at=VALUES(updated_at)
+                        """
+                        topo_records = [
+                            (tl["id"], tl["source_device_id"], tl.get("source_interface_id"),
+                             tl.get("target_device_id"), tl.get("target_mac"), tl.get("target_hostname"),
+                             tl.get("link_type", "manual"), tl.get("link_status", "unknown"),
+                             _clean_mysql_dt(tl.get("last_seen_at")), _clean_mysql_dt(tl.get("created_at")), _clean_mysql_dt(tl.get("updated_at") or tl.get("created_at")))
+                            for tl in topo_links if "id" in tl and "source_device_id" in tl
+                        ]
+                        if topo_records:
+                            cursor.executemany(topo_sql, topo_records)
+
+                    # 2.13 Sincronización de Anomalías Predictivas (Fase 7)
+                    pred_anomalies = data.get("predictive_anomalies", [])
+                    if pred_anomalies:
+                        pa_sql = """
+                            INSERT INTO predictive_anomalies
+                            (id, entity_type, entity_id, anomaly_type, metric_name, confidence,
+                             description, predicted_impact, detected_at, acknowledged)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            confidence=VALUES(confidence), description=VALUES(description),
+                            predicted_impact=VALUES(predicted_impact), acknowledged=VALUES(acknowledged)
+                        """
+                        pa_records = [
+                            (pa["id"], pa["entity_type"], pa["entity_id"], pa.get("anomaly_type", "outlier"),
+                             pa.get("metric_name"), pa.get("confidence"), pa.get("description"),
+                             pa.get("predicted_impact"), _clean_mysql_dt(pa.get("detected_at")), 1 if pa.get("acknowledged") else 0)
+                            for pa in pred_anomalies if "id" in pa and "entity_type" in pa
+                        ]
+                        if pa_records:
+                            cursor.executemany(pa_sql, pa_records)
+
+                    # 2.14 Sincronización de Entidades WoL y Hardware Lifecycle (Fase 7)
+                    entities = data.get("entities", {})
+                    wol_devs = entities.get("wol_devices", [])
+                    if wol_devs:
+                        wol_sql = """
+                            INSERT INTO wol_devices
+                            (id, name, mac_address, ip_address, broadcast_address, site_id,
+                             discovered_device_id, is_enabled, last_woken_at, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            name=VALUES(name), ip_address=VALUES(ip_address), broadcast_address=VALUES(broadcast_address),
+                            is_enabled=VALUES(is_enabled), last_woken_at=VALUES(last_woken_at), updated_at=VALUES(updated_at)
+                        """
+                        wol_records = [
+                            (w["id"], w["name"], w["mac_address"], w.get("ip_address"),
+                             w.get("broadcast_address", "255.255.255.255"), w.get("site_id"),
+                             w.get("discovered_device_id"), 1 if w.get("is_enabled", True) else 0,
+                             _clean_mysql_dt(w.get("last_woken_at")), _clean_mysql_dt(w.get("created_at")), _clean_mysql_dt(w.get("updated_at") or w.get("created_at")))
+                            for w in wol_devs if "id" in w and "mac_address" in w
+                        ]
+                        if wol_records:
+                            cursor.executemany(wol_sql, wol_records)
+
+                    hw_lifecycle = entities.get("hardware_lifecycle", [])
+                    if hw_lifecycle:
+                        hw_sql = """
+                            INSERT INTO hardware_lifecycle
+                            (id, entity_type, entity_id, serial_number, purchase_date, warranty_end_date,
+                             eol_date, eos_date, battery_last_replaced, disk_health_status,
+                             firmware_version, firmware_latest, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            serial_number=VALUES(serial_number), warranty_end_date=VALUES(warranty_end_date),
+                            eol_date=VALUES(eol_date), eos_date=VALUES(eos_date),
+                            battery_last_replaced=VALUES(battery_last_replaced),
+                            disk_health_status=VALUES(disk_health_status), firmware_version=VALUES(firmware_version),
+                            notes=VALUES(notes), updated_at=VALUES(updated_at)
+                        """
+                        hw_records = [
+                            (h["id"], h["entity_type"], h["entity_id"], h.get("serial_number"),
+                             _clean_mysql_dt(h.get("purchase_date"), date_only=True), _clean_mysql_dt(h.get("warranty_end_date"), date_only=True), _clean_mysql_dt(h.get("eol_date"), date_only=True),
+                             _clean_mysql_dt(h.get("eos_date"), date_only=True), _clean_mysql_dt(h.get("battery_last_replaced"), date_only=True), h.get("disk_health_status", "unknown"),
+                             h.get("firmware_version"), h.get("firmware_latest"), h.get("notes"),
+                             _clean_mysql_dt(h.get("created_at")), _clean_mysql_dt(h.get("updated_at") or h.get("created_at")))
+                            for h in hw_lifecycle if "id" in h and "entity_type" in h
+                        ]
+                        if hw_records:
+                            cursor.executemany(hw_sql, hw_records)
+
+                    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    conn.close()
 
             except Exception as e_db:
                 print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")

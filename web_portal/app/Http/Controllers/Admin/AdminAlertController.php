@@ -15,6 +15,7 @@ use App\Models\MonitoredService;
 use App\Models\MonitoredSite;
 use App\Models\SnmpDevice;
 use App\Models\SslCertificate;
+use App\Services\ClusterConfigService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -306,6 +307,11 @@ class AdminAlertController extends Controller
             return redirect()->back()->with('error', 'Acción no autorizada.');
         }
 
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La gestión de reglas de alerta debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -379,6 +385,11 @@ class AdminAlertController extends Controller
             return redirect()->back()->with('error', 'Acción no autorizada.');
         }
 
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de reglas de alerta debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $rule = AlertRule::findOrFail($id);
         $name = $rule->name;
         $rule->delete();
@@ -410,6 +421,11 @@ class AdminAlertController extends Controller
     {
         if (Auth::user()->role !== 'admin') {
             return redirect()->back()->with('error', 'Acción no autorizada.');
+        }
+
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La programación de mantenimientos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -457,6 +473,11 @@ class AdminAlertController extends Controller
             return redirect()->back()->with('error', 'Acción no autorizada.');
         }
 
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de mantenimientos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $window = MaintenanceWindow::findOrFail($id);
         $title = $window->title;
         $window->delete();
@@ -488,6 +509,11 @@ class AdminAlertController extends Controller
     {
         if (Auth::user()->role !== 'admin') {
             return redirect()->back()->with('error', 'Acción no autorizada.');
+        }
+
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La gestión de grupos de correlación debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -543,6 +569,11 @@ class AdminAlertController extends Controller
     {
         if (Auth::user()->role !== 'admin') {
             return redirect()->back()->with('error', 'Acción no autorizada.');
+        }
+
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de grupos de correlación debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
         }
 
         $group = AlertCorrelationGroup::findOrFail($id);

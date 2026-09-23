@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BotCommand;
 use App\Models\BotSetting;
+use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,6 +50,17 @@ class AdminBotCommandController extends Controller
      */
     public function update(Request $request, BotCommand $command): RedirectResponse|JsonResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                ], 403);
+            }
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'title' => ['nullable', 'string', 'max:100'],
             'description' => ['required', 'string', 'max:500'],
@@ -84,6 +96,17 @@ class AdminBotCommandController extends Controller
      */
     public function toggle(BotCommand $command): RedirectResponse|JsonResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                ], 403);
+            }
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $command->is_active = !$command->is_active;
         $command->save();
 
@@ -106,6 +129,11 @@ class AdminBotCommandController extends Controller
      */
     public function updateSettings(Request $request): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La configuración global del bot debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'start_header' => ['required', 'string'],
             'unknown_command' => ['required', 'string'],

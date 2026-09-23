@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\MonitoredService;
 use App\Models\SslCertificate;
 use App\Models\SslCertificateHistory;
+use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -174,6 +175,11 @@ class AdminSslController extends Controller
             abort(403, 'Acción no permitida para rol Operador.');
         }
 
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). El registro de certificados SSL debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'domain' => 'required|string|max:255|unique:ssl_certificates,domain',
             'port' => 'nullable|integer|min:1|max:65535',
@@ -306,6 +312,11 @@ class AdminSslController extends Controller
     {
         if (!Auth::user()->isAdmin()) {
             abort(403, 'Acción no permitida para rol Operador.');
+        }
+
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de certificados SSL debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
         }
 
         $cert = SslCertificate::findOrFail($id);

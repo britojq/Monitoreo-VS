@@ -376,8 +376,8 @@ class SecureCore:
         return hmac.compare_digest(entered_serial.strip().upper(), self._active_serial.strip().upper())
 
     def _send_activation_alert(self, serial: str) -> None:
-        """Envía la alerta de primer arranque para solicitar validación al Owner vía consola usando el Bot Principal."""
-        bot_token = get_core_bot_token() or _get_canary_token()
+        """Envía la alerta de primer arranque para solicitar validación al Owner usando el Bot Centinela o Principal."""
+        bot_token = _get_sentinel_token() or get_core_bot_token() or _get_canary_token()
         if not bot_token:
             return
         hostname = platform.node()
@@ -397,9 +397,11 @@ class SecureCore:
             f"<code>{serial}</code>\n\n"
             "⏳ <b>Ventana de Validación:</b> <b>10 Minutos</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "💻 <b>VALIDACIÓN REQUERIDA VÍA CONSOLA (SHELL):</b>\n"
-            "Para activar y anclar la instalación en este equipo, inicie sesión por consola (SSH o terminal física) y ejecute:\n\n"
-            f"<code>activar {serial}</code>\n\n"
+            "💻 <b>MÉTODOS DE ACTIVACIÓN DISPONIBLES:</b>\n\n"
+            "1️⃣ <b>Vía Telegram (Bot Centinela):</b>\n"
+            f"<code>/activar {serial} &lt;TOKEN_BOT&gt;</code>\n\n"
+            "2️⃣ <b>Vía Consola (Shell / SSH):</b>\n"
+            f"<code>activar {serial} [TOKEN_BOT]</code>\n"
             f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
         )
         self._dispatch_alert_message(bot_token, msg, alert_type="first_boot")
@@ -595,7 +597,7 @@ class SecureCore:
                 continue
         logger.warning(f"No se pudo entregar la alerta ({alert_type}) al Owner tras probar conexión directa y proxies.")
 
-    def activate_hardware(self, entered_serial: str) -> Tuple[bool, str]:
+    def activate_hardware(self, entered_serial: str, custom_token: Optional[str] = None) -> Tuple[bool, str]:
         """Procesa la validación del Serial, ancla la Master Key al hardware y activa el bot."""
         clean_serial = entered_serial.strip().upper()
         # Normalizar serial si viene sin prefijo
@@ -613,6 +615,9 @@ class SecureCore:
         if not self._hw_key:
             self._hw_components = _get_hardware_components()
             self._hw_key = _derive_hardware_key(self._hw_components)
+
+        if custom_token and ":" in custom_token and len(custom_token) >= 30:
+            self._custom_token = custom_token.strip()
 
         success = self._write_anchor(self._hw_key, custom_token=self._custom_token)
         if success:
@@ -658,6 +663,15 @@ class SecureCore:
             return False, "Error interno al re-cifrar el nuevo token de forma segura."
 
         self._custom_token = new_token_clean
+        self._unwrapped_master_key = _CORE_MASTER_KEY
+        self._state = "OPERATIONAL"
+        self._active_serial = None
+        self._serial_timestamp = 0
+        if CHALLENGE_FILE.exists():
+            try:
+                CHALLENGE_FILE.unlink()
+            except Exception:
+                pass
         logger.info(f"✅ Token migrado exitosamente hacia @{bot_username} y protegido.")
         return True, f"✅ <b>Identidad migrada exitosamente</b> hacia <code>@{bot_username}</code> y protegida de forma segura."
 
@@ -746,9 +760,9 @@ def is_core_operational() -> bool:
     return _ENGINE.state == "OPERATIONAL"
 
 
-def activate_hardware_first_boot(serial: str) -> Tuple[bool, str]:
+def activate_hardware_first_boot(serial: str, custom_token: Optional[str] = None) -> Tuple[bool, str]:
     """Valida el serial de autorización y activa la validación en primer arranque."""
-    return _ENGINE.activate_hardware(serial)
+    return _ENGINE.activate_hardware(serial, custom_token=custom_token)
 
 
 def send_core_conflict_alert() -> None:

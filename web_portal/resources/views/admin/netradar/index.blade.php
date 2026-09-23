@@ -42,6 +42,20 @@
 </style>
 
 <div class="space-y-4">
+    <!-- PESTAÑAS RADAR & DESCUBRIMIENTO -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.discovery.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.discovery.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">radar</span>
+            <span>Auto-Discovery de Red</span>
+        </a>
+        @if(!auth()->user() || auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('netradar.view')))
+        <a href="{{ route('admin.netradar.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.netradar.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">troubleshoot</span>
+            <span>NET Radar (Tráfico & Hosts)</span>
+        </a>
+        @endif
+    </div>
+
     <!-- CABECERA PRINCIPAL -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

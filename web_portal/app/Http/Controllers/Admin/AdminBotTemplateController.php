@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BotMessageTemplate;
+use App\Services\ClusterConfigService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,17 @@ class AdminBotTemplateController extends Controller
      */
     public function update(Request $request, BotMessageTemplate $template): RedirectResponse|JsonResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                ], 403);
+            }
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:100'],
             'header_text' => ['required', 'string'],
@@ -75,6 +87,11 @@ class AdminBotTemplateController extends Controller
      */
     public function reset(BotMessageTemplate $template): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La restauración de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $userName = $user ? $user->full_title_name : 'Administrador';

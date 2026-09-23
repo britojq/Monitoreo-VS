@@ -4,6 +4,22 @@
 
 @section('admin_content')
 <div class="space-y-6">
+    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.services.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">dns</span>
+            <span>Servicios Principales</span>
+        </a>
+        <a href="{{ route('admin.proxies.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">public</span>
+            <span>Proxies & Pasarelas</span>
+        </a>
+        <a href="{{ route('admin.ssl.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">lock</span>
+            <span>Certificados SSL/TLS</span>
+        </a>
+    </div>
+
     <!-- CABECERA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

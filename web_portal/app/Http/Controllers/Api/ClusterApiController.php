@@ -85,6 +85,8 @@ class ClusterApiController extends Controller
                 'alert_correlation_groups' => \App\Models\AlertCorrelationGroup::all(),
                 'alert_correlation_members' => \App\Models\AlertCorrelationMember::all(),
                 'maintenance_windows' => \App\Models\MaintenanceWindow::all(),
+                'wol_devices' => \App\Models\WolDevice::all(),
+                'hardware_lifecycle' => \App\Models\HardwareLifecycle::all(),
             ],
             'snmp_metrics_history' => \App\Models\SnmpMetricHistory::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
             'snmp_interface_metrics' => \App\Models\SnmpInterfaceMetric::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
@@ -101,6 +103,11 @@ class ClusterApiController extends Controller
             'net_radar_hosts' => \App\Models\NetRadarHost::latest('last_seen_at')->take(500)->get(),
             'net_radar_events' => \App\Models\NetRadarEvent::latest('created_at')->take(200)->get(),
             'net_radar_snapshots' => \App\Models\NetRadarSnapshot::latest('created_at')->take(50)->get(),
+            'snmp_traps_received' => \App\Models\SnmpTrapReceived::latest('id')->take(200)->get(),
+            'syslog_events' => \App\Models\SyslogEvent::latest('id')->take(200)->get(),
+            'netflow_top_talkers' => \App\Models\NetflowTopTalker::latest('id')->take(100)->get(),
+            'network_topology_links' => \App\Models\NetworkTopologyLink::all(),
+            'predictive_anomalies' => \App\Models\PredictiveAnomaly::latest('id')->take(100)->get(),
         ]);
     }
 }

@@ -107,7 +107,7 @@ class CleanMonitoringSeeder extends Seeder
                 'model' => 'Catalyst 2960-X',
                 'serial' => 'FCW1942A001',
                 'ports' => '48x GE PoE+, 4x SFP',
-                'notes' => "Puerto 47 cascada con SW2\nPuerto 48 enlace uplink router principal",
+                'notes' => "Puerto 43: Cascada con SW3\nPuerto 44: Enlace CIAU Paseo Mariño\nPuerto 45: Enlace CIAU Consolidado\nPuerto 46: Enlace Sede Transmisión (Planta Centro)\nPuerto 47: Cascada con SW2\nPuerto 48: Enlace Uplink Router Principal",
                 'is_active' => true,
             ],
             [
@@ -121,7 +121,7 @@ class CleanMonitoringSeeder extends Seeder
                 'model' => 'Catalyst 2960-X',
                 'serial' => 'FCW1942A002',
                 'ports' => '48x GE, 4x SFP',
-                'notes' => "Puerto 47 cascada con SW1\nPuerto 48 cascada con SW3",
+                'notes' => "Puerto 43: Cascada con SW3\nPuerto 47: Cascada con SW1 (Troncal Distribución)\nPuerto 48: Cascada / Enlace secundario",
                 'is_active' => true,
             ],
             [
@@ -135,7 +135,7 @@ class CleanMonitoringSeeder extends Seeder
                 'model' => 'Catalyst 2960-S',
                 'serial' => 'FCW1942A003',
                 'ports' => '24x GE, 2x SFP+',
-                'notes' => "Conexión directa a servidores blade e infraestructura de monitoreo.",
+                'notes' => "Puerto Cascada: Conexión al Puerto 43 de SW01/SW02\nDistribución: Conexión directa a servidores blade e infraestructura de monitoreo.",
                 'is_active' => true,
             ],
             [

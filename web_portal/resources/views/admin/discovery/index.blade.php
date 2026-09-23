@@ -28,6 +28,20 @@
 </style>
 
 <div class="space-y-4">
+    <!-- PESTAÑAS RADAR & DESCUBRIMIENTO -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.discovery.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.discovery.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">radar</span>
+            <span>Auto-Discovery de Red</span>
+        </a>
+        @if(!auth()->user() || auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('netradar.view')))
+        <a href="{{ route('admin.netradar.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.netradar.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">troubleshoot</span>
+            <span>NET Radar (Tráfico & Hosts)</span>
+        </a>
+        @endif
+    </div>
+
     <!-- CABECERA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -46,7 +60,12 @@
             <p class="text-xs font-mono text-obsidian-muted">Supervisión continua de subredes, inventario dinámico de MACs y detección de equipos intrusos</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            @if(auth()->user()->isAdmin())
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
+            </span>
+
+            @if(auth()->user()->isAdmin() && !$isClusterSlave)
             <button type="button" onclick="openSubnetModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer" title="Registrar una nueva subred CIDR para escaneo y supervisión continua">
                 <span class="material-symbols-outlined text-sm">add_circle</span>
                 <span>+ Subred</span>
@@ -55,6 +74,11 @@
                 <span class="material-symbols-outlined text-sm">travel_explore</span>
                 <span>Escanear Red Ahora</span>
             </button>
+            @elseif($isClusterSlave)
+            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                <span class="material-symbols-outlined text-xs">lock</span>
+                <span>Solo Lectura (Modo Esclavo)</span>
+            </span>
             @else
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono" title="Acceso de Operador: Vista de solo consulta, operaciones mutantes deshabilitadas">
                 <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
@@ -127,6 +151,10 @@
                     <span class="text-white font-bold">{{ $sub->subnet }}</span>
                     @if($sub->site)
                         <span class="text-[10px] text-cyan-400">({{ $sub->site->name }})</span>
+                    @elseif($sub->subnet === '10.20.0.0/24')
+                        <span class="text-[10px] text-blue-400 font-bold">(Red Central / Servidores)</span>
+                    @else
+                        <span class="text-[10px] text-obsidian-muted">(Sin Asignar)</span>
                     @endif
                     <span class="text-[10px] text-obsidian-muted">
                         {{ $sub->last_scan_at ? $sub->last_scan_at->diffForHumans() : 'Sin escaneo' }}
@@ -255,10 +283,22 @@
 
                             <!-- SEDE -->
                             <td class="px-2.5 py-1.5 whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/70 border border-purple-500/30 text-purple-300 text-[9.5px] font-semibold" title="Subred asignada a la sede: {{ $dev->site ? $dev->site->name : 'Valle Seco (Local)' }}">
-                                    <span class="material-symbols-outlined text-[10px]">domain</span>
-                                    <span>{{ $dev->site ? $dev->site->name : 'Valle Seco (Local)' }}</span>
-                                </span>
+                                @if($dev->site)
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/70 border border-purple-500/30 text-purple-300 text-[9.5px] font-semibold" title="Sede física asignada: {{ $dev->site->name }}">
+                                        <span class="material-symbols-outlined text-[10px]">domain</span>
+                                        <span>{{ $dev->site->name }}</span>
+                                    </span>
+                                @elseif(str_starts_with($dev->ip_address, '10.20.0.'))
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-950/70 border border-blue-500/30 text-blue-300 text-[9.5px] font-semibold" title="Segmento de Red Central / Servidores Corporativos">
+                                        <span class="material-symbols-outlined text-[10px]">dns</span>
+                                        <span>Red Central / Servidores</span>
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-900 border border-gray-700/60 text-gray-400 text-[9.5px] font-mono" title="Dispositivo sin sede física asignada">
+                                        <span class="material-symbols-outlined text-[10px]">help_outline</span>
+                                        <span>Sede Desconocida / Sin Asignar</span>
+                                    </span>
+                                @endif
                             </td>
 
                             <!-- ÚLTIMO VISTO -->
@@ -272,30 +312,36 @@
                             <td class="px-2.5 py-1.5 text-right space-x-1 whitespace-nowrap">
                                 <div class="inline-flex items-center justify-end gap-1">
                                     @if(auth()->user()->isAdmin())
-                                        <!-- APROBAR -->
-                                        @if(!$dev->is_authorized)
-                                            <form method="POST" action="{{ route('admin.discovery.authorize', $dev->id) }}" class="inline">
-                                                @csrf
-                                                <button type="submit" class="p-1 rounded bg-obsidian-panel border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black transition cursor-pointer shadow-xs inline-flex items-center" title="Autorizar Dispositivo (Agregar al inventario confiable)">
-                                                    <span class="material-symbols-outlined text-[13px]">check_circle</span>
-                                                </button>
-                                            </form>
-                                        @endif
+                                        @if($isClusterSlave)
+                                            <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[9.5px] font-mono inline-flex items-center" title="Modificaciones restringidas al Servidor Master">
+                                                <span class="material-symbols-outlined text-[11px]">lock</span>
+                                            </span>
+                                        @else
+                                            <!-- APROBAR -->
+                                            @if(!$dev->is_authorized)
+                                                <form method="POST" action="{{ route('admin.discovery.authorize', $dev->id) }}" class="inline">
+                                                    @csrf
+                                                    <button type="submit" class="p-1 rounded bg-obsidian-panel border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black transition cursor-pointer shadow-xs inline-flex items-center" title="Autorizar Dispositivo (Agregar al inventario confiable)">
+                                                        <span class="material-symbols-outlined text-[13px]">check_circle</span>
+                                                    </button>
+                                                </form>
+                                            @endif
 
-                                        <!-- MARCAR ROGUE -->
-                                        @if($dev->classification_status !== 'rogue')
-                                            <form method="POST" action="{{ route('admin.discovery.rogue', $dev->id) }}" class="inline" onsubmit="return confirm('¿Confirmas marcar este dispositivo como INTRUSO (Rogue)?');">
-                                                @csrf
-                                                <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs inline-flex items-center" title="Marcar como INTRUSO (Rogue) - Alerta de red">
-                                                    <span class="material-symbols-outlined text-[13px]">gpp_bad</span>
-                                                </button>
-                                            </form>
-                                        @endif
+                                            <!-- MARCAR ROGUE -->
+                                            @if($dev->classification_status !== 'rogue')
+                                                <form method="POST" action="{{ route('admin.discovery.rogue', $dev->id) }}" class="inline" onsubmit="return confirm('¿Confirmas marcar este dispositivo como INTRUSO (Rogue)?');">
+                                                    @csrf
+                                                    <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs inline-flex items-center" title="Marcar como INTRUSO (Rogue) - Alerta de red">
+                                                        <span class="material-symbols-outlined text-[13px]">gpp_bad</span>
+                                                    </button>
+                                                </form>
+                                            @endif
 
-                                        <!-- EDITAR / CLASIFICAR -->
-                                        <button type="button" onclick="openClassifyModal({{ json_encode($dev) }})" class="p-1 rounded bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition cursor-pointer shadow-xs inline-flex items-center" title="Editar Clasificación, Tipo de Equipo y Sede">
-                                            <span class="material-symbols-outlined text-[13px]">edit</span>
-                                        </button>
+                                            <!-- EDITAR / CLASIFICAR -->
+                                            <button type="button" onclick="openClassifyModal({{ json_encode($dev) }})" class="p-1 rounded bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition cursor-pointer shadow-xs inline-flex items-center" title="Editar Clasificación, Tipo de Equipo y Sede">
+                                                <span class="material-symbols-outlined text-[13px]">edit</span>
+                                            </button>
+                                        @endif
                                     @endif
 
                                     <!-- HISTORIAL (Accesible para todos los usuarios) -->
@@ -362,7 +408,7 @@
         @endif
     </div>
 
-    @if(auth()->user()->isAdmin())
+    @if(auth()->user()->isAdmin() && !$isClusterSlave)
     <!-- MODAL 1: ESCANEO MANUAL -->
     <div id="modal-scan" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-4">
         <div class="w-full max-w-md p-5 rounded-2xl bg-[#0b121e] border border-cyan-500/40 shadow-2xl space-y-4">
@@ -497,10 +543,22 @@
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-xs font-mono text-gray-300 block">Hostname / Nombre del Equipo:</label>
-                    <input type="text" name="hostname" id="classify-hostname" placeholder="Ej: PC-TAQUILLA-01"
-                        class="w-full bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3 py-1.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-xs font-mono text-gray-300 block">Hostname / Nombre del Equipo:</label>
+                        <input type="text" name="hostname" id="classify-hostname" placeholder="Ej: PC-TAQUILLA-01"
+                            class="w-full bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3 py-1.5">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-mono text-gray-300 block">Sede Asignada:</label>
+                        <select name="site_id" id="classify-site" class="w-full bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-2.5 py-1.5">
+                            <option value="">-- Sin Asignar / Desconocida --</option>
+                            @foreach($sites as $s)
+                                <option value="{{ $s->id }}">{{ $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <div class="space-y-1">
@@ -575,12 +633,15 @@
     }
 
     function openClassifyModal(dev) {
-        document.getElementById('classify-ip').textContent = dev.ip_address || '-';
+        const ipEl = document.getElementById('classify-ip');
+        if (!ipEl) return;
+        ipEl.textContent = dev.ip_address || '-';
         document.getElementById('classify-mac').textContent = dev.mac_address || '-';
         document.getElementById('classify-vendor').textContent = dev.vendor || 'Desconocido';
         document.getElementById('classify-type').value = dev.device_type || 'unknown';
         document.getElementById('classify-status').value = dev.classification_status || 'pendiente';
         document.getElementById('classify-hostname').value = dev.hostname || '';
+        document.getElementById('classify-site').value = dev.site_id || '';
         document.getElementById('classify-notes').value = dev.notes || '';
         document.getElementById('classify-is-authorized').checked = !!dev.is_authorized;
 

@@ -7,6 +7,7 @@ use App\Models\ConfigChangeLog;
 use App\Models\DeviceConfiguration;
 use App\Models\MonitoredNetworkDevice;
 use App\Models\SnmpDevice;
+use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -158,6 +159,11 @@ class AdminConfigController extends Controller
      */
     public function backupDevice(Request $request): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución de respaldos WAN debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $target = $request->input('device_target');
         if (empty($target)) {
             return back()->with('error', 'Debe seleccionar un dispositivo para respaldar.');
@@ -225,6 +231,11 @@ class AdminConfigController extends Controller
      */
     public function backupAll(): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución masiva de respaldos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $pythonScript = base_path('../monitor/config_backup.py');
         $pythonExec = base_path('../venv/bin/python');
 
@@ -240,6 +251,11 @@ class AdminConfigController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de respaldos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $config = DeviceConfiguration::findOrFail($id);
         $deviceName = $config->resolved_name;
         $config->delete();

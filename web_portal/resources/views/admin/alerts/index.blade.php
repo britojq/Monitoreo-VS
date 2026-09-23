@@ -4,6 +4,18 @@
 
 @section('admin_content')
 <div class="space-y-4">
+    <!-- PESTAÑAS CENTRO DE ALERTAS & IA -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.alerts.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">notifications_active</span>
+            <span>Alertas & Correlación</span>
+        </a>
+        <a href="{{ route('admin.predictive.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">psychology</span>
+            <span>IA Predictiva & Salud de Enlaces</span>
+        </a>
+    </div>
+
     <!-- CABECERA Y HUD DE ESTADO -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-obsidian-card p-3.5 rounded-xl border border-obsidian-border shadow-md">
         <div>
@@ -23,19 +35,32 @@
 
         <!-- ACCIONES RÁPIDAS CABECERA -->
         <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
+            </span>
+
             @if(auth()->user()->isAdmin())
                 <form action="{{ route('admin.alerts.evaluate_now') }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs" title="Evaluar todas las reglas y procesar escalaciones inmediatamente">
+                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Evaluar todas las reglas y procesar escalaciones inmediatamente">
                         <span class="material-symbols-outlined text-sm">bolt</span> Evaluar Ahora
                     </button>
                 </form>
-                <button onclick="openNewRuleModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs" title="Configurar una nueva regla con umbrales y escalación">
+
+                @if(!$isClusterSlave)
+                <button onclick="openNewRuleModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Configurar una nueva regla con umbrales y escalación">
                     <span class="material-symbols-outlined text-sm">add_alert</span> Nueva Regla
                 </button>
-                <button onclick="openMaintenanceModal()" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-white font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs" title="Programar ventana de mantenimiento preventivo">
+                <button onclick="openMaintenanceModal()" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-white font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Programar ventana de mantenimiento preventivo">
                     <span class="material-symbols-outlined text-sm">build_circle</span> Mantenimiento
                 </button>
+                @else
+                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                    <span class="material-symbols-outlined text-xs">lock</span>
+                    <span>Solo Lectura (Modo Esclavo)</span>
+                </span>
+                @endif
             @endif
         </div>
     </div>
@@ -517,13 +542,19 @@
                                 </td>
                                 @if(auth()->user()->isAdmin())
                                     <td class="px-2.5 py-2 text-center">
+                                        @if(!$isClusterSlave)
                                         <form action="{{ route('admin.alerts.rules.destroy', $r->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar la regla {{ addslashes($r->name) }}?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition" title="Eliminar regla">
+                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer" title="Eliminar regla">
                                                 <span class="material-symbols-outlined text-[13px]">delete</span>
                                             </button>
                                         </form>
+                                        @else
+                                        <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
+                                            <span class="material-symbols-outlined text-[13px]">lock</span>
+                                        </span>
+                                        @endif
                                     </td>
                                 @endif
                             </tr>
@@ -538,8 +569,8 @@
                 <div class="text-xs text-slate-400">
                     Ventanas planificadas para silenciar alertas durante paradas o mantenimientos de red.
                 </div>
-                @if(auth()->user()->isAdmin())
-                    <button onclick="openMaintenanceModal()" class="px-2.5 py-1 rounded bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-white text-xs font-mono font-semibold transition flex items-center gap-1">
+                @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                    <button onclick="openMaintenanceModal()" class="px-2.5 py-1 rounded bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-white text-xs font-mono font-semibold transition flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">add</span> Programar Mantenimiento
                     </button>
                 @endif
@@ -601,13 +632,19 @@
                                 </td>
                                 @if(auth()->user()->isAdmin())
                                     <td class="px-2.5 py-2 text-center">
+                                        @if(!$isClusterSlave)
                                         <form action="{{ route('admin.alerts.maintenance.destroy', $mw->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar esta ventana de mantenimiento?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition" title="Eliminar ventana">
+                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer" title="Eliminar ventana">
                                                 <span class="material-symbols-outlined text-[13px]">delete</span>
                                             </button>
                                         </form>
+                                        @else
+                                        <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
+                                            <span class="material-symbols-outlined text-[13px]">lock</span>
+                                        </span>
+                                        @endif
                                     </td>
                                 @endif
                             </tr>
@@ -628,8 +665,8 @@
                 <div class="text-xs text-slate-400">
                     Grupos de correlación topológica padre-hijo (supresión por cascada y reducción de severidad).
                 </div>
-                @if(auth()->user()->isAdmin())
-                    <button onclick="openCorrelationModal()" class="px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black text-xs font-mono font-semibold transition flex items-center gap-1">
+                @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                    <button onclick="openCorrelationModal()" class="px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black text-xs font-mono font-semibold transition flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">add</span> Crear Grupo de Correlación
                     </button>
                 @endif
@@ -684,13 +721,19 @@
                                 </td>
                                 @if(auth()->user()->isAdmin())
                                     <td class="px-2.5 py-2 text-center">
+                                        @if(!$isClusterSlave)
                                         <form action="{{ route('admin.alerts.correlation.destroy', $cg->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar este grupo de correlación?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition" title="Eliminar correlación">
+                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer" title="Eliminar correlación">
                                                 <span class="material-symbols-outlined text-[13px]">delete</span>
                                             </button>
                                         </form>
+                                        @else
+                                        <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
+                                            <span class="material-symbols-outlined text-[13px]">lock</span>
+                                        </span>
+                                        @endif
                                     </td>
                                 @endif
                             </tr>
@@ -796,7 +839,7 @@
 </div>
 
 <!-- 4. MODAL: NUEVA REGLA (ADMIN ONLY) -->
-@if(auth()->user()->isAdmin())
+@if(auth()->user()->isAdmin() && !$isClusterSlave)
 <div id="modal-new-rule" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-lg p-4 shadow-2xl animate-fadeIn max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">

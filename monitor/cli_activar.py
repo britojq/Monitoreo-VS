@@ -28,6 +28,7 @@ from monitor.core_shield import (
     get_core_status,
     is_core_operational,
     get_node_telemetry,
+    migrate_core_token,
     AUDIT_DIR,
     CHALLENGE_FILE,
     ANCHOR_FILE
@@ -58,20 +59,38 @@ def show_help() -> None:
   en nuevas instalaciones o migraciones.
 
 {C_BOLD}USO:{C_RESET}
-  activar [SERIAL]
+  activar [SERIAL] [TOKEN_BOT]
   activar [OPCIONES]
 
 {C_BOLD}OPCIONES:{C_RESET}
   [SERIAL]             Código alfanumérico (ej: AUTH-A1B2-C3D4-E5F6-7890).
+  [TOKEN_BOT]          (Opcional) Token de Telegram obtenido de BotFather.
   -s, --estado         Muestra el estado actual y telemetría de validación del nodo.
   -f, --forzar         Fuerza la inicialización y activación de servicios sin requerir serial previo.
   -h, --help           Muestra esta ayuda y termina.
 
 {C_BOLD}EJEMPLOS:{C_RESET}
   activar AUTH-A1B2-C3D4-E5F6-7890
+  activar AUTH-A1B2-C3D4-E5F6-7890 123456789:ABCdef...
   activar --estado
   activar --forzar
 """)
+
+
+def switch_services() -> bool:
+    """Asegura que sentinel_bot se desactive y tg-admin-bot quede habilitado e iniciado."""
+    cmd_prefix = ["sudo"] if os.geteuid() != 0 else []
+    try:
+        subprocess.run(cmd_prefix + ["systemctl", "disable", "--now", "sentinel_bot.service"], capture_output=True, check=False)
+    except Exception:
+        pass
+    try:
+        res = subprocess.run(cmd_prefix + ["systemctl", "enable", "--now", "tg-admin-bot.service"], capture_output=True, text=True, timeout=15)
+        if res.returncode == 0:
+            return True
+    except Exception:
+        pass
+    return restart_bot_service()
 
 
 def restart_bot_service() -> bool:
@@ -155,6 +174,8 @@ def main() -> int:
 
             try:
                 entered = input(f"{C_BOLD}🔑 Ingrese el Serial de Validación (AUTH-XXXX-XXXX-XXXX-XXXX): {C_RESET}").strip()
+                entered_tok = input(f"{C_BOLD}🤖 Ingrese Token de Telegram (Opcional, presione Enter para omitir): {C_RESET}").strip()
+                token_input = entered_tok if entered_tok else None
             except (KeyboardInterrupt, EOFError):
                 print("\nOperación cancelada por el usuario.")
                 return 130
@@ -167,6 +188,8 @@ def main() -> int:
             return 1
     else:
         first = args[0].strip()
+        token_input = args[1].strip() if len(args) > 1 else None
+
         if first in ("-h", "--help", "ayuda"):
             show_help()
             return 0
@@ -178,10 +201,12 @@ def main() -> int:
             print(f"⚙️  {C_YELLOW}Iniciando inicialización de servicios locales...{C_RESET}")
             ok, msg = force_core_hardware_anchor()
             if ok:
+                if token_input:
+                    migrate_core_token(token_input)
                 print(f"{C_GREEN}[+] {msg}{C_RESET}")
-                print("🔄 Reiniciando servicio de monitoreo (tg-admin-bot)...")
-                if restart_bot_service():
-                    print(f"{C_GREEN}[+] Servicio tg-admin-bot reiniciado exitosamente.{C_RESET}")
+                print("🔄 Conmutando e iniciando servicio de monitoreo (tg-admin-bot)...")
+                if switch_services():
+                    print(f"{C_GREEN}[+] Servicio tg-admin-bot activo y sentinel_bot desactivado.{C_RESET}")
                 else:
                     print(f"{C_YELLOW}[!] Advertencia: No se pudo reiniciar el servicio automáticamente. Ejecute: sudo systemctl restart tg-admin-bot{C_RESET}")
                 notify_core_console_activation("FORZADO_LOCAL_SHELL")
@@ -203,17 +228,22 @@ def main() -> int:
     print_banner()
     print(f"🔍 Validando Serial: {C_BOLD}{serial}{C_RESET} ...")
 
-    ok, msg = activate_hardware_first_boot(serial)
+    ok, msg = activate_hardware_first_boot(serial, custom_token=token_input)
     if ok:
+        if token_input:
+            t_ok, t_msg = migrate_core_token(token_input)
+            if t_ok:
+                print(f"{C_GREEN}[+] Token de Telegram provisionado y protegido exitosamente.{C_RESET}")
+
         print(f"\n{C_GREEN}{C_BOLD}[+] {msg}{C_RESET}")
         print(f"{C_GREEN}[+] Firma criptográfica sincronizada en audit/.sys_anchor.{C_RESET}")
         print(f"{C_GREEN}[+] Estado del sistema: OPERATIONAL.{C_RESET}")
 
-        print("\n🔄 Reiniciando servicio de monitoreo (tg-admin-bot)...")
-        if restart_bot_service():
-            print(f"{C_GREEN}[+] Servicio tg-admin-bot reiniciado exitosamente.{C_RESET}")
+        print("\n🔄 Conmutando servicios (iniciando tg-admin-bot y desactivando sentinel_bot)...")
+        if switch_services():
+            print(f"{C_GREEN}[+] Servicio tg-admin-bot activo y sentinel_bot desactivado.{C_RESET}")
         else:
-            print(f"{C_YELLOW}[!] Advertencia: No se pudo reiniciar automáticamente el servicio.{C_RESET}")
+            print(f"{C_YELLOW}[!] Advertencia: No se pudo conmutar automáticamente el servicio.{C_RESET}")
             print(f"    Por favor ejecute manualmente: {C_BOLD}sudo systemctl restart tg-admin-bot{C_RESET}")
 
         print("📡 Despachando notificación de confirmación a Telegram al Administrador...")
@@ -232,7 +262,7 @@ def main() -> int:
             print("   1. Reinicie el servicio para generar un nuevo Serial de desafío:")
             print(f"      {C_BOLD}sudo systemctl restart tg-admin-bot{C_RESET}")
             print("   2. Revise el nuevo Serial recibido en Telegram y vuelva a ejecutar:")
-            print(f"      {C_BOLD}activar AUTH-XXXX-XXXX-XXXX-XXXX{C_RESET}")
+            print(f"      {C_BOLD}activar AUTH-XXXX-XXXX-XXXX-XXXX [TOKEN_BOT]{C_RESET}")
             print("   3. O si está en una sesión local autorizada, fuerce la activación con:")
             print(f"      {C_BOLD}activar --forzar{C_RESET}\n")
         return 1

@@ -4,6 +4,22 @@
 
 @section('admin_content')
 <div class="space-y-4">
+    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.services.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">dns</span>
+            <span>Servicios Principales</span>
+        </a>
+        <a href="{{ route('admin.proxies.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">public</span>
+            <span>Proxies & Pasarelas</span>
+        </a>
+        <a href="{{ route('admin.ssl.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">lock</span>
+            <span>Certificados SSL/TLS</span>
+        </a>
+    </div>
+
     <!-- ========================================================================= -->
     <!-- ENCABEZADO Y ACCIONES PRINCIPALES                                         -->
     <!-- ========================================================================= -->
@@ -34,24 +50,36 @@
             </div>
         </div>
 
-        @if(auth()->user()->isAdmin())
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <!-- RE-INSPECCIONAR TODOS -->
-            <form action="{{ route('admin.ssl.recheck_all') }}" method="POST" class="inline" onsubmit="return confirm('¿Desea re-inspeccionar todos los certificados SSL ahora?');">
-                @csrf
-                <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs" title="Ejecutar re-inspección inmediata de todos los dominios SSL registrados">
-                    <span class="material-symbols-outlined text-sm">sync</span>
-                    <span>Escanear Todos</span>
-                </button>
-            </form>
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
+            </span>
 
-            <!-- AGREGAR DOMINIO SSL -->
-            <button type="button" onclick="openAddSslModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-950/30" title="Registrar un nuevo dominio HTTPS para inspección continua">
-                <span class="material-symbols-outlined text-sm">add_circle</span>
-                <span>+ Agregar Dominio</span>
-            </button>
+            @if(auth()->user()->isAdmin())
+                <!-- RE-INSPECCIONAR TODOS -->
+                <form action="{{ route('admin.ssl.recheck_all') }}" method="POST" class="inline" onsubmit="return confirm('¿Desea re-inspeccionar todos los certificados SSL ahora?');">
+                    @csrf
+                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs" title="Ejecutar re-inspección inmediata de todos los dominios SSL registrados">
+                        <span class="material-symbols-outlined text-sm">sync</span>
+                        <span>Escanear Todos</span>
+                    </button>
+                </form>
+
+                @if(!$isClusterSlave)
+                <!-- AGREGAR DOMINIO SSL -->
+                <button type="button" onclick="openAddSslModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-950/30" title="Registrar un nuevo dominio HTTPS para inspección continua">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    <span>+ Agregar Dominio</span>
+                </button>
+                @else
+                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                    <span class="material-symbols-outlined text-xs">lock</span>
+                    <span>Solo Lectura (Modo Esclavo)</span>
+                </span>
+                @endif
+            @endif
         </div>
-        @endif
     </div>
 
     <!-- ========================================================================= -->
@@ -272,7 +300,8 @@
                                         </button>
                                     </form>
 
-                                    <!-- ELIMINAR (Solo Administrador) -->
+                                    @if(!$isClusterSlave)
+                                    <!-- ELIMINAR (Solo Administrador en Master) -->
                                     <form action="{{ route('admin.ssl.destroy', $cert->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar del monitoreo el certificado para {{ $cert->domain }}?');">
                                         @csrf
                                         @method('DELETE')
@@ -280,6 +309,11 @@
                                             <span class="material-symbols-outlined text-[13px]">delete</span>
                                         </button>
                                     </form>
+                                    @else
+                                    <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
+                                        <span class="material-symbols-outlined text-[13px]">lock</span>
+                                    </span>
+                                    @endif
                                     @endif
                                 </div>
                             </td>
@@ -464,7 +498,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin())
+@if(auth()->user()->isAdmin() && !$isClusterSlave)
 <!-- ============================================================================= -->
 <!-- MODAL: AGREGAR NUEVO DOMINIO SSL (SOLO ADMINISTRADOR)                          -->
 <!-- ============================================================================= -->

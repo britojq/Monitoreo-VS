@@ -8,6 +8,7 @@ use App\Models\DiscoveredDeviceHistory;
 use App\Models\DiscoveryScan;
 use App\Models\DiscoverySubnet;
 use App\Models\MonitoredSite;
+use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -75,6 +76,11 @@ class AdminDiscoveryController extends Controller
      */
     public function authorizeDevice(Request $request, int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La autorización de dispositivos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $device = DiscoveredDevice::findOrFail($id);
         $deviceType = $request->input('device_type', 'workstation');
         $notes = $request->input('notes');
@@ -89,6 +95,11 @@ class AdminDiscoveryController extends Controller
      */
     public function markRogue(Request $request, int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). El reporte de intrusos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $device = DiscoveredDevice::findOrFail($id);
         $reason = $request->input('reason', 'Dispositivo no reconocido en auditoría');
 
@@ -102,6 +113,11 @@ class AdminDiscoveryController extends Controller
      */
     public function update(Request $request, int $id): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La clasificación de dispositivos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $device = DiscoveredDevice::findOrFail($id);
 
         $validated = $request->validate([
@@ -114,12 +130,16 @@ class AdminDiscoveryController extends Controller
         ]);
 
         $prevStatus = $device->classification_status;
+        $prevSiteId = $device->site_id;
+
+        $newSiteId = array_key_exists('site_id', $validated) ? $validated['site_id'] : $device->site_id;
+
         $device->update([
             'device_type' => $validated['device_type'],
             'classification_status' => $validated['classification_status'],
             'is_authorized' => $request->has('is_authorized'),
             'hostname' => $validated['hostname'] ?? $device->hostname,
-            'site_id' => $validated['site_id'] ?? $device->site_id,
+            'site_id' => $newSiteId,
             'notes' => $validated['notes'] ?? $device->notes,
             'classified_by' => $request->user()?->id,
             'classified_at' => now(),
@@ -131,6 +151,18 @@ class AdminDiscoveryController extends Controller
                 'event_type' => 'classified',
                 'previous_value' => $prevStatus,
                 'new_value' => $validated['classification_status'],
+                'occurred_at' => now(),
+            ]);
+        }
+
+        if ((int)$prevSiteId !== (int)$newSiteId) {
+            $prevSiteName = $prevSiteId ? (\App\Models\MonitoredSite::find($prevSiteId)?->name ?? "Sede #{$prevSiteId}") : 'Sin Asignar / Desconocida';
+            $newSiteName = $newSiteId ? (\App\Models\MonitoredSite::find($newSiteId)?->name ?? "Sede #{$newSiteId}") : 'Sin Asignar / Desconocida';
+            DiscoveredDeviceHistory::create([
+                'discovered_device_id' => $device->id,
+                'event_type' => 'classified',
+                'previous_value' => "Sede previa: {$prevSiteName}",
+                'new_value' => "Sede asignada: {$newSiteName}",
                 'occurred_at' => now(),
             ]);
         }
@@ -176,6 +208,11 @@ class AdminDiscoveryController extends Controller
      */
     public function storeSubnet(Request $request): RedirectResponse
     {
+        $cluster = new ClusterConfigService();
+        if ($cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). El registro de subredes debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        }
+
         $validated = $request->validate([
             'subnet' => ['required', 'string', 'unique:discovery_subnets,subnet', 'regex:/^([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}$/'],
             'site_id' => ['nullable', 'exists:monitored_sites,id'],

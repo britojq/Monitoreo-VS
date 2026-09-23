@@ -4,6 +4,18 @@
 
 @section('admin_content')
 <div class="space-y-6">
+    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.bot.commands.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">terminal</span>
+            <span>Comandos & Políticas</span>
+        </a>
+        <a href="{{ route('admin.bot.templates.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">edit_note</span>
+            <span>Plantillas de Mensajería</span>
+        </a>
+    </div>
+
     <!-- ENCABEZADO -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-obsidian-card p-6 rounded-2xl border border-obsidian-border shadow-xl">
         <div>
@@ -18,10 +30,18 @@
             </div>
         </div>
 
-        <!-- INDICADOR FUENTE -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Fuente: SERVIDOR MAESTRO
+        <!-- INDICADOR FUENTE Y MODO ESCLAVO -->
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
+            </div>
+            @if($isClusterSlave)
+            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                <span class="material-symbols-outlined text-xs">lock</span>
+                <span>Solo Lectura (Modo Esclavo)</span>
+            </span>
+            @endif
         </div>
     </div>
 
@@ -125,27 +145,39 @@
                                 {{ $cmd->description }}
                             </td>
                             <td class="py-3 px-4 text-center">
+                                @if(!$isClusterSlave)
                                 <form action="{{ route('admin.bot.commands.toggle', $cmd->id) }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="px-2.5 py-1 rounded text-[10px] font-bold transition {{ $cmd->is_active ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' }}">
+                                    <button type="submit" class="px-2.5 py-1 rounded text-[10px] font-bold transition cursor-pointer {{ $cmd->is_active ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' }}">
                                         {{ $cmd->is_active ? 'ACTIVO' : 'PAUSADO' }}
                                     </button>
                                 </form>
+                                @else
+                                <span class="px-2.5 py-1 rounded text-[10px] font-bold {{ $cmd->is_active ? 'bg-emerald-500/10 text-emerald-400/70 border border-emerald-500/20' : 'bg-red-500/10 text-red-400/70 border border-red-500/20' }}" title="Solo Lectura (Modo Esclavo)">
+                                    {{ $cmd->is_active ? 'ACTIVO' : 'PAUSADO' }}
+                                </span>
+                                @endif
                             </td>
                             <td class="py-3 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
                                     <button type="button" 
                                             onclick="openHelpModal('{{ $cmd->command }}', '{{ addslashes($cmd->title ?? $cmd->command) }}', '{{ base64_encode($cmd->help_text ?? '') }}')"
-                                            class="p-1.5 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white hover:bg-obsidian-border transition" 
+                                            class="p-1.5 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white hover:bg-obsidian-border transition cursor-pointer" 
                                             title="Ver Ayuda Telegram">
                                         <span class="material-symbols-outlined text-sm">visibility</span>
                                     </button>
+                                    @if(!$isClusterSlave)
                                     <button type="button" 
                                             onclick="openEditModal({{ json_encode($cmd) }})"
-                                            class="p-1.5 rounded-lg bg-obsidian-cyan/10 text-obsidian-cyan hover:bg-obsidian-cyan/20 transition" 
+                                            class="p-1.5 rounded-lg bg-obsidian-cyan/10 text-obsidian-cyan hover:bg-obsidian-cyan/20 transition cursor-pointer" 
                                             title="Editar Comando">
                                         <span class="material-symbols-outlined text-sm">edit</span>
                                     </button>
+                                    @else
+                                    <span class="p-1.5 rounded-lg bg-gray-900 text-gray-600 border border-gray-800" title="Modificaciones bloqueadas en Modo Esclavo">
+                                        <span class="material-symbols-outlined text-sm">lock</span>
+                                    </span>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -225,16 +257,24 @@
             </div>
 
             <div class="flex justify-end pt-4 border-t border-obsidian-border">
-                <button type="submit" class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-obsidian-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-obsidian-cyan/90 transition shadow-lg shadow-obsidian-cyan/20">
+                @if(!$isClusterSlave)
+                <button type="submit" class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-obsidian-cyan text-black font-bold text-xs uppercase tracking-wider hover:bg-obsidian-cyan/90 transition shadow-lg shadow-obsidian-cyan/20 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">save</span>
                     Guardar Parámetros y Mensajes
                 </button>
+                @else
+                <button type="button" disabled class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gray-800 text-gray-500 font-bold text-xs uppercase tracking-wider cursor-not-allowed border border-gray-700">
+                    <span class="material-symbols-outlined text-sm">lock</span>
+                    Modo Esclavo (Solo Lectura)
+                </button>
+                @endif
             </div>
         </form>
     </div>
     @endif
 </div>
 
+@if(!$isClusterSlave)
 <!-- MODAL DE EDICIÓN DE COMANDO -->
 <div id="editCommandModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
     <div class="bg-obsidian-card w-full max-w-xl p-6 rounded-2xl border border-obsidian-border shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -306,6 +346,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <!-- MODAL DE PREVISUALIZACIÓN TELEGRAM -->
 <div id="helpPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">

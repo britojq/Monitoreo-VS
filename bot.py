@@ -5819,6 +5819,405 @@ async def cmd_configs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await safe_reply_html(update.message, f"❌ Error gestionando configuraciones: {html.escape(str(e))}")
 
 
+async def cmd_traps(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra los últimos SNMP Traps recibidos en tiempo real por el receptor push."""
+    if not update.message:
+        return
+
+    args = context.args or []
+    filter_ip = args[0].strip() if args else None
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            sql = "SELECT id, source_ip, trap_oid, trap_type, severity, processed, received_at FROM snmp_traps_received WHERE 1=1"
+            params = []
+            if filter_ip:
+                sql += " AND source_ip = %s"
+                params.append(filter_ip)
+            sql += " ORDER BY id DESC LIMIT 8"
+            cur.execute(sql, tuple(params))
+            traps = cur.fetchall()
+
+            # Conteo rápido
+            cur.execute("SELECT COUNT(*) as total, SUM(CASE WHEN severity IN ('critical', 'emergency') THEN 1 ELSE 0 END) as crit FROM snmp_traps_received")
+            stats = cur.fetchone() or {"total": 0, "crit": 0}
+        conn.close()
+
+        lines = [
+            "🛰️ <b>SNMP TRAPS RECIBIDOS (TELEMETRÍA PUSH)</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"• <b>Total Histórico:</b> <code>{stats.get('total', 0)}</code> | <b>Críticos:</b> 🔴 <code>{stats.get('crit', 0) or 0}</code>",
+            f"• <b>Puerto de Escucha:</b> <code>UDP 162</code> (Activo)",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ÚLTIMOS TRAPS DETECTADOS:</b>"
+        ]
+
+        if not traps:
+            lines.append("<i>No se han recibido traps SNMP aún o no coinciden con el filtro.</i>")
+        else:
+            for t in traps:
+                sev = t.get("severity", "info")
+                sev_emoji = "🚨" if sev == "emergency" else "🔴" if sev == "critical" else "⚠️" if sev == "warning" else "ℹ️"
+                dt_str = t["received_at"].strftime("%d/%m %H:%M:%S") if t.get("received_at") else "N/A"
+                proc_str = "✅" if t.get("processed") else "⏳"
+                lines.append(
+                    f"{sev_emoji} <b>{html.escape(t.get('trap_type') or 'genericTrap')}</b> ({proc_str})\n"
+                    f"   └ 📍 <code>{t['source_ip']}</code> | ⏰ {dt_str}\n"
+                    f"   └ OID: <code>{t['trap_oid']}</code>"
+                )
+
+        lines.append("\n💡 <i>Filtro por equipo: <code>/traps &lt;ip&gt;</code></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_traps: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando traps SNMP: {html.escape(str(e))}")
+
+
+async def cmd_syslog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Consulta y filtra eventos recientes recibidos en la consola Syslog centralizada."""
+    if not update.message:
+        return
+
+    args = context.args or []
+    query_text = None
+    device_ip = None
+
+    if len(args) >= 2 and args[0].lower() in ("device", "ip", "equipo"):
+        device_ip = args[1].strip()
+    elif args:
+        query_text = " ".join(args).strip()
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            sql = "SELECT id, source_ip, hostname, severity, program, message, received_at FROM syslog_events WHERE 1=1"
+            params = []
+            if device_ip:
+                sql += " AND source_ip = %s"
+                params.append(device_ip)
+            if query_text:
+                sql += " AND (message LIKE %s OR program LIKE %s OR hostname LIKE %s)"
+                term = f"%{query_text}%"
+                params.extend([term, term, term])
+            sql += " ORDER BY id DESC LIMIT 8"
+            cur.execute(sql, tuple(params))
+            events = cur.fetchall()
+
+            # Conteo rápido
+            cur.execute("SELECT COUNT(*) as total, COUNT(DISTINCT source_ip) as sources FROM syslog_events")
+            stats = cur.fetchone() or {"total": 0, "sources": 0}
+        conn.close()
+
+        lines = [
+            "📋 <b>CONSOLA CENTRALIZADA DE SYSLOG (LIVE)</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"• <b>Total Eventos:</b> <code>{stats.get('total', 0)}</code> | <b>Fuentes Activas:</b> <code>{stats.get('sources', 0)}</code>",
+            f"• <b>Puerto de Escucha:</b> <code>UDP 514</code> (RFC 3164 / RFC 5424)",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ÚLTIMOS EVENTOS CAPTURADOS:</b>"
+        ]
+
+        if not events:
+            lines.append("<i>No se encontraron eventos en syslog coincidentes.</i>")
+        else:
+            sev_names = {0: "EMERG", 1: "ALERT", 2: "CRIT", 3: "ERR", 4: "WARN", 5: "NOTICE", 6: "INFO", 7: "DEBUG"}
+            for ev in events:
+                s_lvl = ev.get("severity", 6)
+                s_name = sev_names.get(s_lvl, str(s_lvl))
+                s_emoji = "🚨" if s_lvl <= 1 else "🔴" if s_lvl == 2 else "⚠️" if s_lvl == 3 else "ℹ️"
+                dt_str = ev["received_at"].strftime("%H:%M:%S") if ev.get("received_at") else ""
+                clean_msg = html.escape((ev.get("message") or "")[:90])
+                prog = html.escape(ev.get("program") or "syslog")
+                lines.append(
+                    f"{s_emoji} <b>[{s_name}]</b> <code>{prog}</code> ({dt_str})\n"
+                    f"   └ 📍 <code>{ev['source_ip']}</code>: <i>{clean_msg}</i>"
+                )
+
+        lines.append("\n💡 <i>Uso: <code>/syslog &lt;patrón&gt;</code> o <code>/syslog device &lt;ip&gt;</code></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_syslog: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando syslog: {html.escape(str(e))}")
+
+
+async def cmd_netflow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el análisis de tráfico y Top Talkers capturados vía NetFlow v5."""
+    if not update.message:
+        return
+
+    args = context.args or []
+    filter_type = args[0].lower() if args else "top"
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # Conteo de flujos y tráfico
+            cur.execute("SELECT COUNT(*) as total_flows, SUM(bytes) as total_bytes, SUM(packets) as total_pkts FROM netflow_records")
+            flow_stats = cur.fetchone() or {"total_flows": 0, "total_bytes": 0, "total_pkts": 0}
+
+            # Última ventana de Top Talkers
+            cur.execute("SELECT MAX(window_start) as latest_win FROM netflow_top_talkers")
+            win_row = cur.fetchone()
+            latest_win = win_row["latest_win"] if win_row else None
+
+            talkers = []
+            if latest_win:
+                if filter_type in ("src", "source", "emisores"):
+                    cur.execute("SELECT rank_type, rank_value, bytes, packets, percentage FROM netflow_top_talkers WHERE window_start = %s AND rank_type = 'src_ip' ORDER BY bytes DESC LIMIT 6", (latest_win,))
+                elif filter_type in ("dst", "dest", "receptores"):
+                    cur.execute("SELECT rank_type, rank_value, bytes, packets, percentage FROM netflow_top_talkers WHERE window_start = %s AND rank_type = 'dst_ip' ORDER BY bytes DESC LIMIT 6", (latest_win,))
+                elif filter_type in ("proto", "protocolo"):
+                    cur.execute("SELECT rank_type, rank_value, bytes, packets, percentage FROM netflow_top_talkers WHERE window_start = %s AND rank_type = 'protocol' ORDER BY bytes DESC LIMIT 5", (latest_win,))
+                else:
+                    cur.execute("SELECT rank_type, rank_value, bytes, packets, percentage FROM netflow_top_talkers WHERE window_start = %s ORDER BY bytes DESC LIMIT 8", (latest_win,))
+                talkers = cur.fetchall()
+        conn.close()
+
+        total_mb = round((flow_stats.get("total_bytes") or 0) / 1048576, 2)
+
+        lines = [
+            "🌊 <b>ANÁLISIS DE TRÁFICO NETFLOW V5 & TOP TALKERS</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"• <b>Flujos Totales:</b> <code>{flow_stats.get('total_flows', 0)}</code> ventanas (1m)",
+            f"• <b>Volumen Acumulado:</b> <code>{total_mb} MB</code> ({flow_stats.get('total_pkts', 0)} paquetes)",
+            f"• <b>Puerto Colector:</b> <code>UDP 2055</code> (Activo)",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"<b>RANKING TOP TALKERS ({filter_type.upper()}):</b>"
+        ]
+
+        if not talkers:
+            lines.append("<i>No hay datos de flujos materializados todavía en la última ventana de 5m.</i>")
+        else:
+            for tk in talkers:
+                rtype = tk.get("rank_type")
+                rval = tk.get("rank_value")
+                b_mb = round((tk.get("bytes") or 0) / 1048576, 2)
+                pct = tk.get("percentage") or 0.0
+                type_icon = "📤" if rtype == "src_ip" else ("📥" if rtype == "dst_ip" else "⚡")
+                lines.append(f"{type_icon} <b>{html.escape(str(rval))}</b>: <code>{b_mb} MB</code> ({pct}%) | {tk.get('packets')} pkts")
+
+        lines.append("\n💡 <i>Filtros: <code>/netflow src</code> | <code>/netflow dst</code> | <code>/netflow proto</code></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_netflow: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando NetFlow: {html.escape(str(e))}")
+
+
+async def cmd_topologia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra un resumen de la topología de red física y lógica descubierta (Fase 7)."""
+    if not update.message:
+        return
+
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) as total_devs FROM snmp_devices WHERE is_active = 1")
+            snmp_row = cur.fetchone()
+            snmp_cnt = snmp_row["total_devs"] if snmp_row else 0
+
+            cur.execute("SELECT COUNT(*) as total_links, SUM(CASE WHEN link_status = 'up' THEN 1 ELSE 0 END) as up_links FROM network_topology_links")
+            link_stats = cur.fetchone() or {"total_links": 0, "up_links": 0}
+
+            cur.execute("""
+                SELECT l.link_type, l.link_status, s.name as src_name, COALESCE(t.name, l.target_hostname) as tgt_name
+                FROM network_topology_links l
+                JOIN snmp_devices s ON l.source_device_id = s.id
+                LEFT JOIN snmp_devices t ON l.target_device_id = t.id
+                ORDER BY l.link_status ASC, l.id ASC LIMIT 6
+            """)
+            sample_links = cur.fetchall()
+        conn.close()
+
+        total_links = link_stats.get("total_links") or 0
+        up_links = link_stats.get("up_links") or 0
+
+        lines = [
+            "🗺️ <b>TOPOLOGÍA VISUAL DE RED (VALLE SECO)</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"• <b>Dispositivos SNMP:</b> <code>{snmp_cnt}</code> equipos",
+            f"• <b>Enlaces Descubiertos:</b> <code>{total_links}</code>",
+            f"• <b>Enlaces Operativos (UP):</b> <code>{up_links}</code>",
+            f"• <b>Protocolos:</b> <code>CDP / LLDP / FDB Inferred</code>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ENLACES PRINCIPALES:</b>"
+        ]
+
+        if not sample_links:
+            lines.append("<i>No hay enlaces registrados en la topología.</i>")
+        else:
+            for lk in sample_links:
+                status_icon = "🟢" if lk.get("link_status") == "up" else "🔴"
+                ltype = (lk.get("link_type") or "manual").upper()
+                s_name = lk.get("src_name", "Core")
+                t_name = lk.get("tgt_name", "Equipo")
+                lines.append(f"{status_icon} <b>{html.escape(s_name)}</b> ──[{ltype}]──> <b>{html.escape(t_name)}</b>")
+
+        lines.append("\n🌐 <i>Visualiza el grafo interactivo completo en: <b>Portal Web -> Topología Visual</b></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_topologia: {e}")
+        await safe_reply_html(update.message, f"❌ Error consultando topología: {html.escape(str(e))}")
+
+
+async def cmd_wol(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Envía Magic Packets Wake-on-LAN o lista equipos registrados (Fase 7)."""
+    if not update.message:
+        return
+
+    user_id = update.effective_user.id if update.effective_user else 0
+    is_admin = (user_id == IMMUTABLE_OWNER_ID or user_id == owner_id)
+
+    args = context.args or []
+
+    try:
+        from monitor.wol_sender import WolManager
+        manager = WolManager()
+
+        if not args:
+            devices = manager.list_devices()
+            lines = [
+                "⚡ <b>DISPOSITIVOS WAKE-ON-LAN (ENCENDIDO REMOTO)</b>",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            ]
+            if not devices:
+                lines.append("<i>No hay dispositivos registrados para Wake-on-LAN.</i>")
+                lines.append("<i>Usa el portal web para registrar nuevos equipos.</i>")
+            else:
+                for d in devices:
+                    last_w = d["last_woken_at"].strftime("%Y-%m-%d %H:%M") if d.get("last_woken_at") else "Nunca"
+                    lines.append(f"• <b>[ID: {d['id']:02d}]</b> {html.escape(d['name'])}")
+                    lines.append(f"  MAC: <code>{d['mac_address']}</code> | IP: <code>{d.get('ip_address') or 'N/A'}</code>")
+                    lines.append(f"  Último encendido: <i>{last_w}</i>")
+                    lines.append("")
+
+            if is_admin:
+                lines.append("💡 <i>Para encender un equipo: <code>/wol &lt;id|mac|nombre&gt;</code></i>")
+            await safe_reply_html(update.message, "\n".join(lines))
+            return
+
+        if not is_admin:
+            await safe_reply_html(update.message, "⛔ <i>Acción denegada: Sólo administradores pueden transmitir Magic Packets Wake-on-LAN.</i>")
+            return
+
+        target = " ".join(args)
+        res = manager.wake(target)
+
+        if res.get("status") == "ok":
+            msg = (
+                f"⚡ <b>MAGIC PACKET TRANSMITIDO CON ÉXITO</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"• <b>Equipo:</b> {html.escape(res['name'])}\n"
+                f"• <b>MAC Destino:</b> <code>{res['mac']}</code>\n"
+                f"• <b>Transmisión:</b> Broadcast UDP 9 vía <code>{res['broadcast']}</code>\n"
+                f"• <b>Hora:</b> <code>{res['woken_at']}</code>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"<i>La orden de encendido fue enviada a la red física de Valle Seco.</i>"
+            )
+        else:
+            msg = f"❌ Error enviando Wake-on-LAN: {html.escape(res.get('message', 'Fallo de red'))}"
+
+        await safe_reply_html(update.message, msg)
+
+    except Exception as e:
+        logger.error(f"Error en cmd_wol: {e}")
+        await safe_reply_html(update.message, f"❌ Error en comando WoL: {html.escape(str(e))}")
+
+
+async def cmd_predicciones(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra anomalías estadísticas y tendencias de saturación detectadas por IA (Fase 7)."""
+    if not update.message:
+        return
+
+    try:
+        from monitor.predictive_analyzer import PredictiveAnalyzer
+        analyzer = PredictiveAnalyzer()
+        anomalies = analyzer.get_recent_anomalies(limit=6, unacknowledged_only=True)
+
+        lines = [
+            "🧠 <b>ANÁLISIS PREDICTIVO E INFERENCIA DE IA</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "• <b>Motor:</b> <code>Motor Local de IA / Estadística Avanzada</code>",
+            "• <b>Detección:</b> Tendencias alcistas, saturación y outliers (>3σ)",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ALERTAS Y TENDENCIAS ACTIVAS:</b>"
+        ]
+
+        if not anomalies:
+            lines.append("✅ <i>Operación nominal. No se registran riesgos predictivos de saturación ni anomalías estadísticas pendientes.</i>")
+        else:
+            for a in anomalies:
+                atype = a.get("anomaly_type", "").upper()
+                conf = a.get("confidence", 0)
+                type_icon = "📈" if "TREND" in atype else "⚠️"
+                lines.append(f"{type_icon} <b>[#{a['id']}] {atype}</b> (Confianza: {conf}%)")
+                lines.append(f"  <b>Entidad:</b> {html.escape(a['entity_type'])} #{a['entity_id']} ({html.escape(a.get('metric_name') or 'global')})")
+                lines.append(f"  <b>Diagnóstico:</b> {html.escape(a.get('description') or '')}")
+                if a.get("predicted_impact"):
+                    lines.append(f"  <b>Impacto:</b> <i>{html.escape(a['predicted_impact'])}</i>")
+                lines.append("")
+
+        lines.append("🌐 <i>Gestión y reconocimiento en: <b>Portal Web -> IA Predictiva</b></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_predicciones: {e}")
+        await safe_reply_html(update.message, f"❌ Error en análisis predictivo: {html.escape(str(e))}")
+
+
+async def cmd_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el ciclo de vida de hardware, garantías y salud SMART (Fase 7)."""
+    if not update.message:
+        return
+
+    try:
+        from monitor.lifecycle_manager import LifecycleManager
+        manager = LifecycleManager()
+        summary = manager.get_summary()
+        items = manager.get_all_items()
+
+        lines = [
+            "📦 <b>CICLO DE VIDA DE HARDWARE & GARANTÍAS (VALLE SECO)</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"• <b>Total Activos en Inventario:</b> <code>{summary['total_tracked']}</code>",
+            f"• <b>Garantías Vigentes:</b> <code>{summary['warranty_valid']}</code>",
+            f"• <b>Por Vencer (&lt;60 días):</b> <code>{summary['warranty_expiring_soon']}</code>",
+            f"• <b>Garantías Vencidas:</b> <code>{summary['warranty_expired']}</code>",
+            f"• <b>Fin de Vida (EOL Alcanzado):</b> <code>{summary['eol_reached']}</code>",
+            f"• <b>Alarmas de Disco SMART:</b> <code>{summary['disk_issues']}</code>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "<b>ESTADO DE ACTIVOS PRINCIPALES:</b>"
+        ]
+
+        if not items:
+            lines.append("<i>No hay activos registrados en el ciclo de vida.</i>")
+        else:
+            for it in items[:6]:
+                dname = it.get("device_name", "Activo")
+                sn = it.get("serial_number") or "S/N N/A"
+                wstat = it.get("warranty_status", "N/A")
+                smart = (it.get("disk_health_status") or "unknown").upper()
+                smart_icon = "🟢" if smart == "OK" else ("🔴" if smart in ("FAILING", "WARNING") else "⚪")
+
+                lines.append(f"• <b>{html.escape(dname)}</b> (SN: <code>{sn}</code>)")
+                lines.append(f"  Garantía: <b>{wstat}</b> | SMART: {smart_icon} <code>{smart}</code>")
+
+        lines.append("\n🌐 <i>Administración completa en: <b>Portal Web -> Ciclo de Vida</b></i>")
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_inventario: {e}")
+        await safe_reply_html(update.message, f"❌ Error en consulta de ciclo de vida: {html.escape(str(e))}")
+
+
 async def handle_alert_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja los botones interactivos en línea de las alertas (Reconocer, Silenciar, Resolver, Detalle)."""
     query = update.callback_query
@@ -7606,6 +8005,17 @@ def main() -> None:
     application.add_handler(CommandHandler(["mantenimiento", "maint"], cmd_mantenimiento))
     application.add_handler(CommandHandler(["reglas", "rules"], cmd_reglas))
     application.add_handler(CommandHandler(["configs", "config", "respaldos", "backup"], cmd_configs))
+
+    # Comandos de Telemetría Push en Tiempo Real (Fase 6)
+    application.add_handler(CommandHandler(["traps", "trap", "snmptraps"], cmd_traps))
+    application.add_handler(CommandHandler(["syslog", "syslogs", "logs_red"], cmd_syslog))
+    application.add_handler(CommandHandler(["netflow", "flows", "flujos"], cmd_netflow))
+
+    # Comandos de Topología, Wake-on-LAN, IA Predictiva y Ciclo de Vida (Fase 7)
+    application.add_handler(CommandHandler(["topologia", "topology", "grafo"], cmd_topologia))
+    application.add_handler(CommandHandler(["wol", "wake", "encender"], cmd_wol))
+    application.add_handler(CommandHandler(["predicciones", "predictivo", "capacidad", "tendencias"], cmd_predicciones))
+    application.add_handler(CommandHandler(["inventario", "ciclovida", "garantias", "lifecycle"], cmd_inventario))
 
 
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)

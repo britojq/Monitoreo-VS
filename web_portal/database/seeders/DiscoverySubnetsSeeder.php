@@ -13,7 +13,6 @@ class DiscoverySubnetsSeeder extends Seeder
         // Obtener IDs de sedes conocidas si existen
         $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
         $moronSite = MonitoredSite::where('name', 'like', '%MORON%')->first();
-        $caraboboSite = MonitoredSite::where('name', 'like', '%CARABOBO%')->orWhere('name', 'like', '%CONSOLIDADO%')->first();
         $pasMarianoSite = MonitoredSite::where('name', 'like', '%MARI%')->first();
 
         $subnets = [
@@ -29,7 +28,7 @@ class DiscoverySubnetsSeeder extends Seeder
             ],
             [
                 'subnet' => '10.20.0.0/24',
-                'site_id' => $caraboboSite?->id,
+                'site_id' => null, // Red Central / Servidores (No asociado a sede comercial física específica)
                 'scan_method' => 'arp_sweep',
                 'scan_interval_minutes' => 30,
                 'scan_window_start' => null,

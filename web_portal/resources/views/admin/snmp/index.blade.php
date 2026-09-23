@@ -28,6 +28,18 @@
 </style>
 
 <div class="space-y-4">
+    <!-- PESTAÑAS CONSOLA SNMP 360° -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.snmp.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.snmp.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">sensors</span>
+            <span>Dispositivos & Métricas SNMP</span>
+        </a>
+        <a href="{{ route('admin.traps.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.traps.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">forward_to_inbox</span>
+            <span>SNMP Traps (UDP 162)</span>
+        </a>
+    </div>
+
     <!-- CABECERA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -46,7 +58,12 @@
             <p class="text-xs font-mono text-obsidian-muted">Supervisión de métricas OID, estados operacionales de puertos y ancho de banda en switches, routers y firewalls</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            @if(auth()->user()->isAdmin())
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                Fuente: SERVIDOR MAESTRO
+            </span>
+
+            @if(auth()->user()->isAdmin() && !$isClusterSlave)
             <button type="button" onclick="openRemoteActivationModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
                 <span class="material-symbols-outlined text-sm">bolt</span>
                 <span>⚡ Activación Remota</span>
@@ -59,6 +76,11 @@
                 <span class="material-symbols-outlined text-sm">sync</span>
                 <span>Sondear Todo</span>
             </button>
+            @elseif($isClusterSlave)
+            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
+                <span class="material-symbols-outlined text-xs">lock</span>
+                <span>Solo Lectura (Modo Esclavo)</span>
+            </span>
             @else
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono">
                 <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
@@ -314,21 +336,28 @@
                                 </button>
 
                                 @if(auth()->user()->isAdmin())
-                                <button type="button" onclick="triggerDevicePoll({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-emerald-500 hover:text-black border border-obsidian-border text-emerald-400 transition cursor-pointer" title="Sondear SNMP Ahora">
-                                    <span class="material-symbols-outlined text-sm">refresh</span>
-                                </button>
+                                    @if($isClusterSlave)
+                                        <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
+                                            <span class="material-symbols-outlined text-[12px]">lock</span>
+                                            <span>Solo Lectura</span>
+                                        </span>
+                                    @else
+                                        <button type="button" onclick="triggerDevicePoll({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-emerald-500 hover:text-black border border-obsidian-border text-emerald-400 transition cursor-pointer" title="Sondear SNMP Ahora">
+                                            <span class="material-symbols-outlined text-sm">refresh</span>
+                                        </button>
 
-                                <button type="button" onclick="triggerInterfaceDiscovery({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-purple-500 hover:text-white border border-obsidian-border text-purple-400 transition cursor-pointer" title="Descubrir Puertos (ifTable)">
-                                    <span class="material-symbols-outlined text-sm">travel_explore</span>
-                                </button>
+                                        <button type="button" onclick="triggerInterfaceDiscovery({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-purple-500 hover:text-white border border-obsidian-border text-purple-400 transition cursor-pointer" title="Descubrir Puertos (ifTable)">
+                                            <span class="material-symbols-outlined text-sm">travel_explore</span>
+                                        </button>
 
-                                <form method="POST" action="{{ route('admin.snmp.destroy', $dev->id) }}" class="inline" onsubmit="return confirm('¿Está seguro de eliminar el dispositivo {{ $dev->name }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-red-500 hover:text-white border border-obsidian-border text-red-400 transition cursor-pointer" title="Eliminar Dispositivo">
-                                        <span class="material-symbols-outlined text-sm">delete</span>
-                                    </button>
-                                </form>
+                                        <form method="POST" action="{{ route('admin.snmp.destroy', $dev->id) }}" class="inline" onsubmit="return confirm('¿Está seguro de eliminar el dispositivo {{ $dev->name }}?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-red-500 hover:text-white border border-obsidian-border text-red-400 transition cursor-pointer" title="Eliminar Dispositivo">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
                             </div>
                         </td>
@@ -493,7 +522,7 @@
 <!-- ========================================================================= -->
 <!-- MODAL NUEVO DISPOSITIVO SNMP (ADMIN) -->
 <!-- ========================================================================= -->
-@if(auth()->user()->isAdmin())
+@if(auth()->user()->isAdmin() && !$isClusterSlave)
 <div id="newDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
     <div class="w-full max-w-lg rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
         <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
