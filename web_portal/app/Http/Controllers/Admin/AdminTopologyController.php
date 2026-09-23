@@ -21,6 +21,12 @@ class AdminTopologyController extends Controller
      */
     public function index(): View
     {
+        // Auto-curación: Si la tabla de enlaces está vacía, regenerar automáticamente
+        if (NetworkTopologyLink::count() === 0) {
+            $cmd = '/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/topology_builder.py --build 2>&1';
+            @shell_exec($cmd);
+        }
+
         $totalDevices = SnmpDevice::count() + MonitoredNetworkDevice::count();
         $totalLinks = NetworkTopologyLink::count();
         $activeLinks = NetworkTopologyLink::where('link_status', 'up')->count();
@@ -42,19 +48,34 @@ class AdminTopologyController extends Controller
      */
     public function data(Request $request): JsonResponse
     {
+        // Si no existen enlaces, regenerar automáticamente en caliente
+        if (NetworkTopologyLink::count() === 0) {
+            $cmd = '/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/topology_builder.py --build 2>&1';
+            @shell_exec($cmd);
+        }
+
         $nodes = [];
         $edges = [];
         $addedNodeIds = [];
+        $addedIps = [];
+        $nodeIps = [];
+
+        // Recuperar último estado de ping de cada equipo de red
+        $latestDevHistories = \App\Models\NetworkDeviceCheckHistory::whereIn('id', function($q) {
+            $q->selectRaw('MAX(id)')->from('network_device_check_histories')->groupBy('monitored_network_device_id');
+        })->pluck('is_up', 'monitored_network_device_id');
+
+        $netDevsByIp = MonitoredNetworkDevice::all()->keyBy('ip');
 
         // 1. Nodos SNMP
         $snmpDevices = SnmpDevice::all();
-        $addedIps = [];
 
         foreach ($snmpDevices as $d) {
             $nodeId = 'snmp_' . $d->id;
             $addedNodeIds[$nodeId] = true;
             if ($d->ip_address) {
                 $addedIps[$d->ip_address] = $nodeId;
+                $nodeIps[$nodeId] = $d->ip_address;
             }
 
             $isCore = str_contains(strtolower($d->name), 'core') || str_contains(strtolower($d->model ?? ''), '3750') || $d->ip_address === '10.20.23.1';
@@ -66,19 +87,34 @@ class AdminTopologyController extends Controller
             elseif ($isCore) $type = 'core_switch';
             elseif ($isRouter) $type = 'router';
 
+            // Determinar si está operativo:
+            $isUp = false;
+            if ($d->last_poll_status === 'success') {
+                $isUp = true;
+            } elseif ($d->last_poll_status === 'failed' || ($d->consecutive_failures ?? 0) > 0) {
+                $isUp = false;
+            } else {
+                $ndObj = $netDevsByIp->get($d->ip_address);
+                if ($ndObj && isset($latestDevHistories[$ndObj->id])) {
+                    $isUp = (bool)$latestDevHistories[$ndObj->id];
+                } else {
+                    $isUp = (bool)$d->is_active;
+                }
+            }
+
             $nodes[] = [
                 'data' => [
                     'id' => $nodeId,
                     'label' => $d->name,
                     'ip' => $d->ip_address,
                     'type' => $type,
-                    'status' => $d->last_poll_status === 'success' ? 'up' : 'down',
+                    'status' => $isUp ? 'up' : 'down',
                     'vendor' => $d->vendor ?? 'Cisco',
                     'model' => $d->model ?? 'Dispositivo',
                     'uptime' => $d->uptime_formatted ?? 'N/A',
                     'notes' => $d->notes ?? null,
                 ],
-                'classes' => "device-node node-{$type} " . ($d->last_poll_status === 'success' ? 'status-up' : 'status-down'),
+                'classes' => "device-node node-{$type} " . ($isUp ? 'status-up' : 'status-down'),
             ];
         }
 
@@ -93,6 +129,7 @@ class AdminTopologyController extends Controller
             if (isset($addedNodeIds[$nodeId])) continue;
             $addedNodeIds[$nodeId] = true;
             $addedIps[$nd->ip] = $nodeId;
+            $nodeIps[$nodeId] = $nd->ip;
 
             $isSwitch = str_contains(strtolower($nd->name), 'sw') 
                 || str_contains(strtolower($nd->name), 'switch')
@@ -104,19 +141,21 @@ class AdminTopologyController extends Controller
             if ($isSwitch) $type = 'switch';
             elseif ($isRouter) $type = 'router';
 
+            $isUp = isset($latestDevHistories[$nd->id]) ? (bool)$latestDevHistories[$nd->id] : (bool)$nd->is_active;
+
             $nodes[] = [
                 'data' => [
                     'id' => $nodeId,
                     'label' => $nd->name,
                     'ip' => $nd->ip,
                     'type' => $type,
-                    'status' => $nd->is_up ? 'up' : 'down',
+                    'status' => $isUp ? 'up' : 'down',
                     'vendor' => $nd->vendor_data ?? 'Host/Terminal',
                     'model' => $nd->model ?? 'Endpoint',
                     'uptime' => 'N/A',
                     'notes' => $nd->notes ?? null,
                 ],
-                'classes' => "device-node node-{$type} " . ($nd->is_up ? 'status-up' : 'status-down'),
+                'classes' => "device-node node-{$type} " . ($isUp ? 'status-up' : 'status-down'),
             ];
         }
 
@@ -145,18 +184,21 @@ class AdminTopologyController extends Controller
                 }
                 $addedEdgeKeys[$edgeKey] = true;
 
-                // Identificar etiqueta de puerto o naturaleza del enlace
+                // Identificar etiqueta de puerto o naturaleza del enlace mediante IP real
+                $sIp = $nodeIps[$sourceId] ?? '';
+                $tIp = $nodeIps[$targetId] ?? '';
+
                 $edgeLabel = '';
-                if ($sourceId === 'snmp_4' && $targetId === 'snmp_1') $edgeLabel = 'WAN Troncal';
-                elseif ($sourceId === 'snmp_4' && $targetId === 'snmp_9') $edgeLabel = 'WAN Morón';
-                elseif ($sourceId === 'snmp_1' && $targetId === 'snmp_5') $edgeLabel = 'P48 (Uplink)';
-                elseif ($sourceId === 'snmp_5' && $targetId === 'snmp_2') $edgeLabel = 'P47 (SW02)';
-                elseif ($sourceId === 'snmp_5' && $targetId === 'snmp_6') $edgeLabel = 'P43 (SW03)';
-                elseif ($sourceId === 'snmp_5' && $targetId === 'snmp_7') $edgeLabel = 'P46 (Transmisión)';
-                elseif ($sourceId === 'snmp_5' && $targetId === 'snmp_8') $edgeLabel = 'P45 (Consolidado)';
-                elseif ($sourceId === 'snmp_6' && $targetId === 'snmp_3') $edgeLabel = 'Monitoreo';
-                elseif ($sourceId === 'snmp_2' && str_contains($l->target_hostname ?? '', '64')) $edgeLabel = 'WiFi';
-                elseif ($sourceId === 'snmp_2' && str_contains($l->target_hostname ?? '', '232')) $edgeLabel = 'Acceso';
+                if (($sIp === '10.20.0.1' && $tIp === '10.20.23.1') || ($sIp === '10.20.23.1' && $tIp === '10.20.0.1')) $edgeLabel = 'WAN Troncal';
+                elseif (($sIp === '10.20.0.1' && $tIp === '10.20.106.193') || ($sIp === '10.20.106.193' && $tIp === '10.20.0.1')) $edgeLabel = 'WAN Morón';
+                elseif (($sIp === '10.20.23.1' && $tIp === '10.20.23.2') || ($sIp === '10.20.23.2' && $tIp === '10.20.23.1')) $edgeLabel = 'P48 (Uplink)';
+                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.4') || ($sIp === '10.20.23.4' && $tIp === '10.20.23.2')) $edgeLabel = 'P47 (SW02)';
+                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.5') || ($sIp === '10.20.23.5' && $tIp === '10.20.23.2')) $edgeLabel = 'P43 (SW03)';
+                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.27.83') || ($sIp === '10.20.27.83' && $tIp === '10.20.23.2')) $edgeLabel = 'P46 (Transmisión)';
+                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.107.131') || ($sIp === '10.20.107.131' && $tIp === '10.20.23.2')) $edgeLabel = 'P45 (Consolidado)';
+                elseif (($sIp === '10.20.23.5' && $tIp === '10.20.23.252') || ($sIp === '10.20.23.252' && $tIp === '10.20.23.5')) $edgeLabel = 'Monitoreo';
+                elseif ($sIp === '10.20.23.4' && str_contains($l->target_hostname ?? '', '64')) $edgeLabel = 'WiFi';
+                elseif ($sIp === '10.20.23.4' && str_contains($l->target_hostname ?? '', '232')) $edgeLabel = 'Acceso';
 
                 $edges[] = [
                     'data' => [
@@ -172,6 +214,8 @@ class AdminTopologyController extends Controller
             }
         }
 
+        $rootNodeId = $addedIps['10.20.0.1'] ?? ($addedIps['10.20.23.1'] ?? 'snmp_4');
+
         return response()->json([
             'elements' => [
                 'nodes' => $nodes,
@@ -180,6 +224,7 @@ class AdminTopologyController extends Controller
             'meta' => [
                 'total_nodes' => count($nodes),
                 'total_edges' => count($edges),
+                'root_id' => $rootNodeId,
                 'generated_at' => now()->toIso8601String(),
             ]
         ]);

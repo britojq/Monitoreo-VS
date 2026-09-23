@@ -339,6 +339,18 @@ def configure_pam_hardening():
             log(f"⚠️ Aviso configurando blindaje PAM en {p_path}: {ep}")
 
 
+def ensure_network_topology():
+    """Garantiza que la topología de red física y lógica esté construida."""
+    top_script = BASE_DIR / "monitor" / "topology_builder.py"
+    python_bin = BASE_DIR / "venv" / "bin" / "python"
+    if top_script.exists() and python_bin.exists():
+        try:
+            subprocess.run([str(python_bin), str(top_script), "--build"], capture_output=True, timeout=20, check=False)
+            log("✅ Topología de red evaluada y construida exitosamente.")
+        except Exception as e:
+            log(f"⚠️ Aviso evaluando topología de red: {e}")
+
+
 def main():
     log("=================================================================")
     log("🚀 EJECUTANDO HOOK DE POST-ACTUALIZACIÓN MAYOR (post_update.py)")
@@ -352,6 +364,7 @@ def main():
     configure_cli_symlink()
     configure_radar_cron()
     run_initial_radar_cycle()
+    ensure_network_topology()
     # Re-asegurar permisos de todos los archivos generados tras el ciclo inicial
     configure_system_directories()
     configure_web_portal_permissions()

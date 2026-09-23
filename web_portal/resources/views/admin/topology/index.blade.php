@@ -124,7 +124,7 @@
             </div>
 
             <!-- CONTENEDOR CYTOSCAPE -->
-            <div id="cy" class="flex-1 w-full h-full bg-[#051424]"></div>
+            <div id="cy" class="flex-1 w-full bg-[#051424]" style="min-height: 560px;"></div>
 
             <!-- LEYENDA FLOTANTE -->
             <div class="absolute bottom-3 left-3 bg-obsidian-panel/90 border border-obsidian-border/90 backdrop-blur-md rounded-lg p-2 text-[10px] font-mono text-obsidian-muted flex items-center gap-3 shadow-md pointer-events-none">
@@ -393,12 +393,20 @@
                 layout: {
                     name: 'breadthfirst',
                     directed: true,
-                    roots: ['#snmp_4'],
-                    spacingFactor: 1.25,
+                    roots: ['#' + (data.meta && data.meta.root_id ? data.meta.root_id : 'snmp_4')],
+                    spacingFactor: 1.4,
                     padding: 40,
                     animate: false
                 }
             });
+
+            window._topologyRootId = data.meta && data.meta.root_id ? data.meta.root_id : 'snmp_4';
+            setTimeout(() => {
+                if (cy) {
+                    cy.resize();
+                    cy.fit(null, 30);
+                }
+            }, 150);
 
             // Manejo de eventos al hacer clic en nodos
             cy.on('tap', 'node', function (evt) {
@@ -466,6 +474,7 @@
 
     function changeLayout(layoutName) {
         if (!cy) return;
+        const rootSelector = '#' + (window._topologyRootId || 'snmp_4');
         const opts = {
             name: layoutName,
             animate: true,
@@ -475,8 +484,8 @@
         };
         if (layoutName === 'breadthfirst') {
             opts.directed = true;
-            opts.roots = ['#snmp_4'];
-            opts.spacingFactor = 1.25;
+            opts.roots = [rootSelector];
+            opts.spacingFactor = 1.4;
         } else if (layoutName === 'cose') {
             opts.nodeRepulsion = 600000;
             opts.idealEdgeLength = 100;
@@ -484,6 +493,13 @@
         }
         cy.layout(opts).run();
     }
+
+    window.addEventListener('resize', function () {
+        if (cy) {
+            cy.resize();
+            cy.fit(null, 30);
+        }
+    });
 
     function cyZoom(factor) {
         if (!cy) return;
