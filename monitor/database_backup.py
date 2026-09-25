@@ -36,7 +36,7 @@ def load_db_config() -> Dict[str, str]:
         "port": "3306",
         "database": "monitoreo_vs",
         "username": "monitoreo_user",
-        "password": "VsMonit#2026!SecureKey"
+        "password": "password"
     }
 
     if env_file and env_file.exists():

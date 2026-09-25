@@ -91,7 +91,7 @@ def log_event_to_database(
             host=env.get("DB_HOST", "127.0.0.1"),
             port=int(env.get("DB_PORT", 3306)),
             user=env.get("DB_USERNAME", "monitoreo_user"),
-            password=env.get("DB_PASSWORD", "VsMonit#2026!SecureKey"),
+            password=env.get("DB_PASSWORD", "password"),
             database=env.get("DB_DATABASE", "monitoreo_vs"),
             autocommit=True,
             connect_timeout=3,

@@ -60,7 +60,7 @@ Route::get('/preview-403', function () {
 
 // --- AUTENTICACIÓN ---
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.submit');
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
 // --- ASISTENTE IA (Estrictamente Protegido por Autenticación) ---

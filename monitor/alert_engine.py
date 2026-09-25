@@ -76,7 +76,7 @@ def get_db_connection():
         host=ENV.get("DB_HOST", "127.0.0.1"),
         port=int(ENV.get("DB_PORT", 3306)),
         user=ENV.get("DB_USERNAME", "monitoreo_user"),
-        password=ENV.get("DB_PASSWORD", "VsMonit#2026!SecureKey"),
+        password=ENV.get("DB_PASSWORD", "password"),
         database=ENV.get("DB_DATABASE", "monitoreo_vs"),
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=True,

@@ -2,7 +2,7 @@
 ### *Sistema Integral de Supervisión de Infraestructura Crítica, Telemetría y Continuidad Operativa*
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com/)
+[![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.11+-003545?style=flat&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4.x-FF6384?style=flat&logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
 [![Cytoscape.js](https://img.shields.io/badge/Cytoscape.js-3.30-navy?style=flat)](https://js.cytoscape.org/)
@@ -21,7 +21,42 @@
 
 Esta plataforma es una solución integral de supervisión tecnológica, telemetría de servicios de red, diagnóstico proactivo y administración remota concebida para entornos corporativos y de misión crítica.
 
-El sistema unifica un portal web interactivo de alta reactividad en **Laravel 11**, demonios concurrentes de escaneo y telemetría en **Python 3.11+**, asistentes de gestión cifrada vía **Telegram**, un motor local de inteligencia artificial predictiva y soporte nativo para arquitecturas de clúster distribuido (**Master / Slave**).
+El sistema unifica un portal web interactivo de alta reactividad en **Laravel 13**, demonios concurrentes de escaneo y telemetría en **Python 3.11+**, asistentes de gestión cifrada vía **Telegram**, un motor local de inteligencia artificial predictiva y soporte nativo para arquitecturas de clúster distribuido (**Master / Slave**).
+
+---
+
+## 🏗️ Arquitectura del Sistema
+
+```mermaid
+flowchart TD
+    subgraph Portal["🌐 Portal Web (Laravel 13)"]
+        Dashboard["Dashboard Reactivo"] --> Controllers["Controladores Web / API"]
+        Controllers --> DB[(MariaDB 10.11+)]
+        Controllers --> RBAC["Seguridad & RBAC"]
+    end
+    
+    subgraph Demonios["📡 Demonios de Monitoreo (Python 3.11+)"]
+        Engine["monitor_engine (Sondeo Servicios)"] --> DB
+        SNMP["snmp_poller (Switches, Routers, UPS)"] --> Dispositivos["Dispositivos de Red"]
+        SSL["ssl_checker (Certificados TLS)"] --> ServiciosWeb["Servicios Web HTTPS"]
+        Thermal["thermal_guard (Sensores Térmicos)"] --> Sensores["Sensores Hardware"]
+        NetRadar["net_radar_engine (Auto-Discovery)"] --> DB
+    end
+    
+    subgraph TelegramBot["🤖 Asistente de Gestión Telegram"]
+        Bot["bot.py (Gestión y Alertas)"] --> DB
+        Bot --> LocalIA["Motor Local de IA (Análisis Proactivo)"]
+        Bot --> ClusterAPI["API de Clúster (Master / Slave)"]
+    end
+    
+    subgraph Seguridad["🛡️ Blindaje y Perímetro"]
+        F2B["Fail2ban Jails"] --> Firewall["Cortafuegos / iptables"]
+        Shield["Sentinel Terminal Shield"] --> PAM["PAM Hooks (SSH / Sudo / Su)"]
+    end
+    
+    Dashboard <--> ClusterAPI
+    Engine --> ClusterAPI
+```
 
 ---
 
@@ -145,6 +180,30 @@ activar --estado
 | `/botstatus` | Admin | Diagnóstico de conectividad de red y proxies. |
 | `/reinicia` | Owner | Reinicio seguro del host físico (notificación privada exclusiva). |
 | `/info` | Todos | Términos de servicio, versión activa e información general. |
+
+---
+
+## 🔌 API de Clúster (Master ↔ Slave)
+
+La plataforma incluye una API nativa de sincronización distribuida para comunicación segura y sincronización continua de telemetría entre nodos del clúster (**Master / Slave**).
+
+### Autenticación Criptográfica
+Todas las solicitudes hacia los endpoints de clúster requieren el encabezado HTTP `X-Cluster-Token` con un token criptográfico generado desde el portal administrativo.
+
+### Endpoints Principales
+
+| Método | Endpoint | Descripción |
+| :--- | :--- | :--- |
+| `GET / POST` | `/api/cluster/ping` | Verificación de latencia y estado operativo del nodo. |
+| `GET / POST` | `/api/cluster/telemetry` | Sincronización masiva de telemetría e históricos (soporte nativo de compresión gzip). |
+| `GET / POST` | `/api/cluster/snapshot` | Extracción de instantánea consolidada del estado de supervisión. |
+| `GET / POST` | `/api/cluster/diagnostics` | Diagnóstico integral de salud de hardware, servicios y bases de datos. |
+
+#### Ejemplo de Consulta
+```bash
+curl -s -H "X-Cluster-Token: TU_TOKEN_DE_CLUSTER" \
+     http://master.monitoreo-vs.local/api/cluster/ping
+```
 
 ---
 

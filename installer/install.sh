@@ -25,7 +25,7 @@ PROJECT_DIR="/scripts/telegram-admin-bot"
 WEB_DIR="/var/www/monitoreo"
 DB_NAME="monitoreo_vs"
 DB_USER="monitoreo_user"
-DB_PASS="VsMonit#2026!SecureKey"
+DB_PASS="password"
 DOMAIN_NAME="monitoreo-vs.local"
 
 # Detección inteligente del usuario propietario del sistema

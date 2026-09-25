@@ -52,7 +52,7 @@ DB_CONFIG = {
     "host": "127.0.0.1",
     "port": 3306,
     "user": "monitoreo_user",
-    "password": "VsMonit#2026!SecureKey",
+    "password": "password",
     "database": "monitoreo_vs",
     "charset": "utf8mb4",
     "cursorclass": pymysql.cursors.DictCursor,

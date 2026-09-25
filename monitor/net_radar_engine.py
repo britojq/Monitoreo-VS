@@ -122,7 +122,7 @@ def get_db_connection():
     # Intentar leer credenciales desde el .env de Laravel
     env_file = Path("/var/www/monitoreo/.env")
     db_user = "monitoreo_user"
-    db_pass = "VsMonit#2026!SecureKey"
+    db_pass = "password"
     db_name = "monitoreo_vs"
     db_host = "127.0.0.1"
 
