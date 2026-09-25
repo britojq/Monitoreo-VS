@@ -12,6 +12,7 @@ use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class ClusterApiController extends Controller
 {
@@ -39,7 +40,7 @@ class ClusterApiController extends Controller
     /**
      * Entrega el snapshot completo y la configuración de monitoreo al nodo Slave.
      */
-    public function telemetry(Request $request): JsonResponse
+    public function telemetry(Request $request): Response
     {
         $snapshotPath = storage_path('app/public/monitoring_snapshot.json');
         $snapshotPayload = null;
