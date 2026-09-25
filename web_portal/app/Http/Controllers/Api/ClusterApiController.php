@@ -108,7 +108,20 @@ class ClusterApiController extends Controller
             'netflow_top_talkers' => \App\Models\NetflowTopTalker::latest('id')->take(100)->get(),
             'network_topology_links' => \App\Models\NetworkTopologyLink::all(),
             'predictive_anomalies' => \App\Models\PredictiveAnomaly::latest('id')->take(100)->get(),
-        ]);
+            'snmp_metric_hourly_rollups' => \App\Models\SnmpMetricHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
+            'snmp_interface_hourly_rollups' => \App\Models\SnmpInterfaceHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
+        ];
+
+        $acceptGzip = $request->boolean('gzip') || str_contains($request->header('Accept-Encoding', ''), 'gzip');
+        if ($acceptGzip && function_exists('gzencode')) {
+            $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+            return response(gzencode($json, 6), 200, [
+                'Content-Type' => 'application/json',
+                'Content-Encoding' => 'gzip',
+            ]);
+        }
+
+        return response()->json($payload);
     }
 
     /**

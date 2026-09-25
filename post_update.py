@@ -370,6 +370,25 @@ def ensure_network_topology():
             log(f"⚠️ Aviso evaluando topología de red: {e}")
 
 
+def ensure_telemetry_housekeeping():
+    """Garantiza la ejecución inicial o verificación del mantenimiento de telemetría y rollups."""
+    web_dir = Path("/var/www/monitoreo")
+    if web_dir.exists():
+        cmd_prefix = get_cmd_prefix()
+        try:
+            subprocess.run(
+                cmd_prefix + ["php", str(web_dir / "artisan"), "telemetry:housekeeping", "--force"],
+                cwd=str(web_dir),
+                capture_output=True,
+                text=True,
+                timeout=45,
+                check=False
+            )
+            log("✅ Mantenimiento de telemetría y agregaciones horarias inicializadas.")
+        except Exception as e:
+            log(f"⚠️ Aviso inicializando housekeeping de telemetría: {e}")
+
+
 def main():
     log("=================================================================")
     log("🚀 EJECUTANDO HOOK DE POST-ACTUALIZACIÓN MAYOR (post_update.py)")
@@ -385,6 +404,7 @@ def main():
     run_initial_radar_cycle()
     ensure_snmp_devices()
     ensure_network_topology()
+    ensure_telemetry_housekeeping()
     # Re-asegurar permisos de todos los archivos generados tras el ciclo inicial
     configure_system_directories()
     configure_web_portal_permissions()

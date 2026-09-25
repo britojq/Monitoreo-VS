@@ -146,6 +146,25 @@ FALLBACK_TRAP_PORT = 10162
 OWNER_PRIVATE_CHAT_ID = 38914901
 
 
+def resolve_trap_info(trap_oid: str) -> Dict[str, str]:
+    """Resuelve la metadata (tipo, severidad, descripción) para un OID de trap."""
+    if trap_oid in TRAP_DICTIONARY:
+        return TRAP_DICTIONARY[trap_oid].copy()
+
+    severity = "info"
+    oid_lower = trap_oid.lower()
+    if any(k in oid_lower for k in ("down", "fail", "alarm", "error", "emerg", "crit")):
+        severity = "critical"
+    elif any(k in oid_lower for k in ("warn", "change")):
+        severity = "warning"
+
+    return {
+        "type": "genericTrap",
+        "severity": severity,
+        "desc": f"Trap SNMP no estándar ({trap_oid})"
+    }
+
+
 def get_known_communities() -> List[str]:
     """Obtiene comunidades SNMP activas registradas en la base de datos."""
     communities = ["public", "private", "monitoreo", "valle_seco"]

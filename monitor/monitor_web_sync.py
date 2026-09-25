@@ -977,6 +977,7 @@ async def sync_from_master() -> bool:
     headers = {
         "X-Cluster-Token": cluster_token,
         "Accept": "application/json",
+        "Accept-Encoding": "gzip",
         "User-Agent": "ATIT-ValleSeco-ClusterSync/1.0"
     }
 
@@ -1867,6 +1868,49 @@ async def sync_from_master() -> bool:
                         ]
                         if hw_records:
                             cursor.executemany(hw_sql, hw_records)
+
+                    # 2.15 Sincronización de Rollups Horarios de Telemetría (Fase 8)
+                    metric_rollups = data.get("snmp_metric_hourly_rollups", [])
+                    if metric_rollups:
+                        m_roll_sql = """
+                            INSERT INTO snmp_metric_hourly_rollups
+                            (id, snmp_device_id, snmp_oid_id, hour_timestamp, avg_value, min_value, max_value, samples_count, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            avg_value=VALUES(avg_value), min_value=VALUES(min_value), max_value=VALUES(max_value),
+                            samples_count=VALUES(samples_count), updated_at=VALUES(updated_at)
+                        """
+                        m_roll_records = [
+                            (mr["id"], mr["snmp_device_id"], mr["snmp_oid_id"], _clean_mysql_dt(mr["hour_timestamp"]),
+                             mr.get("avg_value", 0), mr.get("min_value", 0), mr.get("max_value", 0),
+                             mr.get("samples_count", 0), _clean_mysql_dt(mr.get("created_at")), _clean_mysql_dt(mr.get("updated_at") or mr.get("created_at")))
+                            for mr in metric_rollups if "id" in mr and "snmp_device_id" in mr and "snmp_oid_id" in mr
+                        ]
+                        if m_roll_records:
+                            cursor.executemany(m_roll_sql, m_roll_records)
+
+                    iface_rollups = data.get("snmp_interface_hourly_rollups", [])
+                    if iface_rollups:
+                        i_roll_sql = """
+                            INSERT INTO snmp_interface_hourly_rollups
+                            (id, snmp_interface_id, hour_timestamp, avg_in_bps, max_in_bps, avg_out_bps, max_out_bps,
+                             avg_in_util_pct, max_in_util_pct, avg_out_util_pct, max_out_util_pct, samples_count, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            avg_in_bps=VALUES(avg_in_bps), max_in_bps=VALUES(max_in_bps), avg_out_bps=VALUES(avg_out_bps),
+                            max_out_bps=VALUES(max_out_bps), avg_in_util_pct=VALUES(avg_in_util_pct), max_in_util_pct=VALUES(max_in_util_pct),
+                            avg_out_util_pct=VALUES(avg_out_util_pct), max_out_util_pct=VALUES(max_out_util_pct),
+                            samples_count=VALUES(samples_count), updated_at=VALUES(updated_at)
+                        """
+                        i_roll_records = [
+                            (ir["id"], ir["snmp_interface_id"], _clean_mysql_dt(ir["hour_timestamp"]),
+                             ir.get("avg_in_bps", 0), ir.get("max_in_bps", 0), ir.get("avg_out_bps", 0), ir.get("max_out_bps", 0),
+                             ir.get("avg_in_util_pct", 0), ir.get("max_in_util_pct", 0), ir.get("avg_out_util_pct", 0), ir.get("max_out_util_pct", 0),
+                             ir.get("samples_count", 0), _clean_mysql_dt(ir.get("created_at")), _clean_mysql_dt(ir.get("updated_at") or ir.get("created_at")))
+                            for ir in iface_rollups if "id" in ir and "snmp_interface_id" in ir
+                        ]
+                        if i_roll_records:
+                            cursor.executemany(i_roll_sql, i_roll_records)
 
                     cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
                 finally:

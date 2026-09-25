@@ -46,6 +46,8 @@ PROTECTED_TABLES = [
     'netflow_records', 'syslog_events', 'netflow_top_talkers',
     # Fase 7: Topología Visual, Wake-on-LAN, IA Predictiva y Ciclo de Vida
     'network_topology_links', 'wol_devices', 'predictive_anomalies', 'hardware_lifecycle',
+    # Fase 8: Mantenimiento, Retención y Agregación Horaria (Rollups)
+    'snmp_metric_hourly_rollups', 'snmp_interface_hourly_rollups',
 ]
 
 

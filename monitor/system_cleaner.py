@@ -202,19 +202,32 @@ async def execute_clean_task(action: str) -> str:
         except Exception as e:
             return f"❌ Error purgando auditoría: {e}"
 
+    elif action == "clean_telemetry":
+        artisan_path = Path("/var/www/monitoreo/artisan")
+        if not artisan_path.exists():
+            artisan_path = Path("/scripts/telegram-admin-bot/web_portal/artisan")
+        if artisan_path.exists():
+            rc, out = await run_cmd_async(["php", str(artisan_path), "telemetry:housekeeping", "--force"], timeout=60.0)
+            if rc == 0:
+                return "✅ <b>Telemetría histórica depurada y rollups consolidados con éxito</b> (<code>telemetry:housekeeping</code>)."
+            return f"❌ Error ejecutando purga de telemetría: {html.escape(out[-200:])}"
+        return "⚠️ Entorno web de monitoreo no encontrado para ejecutar purga."
+
     elif action == "clean_all_safe":
         res1 = await execute_clean_task("apt_clean")
         res2 = await execute_clean_task("autoremove")
         res3 = await execute_clean_task("vacuum_journal")
         res4 = await execute_clean_task("clean_rotated_logs")
         res5 = await execute_clean_task("clean_audit_artifacts")
+        res6 = await execute_clean_task("clean_telemetry")
         return (
             "⚡ <b>Limpieza Integral del Sistema Completada:</b>\n\n"
             f"• {res1}\n"
             f"• {res2}\n"
             f"• {res3}\n"
             f"• {res4}\n"
-            f"• {res5}"
+            f"• {res5}\n"
+            f"• {res6}"
         )
 
     return "⚠️ Acción de limpieza no reconocida."
@@ -276,10 +289,11 @@ async def build_cleaner_dashboard() -> Tuple[str, InlineKeyboardMarkup]:
         ],
         [
             InlineKeyboardButton("🛡️ Purgar Auditoría (>30d)", callback_data="cleaner_act:clean_audit_artifacts"),
-            InlineKeyboardButton("🔄 Actualizar", callback_data="cleaner_act:refresh")
+            InlineKeyboardButton("📊 Purgar Telemetría (>30d)", callback_data="cleaner_act:clean_telemetry")
         ],
         [
-            InlineKeyboardButton("⚡ Ejecutar Limpieza Total Segura", callback_data="cleaner_act:clean_all_safe")
+            InlineKeyboardButton("🔄 Actualizar", callback_data="cleaner_act:refresh"),
+            InlineKeyboardButton("⚡ Limpieza Total Segura", callback_data="cleaner_act:clean_all_safe")
         ]
     ]
 
