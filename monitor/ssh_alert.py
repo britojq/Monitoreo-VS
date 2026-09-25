@@ -312,6 +312,8 @@ async def process_pam_event(
     pam_type: str,
     sudo_user: str = "",
     sudo_cmd: str = "",
+    is_agent: bool = False,
+    caller_pid: int = 0,
 ) -> None:
     """Procesa el evento PAM, decide el tipo de alerta, guarda en BD y notifica a Telegram."""
     hostname = socket.gethostname()
@@ -436,6 +438,32 @@ async def process_pam_event(
             and (tty.startswith("pts/") or tty.startswith("tty") or tty.startswith("/dev/"))
         )
 
+        # Determinar si proviene del entorno del Asistente Técnico (agy / Antigravity)
+        shell_pid, terminal_pid = (0, 0)
+        if is_interactive:
+            shell_pid, terminal_pid = find_interactive_terminal_pids(tty)
+
+        is_assistant = (
+            is_agent
+            or os.getenv("ANTIGRAVITY_AGENT") == "1"
+            or (caller_pid > 1 and is_protected_process(caller_pid))
+            or (shell_pid > 1 and is_protected_process(shell_pid))
+            or is_protected_process(os.getpid())
+            or (terminal_pid > 1 and is_protected_process(terminal_pid))
+        )
+        if is_assistant:
+            desc_bd = f"Comando administrativo (Asistente Técnico Local) vía {service} ({origin_user} -> {user}): {cmd} en {tty}"
+            log_event_to_database(
+                user_name=f"{origin_user} [Asistente IA]",
+                event="sudo_command",
+                description=desc_bd,
+                ip_address=rhost or "127.0.0.1",
+                user_agent=f"PAM/{service} ({tty}) [Asistente IA]",
+                user_role="admin",
+            )
+            logger.info(f"Sudo ejecutado por Asistente IA ({origin_user}): {cmd[:50]} (Alerta Telegram suprimida)")
+            return
+
         # Comprobar si hay ventana de mantenimiento autorizada o Override Maestro
         grace_active = MASTER_OVERRIDE_FLAG.exists()
         if not grace_active and GRACE_PERIOD_FLAG.exists():
@@ -447,27 +475,6 @@ async def process_pam_event(
                 pass
 
         if is_interactive and not grace_active:
-            shell_pid, terminal_pid = find_interactive_terminal_pids(tty)
-
-            # Si el comando proviene del entorno interactivo del Asistente Técnico (agy / Antigravity):
-            # Suprimir alerta interactiva de Telegram y registrar transparentemente en MariaDB
-            is_assistant = (
-                (shell_pid > 1 and is_protected_process(shell_pid))
-                or is_protected_process(os.getpid())
-                or (terminal_pid > 1 and is_protected_process(terminal_pid))
-            )
-            if is_assistant:
-                desc_bd = f"Comando administrativo (Asistente Técnico Local) vía {service} ({origin_user} -> {user}): {cmd} en {tty}"
-                log_event_to_database(
-                    user_name=f"{origin_user} [Asistente IA]",
-                    event="sudo_command",
-                    description=desc_bd,
-                    ip_address=rhost or "127.0.0.1",
-                    user_agent=f"PAM/{service} ({tty}) [Asistente IA]",
-                    user_role="admin",
-                )
-                logger.info(f"Sudo ejecutado por Asistente IA ({origin_user}): {cmd[:50]} (Alerta Telegram suprimida)")
-                return
 
             # Comando sudo desde terminal interactiva de usuario sin autorización previa: ALERTA INTERACTIVA
             titulo = "⚡ <b>Elevación de Privilegios (SUDO)</b>" if (is_shell_elevation and origin_user != user) else "⚠️ <b>Comando SUDO Interactivo</b>"
@@ -532,6 +539,8 @@ def main():
     parser.add_argument("--type", default="")
     parser.add_argument("--sudo-user", default="")
     parser.add_argument("--sudo-cmd", default="")
+    parser.add_argument("--is-agent", action="store_true", default=False)
+    parser.add_argument("--caller-pid", type=int, default=0)
 
     args = parser.parse_args()
 
@@ -554,6 +563,8 @@ def main():
                 pam_type=pam_type,
                 sudo_user=sudo_user,
                 sudo_cmd=sudo_cmd,
+                is_agent=args.is_agent,
+                caller_pid=args.caller_pid,
             )
         )
     except Exception as e:

@@ -9,12 +9,23 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckBannedIp
 {
+    /**
+     * Lista blanca de IPs inmunes a bloqueos (Loopback, Servidor de Desarrollo, Servidor Master y Gateway)
+     */
+    protected const WHITELIST_IPS = [
+        '127.0.0.1',
+        '::1',
+        '10.20.23.221', // Servidor de Desarrollo (Esclavo)
+        '10.20.23.252', // Servidor de Producción (Master)
+        '10.20.23.1',   // Gateway Corporativo
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         $ip = $request->ip();
 
-        // Las direcciones loopback locales nunca deben ser bloqueadas
-        if (in_array($ip, ['127.0.0.1', '::1'], true)) {
+        // Las direcciones de la lista blanca y del clúster de administración nunca deben ser bloqueadas
+        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '10.20.23.')) {
             return $next($request);
         }
 

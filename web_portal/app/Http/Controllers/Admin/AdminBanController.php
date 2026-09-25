@@ -105,7 +105,7 @@ class AdminBanController extends Controller
         ]);
 
         $ip = $validated['ip_address'];
-        if (in_array($ip, ['127.0.0.1', '::1'], true) || str_starts_with($ip, '127.') || str_starts_with($ip, '10.20.23.')) {
+        if (in_array($ip, ['127.0.0.1', '::1', '10.20.23.221', '10.20.23.252', '10.20.23.1'], true) || str_starts_with($ip, '127.') || str_starts_with($ip, '10.20.23.')) {
             return redirect()->route('admin.bans.index')
                 ->with('error', 'No se permite banear direcciones IP del cluster o red local corporativa.');
         }

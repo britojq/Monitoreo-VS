@@ -474,7 +474,7 @@ def execute_kill(pid: int, ppid: int = 0, dry_run: bool = False) -> dict:
 
 
 def is_protected_process(pid: int) -> bool:
-    """Verifica si el PID o sus ancestros pertenecen al entorno del agente/asistente de desarrollo."""
+    """Verifica si el PID o sus ancestros/descendientes pertenecen al entorno del agente/asistente de desarrollo."""
     if pid <= 1:
         return False
     try:
@@ -482,9 +482,32 @@ def is_protected_process(pid: int) -> bool:
         p = psutil.Process(pid)
         while p and p.pid > 1:
             name = p.name().lower()
-            cmdline = " ".join(p.cmdline()).lower()
-            if any(k in name for k in ("agy", "antigravity")) or any(k in cmdline for k in ("agy", "antigravity-cli", "faadaf35-22d4-442e")):
+            try:
+                cmdline = " ".join(p.cmdline()).lower()
+            except Exception:
+                cmdline = ""
+            try:
+                environ = p.environ()
+            except Exception:
+                environ = {}
+
+            if (
+                any(k in name for k in ("agy", "antigravity"))
+                or any(k in cmdline for k in ("agy", "antigravity-cli", "faadaf35-22d4-442e"))
+                or "ANTIGRAVITY_AGENT" in environ
+                or "ANTIGRAVITY_CONVERSATION_ID" in environ
+            ):
                 return True
+
+            # Si el proceso tiene algún hijo directo que sea agy/antigravity (ej. bash que invocó a agy)
+            try:
+                for child in p.children(recursive=False):
+                    cname = child.name().lower()
+                    if any(k in cname for k in ("agy", "antigravity")):
+                        return True
+            except Exception:
+                pass
+
             p = p.parent()
     except Exception:
         pass

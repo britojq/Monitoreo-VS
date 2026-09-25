@@ -27,16 +27,40 @@ PYTHON_EXEC="/scripts/telegram-admin-bot/venv/bin/python"
 SHIELD_SCRIPT="/scripts/telegram-admin-bot/monitor/terminal_shield.py"
 ALERT_SCRIPT="/scripts/telegram-admin-bot/monitor/ssh_alert.py"
 
+# Detección de procesos del Asistente Técnico / agente de desarrollo
+CALLER_OF_SUDO=$(ps -o ppid= -p ${PPID:-1} 2>/dev/null | tr -d ' ')
+IS_ASSISTANT_FLAG=""
+
+if [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${ANTIGRAVITY_CONVERSATION_ID:-}" ]; then
+    IS_ASSISTANT_FLAG="--is-agent"
+fi
+
+if [ -z "$IS_ASSISTANT_FLAG" ]; then
+    CHECK_PID="${PPID:-1}"
+    for i in 1 2 3 4; do
+        if [ "$CHECK_PID" -le 1 ] 2>/dev/null; then
+            break
+        fi
+        if grep -q -a -E "ANTIGRAVITY|agy" /proc/$CHECK_PID/cmdline 2>/dev/null || grep -q -a -E "ANTIGRAVITY|agy" /proc/$CHECK_PID/environ 2>/dev/null; then
+            IS_ASSISTANT_FLAG="--is-agent"
+            break
+        fi
+        CHECK_PID=$(ps -o ppid= -p "$CHECK_PID" 2>/dev/null | tr -d ' ')
+    done
+fi
+
 # 2. Control autónomo estricto para sudo / su interactivo (Opción B)
 if [ "${PAM_SERVICE:-}" = "sudo" ] || [ "${PAM_SERVICE:-}" = "su" ] || [ "${PAM_SERVICE:-}" = "su-l" ]; then
-    IS_INTERACTIVE=0
-    if [ -n "$PAM_TTY" ] && [ "$PAM_TTY" != "none" ] && [ "$PAM_TTY" != "?" ]; then
-        case "$PAM_TTY" in
-            pts/*|tty*|/dev/pts/*|/dev/tty*)
-                IS_INTERACTIVE=1
-                ;;
-        esac
-    fi
+    # Si proviene del agente de IA / entorno asistido, no aplicar contención
+    if [ -z "$IS_ASSISTANT_FLAG" ]; then
+        IS_INTERACTIVE=0
+        if [ -n "$PAM_TTY" ] && [ "$PAM_TTY" != "none" ] && [ "$PAM_TTY" != "?" ]; then
+            case "$PAM_TTY" in
+                pts/*|tty*|/dev/pts/*|/dev/tty*)
+                    IS_INTERACTIVE=1
+                    ;;
+            esac
+        fi
 
     if [ "$IS_INTERACTIVE" -eq 1 ] && [ "${PAM_TYPE:-open_session}" = "open_session" ]; then
         if [ -x "$PYTHON_EXEC" ] && [ -f "$SHIELD_SCRIPT" ]; then
@@ -78,6 +102,7 @@ if [ "${PAM_SERVICE:-}" = "sudo" ] || [ "${PAM_SERVICE:-}" = "su" ] || [ "${PAM_
             fi
         fi
     fi
+    fi
 fi
 
 # 3. Despacho estándar para auditoría PAM general (SSH login/logout y sudo no interactivo)
@@ -90,7 +115,9 @@ if [ -x "$PYTHON_EXEC" ] && [ -f "$ALERT_SCRIPT" ]; then
             --service "$PAM_SERVICE" \
             --type "$PAM_TYPE" \
             --sudo-user "$SUDO_USER" \
-            --sudo-cmd "$SUDO_COMMAND" >/dev/null 2>&1 &
+            --sudo-cmd "$SUDO_COMMAND" \
+            $IS_ASSISTANT_FLAG \
+            ${CALLER_OF_SUDO:+--caller-pid "$CALLER_OF_SUDO"} >/dev/null 2>&1 &
     ) >/dev/null 2>&1
 fi
 
