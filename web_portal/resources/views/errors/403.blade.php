@@ -3,10 +3,19 @@
 @section('title', '403 Acceso Restringido • Seguridad del Sistema')
 
 @php
+    $clientIp = request()->ip() ?: '0.0.0.0';
+    $isBanned = false;
+    if (auth()->check() && !auth()->user()->is_active) {
+        $isBanned = true;
+    } elseif (\App\Models\BannedIp::isBanned($clientIp)) {
+        $isBanned = true;
+    }
+
     $message = isset($exception) && $exception->getMessage() 
         ? $exception->getMessage() 
-        : 'Acceso Denegado: Su cuenta o dirección IP han sido suspendidas preventivamente por violaciones a las políticas de seguridad y control de acceso.';
-    $clientIp = request()->ip() ?: '0.0.0.0';
+        : ($isBanned 
+            ? 'Acceso Denegado: Su cuenta o dirección IP han sido suspendidas preventivamente por violaciones a las políticas de seguridad y control de acceso.'
+            : 'Acceso Denegado: Su cuenta no dispone de permisos suficientes para acceder o ejecutar esta función.');
     $incidentRef = 'SEC-' . strtoupper(substr(md5($clientIp . date('YmdH') . ($message ?? '')), 0, 8));
     $timestamp = now()->format('d/m/Y H:i:s');
     $method = request()->method();
@@ -63,11 +72,11 @@
                             <span>NODO VALLE SECO</span>
                         </div>
                         <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                            <span>Acceso Restringido & Suspensión</span>
+                            <span>{{ $isBanned ? 'Acceso Restringido & Suspensión' : 'Acceso Restringido • Permisos Insuficientes' }}</span>
                             <span class="material-symbols-outlined text-red-400 text-2xl">lock</span>
                         </h1>
                         <p class="text-xs font-mono text-obsidian-muted">
-                            La solicitud fue interceptada y neutralizada por el sistema de seguridad.
+                            {{ $isBanned ? 'La solicitud fue interceptada y neutralizada por el sistema de seguridad.' : 'La operación solicitada requiere permisos administrativos. Su sesión de usuario se mantiene activa.' }}
                         </p>
                     </div>
                 </div>
@@ -103,8 +112,10 @@
                                 <code>{{ $clientIp }}</code>
                                 @if(in_array($clientIp, ['127.0.0.1', '::1']))
                                     <span class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-950 border border-emerald-500/40 text-emerald-300">Loopback Protegida</span>
-                                @else
+                                @elseif($isBanned)
                                     <span class="px-1.5 py-0.5 rounded text-[9px] bg-red-950 border border-red-500/40 text-red-300">Lista Negra</span>
+                                @else
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] bg-cyan-950 border border-cyan-500/40 text-cyan-300">Conexión Permitida</span>
                                 @endif
                             </span>
                         </div>
@@ -130,7 +141,11 @@
                 <div class="p-3.5 rounded-xl bg-obsidian-panel/60 border border-obsidian-border text-[11px] font-mono text-obsidian-muted flex items-start gap-2.5">
                     <span class="material-symbols-outlined text-obsidian-cyan text-base shrink-0 mt-0.5">info</span>
                     <p class="leading-relaxed">
-                        Si considera que este bloqueo responde a un falso positivo o error de privilegios en su turno de guardia, proporcione el identificador <code class="text-red-400 font-bold">{{ $incidentRef }}</code> al Administrador del Sistema para la verificación y restitución mediante el panel <span class="text-white">Baneos & Seguridad</span>.
+                        @if($isBanned)
+                            Si considera que este bloqueo responde a un falso positivo o error de privilegios en su turno de guardia, proporcione el identificador <code class="text-red-400 font-bold">{{ $incidentRef }}</code> al Administrador del Sistema para la verificación y restitución mediante el panel <span class="text-white">Baneos & Seguridad</span>.
+                        @else
+                            Su cuenta no ha sido sancionada. Si requiere ejecutar esta acción como parte de sus funciones operativas, solicite al Administrador la asignación de los permisos correspondientes.
+                        @endif
                     </p>
                 </div>
 

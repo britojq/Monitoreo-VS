@@ -33,6 +33,12 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
                         Motor Local de IA
                     </span>
+                    @if(!auth()->user()->isAdmin())
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                            <span class="material-symbols-outlined text-[11px]">visibility</span>
+                            MODO CONSULTA
+                        </span>
+                    @endif
                 </div>
                 <p class="text-[10px] font-mono text-obsidian-muted">
                     Inferencia estadística, detección temprana de saturación de recursos y anomalías operacionales antes del corte de servicio.
@@ -41,13 +47,15 @@
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <form action="{{ route('admin.predictive.run') }}" method="POST" class="inline">
-                @csrf
-                <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                    <span class="material-symbols-outlined text-sm">auto_fix_high</span>
-                    <span>Ejecutar Análisis IA</span>
-                </button>
-            </form>
+            @if(auth()->user()->isAdmin())
+                <form action="{{ route('admin.predictive.run') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                        <span class="material-symbols-outlined text-sm">auto_fix_high</span>
+                        <span>Ejecutar Análisis IA</span>
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('admin.predictive.index') }}" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
                 <span class="material-symbols-outlined text-sm">refresh</span>
                 <span>Refrescar</span>
@@ -199,23 +207,27 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    @if(!$ano->acknowledged)
-                                        <form action="{{ route('admin.predictive.acknowledge', $ano->id) }}" method="POST" class="inline">
+                                    @if(auth()->user()->isAdmin())
+                                        @if(!$ano->acknowledged)
+                                            <form action="{{ route('admin.predictive.acknowledge', $ano->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                <button type="submit" class="px-2 py-1 rounded bg-purple-500/20 hover:bg-purple-500 hover:text-black border border-purple-500/40 text-purple-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Marcar como atendida">
+                                                    <span class="material-symbols-outlined text-xs">done</span>
+                                                    Atender
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        <form action="{{ route('admin.predictive.destroy', $ano->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Descartar esta anomalía?')">
                                             @csrf
-                                            <button type="submit" class="px-2 py-1 rounded bg-purple-500/20 hover:bg-purple-500 hover:text-black border border-purple-500/40 text-purple-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Marcar como atendida">
-                                                <span class="material-symbols-outlined text-xs">done</span>
-                                                Atender
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1 rounded text-rose-400 hover:bg-rose-500/20 transition cursor-pointer" title="Descartar">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
                                             </button>
                                         </form>
+                                    @else
+                                        <span class="text-[10px] text-obsidian-muted font-mono">Solo lectura</span>
                                     @endif
-
-                                    <form action="{{ route('admin.predictive.destroy', $ano->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Descartar esta anomalía?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-1 rounded text-rose-400 hover:bg-rose-500/20 transition cursor-pointer" title="Descartar">
-                                            <span class="material-symbols-outlined text-sm">delete</span>
-                                        </button>
-                                    </form>
                                 </div>
                             </td>
                         </tr>

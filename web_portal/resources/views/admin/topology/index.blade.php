@@ -21,6 +21,12 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                         LLDP / CDP / FDB
                     </span>
+                    @if(!auth()->user()->isAdmin())
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                            <span class="material-symbols-outlined text-[11px]">visibility</span>
+                            MODO CONSULTA
+                        </span>
+                    @endif
                 </div>
                 <p class="text-[10px] font-mono text-obsidian-muted">
                     Descubrimiento automático de vecinos, jerarquía física y lógica con grafo interactivo Cytoscape.js.
@@ -29,13 +35,15 @@
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <form action="{{ route('admin.topology.rebuild') }}" method="POST" class="inline">
-                @csrf
-                <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                    <span class="material-symbols-outlined text-sm">reorder</span>
-                    <span>Re-escanear Vecinos</span>
-                </button>
-            </form>
+            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                <form action="{{ route('admin.topology.rebuild') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                        <span class="material-symbols-outlined text-sm">reorder</span>
+                        <span>Re-escanear Vecinos</span>
+                    </button>
+                </form>
+            @endif
             <button type="button" onclick="loadTopologyGraph()" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
                 <span class="material-symbols-outlined text-sm">refresh</span>
                 <span>Refrescar Grafo</span>

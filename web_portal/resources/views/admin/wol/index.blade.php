@@ -37,6 +37,12 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                         UDP 9 / Broadcast
                     </span>
+                    @if(!auth()->user()->isAdmin())
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                            <span class="material-symbols-outlined text-[11px]">visibility</span>
+                            MODO CONSULTA
+                        </span>
+                    @endif
                 </div>
                 <p class="text-[10px] font-mono text-obsidian-muted">
                     Activación de energía a nivel Ethernet (Capa 2) para servidores y estaciones de trabajo de Valle Seco.
@@ -166,15 +172,15 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    <form action="{{ route('admin.wol.wake', $dev->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Transmitir Magic Packet">
-                                            <span class="material-symbols-outlined text-xs">bolt</span>
-                                            Encender
-                                        </button>
-                                    </form>
-
                                     @if(auth()->user()->isAdmin())
+                                        <form action="{{ route('admin.wol.wake', $dev->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Transmitir Magic Packet">
+                                                <span class="material-symbols-outlined text-xs">bolt</span>
+                                                Encender
+                                            </button>
+                                        </form>
+
                                         @if($isClusterSlave)
                                             <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center" title="Modificaciones restringidas al Servidor Master">
                                                 <span class="material-symbols-outlined text-[12px]">lock</span>
@@ -188,6 +194,8 @@
                                                 </button>
                                             </form>
                                         @endif
+                                    @else
+                                        <span class="text-[10px] text-obsidian-muted font-mono">Solo lectura</span>
                                     @endif
                                 </div>
                             </td>
