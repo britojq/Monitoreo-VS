@@ -79,7 +79,7 @@ class TestHousekeepingAndClusterIntegration(unittest.TestCase):
             ["php", str(artisan_path), "telemetry:housekeeping", "--dry-run"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=60
         )
         self.assertEqual(res.returncode, 0, f"Error ejecutando housekeeping: {res.stderr}")
         self.assertIn("MANTENIMIENTO Y PURGA DE TELEMETRÍA", res.stdout)

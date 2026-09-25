@@ -598,6 +598,9 @@ async def execute_git_update(
     8. Smoke Test post-despliegue.
     9. AUTO-ROLLBACK automático si falla cualquier paso.
     """
+    import platform
+    import builtins
+    builtins.platform = platform
     start_dt = datetime.now()
     out_m_str = ""
     logs = []
@@ -1011,6 +1014,9 @@ async def execute_git_update(
             asyncio.create_task(restart_service_delayed(delay_seconds=restart_delay))
 
     except Exception as e:
+        import platform
+        import builtins
+        builtins.platform = platform
         err_str = str(e)
         logger.critical(f"🚨 FALLO EN DESPLIEGUE. Disparando Auto-Rollback: {err_str}", exc_info=True)
         await report_progress(
@@ -1237,10 +1243,10 @@ async def restart_service_delayed(delay_seconds: float = 5.0):
     """Espera delay_seconds para asegurar el envío del mensaje y reinicia los servicios del bot."""
     await asyncio.sleep(delay_seconds)
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "sudo", "systemctl", "restart", "tg-admin-bot.service"
-        )
-        await proc.communicate()
+        sudo_prefix = "sudo " if os.geteuid() != 0 else ""
+        cmd = f"{sudo_prefix}systemd-run --no-block systemctl restart tg-admin-bot.service || {sudo_prefix}nohup sh -c 'sleep 1 && systemctl restart tg-admin-bot.service' >/dev/null 2>&1 &"
+        os.system(cmd)
+        logger.info("Comando de reinicio desacoplado de tg-admin-bot.service despachado con éxito.")
     except Exception as e:
         logger.error(f"Error al reiniciar tg-admin-bot.service: {e}")
 

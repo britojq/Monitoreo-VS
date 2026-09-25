@@ -17,6 +17,8 @@ import time
 import json
 import html
 import platform
+import builtins
+builtins.platform = platform
 import socket
 import shutil
 import logging
@@ -4545,6 +4547,15 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
         return
 
+    import builtins
+    import platform
+    builtins.platform = platform
+    try:
+        import importlib
+        import monitor.system_updater
+        importlib.reload(monitor.system_updater)
+    except Exception as e_rel:
+        logger.debug(f"Aviso recargando system_updater en cmd_actualizar: {e_rel}")
     from monitor.system_updater import build_update_dashboard, execute_git_update
 
     # Si se pasa argumento 'now', 'apply', 'force' o 'si' -> aplicar directamente
@@ -4601,6 +4612,15 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("⛔ Solo el creador y administrador del bot puede gestionar actualizaciones.", show_alert=True)
         return
 
+    import builtins
+    import platform
+    builtins.platform = platform
+    try:
+        import importlib
+        import monitor.system_updater
+        importlib.reload(monitor.system_updater)
+    except Exception as e_rel:
+        logger.debug(f"Aviso recargando system_updater en handle_update_callback: {e_rel}")
     from monitor.system_updater import (
         build_update_dashboard,
         build_deployment_dashboard,
@@ -4876,6 +4896,25 @@ async def cmd_desbloquear_update(update: Update, context: ContextTypes.DEFAULT_T
             "El sistema no se encontraba bloqueado. Puede ejecutar <code>/actualizar</code> con normalidad."
         )
     await safe_reply_html(update.message, msg)
+
+
+async def cmd_reiniciar_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando exclusivo para que el Owner reinicie el servicio systemd del bot de forma segura."""
+    if not update.effective_user or not update.message:
+        return
+
+    owner_id = CONFIG.get("owner_id", 0)
+    user_id = update.effective_user.id
+    if user_id != owner_id:
+        await safe_reply_html(update.message, MSG_UNAUTHORIZED_ADMIN_COMMAND)
+        return
+
+    await update.message.reply_text(
+        "⚡ <b>Reiniciando servicio del bot en segundo plano...</b>\n<i>Estará de vuelta en breves segundos.</i>",
+        parse_mode='HTML'
+    )
+    from monitor.system_updater import restart_service_delayed
+    asyncio.create_task(restart_service_delayed(delay_seconds=1.5))
 
 
 async def cmd_log_actualizacion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -8154,6 +8193,7 @@ def main() -> None:
 
     # Comando exclusivo para que el Owner verifique y aplique actualizaciones desde Git
     application.add_handler(CommandHandler(["actualizar", "update", "upgrade", "git_update", "check_update"], cmd_actualizar))
+    application.add_handler(CommandHandler(["reiniciar_bot", "restart_bot", "bot_restart", "reiniciar"], cmd_reiniciar_bot))
 
     # Comandos exclusivos para que el Owner gestione reversiones, GitOps y Circuit Breaker
     application.add_handler(CommandHandler(["rollback", "revertir", "git_rollback"], cmd_rollback))
