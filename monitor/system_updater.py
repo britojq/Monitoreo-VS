@@ -705,14 +705,18 @@ async def execute_git_update(
         req_file = BASE_DIR / "requirements.txt"
         if venv_pip.exists() and req_file.exists():
             try:
+                pip_cmd = [str(venv_pip), "install", "-q", "--no-input"]
+                if proxy_url:
+                    pip_cmd.extend(["--proxy", proxy_url])
+                pip_cmd.extend(["-r", str(req_file)])
                 p_pip = await asyncio.create_subprocess_exec(
-                    str(venv_pip), "install", "-q", "-r", str(req_file),
+                    *pip_cmd,
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await asyncio.wait_for(p_pip.communicate(), timeout=30.0)
+                await asyncio.wait_for(p_pip.communicate(), timeout=20.0)
                 logs.append("📦 <i>Dependencias de Python verificadas en entorno virtual.</i>")
             except asyncio.TimeoutError:
-                logger.warning("Timeout actualizando dependencias pip (30s superado), continuando...")
+                logger.warning("Timeout actualizando dependencias pip (20s superado), continuando...")
                 logs.append("📦 <i>Dependencias de Python: tiempo de espera agotado, continuando.</i>")
                 try:
                     p_pip.kill()
