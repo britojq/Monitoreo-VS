@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Console\Commands\HousekeepingTelemetryCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
+
         $middleware->web(append: [
             \App\Http\Middleware\CheckBannedIp::class,
         ]);

@@ -757,7 +757,7 @@ async def execute_git_update(
 
             # 7.1 Rsync
             p_rsync = await asyncio.create_subprocess_exec(
-                *(sudo_prefix + ["rsync", "-a", "--exclude=/vendor/", "--exclude=/node_modules/", "--exclude=.env", "--exclude=storage/", "--exclude=database/database.sqlite", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]),
+                *(sudo_prefix + ["rsync", "-a", "--exclude=vendor", "--exclude=node_modules", "--exclude=.env", "--exclude=storage", "--exclude=database/database.sqlite", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             await asyncio.wait_for(p_rsync.communicate(), timeout=40.0)
@@ -1050,7 +1050,7 @@ async def execute_git_update(
             # 3. Sincronizar Portal Web restaurado
             if WEB_DIR.exists():
                 sudo_p = ["sudo"] if os.geteuid() != 0 else []
-                await (await asyncio.create_subprocess_exec(*(sudo_p + ["rsync", "-a", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]))).communicate()
+                await (await asyncio.create_subprocess_exec(*(sudo_p + ["rsync", "-a", "--exclude=vendor", "--exclude=node_modules", "--exclude=.env", "--exclude=storage", "--exclude=database/database.sqlite", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]))).communicate()
                 await (await asyncio.create_subprocess_exec(*(sudo_p + ["php", f"{WEB_DIR}/artisan", "view:clear"]))).communicate()
                 await (await asyncio.create_subprocess_exec(*(sudo_p + ["php", f"{WEB_DIR}/artisan", "config:clear"]))).communicate()
 

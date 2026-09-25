@@ -10,6 +10,7 @@ use App\Models\MonitoringSnapshot;
 use App\Models\NetworkDeviceCheckHistory;
 use App\Models\ServiceCheckHistory;
 use App\Models\SiteCheckHistory;
+use Illuminate\Support\Facades\Cache;
 
 class MonitoringDataService
 {
@@ -20,56 +21,64 @@ class MonitoringDataService
     public function getMonitoringBoardData(): array
     {
         // 1. Filtrar estrictamente solo servicios reales configurados y activos
-        $services = MonitoredService::where('is_active', true)
-            ->where('name', 'not like', '%NO CONFIGURADO%')
-            ->where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->whereNotNull('host_ip')
-                       ->where('host_ip', '!=', '0.0.0.0')
-                       ->where('host_ip', '!=', '127.0.0.1');
-                })->orWhere(function ($q3) {
-                    $q3->whereNotNull('web_url')
-                       ->where('web_url', '!=', '')
-                       ->where('web_url', 'not like', '%127.0.0.1%');
-                });
-            })
-            ->orderBy('sort_order')
-            ->get();
+        $services = Cache::remember('board_monitored_services', 15, function () {
+            return MonitoredService::where('is_active', true)
+                ->where('name', 'not like', '%NO CONFIGURADO%')
+                ->where(function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->whereNotNull('host_ip')
+                           ->where('host_ip', '!=', '0.0.0.0')
+                           ->where('host_ip', '!=', '127.0.0.1');
+                    })->orWhere(function ($q3) {
+                        $q3->whereNotNull('web_url')
+                           ->where('web_url', '!=', '')
+                           ->where('web_url', 'not like', '%127.0.0.1%');
+                    });
+                })
+                ->orderBy('sort_order')
+                ->get();
+        });
 
         // 2. Filtrar estrictamente sedes reales configuradas y activas
-        $sites = MonitoredSite::with(['devices' => function ($q) {
-                $q->where('is_active', true)
-                  ->where('name', 'not like', '%NO CONFIGURADO%')
-                  ->where('ip', '!=', '0.0.0.0');
-            }])
-            ->where('is_active', true)
-            ->where('name', 'not like', '%NO CONFIGURADO%')
-            ->whereNotNull('ip')
-            ->where('ip', '!=', '0.0.0.0')
-            ->orderBy('sort_order')
-            ->get();
+        $sites = Cache::remember('board_monitored_sites', 15, function () {
+            return MonitoredSite::with(['devices' => function ($q) {
+                    $q->where('is_active', true)
+                      ->where('name', 'not like', '%NO CONFIGURADO%')
+                      ->where('ip', '!=', '0.0.0.0');
+                }])
+                ->where('is_active', true)
+                ->where('name', 'not like', '%NO CONFIGURADO%')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '0.0.0.0')
+                ->orderBy('sort_order')
+                ->get();
+        });
 
         // 3. Proxies reales activos
-        $proxies = MonitoredProxy::where('is_active', true)
-            ->where('name', 'not like', '%NO CONFIGURADO%')
-            ->whereNotNull('ip_port')
-            ->where('ip_port', '!=', '')
-            ->get();
+        $proxies = Cache::remember('board_monitored_proxies', 15, function () {
+            return MonitoredProxy::where('is_active', true)
+                ->where('name', 'not like', '%NO CONFIGURADO%')
+                ->whereNotNull('ip_port')
+                ->where('ip_port', '!=', '')
+                ->get();
+        });
 
         // 4. Dispositivos locales en red Valle Seco (Sede ID: 1 o por defecto)
         $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
         $valleSecoId = $valleSecoSite ? $valleSecoSite->id : 1;
 
-        $networkDevices = MonitoredNetworkDevice::where('is_active', true)
-            ->where(function($q) use ($valleSecoId) {
-                $q->where('monitored_site_id', $valleSecoId)
-                  ->orWhereNull('monitored_site_id');
-            })
-            ->where('name', 'not like', '%NO CONFIGURADO%')
-            ->whereNotNull('ip')
-            ->where('ip', '!=', '0.0.0.0')
-            ->orderBy('sort_order')
-            ->get();
+        $networkDevices = Cache::remember('board_monitored_netdevices_' . $valleSecoId, 15, function () use ($valleSecoId) {
+            return MonitoredNetworkDevice::where('is_active', true)
+                ->where(function($q) use ($valleSecoId) {
+                    $q->where('monitored_site_id', $valleSecoId)
+                      ->orWhereNull('monitored_site_id');
+                })
+                ->where('name', 'not like', '%NO CONFIGURADO%')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '0.0.0.0')
+                ->orderBy('sort_order')
+                ->get();
+        });
 
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotData = $latestSnapshot ? $latestSnapshot->payload_json : null;
@@ -77,6 +86,7 @@ class MonitoringDataService
         // 5. Cargar historial de 24h para servicios
         $serviceHistories = ServiceCheckHistory::whereIn('monitored_service_id', $services->pluck('id'))
             ->where('checked_at', '>=', now()->subHours(24))
+            ->select(['id', 'monitored_service_id', 'is_up', 'latency_ms', 'checked_at'])
             ->orderBy('checked_at', 'asc')
             ->get()
             ->groupBy('monitored_service_id');
@@ -91,6 +101,7 @@ class MonitoringDataService
             // Si no hay registros en las últimas 24h, recuperar los últimos 50 chequeos registrados
             if ($totalChecks === 0) {
                 $records = ServiceCheckHistory::where('monitored_service_id', $s->id)
+                    ->select(['id', 'monitored_service_id', 'is_up', 'latency_ms', 'checked_at'])
                     ->latest('checked_at')
                     ->take(50)
                     ->get()
@@ -148,6 +159,11 @@ class MonitoringDataService
         // 6. Cargar historial de 24h para sedes
         $siteHistories = SiteCheckHistory::whereIn('monitored_site_id', $sites->pluck('id'))
             ->where('checked_at', '>=', now()->subHours(24))
+            ->select([
+                'id', 'monitored_site_id', 'is_up', 'latency_ms',
+                'jitter_ms', 'packet_loss_pct', 'min_rtt_ms', 'max_rtt_ms', 'mdev_ms',
+                'checked_at'
+            ])
             ->orderBy('checked_at', 'asc')
             ->get()
             ->groupBy('monitored_site_id');
@@ -162,6 +178,11 @@ class MonitoringDataService
             // Si no hay registros en las últimas 24h, recuperar los últimos 50 chequeos registrados
             if ($totalChecks === 0) {
                 $records = SiteCheckHistory::where('monitored_site_id', $st->id)
+                    ->select([
+                        'id', 'monitored_site_id', 'is_up', 'latency_ms',
+                        'jitter_ms', 'packet_loss_pct', 'min_rtt_ms', 'max_rtt_ms', 'mdev_ms',
+                        'checked_at'
+                    ])
                     ->latest('checked_at')
                     ->take(50)
                     ->get()
@@ -231,6 +252,7 @@ class MonitoringDataService
         // 7. Cargar historial de 24h para dispositivos de red Valle Seco
         $deviceHistories = NetworkDeviceCheckHistory::whereIn('monitored_network_device_id', $networkDevices->pluck('id'))
             ->where('checked_at', '>=', now()->subHours(24))
+            ->select(['id', 'monitored_network_device_id', 'is_up', 'latency_ms', 'checked_at'])
             ->orderBy('checked_at', 'asc')
             ->get()
             ->groupBy('monitored_network_device_id');
