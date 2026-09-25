@@ -120,6 +120,59 @@ async def safe_reply_html(message_obj, text: str, **kwargs) -> None:
                 logger.error(f"Error enviando mensaje plano como fallback: {e_plain}")
 
 
+async def safe_deliver_update_result(target, text: str, edit_msg=None) -> None:
+    """
+    Garantiza la entrega del mensaje final de actualización o rollback sin colgar Telegram:
+    - Soporta CallbackQuery y Message.
+    - Si edit_msg existe, intenta eliminarlo limpiamente.
+    - Maneja textos largos (>4000 caracteres) y etiquetas HTML inválidas con fallback a texto plano.
+    """
+    text = (text or "").strip()
+    if not text:
+        text = "ℹ️ Operación finalizada sin salida registrada."
+
+    if edit_msg is not None:
+        try:
+            await edit_msg.delete()
+        except Exception:
+            pass
+
+    from telegram import CallbackQuery, Message
+    if isinstance(target, CallbackQuery):
+        # Si el texto cabe en un solo mensaje de Telegram (< 4000 caracteres)
+        if len(text) <= 4000:
+            try:
+                await target.edit_message_text(text, parse_mode='HTML')
+                return
+            except Exception as e_html:
+                logger.warning(f"Fallo al editar CallbackQuery con HTML ({e_html}). Reintentando texto plano...")
+                try:
+                    clean_text = re.sub(r'<[^>]+>', '', text)
+                    await target.edit_message_text(clean_text)
+                    return
+                except Exception as e_plain:
+                    logger.warning(f"Fallo al editar CallbackQuery con texto plano ({e_plain}). Enviando mensaje nuevo...")
+
+        # Si excede 4000 caracteres o falló la edición en el mensaje original:
+        try:
+            await target.edit_message_text(
+                "✅ <b>Proceso completado.</b> <i>(Detalles enviados en el siguiente mensaje)</i>",
+                parse_mode='HTML'
+            )
+        except Exception:
+            pass
+
+        if target.message:
+            await safe_reply_html(target.message, text)
+        return
+
+    if isinstance(target, Message):
+        await safe_reply_html(target, text)
+        return
+
+    if hasattr(target, "reply_text"):
+        await safe_reply_html(target, text)
+
 
 # Directorio base del script y estructura organizada del proyecto
 BASE_DIR = Path(__file__).resolve().parent
@@ -4499,19 +4552,29 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         arg = context.args[0].lower()
         if arg in ("now", "apply", "aplicar", "force", "instalar", "si"):
             wait_msg = await update.message.reply_text(
-                "⏳ <i>Descargando novedades desde GitHub y respaldando configuración...</i>",
+                "⏳ <b>[1/5] Iniciando despliegue de actualización...</b>",
                 parse_mode='HTML'
             )
-            res = await execute_git_update(bot_instance=context.bot, auto_restart=False)
+
+            async def progress_hook(status_text: str):
+                try:
+                    await wait_msg.edit_text(status_text, parse_mode='HTML')
+                except Exception as e_hook:
+                    logger.debug(f"Aviso actualizando wait_msg en cmd_actualizar: {e_hook}")
+
             try:
-                await wait_msg.delete()
-            except Exception:
-                pass
-            if len(res) > 4000:
-                res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
-            await update.message.reply_text(res, parse_mode='HTML')
+                res = await execute_git_update(
+                    bot_instance=context.bot,
+                    auto_restart=False,
+                    progress_callback=progress_hook
+                )
+            except Exception as e_exec:
+                logger.error(f"Error imprevisto ejecutando git update: {e_exec}", exc_info=True)
+                res = f"❌ <b>Error inesperado durante la ejecución de la actualización:</b>\n<pre>{html.escape(str(e_exec))}</pre>"
+
+            await safe_deliver_update_result(update.message, res, edit_msg=wait_msg)
             from monitor.system_updater import restart_service_delayed
-            asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
+            asyncio.create_task(restart_service_delayed(delay_seconds=5.0))
             return
 
     wait_msg = await update.message.reply_text(
@@ -4565,30 +4628,34 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("🚀 Aplicando actualización...")
         try:
             await query.edit_message_text(
-                "⏳ <b>Descargando actualización desde GitHub...</b>\n\n"
+                "⏳ <b>[1/5] Iniciando despliegue de actualización...</b>\n\n"
                 "• Evaluando conectividad y proxy...\n"
                 "• Respaldando archivos en <code>config/</code>...\n"
-                "• Generando respaldo comprimido de base de datos MariaDB...\n"
-                "• Ejecutando sincronización forzada con el repositorio oficial...\n"
-                "• Ejecutando migraciones de Laravel...\n"
-                "• Validando integridad de sintaxis y Smoke Test...",
+                "• Generando respaldo comprimido de base de datos MariaDB...",
                 parse_mode='HTML'
             )
         except Exception:
             pass
 
-        res = await execute_git_update(bot_instance=context.bot, auto_restart=False)
-        if len(res) > 4000:
-            res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
-        try:
-            await query.edit_message_text(res, parse_mode='HTML')
-        except Exception:
+        async def progress_hook(status_text: str):
             try:
-                await query.message.reply_text(res, parse_mode='HTML')
-            except Exception:
-                pass
+                await query.edit_message_text(status_text, parse_mode='HTML')
+            except Exception as e_hook:
+                logger.debug(f"Aviso actualizando query en handle_update_callback: {e_hook}")
+
+        try:
+            res = await execute_git_update(
+                bot_instance=context.bot,
+                auto_restart=False,
+                progress_callback=progress_hook
+            )
+        except Exception as e_exec:
+            logger.error(f"Error imprevisto ejecutando git update: {e_exec}", exc_info=True)
+            res = f"❌ <b>Error inesperado durante la ejecución de la actualización:</b>\n<pre>{html.escape(str(e_exec))}</pre>"
+
+        await safe_deliver_update_result(query, res)
         from monitor.system_updater import restart_service_delayed
-        asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
+        asyncio.create_task(restart_service_delayed(delay_seconds=5.0))
         return
 
     elif action == "status":
@@ -4639,28 +4706,33 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("🔄 Ejecutando Rollback...")
         try:
             await query.edit_message_text(
-                "⏳ <b>Ejecutando Rollback seguro del sistema...</b>\n\n"
+                "⏳ <b>[1/3] Ejecutando Rollback seguro del sistema...</b>\n\n"
                 "• Revirtiendo repositorio Git a commit anterior...\n"
-                "• Restaurando snapshot de base de datos MariaDB...\n"
-                "• Sincronizando portal web y limpiando cachés...\n"
-                "• Liberando Circuit Breaker...",
+                "• Restaurando snapshot de base de datos MariaDB...",
                 parse_mode='HTML'
             )
         except Exception:
             pass
 
-        res = await execute_rollback(bot_instance=context.bot, auto_restart=False)
-        if len(res) > 4000:
-            res = res[:3950] + "\n\n<i>[Resumen recortado por límite de Telegram...]</i>"
-        try:
-            await query.edit_message_text(res, parse_mode='HTML')
-        except Exception:
+        async def progress_hook_rb(status_text: str):
             try:
-                await query.message.reply_text(res, parse_mode='HTML')
-            except Exception:
-                pass
+                await query.edit_message_text(status_text, parse_mode='HTML')
+            except Exception as e_hook:
+                logger.debug(f"Aviso actualizando query rollback: {e_hook}")
+
+        try:
+            res = await execute_rollback(
+                bot_instance=context.bot,
+                auto_restart=False,
+                progress_callback=progress_hook_rb
+            )
+        except Exception as e_rb:
+            logger.error(f"Error imprevisto ejecutando rollback: {e_rb}", exc_info=True)
+            res = f"❌ <b>Error inesperado durante el rollback:</b>\n<pre>{html.escape(str(e_rb))}</pre>"
+
+        await safe_deliver_update_result(query, res)
         from monitor.system_updater import restart_service_delayed
-        asyncio.create_task(restart_service_delayed(delay_seconds=4.0))
+        asyncio.create_task(restart_service_delayed(delay_seconds=5.0))
         return
 
     elif action == "get_audit_log":
@@ -4701,15 +4773,29 @@ async def cmd_rollback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Si se pasa argumento explícito "si", "now", "confirm" o un commit hash -> aplicar de inmediato
     if target_commit and target_commit.lower() in ("si", "now", "confirm", "forzar"):
         wait_msg = await update.message.reply_text(
-            "⏳ <i>Ejecutando Rollback seguro del sistema y restaurando base de datos MariaDB...</i>",
+            "⏳ <b>[1/3] Ejecutando Rollback seguro del sistema...</b>",
             parse_mode='HTML'
         )
-        res = await execute_rollback(bot_instance=context.bot)
+
+        async def progress_hook_rb(status_text: str):
+            try:
+                await wait_msg.edit_text(status_text, parse_mode='HTML')
+            except Exception as e_hook:
+                logger.debug(f"Aviso actualizando wait_msg en rollback: {e_hook}")
+
         try:
-            await wait_msg.delete()
-        except Exception:
-            pass
-        await safe_reply_html(update.message, res)
+            res = await execute_rollback(
+                bot_instance=context.bot,
+                auto_restart=False,
+                progress_callback=progress_hook_rb
+            )
+        except Exception as e_rb:
+            logger.error(f"Error imprevisto ejecutando rollback: {e_rb}", exc_info=True)
+            res = f"❌ <b>Error inesperado durante el rollback:</b>\n<pre>{html.escape(str(e_rb))}</pre>"
+
+        await safe_deliver_update_result(update.message, res, edit_msg=wait_msg)
+        from monitor.system_updater import restart_service_delayed
+        asyncio.create_task(restart_service_delayed(delay_seconds=5.0))
         return
 
     # Si no se pasó confirmación inmediata, solicitar confirmación interactiva

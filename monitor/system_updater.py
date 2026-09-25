@@ -22,7 +22,7 @@ import tempfile
 from datetime import datetime
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable, Awaitable
 
 import httpx
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -582,7 +582,8 @@ def set_pending_restart_notification(manifest: dict, chat_id: Optional[int] = No
 async def execute_git_update(
     bot_instance=None,
     auto_restart: bool = False,
-    restart_delay: float = 6.0
+    restart_delay: float = 6.0,
+    progress_callback: Optional[Callable[[str], Awaitable[None]]] = None
 ) -> str:
     """
     Ejecuta el ciclo de actualización forzada con el repositorio oficial:
@@ -601,6 +602,13 @@ async def execute_git_update(
     logs = []
     logs.append("🚀 <b>Iniciando ciclo de despliegue seguro del sistema...</b>")
 
+    async def report_progress(msg: str):
+        if progress_callback:
+            try:
+                await progress_callback(msg)
+            except Exception as e_prog:
+                logger.debug(f"Aviso actualizando progreso: {e_prog}")
+
     # 1. Comprobar bloqueo
     locked, lock_reason = is_update_locked()
     if locked:
@@ -610,6 +618,12 @@ async def execute_git_update(
             f"<pre>{html.escape(lock_reason)}</pre>\n"
             "<i>Para retirar la protección tras corregir el código en GitHub, envíe /desbloquear_update.</i>"
         )
+
+    await report_progress(
+        "⏳ <b>[1/5] Evaluando conexión a GitHub y respaldando base de datos...</b>\n\n"
+        "• Verificando conectividad por ruta activa\n"
+        "• Generando snapshot comprimido de MariaDB y configs"
+    )
 
     # 2. Evaluar salida de red
     proxy_url, route_label, is_net_ok = await evaluate_github_connectivity(timeout=4.0)
@@ -633,6 +647,12 @@ async def execute_git_update(
         logs.append("🛡️ <i>Abortando despliegue para garantizar CERO pérdida de datos.</i>")
         return "\n\n".join(logs)
     logs.append(f"💾 <i>Respaldo de BD garantizado: {Path(dump_path).name}</i>")
+
+    await report_progress(
+        "⏳ <b>[2/5] Descargando novedades y sincronizando código desde GitHub...</b>\n\n"
+        "• Ejecutando <code>git fetch</code> y <code>git reset --hard</code>\n"
+        "• Verificando dependencias en entorno virtual"
+    )
 
     temp_backup_dir = Path(tempfile.mkdtemp(prefix="tgbot_cfg_bak_"))
     try:
@@ -689,8 +709,15 @@ async def execute_git_update(
                     str(venv_pip), "install", "-q", "-r", str(req_file),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_pip.communicate()
+                await asyncio.wait_for(p_pip.communicate(), timeout=30.0)
                 logs.append("📦 <i>Dependencias de Python verificadas en entorno virtual.</i>")
+            except asyncio.TimeoutError:
+                logger.warning("Timeout actualizando dependencias pip (30s superado), continuando...")
+                logs.append("📦 <i>Dependencias de Python: tiempo de espera agotado, continuando.</i>")
+                try:
+                    p_pip.kill()
+                except Exception:
+                    pass
             except Exception as e_pip:
                 logger.warning(f"Aviso actualizando dependencias pip: {e_pip}")
 
@@ -716,6 +743,12 @@ async def execute_git_update(
 
         # 7. Sincronizar Portal Web hacia /var/www/monitoreo
         if WEB_DIR.exists():
+            await report_progress(
+                "⏳ <b>[3/5] Aplicando migraciones de base de datos y sincronizando portal web...</b>\n\n"
+                "• Sincronizando archivos hacia <code>/var/www/monitoreo</code>\n"
+                "• Ejecutando <code>artisan migrate --force</code> y seeders\n"
+                "• Purgando cachés de Laravel y recargando Apache"
+            )
             sudo_prefix = ["sudo"] if os.geteuid() != 0 else []
 
             # 7.1 Rsync
@@ -723,7 +756,7 @@ async def execute_git_update(
                 *(sudo_prefix + ["rsync", "-a", "--exclude=/vendor/", "--exclude=/node_modules/", "--exclude=.env", "--exclude=storage/", "--exclude=database/database.sqlite", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            await p_rsync.communicate()
+            await asyncio.wait_for(p_rsync.communicate(), timeout=40.0)
 
             # Asegurar que el logo corporativo exista en /var/www/monitoreo/public/img/logo.png
             prod_logo = WEB_DIR / "public" / "img" / "logo.png"
@@ -737,7 +770,7 @@ async def execute_git_update(
                 *(sudo_prefix + ["chown", "-R", "www-data:www-data", str(WEB_DIR)]),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            await p_chown.communicate()
+            await asyncio.wait_for(p_chown.communicate(), timeout=30.0)
 
             storage_p = WEB_DIR / "storage"
             boot_p = WEB_DIR / "bootstrap" / "cache"
@@ -752,7 +785,7 @@ async def execute_git_update(
                 cwd=str(WEB_DIR),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            out_m, err_m = await p_migr.communicate()
+            out_m, err_m = await asyncio.wait_for(p_migr.communicate(), timeout=45.0)
             out_m_str = out_m.decode('utf-8', errors='ignore')
             if p_migr.returncode != 0:
                 raise RuntimeError(f"Fallo ejecutando migraciones de Laravel:\n{err_m.decode('utf-8', errors='ignore')}")
@@ -764,14 +797,14 @@ async def execute_git_update(
                     cwd=str(WEB_DIR),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_seed.communicate()
+                await asyncio.wait_for(p_seed.communicate(), timeout=45.0)
             elif (WEB_DIR / "database" / "seeders" / "CleanMonitoringSeeder.php").exists():
                 p_seed = await asyncio.create_subprocess_exec(
                     *(sudo_prefix + ["php", f"{WEB_DIR}/artisan", "db:seed", "--class=CleanMonitoringSeeder", "--force"]),
                     cwd=str(WEB_DIR),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_seed.communicate()
+                await asyncio.wait_for(p_seed.communicate(), timeout=45.0)
 
             # Asegurar sincronización de SnmpOidsSeeder si está disponible
             if (WEB_DIR / "database" / "seeders" / "SnmpOidsSeeder.php").exists():
@@ -780,7 +813,7 @@ async def execute_git_update(
                     cwd=str(WEB_DIR),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_seed_snmp.communicate()
+                await asyncio.wait_for(p_seed_snmp.communicate(), timeout=45.0)
 
             # 7.4.1 Auto-curación de dominios corporativos en servicios (garantía anti-desconfiguración)
             p_heal = await asyncio.create_subprocess_exec(
@@ -797,7 +830,7 @@ async def execute_git_update(
                 cwd=str(WEB_DIR),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            await p_heal.communicate()
+            await asyncio.wait_for(p_heal.communicate(), timeout=30.0)
 
             # 7.5 Limpieza de cachés de Laravel
             for acmd in ["config:clear", "cache:clear", "route:clear", "view:clear"]:
@@ -806,11 +839,17 @@ async def execute_git_update(
                     cwd=str(WEB_DIR),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_art.communicate()
+                await asyncio.wait_for(p_art.communicate(), timeout=20.0)
 
             # 7.6 Recargar servidor web
             await (await asyncio.create_subprocess_exec(*(sudo_prefix + ["systemctl", "reload", "apache2"]))).communicate()
             logs.append("🗄️ <i>Migraciones de BD aplicadas y cachés del portal web purgadas.</i>")
+
+            await report_progress(
+                "⏳ <b>[4/5] Ejecutando auto-curación de entorno, topología y verificación...</b>\n\n"
+                "• Validando enlaces de red y dispositivos SNMP\n"
+                "• Ejecutando centinela de auto-curación de entorno"
+            )
 
             # 7.7 Centinela de Inmunidad y Auto-curación de Entorno
             heal_py = BASE_DIR / "monitor" / "self_heal_environment.py"
@@ -819,7 +858,14 @@ async def execute_git_update(
                     sys.executable, str(heal_py),
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                await p_selfheal.communicate()
+                try:
+                    await asyncio.wait_for(p_selfheal.communicate(), timeout=40.0)
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout en self_heal_environment.py (40s superado), continuando...")
+                    try:
+                        p_selfheal.kill()
+                    except Exception:
+                        pass
 
             # 7.8 Hook de post-actualización mayor del sistema (post_update.py)
             post_update_script = BASE_DIR / "post_update.py"
@@ -829,12 +875,24 @@ async def execute_git_update(
                         *(sudo_prefix + [sys.executable, str(post_update_script)]),
                         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                     )
-                    await p_post.communicate()
+                    await asyncio.wait_for(p_post.communicate(), timeout=60.0)
                     logs.append("⚙️ <i>Hook post-actualización del sistema completado.</i>")
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout ejecutando post_update.py (60s superado), continuando...")
+                    logs.append("⚙️ <i>Hook post-actualización: tiempo de espera agotado, continuando.</i>")
+                    try:
+                        p_post.kill()
+                    except Exception:
+                        pass
                 except Exception as e_post:
                     logger.warning(f"Aviso ejecutando post_update.py: {e_post}")
 
         # 8. Smoke Test post-despliegue y Censo de Telemetría
+        await report_progress(
+            "⏳ <b>[5/5] Ejecutando Smoke Test post-despliegue y validando servicios...</b>\n\n"
+            "• Verificando HTTP 200 en endpoints del portal web y APIs\n"
+            "• Verificando demonios de systemd (Apache, MariaDB, PHP-FPM, Bot)"
+        )
         smoke_ok, smoke_msg = await run_post_deploy_smoke_test()
         if not smoke_ok:
             raise RuntimeError(f"Fallo en Smoke Test post-despliegue: {smoke_msg}")
@@ -950,6 +1008,11 @@ async def execute_git_update(
     except Exception as e:
         err_str = str(e)
         logger.critical(f"🚨 FALLO EN DESPLIEGUE. Disparando Auto-Rollback: {err_str}", exc_info=True)
+        await report_progress(
+            "⚠️ <b>[Fallo Detectado] Ejecutando Auto-Rollback seguro...</b>\n\n"
+            f"• Error: <code>{html.escape(err_str[:200])}</code>\n"
+            "• Revirtiendo repositorio Git y restaurando snapshot de MariaDB..."
+        )
         logs.append(f"❌ <b>Error durante el despliegue:</b>\n<pre>{html.escape(err_str)}</pre>")
         logs.append("🔄 <b>Disparando AUTO-ROLLBACK de seguridad...</b>")
 
@@ -1027,7 +1090,8 @@ async def execute_rollback(
     target_commit: Optional[str] = None,
     backup_path: Optional[str] = None,
     auto_restart: bool = False,
-    restart_delay: float = 6.0
+    restart_delay: float = 6.0,
+    progress_callback: Optional[Callable[[str], Awaitable[None]]] = None
 ) -> str:
     """
     Restaura el sistema al estado anterior:
@@ -1040,6 +1104,15 @@ async def execute_rollback(
     logs = []
     logs.append("🔄 <b>Iniciando procedimiento manual de ROLLBACK...</b>")
 
+    async def report_progress(msg: str):
+        if progress_callback:
+            try:
+                await progress_callback(msg)
+            except Exception as e_prog:
+                logger.debug(f"Aviso actualizando progreso rollback: {e_prog}")
+
+    await report_progress("⏳ <b>[1/3] Revirtiendo repositorio Git a commit anterior...</b>")
+
     target = target_commit or "HEAD@{1}"
     logs.append(f"📦 <i>Revertiendo repositorio Git a: <code>{html.escape(target)}</code>...</i>")
 
@@ -1049,6 +1122,7 @@ async def execute_rollback(
         return "\n\n".join(logs)
 
     # Restaurar base de datos
+    await report_progress("⏳ <b>[2/3] Restaurando snapshot de base de datos MariaDB...</b>")
     ok_db, msg_db = restore_db_snapshot(backup_path)
     if not ok_db:
         logs.append(f"⚠️ <b>Aviso en base de datos:</b> {html.escape(msg_db)}")
@@ -1056,6 +1130,7 @@ async def execute_rollback(
         logs.append(f"💾 <i>Base de datos: {html.escape(msg_db)}</i>")
 
     # Sincronizar Portal Web restaurado
+    await report_progress("⏳ <b>[3/3] Sincronizando portal web y liberando Circuit Breaker...</b>")
     if WEB_DIR.exists():
         sudo_p = ["sudo"] if os.geteuid() != 0 else []
         await (await asyncio.create_subprocess_exec(*(sudo_p + ["rsync", "-a", f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"]))).communicate()

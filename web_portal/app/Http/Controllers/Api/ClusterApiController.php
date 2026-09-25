@@ -54,7 +54,7 @@ class ClusterApiController extends Controller
             $snapshotPayload = $latestDb ? $latestDb->payload_json : [];
         }
 
-        return response()->json([
+        $payload = [
             'success' => true,
             'node_role' => $this->clusterService->getNodeRole(),
             'generated_at' => $snapshotPayload['timestamp'] ?? date('Y-m-d H:i:s'),
