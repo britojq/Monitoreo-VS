@@ -26,7 +26,7 @@
                 <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                 Fuente: SERVIDOR MAESTRO
             </div>
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !$isClusterSlave)
                 <button type="button" onclick="openCreateSiteModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold font-mono text-xs transition shadow-sm cursor-pointer">
                     <span class="material-symbols-outlined text-sm">domain_add</span>
                     <span>+ Agregar Sede</span>
@@ -62,7 +62,7 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        @if(auth()->user()->isAdmin())
+                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites'))
                             <form action="{{ route('admin.sites.toggle', $site->id) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition {{ $site->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
@@ -82,7 +82,7 @@
                             <span>Histórico</span>
                         </button>
 
-                        @if(auth()->user()->isAdmin())
+                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites'))
                             @if($isClusterSlave)
                                 <span class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
                                     <span class="material-symbols-outlined text-xs">lock</span>
@@ -122,7 +122,7 @@
                             <span class="material-symbols-outlined text-sm text-cyan-400">devices</span>
                             Equipos de Red Asociados ({{ $site->devices->where('is_active', true)->count() }} Activos de {{ $site->devices->count() }})
                         </span>
-                        @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                        @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
                             <button type="button" onclick="openAddDeviceModal({{ $site->id }}, '{{ addslashes($site->name) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-obsidian-panel border border-cyan-500/40 text-[11px] font-mono text-cyan-300 hover:bg-cyan-500 hover:text-black transition cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">add</span>
                                 Agregar Dispositivo
@@ -220,7 +220,7 @@
                                                     {{ $dev->is_active ? 'ON' : 'OFF' }}
                                                 </span>
 
-                                                @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                                                @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
                                                     <form action="{{ route('admin.sites.devices.destroy', $dev->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar equipo [{{ addslashes($dev->name) }}]?');">
                                                         @csrf
                                                         @method('DELETE')
@@ -288,7 +288,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin())
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
 <!-- ========================================================================= -->
 <!-- MODAL CREAR NUEVA SEDE (Solo Administrador)                               -->
 <!-- ========================================================================= -->

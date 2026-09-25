@@ -37,7 +37,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                         ACTIVO
                     </span>
-                    @if(!auth()->user()->isAdmin())
+                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('ssl.manage') && !auth()->user()->hasPermission('ssl.recheck'))
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40" title="Modo Consulta: Acceso de lectura sin permisos de modificación">
                             <span class="material-symbols-outlined text-[11px]">visibility</span>
                             MODO CONSULTA
@@ -56,7 +56,7 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin())
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.recheck'))
                 <!-- RE-INSPECCIONAR TODOS -->
                 <form action="{{ route('admin.ssl.recheck_all') }}" method="POST" class="inline" onsubmit="return confirm('¿Desea re-inspeccionar todos los certificados SSL ahora?');">
                     @csrf
@@ -65,19 +65,19 @@
                         <span>Escanear Todos</span>
                     </button>
                 </form>
+            @endif
 
-                @if(!$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage')) && !$isClusterSlave)
                 <!-- AGREGAR DOMINIO SSL -->
                 <button type="button" onclick="openAddSslModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-950/30" title="Registrar un nuevo dominio HTTPS para inspección continua">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     <span>+ Agregar Dominio</span>
                 </button>
-                @else
+            @elseif($isClusterSlave && (auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage')))
                 <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
                     <span class="material-symbols-outlined text-xs">lock</span>
                     <span>Solo Lectura (Modo Esclavo)</span>
                 </span>
-                @endif
             @endif
         </div>
     </div>
@@ -291,29 +291,31 @@
                                         <span class="material-symbols-outlined text-[13px]">info</span>
                                     </button>
 
-                                    @if(auth()->user()->isAdmin())
-                                    <!-- RE-INSPECCIONAR DOMINIO (Solo Administrador) -->
+                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.recheck'))
+                                    <!-- RE-INSPECCIONAR DOMINIO -->
                                     <form action="{{ route('admin.ssl.recheck', $cert->id) }}" method="POST" class="inline">
                                         @csrf
                                         <button type="submit" class="p-1 rounded bg-obsidian-panel border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-black transition cursor-pointer shadow-xs inline-flex items-center" title="Re-inspeccionar de inmediato este certificado SSL">
                                             <span class="material-symbols-outlined text-[13px]">sync</span>
                                         </button>
                                     </form>
-
-                                    @if(!$isClusterSlave)
-                                    <!-- ELIMINAR (Solo Administrador en Master) -->
-                                    <form action="{{ route('admin.ssl.destroy', $cert->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar del monitoreo el certificado para {{ $cert->domain }}?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs inline-flex items-center" title="Eliminar certificado del inventario de monitoreo">
-                                            <span class="material-symbols-outlined text-[13px]">delete</span>
-                                        </button>
-                                    </form>
-                                    @else
-                                    <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
-                                        <span class="material-symbols-outlined text-[13px]">lock</span>
-                                    </span>
                                     @endif
+
+                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage'))
+                                        @if(!$isClusterSlave)
+                                        <!-- ELIMINAR (Master) -->
+                                        <form action="{{ route('admin.ssl.destroy', $cert->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar del monitoreo el certificado para {{ $cert->domain }}?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1 rounded bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs inline-flex items-center" title="Eliminar certificado del inventario de monitoreo">
+                                                <span class="material-symbols-outlined text-[13px]">delete</span>
+                                            </button>
+                                        </form>
+                                        @else
+                                        <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-600 inline-flex items-center" title="Modificaciones bloqueadas en Modo Esclavo">
+                                            <span class="material-symbols-outlined text-[13px]">lock</span>
+                                        </span>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
@@ -498,7 +500,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin() && !$isClusterSlave)
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage')) && !$isClusterSlave)
 <!-- ============================================================================= -->
 <!-- MODAL: AGREGAR NUEVO DOMINIO SSL (SOLO ADMINISTRADOR)                          -->
 <!-- ============================================================================= -->

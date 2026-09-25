@@ -71,7 +71,7 @@
                                 {{ $p->auth_userpass ? '••••••••:••••' : 'Sin autenticación' }}
                             </td>
                             <td class="px-6 py-4">
-                                @if(auth()->user()->isAdmin())
+                                @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_proxies')) && !$isClusterSlave)
                                     <form action="{{ route('admin.proxies.toggle', $p->id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition {{ $p->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
@@ -91,7 +91,7 @@
                                     <span class="material-symbols-outlined text-sm">show_chart</span>
                                     <span>Histórico</span>
                                 </button>
-                                @if(auth()->user()->isAdmin())
+                                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_proxies'))
                                     @if($isClusterSlave)
                                         <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
                                             <span class="material-symbols-outlined text-xs">lock</span>
@@ -120,7 +120,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin())
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_proxies')) && !$isClusterSlave)
 <!-- MODAL EDITAR PROXY (Solo Administrador) -->
 <div id="modal-edit-proxy" onclick="if(event.target === this) closeModal('modal-edit-proxy')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">

@@ -81,7 +81,13 @@ class User extends Authenticatable
         }
 
         if (is_array($this->permissions)) {
-            return $this->permissions;
+            // Combinar los permisos asignados con los permisos de consulta por defecto (.view)
+            // de modo que cualquier pantalla de monitoreo esté disponible para consulta sin importar cuándo se crearon los permisos
+            $defaultViews = array_filter(
+                \App\Services\PermissionService::getDefaultOperatorPermissions(),
+                fn($k) => str_ends_with($k, '.view')
+            );
+            return array_values(array_unique(array_merge($defaultViews, $this->permissions)));
         }
 
         return \App\Services\PermissionService::getDefaultOperatorPermissions();

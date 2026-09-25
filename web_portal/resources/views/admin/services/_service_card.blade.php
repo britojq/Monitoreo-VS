@@ -86,7 +86,7 @@
                 @endif
 
                 <!-- TOGGLE ESTADO MONITOREO -->
-                @if(auth()->user()->isAdmin())
+                @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !$isClusterSlave)
                     <form action="{{ route('admin.services.toggle', $s->id) }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="p-0.5 rounded transition cursor-pointer {{ $s->is_active ? 'text-emerald-400 hover:bg-emerald-950/60' : 'text-obsidian-muted hover:bg-obsidian-panel' }}" title="{{ $s->is_active ? 'Monitoreo activo (Clic para pausar)' : 'Monitoreo pausado (Clic para reanudar)' }}">
@@ -143,7 +143,7 @@
             </span>
         </button>
 
-        @if(auth()->user()->isAdmin())
+        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services'))
             @if($isClusterSlave)
                 <span class="p-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 text-[10px]" title="Solo Lectura (Modo Esclavo)">
                     <span class="material-symbols-outlined text-xs">lock</span>

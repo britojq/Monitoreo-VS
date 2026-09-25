@@ -68,11 +68,13 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !$isClusterSlave)
                 <button type="button" onclick="openCreateSiteModal()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer" title="Agregar Nueva Sede">
                     <span class="material-symbols-outlined text-sm">domain_add</span>
                     <span>+ Sede</span>
                 </button>
+            @endif
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
                 <button type="button" onclick="openDeviceCreateModal()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer" title="Agregar Nuevo Dispositivo a una Sede">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     <span>+ Dispositivo</span>
@@ -252,7 +254,7 @@
 
                             <!-- ESTADO DE MONITOREO -->
                             <td class="px-2.5 py-1.5 text-center whitespace-nowrap">
-                                @if(auth()->user()->isAdmin() && !$isClusterSlave)
+                                @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
                                     <form action="{{ route('admin.devices.toggle', $d->id) }}" method="POST" class="inline">
                                         @csrf
                                         <button type="submit" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold transition {{ $d->is_active ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}" title="Click para alternar estado">
@@ -287,7 +289,7 @@
                                     <span class="material-symbols-outlined text-[13px]">show_chart</span>
                                 </button>
 
-                                @if(auth()->user()->isAdmin())
+                                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_devices'))
                                     @if($isClusterSlave)
                                         <span class="px-1 py-0.5 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[8.5px] font-mono inline-flex items-center gap-0.5" title="Modificaciones restringidas al Servidor Master">
                                             <span class="material-symbols-outlined text-[10px]">lock</span>
@@ -455,7 +457,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin())
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_devices') || auth()->user()->hasPermission('infra.manage_sites')) && !$isClusterSlave)
 <!-- ========================================================================= -->
 <!-- MODAL 2: CREACIÓN DE DISPOSITIVO (SOLO ADMINISTRADORES)                   -->
 <!-- ========================================================================= -->

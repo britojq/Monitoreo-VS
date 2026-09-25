@@ -65,21 +65,26 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('discovery.authorize')) && !$isClusterSlave)
             <button type="button" onclick="openSubnetModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer" title="Registrar una nueva subred CIDR para escaneo y supervisión continua">
                 <span class="material-symbols-outlined text-sm">add_circle</span>
                 <span>+ Subred</span>
             </button>
+            @endif
+
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('discovery.scan')) && !$isClusterSlave)
             <button type="button" onclick="openScanModal()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer" title="Ejecutar barrido ARP y descubrimiento inmediato en las subredes vigentes">
                 <span class="material-symbols-outlined text-sm">travel_explore</span>
                 <span>Escanear Red Ahora</span>
             </button>
-            @elseif($isClusterSlave)
+            @endif
+
+            @if($isClusterSlave)
             <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
                 <span class="material-symbols-outlined text-xs">lock</span>
                 <span>Solo Lectura (Modo Esclavo)</span>
             </span>
-            @else
+            @elseif(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('discovery.scan') && !auth()->user()->hasPermission('discovery.authorize'))
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono" title="Acceso de Operador: Vista de solo consulta, operaciones mutantes deshabilitadas">
                 <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
                 <span>Modo Consulta</span>
@@ -311,7 +316,7 @@
                             <!-- ACCIONES (COMPACTAS Y CON TOOLTIPS) -->
                             <td class="px-2.5 py-1.5 text-right space-x-1 whitespace-nowrap">
                                 <div class="inline-flex items-center justify-end gap-1">
-                                    @if(auth()->user()->isAdmin())
+                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('discovery.authorize'))
                                         @if($isClusterSlave)
                                             <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[9.5px] font-mono inline-flex items-center" title="Modificaciones restringidas al Servidor Master">
                                                 <span class="material-symbols-outlined text-[11px]">lock</span>
@@ -408,7 +413,7 @@
         @endif
     </div>
 
-    @if(auth()->user()->isAdmin() && !$isClusterSlave)
+    @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('discovery.scan') || auth()->user()->hasPermission('discovery.authorize')) && !$isClusterSlave)
     <!-- MODAL 1: ESCANEO MANUAL -->
     <div id="modal-scan" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-4">
         <div class="w-full max-w-md p-5 rounded-2xl bg-[#0b121e] border border-cyan-500/40 shadow-2xl space-y-4">

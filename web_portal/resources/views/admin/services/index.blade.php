@@ -42,7 +42,7 @@
                 <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                 Fuente: SERVIDOR MAESTRO
             </div>
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !$isClusterSlave)
                 <button type="button" onclick="openCreateServiceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan hover:bg-white text-black font-bold font-mono text-xs transition shadow-sm cursor-pointer">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     <span>+ Agregar Servicio</span>
@@ -250,7 +250,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin())
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !$isClusterSlave)
 <!-- MODAL CREAR NUEVO SERVICIO (Solo Administrador) -->
 <div id="modal-create-service" onclick="if(event.target === this) closeModal('modal-create-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">

@@ -11,13 +11,17 @@
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-2xl">settings_backup_restore</span>
                 <h1 class="text-lg font-bold text-white tracking-wide">Respaldos y Auditoría de Configuraciones</h1>
-                @if(!auth()->user()->isAdmin())
+                @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('cisco.backup_run'))
                     <span class="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono flex items-center gap-1" title="Operador: Modo Consulta y Auditoría de Diffs">
                         <span class="material-symbols-outlined text-xs">visibility</span> Modo Consulta
                     </span>
-                @else
+                @elseif(auth()->user()->isAdmin())
                     <span class="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono flex items-center gap-1" title="Administrador con Control Total de Respaldos">
                         <span class="material-symbols-outlined text-xs">admin_panel_settings</span> Control Total
+                    </span>
+                @else
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono flex items-center gap-1" title="Operador con Permiso de Ejecución de Respaldos">
+                        <span class="material-symbols-outlined text-xs">cloud_sync</span> Respaldos Habilitados
                     </span>
                 @endif
             </div>
@@ -26,15 +30,14 @@
             </p>
         </div>
 
-        <!-- BOTONES DE ACCIÓN (SOLO ADMINISTRADOR) -->
+        <!-- BOTONES DE ACCIÓN -->
         <div class="flex flex-wrap items-center gap-2">
             <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin())
-                @if(!$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')) && !$isClusterSlave)
                 <form action="{{ route('admin.configs.backup_all') }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Ejecutar ciclo de respaldo y análisis diferencial para todos los equipos">
@@ -44,12 +47,11 @@
                 <button onclick="openBackupDeviceModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Iniciar respaldo manual de un dispositivo específico">
                     <span class="material-symbols-outlined text-sm">backup</span> Nuevo Respaldo
                 </button>
-                @else
+            @elseif($isClusterSlave && (auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')))
                 <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
                     <span class="material-symbols-outlined text-xs">lock</span>
                     <span>Solo Lectura (Modo Esclavo)</span>
                 </span>
-                @endif
             @endif
         </div>
     </div>
@@ -262,7 +264,7 @@
                                             <span class="material-symbols-outlined text-sm">compare_arrows</span>
                                         </button>
                                         <!-- Eliminar Versión (Solo Admin en Master) -->
-                                        @if(auth()->user()->isAdmin())
+                                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run'))
                                             @if(!$isClusterSlave)
                                             <form action="{{ route('admin.configs.destroy', $cfg->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar esta versión de respaldo? Esta acción no se puede deshacer.');">
                                                 @csrf
@@ -525,7 +527,7 @@
 <!-- ============================================================================= -->
 <!-- MODAL 3: NUEVO RESPALDO MANUAL (SOLO ADMINISTRADOR EN MASTER)                 -->
 <!-- ============================================================================= -->
-@if(auth()->user()->isAdmin() && !$isClusterSlave)
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')) && !$isClusterSlave)
 <div id="backupDeviceModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
     <div class="bg-obsidian-card w-full max-w-lg rounded-2xl border border-obsidian-border shadow-2xl overflow-hidden">
         <form action="{{ route('admin.configs.backup_device') }}" method="POST">

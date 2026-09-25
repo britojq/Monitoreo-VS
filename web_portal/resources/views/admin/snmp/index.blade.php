@@ -63,7 +63,7 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) && !$isClusterSlave)
             <button type="button" onclick="openRemoteActivationModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
                 <span class="material-symbols-outlined text-sm">bolt</span>
                 <span>⚡ Activación Remota</span>
@@ -72,16 +72,21 @@
                 <span class="material-symbols-outlined text-sm">add_circle</span>
                 <span>+ Dispositivo SNMP</span>
             </button>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.poll'))
             <button type="button" onclick="pollAllDevices()" id="btn-poll-all" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
                 <span class="material-symbols-outlined text-sm">sync</span>
                 <span>Sondear Todo</span>
             </button>
-            @elseif($isClusterSlave)
+            @endif
+
+            @if($isClusterSlave)
             <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
                 <span class="material-symbols-outlined text-xs">lock</span>
                 <span>Solo Lectura (Modo Esclavo)</span>
             </span>
-            @else
+            @elseif(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('snmp.manage') && !auth()->user()->hasPermission('snmp.poll'))
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono">
                 <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
                 <span>Modo Consulta</span>
@@ -335,21 +340,23 @@
                                     <span class="material-symbols-outlined text-sm">info</span>
                                 </button>
 
-                                @if(auth()->user()->isAdmin())
+                                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.poll'))
+                                    <button type="button" onclick="triggerDevicePoll({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-emerald-500 hover:text-black border border-obsidian-border text-emerald-400 transition cursor-pointer" title="Sondear SNMP Ahora">
+                                        <span class="material-symbols-outlined text-sm">refresh</span>
+                                    </button>
+
+                                    <button type="button" onclick="triggerInterfaceDiscovery({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-purple-500 hover:text-white border border-obsidian-border text-purple-400 transition cursor-pointer" title="Descubrir Puertos (ifTable)">
+                                        <span class="material-symbols-outlined text-sm">travel_explore</span>
+                                    </button>
+                                @endif
+
+                                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage'))
                                     @if($isClusterSlave)
                                         <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
                                             <span class="material-symbols-outlined text-[12px]">lock</span>
                                             <span>Solo Lectura</span>
                                         </span>
                                     @else
-                                        <button type="button" onclick="triggerDevicePoll({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-emerald-500 hover:text-black border border-obsidian-border text-emerald-400 transition cursor-pointer" title="Sondear SNMP Ahora">
-                                            <span class="material-symbols-outlined text-sm">refresh</span>
-                                        </button>
-
-                                        <button type="button" onclick="triggerInterfaceDiscovery({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-purple-500 hover:text-white border border-obsidian-border text-purple-400 transition cursor-pointer" title="Descubrir Puertos (ifTable)">
-                                            <span class="material-symbols-outlined text-sm">travel_explore</span>
-                                        </button>
-
                                         <button type="button" onclick="openEditDeviceModal({{ $dev->id }})" class="p-1.5 rounded-lg bg-obsidian-bg hover:bg-cyan-500 hover:text-black border border-obsidian-border text-cyan-400 transition cursor-pointer" title="Editar Dispositivo">
                                             <span class="material-symbols-outlined text-sm">edit</span>
                                         </button>
@@ -526,7 +533,7 @@
 <!-- ========================================================================= -->
 <!-- MODAL NUEVO DISPOSITIVO SNMP (ADMIN) -->
 <!-- ========================================================================= -->
-@if(auth()->user()->isAdmin() && !$isClusterSlave)
+@if((auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) && !$isClusterSlave)
 <div id="newDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
     <div class="w-full max-w-lg rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
         <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
@@ -833,7 +840,7 @@
             return;
         }
 
-        const isAdmin = {{ auth()->user()->isAdmin() ? 'true' : 'false' }};
+        const canManageSnmp = {{ (auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) ? 'true' : 'false' }};
         let html = '';
         interfaces.forEach(i => {
             const operBadge = i.if_oper_status === 'up'
@@ -846,7 +853,7 @@
 
             const speed = i.if_speed ? (i.if_speed >= 1000000000 ? `${(i.if_speed / 1000000000).toFixed(0)} Gbps` : `${(i.if_speed / 1000000).toFixed(0)} Mbps`) : '—';
             
-            const monitorControl = isAdmin
+            const monitorControl = canManageSnmp
                 ? `<button type="button" onclick="toggleInterfaceMonitoring(${i.id}, this)" class="px-2 py-0.5 rounded border text-[10px] font-mono cursor-pointer transition ${i.is_monitored ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-obsidian-bg border-obsidian-border text-obsidian-muted hover:text-white'}">${i.is_monitored ? 'Activo' : 'Pausado'}</button>`
                 : `<span class="text-[10px] ${i.is_monitored ? 'text-cyan-400' : 'text-obsidian-muted'}">${i.is_monitored ? 'Sí' : 'No'}</span>`;
 

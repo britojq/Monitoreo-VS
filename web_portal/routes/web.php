@@ -186,9 +186,110 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::delete('lifecycle/{id}', [AdminLifecycleController::class, 'destroy'])->name('lifecycle.destroy')->middleware('permission:lifecycle.manage');
     });
 
-    // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN Y GOBERNANZA (Protegidas por Middleware 'admin')
-    Route::middleware(['admin'])->group(function () {
+    // =========================================================================
+    // 2. RUTAS OPERATIVAS CON PERMISOLOGÍA GRANULAR RBAC (Operador / Admin)
+    // =========================================================================
+    
+    // Auto-Discovery de Red (Escaneo Operativo en Segundo Plano)
+    Route::post('discovery/scan', [AdminDiscoveryController::class, 'scanNow'])->name('discovery.scan')->middleware('permission:discovery.scan');
 
+    // Sondeos SNMP y Descubrimiento de Interfaces (Operativo)
+    Route::post('snmp/{id}/poll', [AdminSnmpController::class, 'triggerPoll'])->name('snmp.poll')->middleware('permission:snmp.poll');
+    Route::post('snmp/{id}/discover-interfaces', [AdminSnmpController::class, 'triggerInterfaceDiscovery'])->name('snmp.discover-interfaces')->middleware('permission:snmp.poll');
+
+    // Re-inspección Operativa de Certificados SSL/TLS
+    Route::post('ssl/recheck-all', [AdminSslController::class, 'recheckAll'])->name('ssl.recheck_all')->middleware('permission:ssl.recheck');
+    Route::post('ssl/{id}/recheck', [AdminSslController::class, 'recheck'])->name('ssl.recheck')->middleware('permission:ssl.recheck');
+
+    // Evaluación y Resolución de Alertas (Operativo)
+    Route::post('alerts/evaluate-now', [AdminAlertController::class, 'evaluateNow'])->name('alerts.evaluate_now')->middleware('permission:alerts.ack');
+    Route::post('alerts/{id}/resolve', [AdminAlertController::class, 'resolve'])->name('alerts.resolve')->middleware('permission:alerts.ack');
+
+    // Disparador de Escaneo / Sincronización Manual (Disponible en Master y Slave)
+    Route::post('scan-now', [SyncController::class, 'triggerScanNow'])->name('sync.scan')->middleware('permission:infra.scan_now');
+
+    // Comandos y Plantillas del Bot (Consulta y Gestión Operativa)
+    Route::get('bot/templates', [AdminBotTemplateController::class, 'index'])->name('bot.templates.index')->middleware('permission:telegram.templates');
+    Route::post('bot/templates/preview', [AdminBotTemplateController::class, 'preview'])->name('bot.templates.preview')->middleware('permission:telegram.templates');
+    Route::get('bot/commands', [AdminBotCommandController::class, 'index'])->name('bot.commands.index')->middleware('permission:telegram.commands');
+
+    // Pista de Auditoría del Sistema (Consulta y Exportación)
+    Route::get('audit', [AdminAuditController::class, 'index'])->name('audit.index')->middleware('permission:security.audit');
+    Route::get('audit/export', [AdminAuditController::class, 'export'])->name('audit.export')->middleware('permission:security.audit_export');
+    Route::get('audit/{audit}', [AdminAuditController::class, 'show'])->name('audit.show')->middleware('permission:security.audit');
+
+    // Operaciones Mutantes en Servidor MASTER con Permisología Granular
+    Route::middleware(['node.master'])->group(function () {
+        // Sedes y Equipos
+        Route::post('sites', [AdminSiteController::class, 'store'])->name('sites.store')->middleware('permission:infra.manage_sites');
+        Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update')->middleware('permission:infra.manage_sites');
+        Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy')->middleware('permission:infra.manage_sites');
+        Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle')->middleware('permission:infra.manage_sites');
+        Route::post('sites/{site}/devices', [AdminSiteController::class, 'addDevice'])->name('sites.devices.store')->middleware('permission:infra.manage_sites|infra.manage_devices');
+        Route::delete('sites/devices/{device}', [AdminSiteController::class, 'deleteDevice'])->name('sites.devices.destroy')->middleware('permission:infra.manage_sites|infra.manage_devices');
+
+        Route::post('devices', [AdminNetworkDeviceController::class, 'store'])->name('devices.store')->middleware('permission:infra.manage_devices');
+        Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update')->middleware('permission:infra.manage_devices');
+        Route::delete('devices/{device}', [AdminNetworkDeviceController::class, 'destroy'])->name('devices.destroy')->middleware('permission:infra.manage_devices');
+        Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle')->middleware('permission:infra.manage_devices');
+
+        // Modificaciones de Servicios (Infraestructura)
+        Route::post('services', [AdminServiceController::class, 'store'])->name('services.store')->middleware('permission:infra.manage_services');
+        Route::put('services/{service}', [AdminServiceController::class, 'update'])->name('services.update')->middleware('permission:infra.manage_services');
+        Route::delete('services/{service}', [AdminServiceController::class, 'destroy'])->name('services.destroy')->middleware('permission:infra.manage_services');
+        Route::post('services/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('services.toggle')->middleware('permission:infra.manage_services');
+
+        // Modificaciones de Proxies (Infraestructura)
+        Route::post('proxies', [AdminProxyController::class, 'store'])->name('proxies.store')->middleware('permission:infra.manage_proxies');
+        Route::put('proxies/{proxy}', [AdminProxyController::class, 'update'])->name('proxies.update')->middleware('permission:infra.manage_proxies');
+        Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy')->middleware('permission:infra.manage_proxies');
+        Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle')->middleware('permission:infra.manage_proxies');
+
+        // Sincronización a monitoreo.conf
+        Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual')->middleware('permission:infra.manage_services|infra.manage_sites|infra.manage_proxies');
+
+        // Auto-Discovery: Clasificación, Intrusos y Subredes
+        Route::post('discovery/authorize/{id}', [AdminDiscoveryController::class, 'authorizeDevice'])->name('discovery.authorize')->middleware('permission:discovery.authorize');
+        Route::post('discovery/rogue/{id}', [AdminDiscoveryController::class, 'markRogue'])->name('discovery.rogue')->middleware('permission:discovery.authorize');
+        Route::post('discovery/update/{id}', [AdminDiscoveryController::class, 'update'])->name('discovery.update')->middleware('permission:discovery.authorize');
+        Route::post('discovery/subnet', [AdminDiscoveryController::class, 'storeSubnet'])->name('discovery.subnet.store')->middleware('permission:discovery.authorize');
+
+        // Dispositivos y Configuración SNMP
+        Route::post('snmp', [AdminSnmpController::class, 'store'])->name('snmp.store')->middleware('permission:snmp.manage');
+        Route::put('snmp/{id}', [AdminSnmpController::class, 'update'])->name('snmp.update')->middleware('permission:snmp.manage');
+        Route::delete('snmp/{id}', [AdminSnmpController::class, 'destroy'])->name('snmp.destroy')->middleware('permission:snmp.manage');
+        Route::post('snmp/{id}/toggle-interface', [AdminSnmpController::class, 'toggleInterfaceMonitoring'])->name('snmp.toggle-interface')->middleware('permission:snmp.manage');
+        Route::post('snmp/activate', [AdminSnmpController::class, 'activateRemote'])->name('snmp.activate')->middleware('permission:snmp.manage');
+
+        // Certificados SSL/TLS
+        Route::post('ssl', [AdminSslController::class, 'store'])->name('ssl.store')->middleware('permission:ssl.manage');
+        Route::delete('ssl/{id}', [AdminSslController::class, 'destroy'])->name('ssl.destroy')->middleware('permission:ssl.manage');
+
+        // Reglas de Alertas, Mantenimientos y Correlación
+        Route::post('alerts/rules', [AdminAlertController::class, 'storeRule'])->name('alerts.rules.store')->middleware('permission:alerts.rules');
+        Route::delete('alerts/rules/{id}', [AdminAlertController::class, 'destroyRule'])->name('alerts.rules.destroy')->middleware('permission:alerts.rules');
+        Route::post('alerts/maintenance', [AdminAlertController::class, 'storeMaintenance'])->name('alerts.maintenance.store')->middleware('permission:alerts.maintenance');
+        Route::delete('alerts/maintenance/{id}', [AdminAlertController::class, 'destroyMaintenance'])->name('alerts.maintenance.destroy')->middleware('permission:alerts.maintenance');
+        Route::post('alerts/correlation', [AdminAlertController::class, 'storeCorrelation'])->name('alerts.correlation.store')->middleware('permission:alerts.rules');
+        Route::delete('alerts/correlation/{id}', [AdminAlertController::class, 'destroyCorrelation'])->name('alerts.correlation.destroy')->middleware('permission:alerts.rules');
+
+        // Respaldos de Configuraciones WAN
+        Route::post('configs/backup-all', [AdminConfigController::class, 'backupAll'])->name('configs.backup_all')->middleware('permission:cisco.backup_run');
+        Route::post('configs/backup-device', [AdminConfigController::class, 'backupDevice'])->name('configs.backup_device')->middleware('permission:cisco.backup_run');
+        Route::delete('configs/{id}', [AdminConfigController::class, 'destroy'])->name('configs.destroy')->middleware('permission:cisco.backup_run');
+
+        // Modificaciones de Plantillas y Configuración del Bot
+        Route::put('bot/templates/{template}', [AdminBotTemplateController::class, 'update'])->name('bot.templates.update')->middleware('permission:telegram.templates');
+        Route::post('bot/templates/{template}/reset', [AdminBotTemplateController::class, 'reset'])->name('bot.templates.reset')->middleware('permission:telegram.templates');
+        Route::put('bot/commands/{command}', [AdminBotCommandController::class, 'update'])->name('bot.commands.update')->middleware('permission:telegram.commands');
+        Route::post('bot/commands/{command}/toggle', [AdminBotCommandController::class, 'toggle'])->name('bot.commands.toggle')->middleware('permission:telegram.commands');
+        Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update')->middleware('permission:telegram.commands');
+    });
+
+    // =========================================================================
+    // 3. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN Y GOBERNANZA (Middleware 'admin')
+    // =========================================================================
+    Route::middleware(['admin'])->group(function () {
         // Gestión y Auditoría de Términos de Uso (Exclusivo Administrador)
         Route::get('terms', [AdminTermsController::class, 'index'])->name('terms.index');
         Route::post('terms/{user}/reset', [AdminTermsController::class, 'reset'])->name('terms.reset');
@@ -213,108 +314,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('bans/fail2ban/ban', [AdminBanController::class, 'banFail2banIp'])->name('bans.fail2ban.ban');
         Route::post('bans/fail2ban/reload', [AdminBanController::class, 'reloadFail2ban'])->name('bans.fail2ban.reload');
 
-        // Registro y Pista de Auditoría del Sistema (Exclusivo Administrador)
-        Route::get('audit', [AdminAuditController::class, 'index'])->name('audit.index');
-        Route::get('audit/export', [AdminAuditController::class, 'export'])->name('audit.export');
-        Route::get('audit/{audit}', [AdminAuditController::class, 'show'])->name('audit.show');
-
-        // Plantillas de Mensajería y Reportes del Bot (Consulta y Preview)
-        Route::get('bot/templates', [AdminBotTemplateController::class, 'index'])->name('bot.templates.index');
-        Route::post('bot/templates/preview', [AdminBotTemplateController::class, 'preview'])->name('bot.templates.preview');
-
-        // Comandos y Configuración del Bot (Consulta)
-        Route::get('bot/commands', [AdminBotCommandController::class, 'index'])->name('bot.commands.index');
-
-        // Auto-Discovery de Red (Escaneo Operativo en Segundo Plano)
-        Route::post('discovery/scan', [AdminDiscoveryController::class, 'scanNow'])->name('discovery.scan');
-
-        // Sondeos SNMP y Descubrimiento de Interfaces (Operativo)
-        Route::post('snmp/{id}/poll', [AdminSnmpController::class, 'triggerPoll'])->name('snmp.poll');
-        Route::post('snmp/{id}/discover-interfaces', [AdminSnmpController::class, 'triggerInterfaceDiscovery'])->name('snmp.discover-interfaces');
-
-        // Re-inspección Operativa de Certificados SSL/TLS
-        Route::post('ssl/recheck-all', [AdminSslController::class, 'recheckAll'])->name('ssl.recheck_all');
-        Route::post('ssl/{id}/recheck', [AdminSslController::class, 'recheck'])->name('ssl.recheck');
-
-        // Evaluación y Resolución de Alertas (Operativo)
-        Route::post('alerts/evaluate-now', [AdminAlertController::class, 'evaluateNow'])->name('alerts.evaluate_now');
-        Route::post('alerts/{id}/resolve', [AdminAlertController::class, 'resolve'])->name('alerts.resolve');
-
         // Configuración Avanzada del Sistema & Telemetría (Exclusivo Administrador)
         Route::get('settings/advanced', [AdminAdvancedSettingsController::class, 'index'])->name('settings.advanced');
 
-        // Operaciones Mutantes de Infraestructura (Exclusivas del Servidor MASTER)
+        // Modificaciones de Frecuencia de Monitoreo en MASTER
         Route::middleware(['node.master'])->group(function () {
-            // Modificaciones de Servicios
-            Route::post('services', [AdminServiceController::class, 'store'])->name('services.store');
-            Route::put('services/{service}', [AdminServiceController::class, 'update'])->name('services.update');
-            Route::delete('services/{service}', [AdminServiceController::class, 'destroy'])->name('services.destroy');
-            Route::post('services/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('services.toggle');
-
-            // Modificaciones de Sedes y Equipos
-            Route::post('sites', [AdminSiteController::class, 'store'])->name('sites.store');
-            Route::put('sites/{site}', [AdminSiteController::class, 'update'])->name('sites.update');
-            Route::delete('sites/{site}', [AdminSiteController::class, 'destroy'])->name('sites.destroy');
-            Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle');
-            Route::post('sites/{site}/devices', [AdminSiteController::class, 'addDevice'])->name('sites.devices.store');
-            Route::delete('sites/devices/{device}', [AdminSiteController::class, 'deleteDevice'])->name('sites.devices.destroy');
-
-            // Modificaciones de Dispositivos de Red
-            Route::post('devices', [AdminNetworkDeviceController::class, 'store'])->name('devices.store');
-            Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update');
-            Route::delete('devices/{device}', [AdminNetworkDeviceController::class, 'destroy'])->name('devices.destroy');
-            Route::post('devices/{device}/toggle', [AdminNetworkDeviceController::class, 'toggle'])->name('devices.toggle');
-
-            // Modificaciones de Proxies
-            Route::post('proxies', [AdminProxyController::class, 'store'])->name('proxies.store');
-            Route::put('proxies/{proxy}', [AdminProxyController::class, 'update'])->name('proxies.update');
-            Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy');
-            Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle');
-
-            // Sincronización a .conf y frecuencia de monitoreo
-            Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual');
             Route::post('cron/interval/update', [AdminCronController::class, 'updateWebCheckInterval'])->name('cron.interval.update');
-
-            // Modificaciones de Plantillas y Configuración del Bot
-            Route::put('bot/templates/{template}', [AdminBotTemplateController::class, 'update'])->name('bot.templates.update');
-            Route::post('bot/templates/{template}/reset', [AdminBotTemplateController::class, 'reset'])->name('bot.templates.reset');
-            Route::put('bot/commands/{command}', [AdminBotCommandController::class, 'update'])->name('bot.commands.update');
-            Route::post('bot/commands/{command}/toggle', [AdminBotCommandController::class, 'toggle'])->name('bot.commands.toggle');
-            Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update');
-
-            // Auto-Discovery: Clasificación, Intrusos y Subredes
-            Route::post('discovery/authorize/{id}', [AdminDiscoveryController::class, 'authorizeDevice'])->name('discovery.authorize');
-            Route::post('discovery/rogue/{id}', [AdminDiscoveryController::class, 'markRogue'])->name('discovery.rogue');
-            Route::post('discovery/update/{id}', [AdminDiscoveryController::class, 'update'])->name('discovery.update');
-            Route::post('discovery/subnet', [AdminDiscoveryController::class, 'storeSubnet'])->name('discovery.subnet.store');
-
-            // Dispositivos y Configuración SNMP
-            Route::post('snmp', [AdminSnmpController::class, 'store'])->name('snmp.store');
-            Route::put('snmp/{id}', [AdminSnmpController::class, 'update'])->name('snmp.update');
-            Route::delete('snmp/{id}', [AdminSnmpController::class, 'destroy'])->name('snmp.destroy');
-            Route::post('snmp/{id}/toggle-interface', [AdminSnmpController::class, 'toggleInterfaceMonitoring'])->name('snmp.toggle-interface');
-            Route::post('snmp/activate', [AdminSnmpController::class, 'activateRemote'])->name('snmp.activate');
-
-            // Certificados SSL/TLS
-            Route::post('ssl', [AdminSslController::class, 'store'])->name('ssl.store');
-            Route::delete('ssl/{id}', [AdminSslController::class, 'destroy'])->name('ssl.destroy');
-
-            // Reglas de Alertas, Mantenimientos y Correlación
-            Route::post('alerts/rules', [AdminAlertController::class, 'storeRule'])->name('alerts.rules.store');
-            Route::delete('alerts/rules/{id}', [AdminAlertController::class, 'destroyRule'])->name('alerts.rules.destroy');
-            Route::post('alerts/maintenance', [AdminAlertController::class, 'storeMaintenance'])->name('alerts.maintenance.store');
-            Route::delete('alerts/maintenance/{id}', [AdminAlertController::class, 'destroyMaintenance'])->name('alerts.maintenance.destroy');
-            Route::post('alerts/correlation', [AdminAlertController::class, 'storeCorrelation'])->name('alerts.correlation.store');
-            Route::delete('alerts/correlation/{id}', [AdminAlertController::class, 'destroyCorrelation'])->name('alerts.correlation.destroy');
-
-            // Respaldos de Configuraciones WAN
-            Route::post('configs/backup-all', [AdminConfigController::class, 'backupAll'])->name('configs.backup_all');
-            Route::post('configs/backup-device', [AdminConfigController::class, 'backupDevice'])->name('configs.backup_device');
-            Route::delete('configs/{id}', [AdminConfigController::class, 'destroy'])->name('configs.destroy');
         });
-
-        // Disparador de Escaneo / Sincronización Manual (Disponible en Master y Slave)
-        Route::post('scan-now', [SyncController::class, 'triggerScanNow'])->name('sync.scan');
 
         // Control de Envíos Programados por Cron (Telegram)
         Route::post('cron/toggle', [AdminCronController::class, 'toggle'])->name('cron.toggle');

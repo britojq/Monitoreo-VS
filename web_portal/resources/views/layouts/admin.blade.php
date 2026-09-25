@@ -116,18 +116,23 @@
                 <span class="text-[9px] font-mono text-obsidian-muted/60 lowercase">admin</span>
             </div>
 
+            @if(auth()->user()->isAdmin())
             <!-- USUARIOS & ROLES -->
             <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.users.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Control de cuentas, roles y permisos LDAP/Locales">
                 <span class="material-symbols-outlined text-lg">group</span>
                 Usuarios & Roles
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('security.audit'))
             <!-- AUDITORÍA DEL SISTEMA -->
             <a href="{{ route('admin.audit.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.audit.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Pistas de auditoría y bitácora forense">
                 <span class="material-symbols-outlined text-lg">policy</span>
                 Auditoría del Sistema
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             <!-- BANEOS & SEGURIDAD -->
             <a href="{{ route('admin.bans.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bans.*') ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-red-400 hover:text-white hover:bg-red-950/40' }}" title="Bloqueo preventivo de IPs y jaulas Fail2Ban">
                 <span class="material-symbols-outlined text-lg">gavel</span>
@@ -139,13 +144,17 @@
                 <span class="material-symbols-outlined text-lg">verified_user</span>
                 Términos de Uso
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('telegram.templates') || auth()->user()->hasPermission('telegram.commands'))
             <!-- COMANDOS & PLANTILLAS BOT -->
             <a href="{{ route('admin.bot.commands.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.bot.commands.*', 'admin.bot.templates.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Gestor de comandos y plantillas de Telegram">
                 <span class="material-symbols-outlined text-lg">terminal</span>
                 Comandos & Plantillas Bot
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin())
             <!-- CONFIGURACIÓN AVANZADA -->
             <a href="{{ route('admin.settings.advanced') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.settings.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Ajustes de cluster, umbrales y timeouts">
                 <span class="material-symbols-outlined text-lg">tune</span>
@@ -156,8 +165,8 @@
 
         <!-- PIE DE SIDEBAR (FIJO) -->
         <div class="p-3 border-t border-obsidian-border space-y-2 shrink-0 bg-[#07172b]/95">
-            @if(auth()->user()->isAdmin())
-            <!-- BOTÓN ESCANEAR AHORA (Solo Administrador) -->
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.scan_now'))
+            <!-- BOTÓN ESCANEAR AHORA -->
             <button onclick="triggerImmediateScan()" id="btn-scan-now" class="w-full py-2 px-3 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer">
                 <span class="material-symbols-outlined text-base" id="icon-scan-now">bolt</span>
                 <span id="text-scan-now">Escanear Ahora</span>
