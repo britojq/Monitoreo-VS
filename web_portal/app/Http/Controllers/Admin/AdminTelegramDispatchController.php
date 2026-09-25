@@ -27,6 +27,13 @@ class AdminTelegramDispatchController extends Controller
             ], 401);
         }
 
+        if (!$user->isAdmin() && !$user->hasPermission('telegram.dispatch')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Acceso denegado. Su cuenta no dispone del permiso requerido [telegram.dispatch].',
+            ], 403);
+        }
+
         // Validar datos de la solicitud
         $validated = $request->validate([
             'report_type' => ['required', 'string', 'in:servicios,sedes,completo'],
@@ -105,6 +112,13 @@ class AdminTelegramDispatchController extends Controller
                 'success' => false,
                 'message' => 'Sesión no válida o expirada.',
             ], 401);
+        }
+
+        if (!$user->isAdmin() && !$user->hasPermission('telegram.dispatch')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Acceso denegado. Su cuenta no dispone del permiso requerido [telegram.dispatch].',
+            ], 403);
         }
 
         $reportType = (string) ($request->input('report_type') ?? 'servicios');

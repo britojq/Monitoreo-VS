@@ -20,10 +20,10 @@ class VncSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.vnc'))) {
             return response()->json([
                 'success' => false,
-                'message' => 'Acceso denegado. Se requiere rol de Operador o Administrador.',
+                'message' => 'Acceso denegado. Su cuenta no dispone del permiso requerido [remote.vnc].',
             ], 403);
         }
 
@@ -90,8 +90,8 @@ class VncSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
-            abort(403, 'Acceso denegado. No posee permisos para visualizar escritorios remotos.');
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.vnc'))) {
+            abort(403, 'Acceso denegado. No posee el permiso [remote.vnc] para visualizar escritorios remotos.');
         }
 
         $token = $request->query('token');

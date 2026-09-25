@@ -275,6 +275,125 @@ class PermissionService
                 ],
             ],
         ],
+        'traps' => [
+            'name' => 'SNMP Traps (UDP 162)',
+            'icon' => 'forward_to_inbox',
+            'description' => 'Recepción asíncrona de eventos y alarmas por trampas SNMP push.',
+            'permissions' => [
+                'traps.view' => [
+                    'name' => 'Consultar SNMP Traps',
+                    'description' => 'Visualizar registros de trampas SNMP capturadas y variables VarBinds.',
+                    'default_operator' => true,
+                ],
+                'traps.process' => [
+                    'name' => 'Procesar SNMP Traps',
+                    'description' => 'Marcar eventos de trampa como atendidos o procesados.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'syslog' => [
+            'name' => 'Servidor Syslog en Vivo',
+            'icon' => 'receipt_long',
+            'description' => 'Streaming de registros del sistema y eventos de red en tiempo real (UDP 514).',
+            'permissions' => [
+                'syslog.view' => [
+                    'name' => 'Consultar Syslog',
+                    'description' => 'Ver flujo en tiempo real de registros syslog y filtrar por severidad o equipo.',
+                    'default_operator' => true,
+                ],
+            ],
+        ],
+        'netflow' => [
+            'name' => 'Telemetría de Flujos NetFlow',
+            'icon' => 'swap_vert',
+            'description' => 'Análisis de protocolos, ancho de banda y Top Talkers (v5/v9 en UDP 2055).',
+            'permissions' => [
+                'netflow.view' => [
+                    'name' => 'Consultar NetFlow',
+                    'description' => 'Ver métricas de tráfico, distribución de protocolos y principales emisores de la red.',
+                    'default_operator' => true,
+                ],
+            ],
+        ],
+        'topology' => [
+            'name' => 'Topología de Red Visual',
+            'icon' => 'hub',
+            'description' => 'Mapa dinámico de interconexión y vecindad de dispositivos.',
+            'permissions' => [
+                'topology.view' => [
+                    'name' => 'Consultar Topología',
+                    'description' => 'Visualizar el mapa gráfico de nodos y enlaces de la infraestructura.',
+                    'default_operator' => true,
+                ],
+                'topology.rebuild' => [
+                    'name' => 'Re-escanear Vecinos (CDP/LLDP)',
+                    'description' => 'Forzar reconstrucción del grafo de topología consultando vecinos por protocolo.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'wol' => [
+            'name' => 'Wake-on-LAN (Encendido Remoto)',
+            'icon' => 'power_settings_new',
+            'description' => 'Encendido por Magic Packet y gestión de catálogo MAC.',
+            'permissions' => [
+                'wol.view' => [
+                    'name' => 'Consultar Equipos WoL',
+                    'description' => 'Ver inventario de estaciones y servidores registrados para encendido remoto.',
+                    'default_operator' => true,
+                ],
+                'wol.wake' => [
+                    'name' => 'Emitir Magic Packet (Encender)',
+                    'description' => 'Enviar trama mágica UDP broadcast para encender estaciones de trabajo o servidores.',
+                    'default_operator' => false,
+                ],
+                'wol.manage' => [
+                    'name' => 'Gestionar Catálogo WoL',
+                    'description' => 'Registrar, editar y eliminar equipos en la libreta Wake-on-LAN.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'predictive' => [
+            'name' => 'IA Predictiva y Detección de Anomalías',
+            'icon' => 'analytics',
+            'description' => 'Análisis estadístico de tendencias, pronóstico de fallas y detección de valores atípicos.',
+            'permissions' => [
+                'predictive.view' => [
+                    'name' => 'Consultar Anomalías Predictivas',
+                    'description' => 'Visualizar alertas tempranas de degradación de latencia o disponibilidad.',
+                    'default_operator' => true,
+                ],
+                'predictive.run' => [
+                    'name' => 'Ejecutar Análisis Predictivo',
+                    'description' => 'Disparar cálculo estadístico manual de tendencias y detección de outliers.',
+                    'default_operator' => false,
+                ],
+                'predictive.manage' => [
+                    'name' => 'Atender y Descartar Anomalías',
+                    'description' => 'Reconocer hallazgos predictivos o descartarlos del tablero activo.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'lifecycle' => [
+            'name' => 'Ciclo de Vida y Garantías de Hardware',
+            'icon' => 'inventory',
+            'description' => 'Control de fin de soporte (EoL/EoS) y vigencia de garantías de equipamiento.',
+            'permissions' => [
+                'lifecycle.view' => [
+                    'name' => 'Consultar Ciclo de Vida',
+                    'description' => 'Ver fechas de compra, vigencia de soporte y estado de garantías de hardware.',
+                    'default_operator' => true,
+                ],
+                'lifecycle.manage' => [
+                    'name' => 'Gestionar Fichas de Hardware',
+                    'description' => 'Registrar, actualizar y eliminar fichas de garantía y vida útil de equipos.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
     ];
 
     /**

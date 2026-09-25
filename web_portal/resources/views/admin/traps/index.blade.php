@@ -33,7 +33,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                         UDP 162
                     </span>
-                    @if(!auth()->user()->isAdmin())
+                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('traps.process'))
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
                             <span class="material-symbols-outlined text-[11px]">visibility</span>
                             MODO CONSULTA
@@ -237,7 +237,7 @@
                                     <span class="material-symbols-outlined text-sm">visibility</span>
                                 </button>
 
-                                @if(!$trap->processed && auth()->user()->isAdmin())
+                                @if(!$trap->processed && (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('traps.process'))))
                                 <form action="{{ route('admin.traps.process', $trap->id) }}" method="POST" class="inline">
                                     @csrf
                                     <button type="submit" class="p-1 rounded bg-obsidian-panel border border-obsidian-border text-emerald-400 hover:text-white hover:border-emerald-500 transition" title="Marcar como procesado">

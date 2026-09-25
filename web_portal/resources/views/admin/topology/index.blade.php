@@ -21,7 +21,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                         LLDP / CDP / FDB
                     </span>
-                    @if(!auth()->user()->isAdmin())
+                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('topology.rebuild'))
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
                             <span class="material-symbols-outlined text-[11px]">visibility</span>
                             MODO CONSULTA
@@ -35,7 +35,7 @@
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('topology.rebuild'))) && !$isClusterSlave)
                 <form action="{{ route('admin.topology.rebuild') }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">

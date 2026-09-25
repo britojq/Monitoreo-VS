@@ -57,7 +57,7 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage'))) && !$isClusterSlave)
                 <button type="button" onclick="openLifecycleModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     <span>Registrar Activo</span>
@@ -215,7 +215,7 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    @if(auth()->user()->isAdmin())
+                                    @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage')))
                                         @if($isClusterSlave)
                                             <span class="px-2 py-0.5 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center gap-1" title="Modificaciones restringidas al Servidor Master">
                                                 <span class="material-symbols-outlined text-[12px]">lock</span>
@@ -262,7 +262,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin() && !$isClusterSlave)
+@if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage'))) && !$isClusterSlave)
 <!-- MODAL REGISTRO / EDICIÓN DE CICLO DE VIDA -->
 <div id="lifecycleModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
     <div class="bg-obsidian-panel border border-obsidian-border rounded-xl w-full max-w-lg p-5 shadow-2xl space-y-4">

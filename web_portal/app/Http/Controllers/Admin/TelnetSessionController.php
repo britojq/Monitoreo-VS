@@ -20,10 +20,10 @@ class TelnetSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.telnet'))) {
             return response()->json([
                 'success' => false,
-                'message' => 'Acceso denegado. Se requiere rol de Operador o Administrador.',
+                'message' => 'Acceso denegado. Su cuenta no dispone del permiso requerido [remote.telnet].',
             ], 403);
         }
 
@@ -90,8 +90,8 @@ class TelnetSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
-            abort(403, 'Acceso denegado. No posee permisos para abrir sesiones de consola de red.');
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.telnet'))) {
+            abort(403, 'Acceso denegado. No posee el permiso [remote.telnet] para abrir sesiones de consola de red.');
         }
 
         $token = $request->query('token');

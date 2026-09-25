@@ -37,7 +37,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                         UDP 9 / Broadcast
                     </span>
-                    @if(!auth()->user()->isAdmin())
+                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('wol.wake') && !auth()->user()->hasPermission('wol.manage'))
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
                             <span class="material-symbols-outlined text-[11px]">visibility</span>
                             MODO CONSULTA
@@ -56,7 +56,7 @@
                 Fuente: SERVIDOR MAESTRO
             </span>
 
-            @if(auth()->user()->isAdmin() && !$isClusterSlave)
+            @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.manage'))) && !$isClusterSlave)
                 <button type="button" onclick="openWolModal()" class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     <span>Registrar Equipo</span>
@@ -172,7 +172,7 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    @if(auth()->user()->isAdmin())
+                                    @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.wake')))
                                         <form action="{{ route('admin.wol.wake', $dev->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Transmitir Magic Packet">
@@ -180,7 +180,9 @@
                                                 Encender
                                             </button>
                                         </form>
+                                    @endif
 
+                                    @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.manage')))
                                         @if($isClusterSlave)
                                             <span class="p-1 rounded bg-gray-900 border border-gray-800 text-gray-500 text-[10px] font-mono inline-flex items-center" title="Modificaciones restringidas al Servidor Master">
                                                 <span class="material-symbols-outlined text-[12px]">lock</span>
@@ -194,7 +196,7 @@
                                                 </button>
                                             </form>
                                         @endif
-                                    @else
+                                    @elseif(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('wol.wake'))
                                         <span class="text-[10px] text-obsidian-muted font-mono">Solo lectura</span>
                                     @endif
                                 </div>
@@ -220,7 +222,7 @@
     </div>
 </div>
 
-@if(auth()->user()->isAdmin() && !$isClusterSlave)
+@if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.manage'))) && !$isClusterSlave)
 <!-- MODAL REGISTRO DE DISPOSITIVO WOL -->
 <div id="wolModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
     <div class="bg-obsidian-panel border border-obsidian-border rounded-xl w-full max-w-md p-5 shadow-2xl space-y-4">

@@ -27,6 +27,14 @@ class AiChatController extends Controller
 
         $user = Auth::user();
 
+        // 1.1 Verificación de Permiso Granular RBAC
+        if (!$user->isAdmin() && !$user->hasPermission('ai.chat')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No dispones del permiso requerido [ai.chat] para interactuar con el asistente corporativo.',
+            ], 403);
+        }
+
         // 2. Validación de entrada
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],

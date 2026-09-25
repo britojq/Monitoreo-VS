@@ -34,12 +34,14 @@
         </div>
 
         <div class="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+            @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('telegram.dispatch')))
             <!-- BOTÓN MODAL DESPACHAR REPORTE A TELEGRAM -->
             <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-top"
                 class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-cyan-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-400/50 text-cyan-200 font-bold text-xs font-mono tracking-wide shadow-md shadow-cyan-950/30 hover:scale-[1.02] active:scale-[0.98] transition flex items-center gap-2 cursor-pointer">
                 <span class="material-symbols-outlined text-base text-cyan-400">send</span>
                 <span>Enviar Reporte a Telegram</span>
             </button>
+            @endif
         </div>
     </div>
 

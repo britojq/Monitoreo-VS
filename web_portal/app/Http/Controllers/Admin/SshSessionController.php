@@ -18,10 +18,10 @@ class SshSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.ssh'))) {
             return response()->json([
                 'success' => false,
-                'message' => 'Acceso denegado. Se requiere rol de Operador o Administrador.',
+                'message' => 'Acceso denegado. Su cuenta no dispone del permiso requerido [remote.ssh].',
             ], 403);
         }
 
@@ -71,8 +71,8 @@ class SshSessionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'operator'], true)) {
-            abort(403, 'Acceso denegado. No posee permisos para abrir sesiones de consola SSH.');
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('remote.ssh'))) {
+            abort(403, 'Acceso denegado. No posee el permiso [remote.ssh] para abrir sesiones de consola SSH.');
         }
 
         $ip = $request->query('ip', '0.0.0.0');

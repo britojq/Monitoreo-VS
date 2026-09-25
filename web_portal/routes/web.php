@@ -167,20 +167,27 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('lifecycle', [AdminLifecycleController::class, 'index'])->name('lifecycle.index');
 
 
-    // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN (Protegidas por Middleware 'admin')
-    // Cualquier intento de un operador de acceder o invocar estas rutas provocará su BANEO INMEDIATO
+    // Procesamiento de SNMP Traps (Permiso granular traps.process)
+    Route::post('traps/{id}/process', [AdminTrapController::class, 'markProcessed'])->name('traps.process')->middleware('permission:traps.process');
+
+    // Topología, WoL e IA Predictiva (Permisos granulares)
+    Route::post('topology/rebuild', [AdminTopologyController::class, 'rebuild'])->name('topology.rebuild')->middleware(['node.master', 'permission:topology.rebuild']);
+    Route::post('wol/{id}/wake', [AdminWolController::class, 'wake'])->name('wol.wake')->middleware('permission:wol.wake');
+
+    Route::post('predictive/run', [AdminPredictiveController::class, 'runAnalysis'])->name('predictive.run')->middleware('permission:predictive.run');
+    Route::post('predictive/{id}/ack', [AdminPredictiveController::class, 'acknowledge'])->name('predictive.acknowledge')->middleware('permission:predictive.manage');
+    Route::delete('predictive/{id}', [AdminPredictiveController::class, 'destroy'])->name('predictive.destroy')->middleware('permission:predictive.manage');
+
+    // Operaciones Mutantes de Hardware en Master (WoL y Lifecycle)
+    Route::middleware(['node.master'])->group(function () {
+        Route::post('wol', [AdminWolController::class, 'store'])->name('wol.store')->middleware('permission:wol.manage');
+        Route::delete('wol/{id}', [AdminWolController::class, 'destroy'])->name('wol.destroy')->middleware('permission:wol.manage');
+        Route::post('lifecycle', [AdminLifecycleController::class, 'store'])->name('lifecycle.store')->middleware('permission:lifecycle.manage');
+        Route::delete('lifecycle/{id}', [AdminLifecycleController::class, 'destroy'])->name('lifecycle.destroy')->middleware('permission:lifecycle.manage');
+    });
+
+    // 2. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN Y GOBERNANZA (Protegidas por Middleware 'admin')
     Route::middleware(['admin'])->group(function () {
-
-        // Procesamiento de SNMP Traps (Exclusivo Administrador)
-        Route::post('traps/{id}/process', [AdminTrapController::class, 'markProcessed'])->name('traps.process');
-
-        // Topología, WoL (Disparo) e IA Predictiva (Acciones Operativas - Exclusivo Administrador)
-        Route::post('topology/rebuild', [AdminTopologyController::class, 'rebuild'])->name('topology.rebuild');
-        Route::post('wol/{id}/wake', [AdminWolController::class, 'wake'])->name('wol.wake');
-
-        Route::post('predictive/run', [AdminPredictiveController::class, 'runAnalysis'])->name('predictive.run');
-        Route::post('predictive/{id}/ack', [AdminPredictiveController::class, 'acknowledge'])->name('predictive.acknowledge');
-        Route::delete('predictive/{id}', [AdminPredictiveController::class, 'destroy'])->name('predictive.destroy');
 
         // Gestión y Auditoría de Términos de Uso (Exclusivo Administrador)
         Route::get('terms', [AdminTermsController::class, 'index'])->name('terms.index');
@@ -267,14 +274,6 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             // Sincronización a .conf y frecuencia de monitoreo
             Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual');
             Route::post('cron/interval/update', [AdminCronController::class, 'updateWebCheckInterval'])->name('cron.interval.update');
-
-            // Modificaciones de Ciclo de Vida y Garantías (Hardware Lifecycle)
-            Route::post('lifecycle', [AdminLifecycleController::class, 'store'])->name('lifecycle.store');
-            Route::delete('lifecycle/{id}', [AdminLifecycleController::class, 'destroy'])->name('lifecycle.destroy');
-
-            // Modificaciones de Wake-on-LAN (Registro y Eliminación)
-            Route::post('wol', [AdminWolController::class, 'store'])->name('wol.store');
-            Route::delete('wol/{id}', [AdminWolController::class, 'destroy'])->name('wol.destroy');
 
             // Modificaciones de Plantillas y Configuración del Bot
             Route::put('bot/templates/{template}', [AdminBotTemplateController::class, 'update'])->name('bot.templates.update');
