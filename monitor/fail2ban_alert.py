@@ -34,27 +34,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from monitor.core_shield import IMMUTABLE_OWNER_ID, get_core_bot_token
-
-
-def load_env() -> Dict[str, str]:
-    """Carga variables de entorno de base de datos desde .env."""
-    env_paths = [
-        Path("/var/www/monitoreo/.env"),
-        BASE_DIR / "web_portal" / ".env",
-    ]
-    env_vars = {}
-    for p in env_paths:
-        if p.exists():
-            try:
-                for line in p.read_text(encoding="utf-8").splitlines():
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        env_vars[k.strip()] = v.strip().strip('"').strip("'")
-                break
-            except Exception:
-                pass
-    return env_vars
+from monitor.monitor_db import get_db_connection
 
 
 def log_event_to_database(
@@ -65,18 +45,7 @@ def log_event_to_database(
 ) -> bool:
     """Inserta de manera atómica el registro en MariaDB audit_logs."""
     try:
-        import pymysql
-
-        env = load_env()
-        conn = pymysql.connect(
-            host=env.get("DB_HOST", "127.0.0.1"),
-            port=int(env.get("DB_PORT", 3306)),
-            user=env.get("DB_USERNAME", "monitoreo_user"),
-            password=env.get("DB_PASSWORD", "password"),
-            database=env.get("DB_DATABASE", "monitoreo_vs"),
-            autocommit=True,
-            connect_timeout=3,
-        )
+        conn = get_db_connection(connect_timeout=3)
         with conn.cursor() as cur:
             now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur.execute(

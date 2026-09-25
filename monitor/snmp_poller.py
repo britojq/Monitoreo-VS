@@ -47,21 +47,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("snmp.poller")
 
-# Configuración de base de datos
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 3306,
-    "user": "monitoreo_user",
-    "password": "password",
-    "database": "monitoreo_vs",
-    "charset": "utf8mb4",
-    "cursorclass": pymysql.cursors.DictCursor,
-    "autocommit": True,
-}
-
-
-def get_db_connection():
-    return pymysql.connect(**DB_CONFIG)
+# Conexión centralizada a base de datos
+from monitor.monitor_db import get_db_connection
 
 
 def get_laravel_app_key() -> bytes:

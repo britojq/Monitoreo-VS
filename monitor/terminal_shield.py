@@ -46,26 +46,7 @@ RECENT_ALERTS_FLAG = Path("/dev/shm/terminal_shield_recent.json")
 INFRACTIONS_FLAG = Path("/dev/shm/terminal_shield_infractions.json")
 MASTER_OVERRIDE_FLAG = Path("/dev/shm/shield_master_override_active")
 
-
-def load_env() -> Dict[str, str]:
-    """Carga variables de entorno de base de datos desde .env."""
-    env_paths = [
-        Path("/var/www/monitoreo/.env"),
-        BASE_DIR / "web_portal" / ".env",
-    ]
-    env_vars = {}
-    for p in env_paths:
-        if p.exists():
-            try:
-                for line in p.read_text(encoding="utf-8").splitlines():
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        env_vars[k.strip()] = v.strip().strip('"').strip("'")
-                break
-            except Exception:
-                pass
-    return env_vars
+from monitor.monitor_db import get_db_connection
 
 
 def log_event_to_database(
@@ -78,24 +59,7 @@ def log_event_to_database(
 ) -> bool:
     """Registra el evento de seguridad en la tabla audit_logs de MariaDB."""
     try:
-        import pymysql
-    except ImportError:
-        try:
-            import MySQLdb as pymysql
-        except ImportError:
-            return False
-
-    try:
-        env = load_env()
-        conn = pymysql.connect(
-            host=env.get("DB_HOST", "127.0.0.1"),
-            port=int(env.get("DB_PORT", 3306)),
-            user=env.get("DB_USERNAME", "monitoreo_user"),
-            password=env.get("DB_PASSWORD", "password"),
-            database=env.get("DB_DATABASE", "monitoreo_vs"),
-            autocommit=True,
-            connect_timeout=3,
-        )
+        conn = get_db_connection(connect_timeout=3)
         with conn.cursor() as cur:
             now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur.execute(

@@ -126,36 +126,8 @@ def create_permissive_ssl_context():
 
 SSL_PERMISSIVE_CTX = create_permissive_ssl_context()
 
-# Cargar variables .env de Laravel
-def load_env():
-    env_file = APP_DIR / ".env"
-    env_vars = {
-        "DB_HOST": "127.0.0.1",
-        "DB_PORT": "3306",
-        "DB_DATABASE": "monitoreo_vs",
-        "DB_USERNAME": "monitoreo_user",
-        "DB_PASSWORD": "password",
-    }
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                env_vars[k.strip()] = v.strip().strip("\"'").strip("'")
-    return env_vars
-
-ENV = load_env()
-
-def get_db_connection():
-    return pymysql.connect(
-        host=ENV.get("DB_HOST", "127.0.0.1"),
-        port=int(ENV.get("DB_PORT", 3306)),
-        user=ENV.get("DB_USERNAME", "monitoreo_user"),
-        password=ENV.get("DB_PASSWORD", "password"),
-        database=ENV.get("DB_DATABASE", "monitoreo_vs"),
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True
-    )
+# Conector centralizado a base de datos (SSOT)
+from monitor.monitor_db import get_db_connection
 
 # --- VERIFICADORES ASÍNCRONOS ULTRA-RÁPIDOS ---
 

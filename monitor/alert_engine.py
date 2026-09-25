@@ -46,41 +46,8 @@ logging.basicConfig(
 logger = logging.getLogger("alert.engine")
 
 
-def load_env() -> Dict[str, str]:
-    """Carga variables desde el archivo .env del portal web."""
-    env_paths = [
-        Path("/var/www/monitoreo/.env"),
-        BASE_DIR / "web_portal" / ".env",
-    ]
-    env_vars = {}
-    for p in env_paths:
-        if p.exists():
-            try:
-                for line in p.read_text(encoding="utf-8").splitlines():
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        env_vars[k.strip()] = v.strip().strip('"').strip("'")
-                break
-            except Exception:
-                pass
-    return env_vars
-
-
-ENV = load_env()
-
-
-def get_db_connection():
-    """Establece conexión con la base de datos MariaDB monitoreo_vs."""
-    return pymysql.connect(
-        host=ENV.get("DB_HOST", "127.0.0.1"),
-        port=int(ENV.get("DB_PORT", 3306)),
-        user=ENV.get("DB_USERNAME", "monitoreo_user"),
-        password=ENV.get("DB_PASSWORD", "password"),
-        database=ENV.get("DB_DATABASE", "monitoreo_vs"),
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+# Conector centralizado a base de datos
+from monitor.monitor_db import get_db_connection
 
 
 def compute_fingerprint(entity_type: str, entity_id: int | str, condition_type: str) -> str:

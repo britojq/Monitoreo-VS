@@ -23,39 +23,7 @@ BACKUPS_DIR = BASE_DIR / "database" / "backups"
 MAX_BACKUPS_TO_KEEP = 15
 
 
-def load_db_config() -> Dict[str, str]:
-    """Carga los parámetros de conexión de MariaDB desde el archivo .env."""
-    env_candidates = [
-        Path("/var/www/monitoreo/.env"),
-        BASE_DIR / "web_portal" / ".env",
-        BASE_DIR / ".env"
-    ]
-    env_file = next((p for p in env_candidates if p.exists()), None)
-    config = {
-        "host": "127.0.0.1",
-        "port": "3306",
-        "database": "monitoreo_vs",
-        "username": "monitoreo_user",
-        "password": "password"
-    }
-
-    if env_file and env_file.exists():
-        try:
-            for line in env_file.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    k = k.strip()
-                    v = v.strip().strip("\"'").strip("'")
-                    if k == "DB_HOST": config["host"] = v
-                    elif k == "DB_PORT": config["port"] = v
-                    elif k == "DB_DATABASE": config["database"] = v
-                    elif k == "DB_USERNAME": config["username"] = v
-                    elif k == "DB_PASSWORD": config["password"] = v
-        except Exception as e:
-            logger.warning(f"Error parseando .env para base de datos: {e}")
-
-    return config
+from monitor.monitor_db import load_env_db_config as load_db_config
 
 
 def get_git_commit_short() -> str:

@@ -117,38 +117,7 @@ LINUX_REPO_DOMAINS = [
 ]
 
 
-def get_db_connection():
-    """Obtiene una conexión directa a la base de datos MariaDB monitoreo_vs."""
-    # Intentar leer credenciales desde el .env de Laravel
-    env_file = Path("/var/www/monitoreo/.env")
-    db_user = "monitoreo_user"
-    db_pass = "password"
-    db_name = "monitoreo_vs"
-    db_host = "127.0.0.1"
-
-    if env_file.exists():
-        try:
-            for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-                line = line.strip()
-                if line.startswith("DB_USERNAME="):
-                    db_user = line.split("=", 1)[1].strip().strip('"').strip("'")
-                elif line.startswith("DB_PASSWORD="):
-                    db_pass = line.split("=", 1)[1].strip().strip('"').strip("'")
-                elif line.startswith("DB_DATABASE="):
-                    db_name = line.split("=", 1)[1].strip().strip('"').strip("'")
-                elif line.startswith("DB_HOST="):
-                    db_host = line.split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception:
-            pass
-
-    return pymysql.connect(
-        host=db_host,
-        user=db_user,
-        password=db_pass,
-        database=db_name,
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True
-    )
+from monitor.monitor_db import get_db_connection
 
 
 def format_bytes_human(bytes_val: int) -> str:
