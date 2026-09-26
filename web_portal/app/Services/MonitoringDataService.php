@@ -21,64 +21,56 @@ class MonitoringDataService
     public function getMonitoringBoardData(): array
     {
         // 1. Filtrar estrictamente solo servicios reales configurados y activos
-        $services = Cache::remember('board_monitored_services', 15, function () {
-            return MonitoredService::where('is_active', true)
-                ->where('name', 'not like', '%NO CONFIGURADO%')
-                ->where(function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->whereNotNull('host_ip')
-                           ->where('host_ip', '!=', '0.0.0.0')
-                           ->where('host_ip', '!=', '127.0.0.1');
-                    })->orWhere(function ($q3) {
-                        $q3->whereNotNull('web_url')
-                           ->where('web_url', '!=', '')
-                           ->where('web_url', 'not like', '%127.0.0.1%');
-                    });
-                })
-                ->orderBy('sort_order')
-                ->get();
-        });
+        $services = MonitoredService::where('is_active', true)
+            ->where('name', 'not like', '%NO CONFIGURADO%')
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('host_ip')
+                       ->where('host_ip', '!=', '0.0.0.0')
+                       ->where('host_ip', '!=', '127.0.0.1');
+                })->orWhere(function ($q3) {
+                    $q3->whereNotNull('web_url')
+                       ->where('web_url', '!=', '')
+                       ->where('web_url', 'not like', '%127.0.0.1%');
+                });
+            })
+            ->orderBy('sort_order')
+            ->get();
 
         // 2. Filtrar estrictamente sedes reales configuradas y activas
-        $sites = Cache::remember('board_monitored_sites', 15, function () {
-            return MonitoredSite::with(['devices' => function ($q) {
-                    $q->where('is_active', true)
-                      ->where('name', 'not like', '%NO CONFIGURADO%')
-                      ->where('ip', '!=', '0.0.0.0');
-                }])
-                ->where('is_active', true)
-                ->where('name', 'not like', '%NO CONFIGURADO%')
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '0.0.0.0')
-                ->orderBy('sort_order')
-                ->get();
-        });
+        $sites = MonitoredSite::with(['devices' => function ($q) {
+                $q->where('is_active', true)
+                  ->where('name', 'not like', '%NO CONFIGURADO%')
+                  ->where('ip', '!=', '0.0.0.0');
+            }])
+            ->where('is_active', true)
+            ->where('name', 'not like', '%NO CONFIGURADO%')
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '0.0.0.0')
+            ->orderBy('sort_order')
+            ->get();
 
         // 3. Proxies reales activos
-        $proxies = Cache::remember('board_monitored_proxies', 15, function () {
-            return MonitoredProxy::where('is_active', true)
-                ->where('name', 'not like', '%NO CONFIGURADO%')
-                ->whereNotNull('ip_port')
-                ->where('ip_port', '!=', '')
-                ->get();
-        });
+        $proxies = MonitoredProxy::where('is_active', true)
+            ->where('name', 'not like', '%NO CONFIGURADO%')
+            ->whereNotNull('ip_port')
+            ->where('ip_port', '!=', '')
+            ->get();
 
         // 4. Dispositivos locales en red Valle Seco (Sede ID: 1 o por defecto)
         $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
         $valleSecoId = $valleSecoSite ? $valleSecoSite->id : 1;
 
-        $networkDevices = Cache::remember('board_monitored_netdevices_' . $valleSecoId, 15, function () use ($valleSecoId) {
-            return MonitoredNetworkDevice::where('is_active', true)
-                ->where(function($q) use ($valleSecoId) {
-                    $q->where('monitored_site_id', $valleSecoId)
-                      ->orWhereNull('monitored_site_id');
-                })
-                ->where('name', 'not like', '%NO CONFIGURADO%')
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '0.0.0.0')
-                ->orderBy('sort_order')
-                ->get();
-        });
+        $networkDevices = MonitoredNetworkDevice::where('is_active', true)
+            ->where(function($q) use ($valleSecoId) {
+                $q->where('monitored_site_id', $valleSecoId)
+                  ->orWhereNull('monitored_site_id');
+            })
+            ->where('name', 'not like', '%NO CONFIGURADO%')
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '0.0.0.0')
+            ->orderBy('sort_order')
+            ->get();
 
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotData = $latestSnapshot ? $latestSnapshot->payload_json : null;
