@@ -104,7 +104,7 @@
                 Respaldos y Configs
             </a>
 
-            @if(auth()->user()->isAdmin())
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('security.audit') || auth()->user()->hasPermission('telegram.templates') || auth()->user()->hasPermission('telegram.commands'))
             <!-- ============================================================= -->
             <!-- SECCIÓN: SISTEMA & GOBERNANZA (EXCLUSIVO ADMINISTRADOR)       -->
             <!-- ============================================================= -->
@@ -115,6 +115,7 @@
                 </span>
                 <span class="text-[9px] font-mono text-obsidian-muted/60 lowercase">admin</span>
             </div>
+            @endif
 
             @if(auth()->user()->isAdmin())
             <!-- USUARIOS & ROLES -->
