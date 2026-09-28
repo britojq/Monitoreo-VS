@@ -45,6 +45,23 @@ class PermissionService
                 ],
             ],
         ],
+        'ups' => [
+            'name' => 'Energía y Respaldo UPS',
+            'icon' => 'battery_charging_full',
+            'description' => 'Supervisión en vivo de voltajes, baterías, cortes y alertas del UPS.',
+            'permissions' => [
+                'ups.view' => [
+                    'name' => 'Consultar Telemetría UPS',
+                    'description' => 'Ver estado de línea, voltajes de entrada/salida, batería y temperatura.',
+                    'default_operator' => true,
+                ],
+                'ups.manage' => [
+                    'name' => 'Gestionar Alertas UPS',
+                    'description' => 'Modificar destino (Owner/Grupo) y activar/desactivar notificaciones del UPS.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
         'remote' => [
             'name' => 'Accesos y Terminales Remotas',
             'icon' => 'terminal',

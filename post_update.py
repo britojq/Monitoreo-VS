@@ -389,6 +389,60 @@ def ensure_telemetry_housekeeping():
             log(f"⚠️ Aviso inicializando housekeeping de telemetría: {e}")
 
 
+def ensure_ups_service():
+    """Configura y activa el demonio de monitoreo de UPS si el puerto serial y script existen."""
+    ups_script = BASE_DIR / "monitor" / "ups_service.py"
+    serial_port = Path("/dev/ttyS0")
+    service_file = Path("/etc/systemd/system/ups-monitor.service")
+    cmd_prefix = get_cmd_prefix()
+
+    if not ups_script.exists() or not serial_port.exists():
+        log("ℹ️ Servicio UPS diferido (puerto serial /dev/ttyS0 o script no presentes en este nodo).")
+        return
+
+    service_content = (
+        "[Unit]\n"
+        "Description=Demonio de Supervisión y Alertas de UPS ZTG LV6KL (Valle Seco)\n"
+        "After=network.target mariadb.service\n"
+        "Wants=mariadb.service\n\n"
+        "[Service]\n"
+        "Type=simple\n"
+        "User=britojab\n"
+        "WorkingDirectory=/scripts/telegram-admin-bot\n"
+        "ExecStart=/scripts/telegram-admin-bot/venv/bin/python monitor/ups_service.py --daemon --interval 5\n"
+        "Restart=always\n"
+        "RestartSec=5\n"
+        "StandardOutput=append:/tmp/monitor/ups_service.log\n"
+        "StandardError=append:/tmp/monitor/ups_service.log\n\n"
+        "[Install]\n"
+        "WantedBy=multi-user.target\n"
+    )
+
+    try:
+        is_up_to_date = False
+        if service_file.exists():
+            try:
+                if service_file.read_text(encoding="utf-8") == service_content:
+                    is_up_to_date = True
+            except Exception:
+                pass
+
+        if not is_up_to_date:
+            temp_file = Path("/tmp/ups-monitor.service.tmp")
+            temp_file.write_text(service_content, encoding="utf-8")
+            subprocess.run(cmd_prefix + ["mv", str(temp_file), str(service_file)], check=True)
+            subprocess.run(cmd_prefix + ["chown", "root:root", str(service_file)], check=True)
+            subprocess.run(cmd_prefix + ["chmod", "0644", str(service_file)], check=True)
+            subprocess.run(cmd_prefix + ["systemctl", "daemon-reload"], check=True)
+            subprocess.run(cmd_prefix + ["systemctl", "enable", "ups-monitor.service"], check=False)
+            log("✅ Archivo de servicio systemd ups-monitor.service instalado y recargado.")
+
+        subprocess.run(cmd_prefix + ["systemctl", "restart", "ups-monitor.service"], check=False)
+        log("✅ Demonio ups-monitor.service iniciado/reiniciado exitosamente.")
+    except Exception as e:
+        log(f"⚠️ Aviso configurando servicio UPS: {e}")
+
+
 def main():
     log("=================================================================")
     log("🚀 EJECUTANDO HOOK DE POST-ACTUALIZACIÓN MAYOR (post_update.py)")
@@ -405,6 +459,7 @@ def main():
     ensure_snmp_devices()
     ensure_network_topology()
     ensure_telemetry_housekeeping()
+    ensure_ups_service()
     # Re-asegurar permisos de todos los archivos generados tras el ciclo inicial
     configure_system_directories()
     configure_web_portal_permissions()

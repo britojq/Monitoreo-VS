@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\AdminTrapController;
 use App\Http\Controllers\Admin\AdminSyslogController;
 use App\Http\Controllers\Admin\AdminNetflowController;
 use App\Http\Controllers\Admin\AdminTopologyController;
+use App\Http\Controllers\Admin\AdminUpsController;
 use App\Http\Controllers\Admin\AdminWolController;
 use App\Http\Controllers\Admin\AdminPredictiveController;
 use App\Http\Controllers\Admin\AdminLifecycleController;
@@ -86,6 +87,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     Route::get('proxies', [AdminProxyController::class, 'index'])->name('proxies.index');
     Route::get('proxies/{proxy}/history', [AdminProxyController::class, 'history'])->name('proxies.history');
+
+    // Supervisión de Energía y Telemetría de UPS
+    Route::get('ups', [AdminUpsController::class, 'index'])->name('ups.index')->middleware('permission:ups.view');
+    Route::get('ups/live', [AdminUpsController::class, 'live'])->name('ups.live')->middleware('permission:ups.view');
 
     // Perfil de Usuario (Accesible para Administradores y Operadores)
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
@@ -244,6 +249,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::put('proxies/{proxy}', [AdminProxyController::class, 'update'])->name('proxies.update')->middleware('permission:infra.manage_proxies');
         Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy')->middleware('permission:infra.manage_proxies');
         Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle')->middleware('permission:infra.manage_proxies');
+
+        // Supervisión y Configuración de Alertas de UPS
+        Route::post('ups/settings', [AdminUpsController::class, 'updateSettings'])->name('ups.settings')->middleware('permission:ups.manage');
 
         // Sincronización a monitoreo.conf
         Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual')->middleware('permission:infra.manage_services|infra.manage_sites|infra.manage_proxies');

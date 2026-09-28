@@ -1364,6 +1364,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "• <code>/web [modo]</code> <i>(/pantalla, /dashboard)</i> - Captura gráfica panorámica HD del portal en tiempo real.",
             "• <code>/monitoreo [grupo]</code> <i>(/reporte_completo, /monitoreo_grupo)</i> - Reporte unificado integral (Servicios + Sedes).",
             "• <code>/internet</code> <i>(/proxy, /proxies)</i> - Diagnóstico de conectividad a internet y proxies corporativos.",
+            "• <code>/ups</code> <i>(/energia, /bateria, /power)</i> - Telemetría en tiempo real del UPS ZTG LV6KL, modo de operación, voltajes y autonomía de batería.",
             "• <code>/analisis_red [tiempo]</code> <i>(/red)</i> - Captura de tráfico en vivo (<code>tcpdump</code> 120s), análisis profundo (<code>tshark</code>) y entrega de reportes <code>.md</code> y <code>.html</code>.\n",
             "🧪 <b>Diagnóstico Exhaustivo y Depuración (Exclusivo Owner)</b>",
             "• <code>/debug_servicios</code> - Reporte exhaustivo de todos los servicios (A a Z) con plantilla <code>MENSAJEDEBUGA</code> + <code>servicelog.txt</code>.",
@@ -6398,6 +6399,91 @@ async def cmd_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await safe_reply_html(update.message, f"❌ Error en consulta de ciclo de vida: {html.escape(str(e))}")
 
 
+async def cmd_ups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra el estado en tiempo real, niveles de batería y voltajes del UPS ZTG LV6KL."""
+    if not update.message:
+        return
+
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM ups_devices LIMIT 1")
+                device = cur.fetchone()
+        finally:
+            conn.close()
+
+        if not device:
+            await safe_reply_html(update.message, "⚠️ No hay dispositivos UPS configurados en la base de datos.")
+            return
+
+        name = html.escape(str(device.get("name") or "UPS ZTG LV6KL"))
+        model = html.escape(str(device.get("model") or "ZTG LV6KL 6kVA"))
+        is_on_bat = bool(device.get("is_on_battery"))
+        is_online = bool(device.get("is_online", 1))
+
+        mode_icon = "🔴" if is_on_bat else ("🟢" if is_online else "⚪")
+        mode_text = "MODO BATERÍA (CORTE ELÉCTRICO)" if is_on_bat else ("RED COMERCIAL NORMAL" if is_online else "DESCONECTADO / SIN SEÑAL")
+
+        in_v = float(device.get("input_voltage") or 0.0)
+        out_v = float(device.get("output_voltage") or 0.0)
+        freq = float(device.get("frequency") or 60.0)
+        load_pct = int(device.get("load_percent") or 0)
+        load_watts = int(round((load_pct / 100.0) * 6000))
+        bat_pct = int(device.get("battery_percent") or 100)
+        bat_v = float(device.get("battery_voltage") or 2.25)
+        temp_c = float(device.get("temperature_c") or 40.0)
+
+        # Autonomía estimada
+        est_min = int(round((bat_pct / 100.0) * (650.0 / max(5, load_pct))))
+
+        # Duración de apagón si está en batería
+        outage_str = ""
+        outage_since = device.get("outage_since")
+        if is_on_bat and outage_since:
+            from monitor.ups_service import format_duration
+            if isinstance(outage_since, datetime):
+                dur_sec = (datetime.now() - outage_since).total_seconds()
+            else:
+                try:
+                    ds_dt = datetime.strptime(str(outage_since)[:19], "%Y-%m-%d %H:%M:%S")
+                    dur_sec = (datetime.now() - ds_dt).total_seconds()
+                except Exception:
+                    dur_sec = 0
+            outage_str = f"\n⏱️ <b>Tiempo en Batería:</b> {format_duration(dur_sec)}"
+
+        alert_en = "ACTIVADAS" if device.get("telegram_alert_enabled") else "DESACTIVADAS"
+        target_name = "Administrador Privado" if device.get("telegram_alert_target") == "owner" else "Grupo Corporativo"
+
+        last_seen = device.get("last_seen_at")
+        last_seen_str = str(last_seen)[:19] if last_seen else "Sin datos"
+
+        lines = [
+            "🔋 <b>ESTADO DE ENERGÍA Y RESPALDO ELÉCTRICO (UPS)</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"📍 <b>Ubicación:</b> <code>Sede Valle Seco (Rack Principal)</code>",
+            f"🔋 <b>Equipo:</b> <code>{name}</code> ({model})",
+            f"⚡ <b>Modo de Operación:</b> {mode_icon} <b>{mode_text}</b>{outage_str}",
+            f"🔌 <b>Entrada Comercial:</b> <code>{in_v:.1f} VAC</code> ({freq:.1f} Hz)",
+            f"⚡ <b>Salida Regulada:</b> <code>{out_v:.1f} VAC</code> (Online Doble Conversión)",
+            f"📊 <b>Carga de Consumo:</b> <code>{load_pct}%</code> (~{load_watts} Watts)",
+            f"🔋 <b>Nivel de Batería:</b> <code>{bat_pct}%</code> ({bat_v:.2f} V/celda - Bus 192V)",
+            f"⏱️ <b>Autonomía Estimada:</b> ~<code>{est_min} min</code> de respaldo",
+            f"🌡️ <b>Temperatura Inversor:</b> <code>{temp_c:.1f} °C</code>",
+            f"🕒 <b>Última Lectura:</b> <code>{last_seen_str}</code>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"🔔 <b>Alertas Automáticas:</b> {alert_en} (Destino: {target_name})",
+            "🌐 <i>Panel y curvas en tiempo real: <b>Portal Web -> Energía & UPS</b></i>"
+        ]
+
+        await safe_reply_html(update.message, "\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"Error en cmd_ups: {e}")
+        await safe_reply_html(update.message, f"❌ Error al consultar telemetría de UPS: {html.escape(str(e))}")
+
+
 async def handle_alert_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja los botones interactivos en línea de las alertas (Reconocer, Silenciar, Resolver, Detalle)."""
     query = update.callback_query
@@ -8232,6 +8318,9 @@ def main() -> None:
     application.add_handler(CommandHandler(["wol", "wake", "encender"], cmd_wol))
     application.add_handler(CommandHandler(["predicciones", "predictivo", "capacidad", "tendencias"], cmd_predicciones))
     application.add_handler(CommandHandler(["inventario", "ciclovida", "garantias", "lifecycle"], cmd_inventario))
+
+    # Comando de Monitoreo de UPS y Respaldo Eléctrico
+    application.add_handler(CommandHandler(["ups", "energia", "bateria", "power"], cmd_ups))
 
 
     # Comando exclusivo para que el Owner envíe comunicados masivos (Broadcast)

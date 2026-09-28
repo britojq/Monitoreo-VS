@@ -104,6 +104,12 @@
                 Respaldos y Configs
             </a>
 
+            <!-- ENERGÍA & UPS -->
+            <a href="{{ route('admin.ups.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.ups.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Supervisión de energía, respaldo eléctrico y telemetría de UPS">
+                <span class="material-symbols-outlined text-lg">battery_charging_full</span>
+                Energía & UPS
+            </a>
+
             @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('security.audit') || auth()->user()->hasPermission('telegram.templates') || auth()->user()->hasPermission('telegram.commands'))
             <!-- ============================================================= -->
             <!-- SECCIÓN: SISTEMA & GOBERNANZA (EXCLUSIVO ADMINISTRADOR)       -->

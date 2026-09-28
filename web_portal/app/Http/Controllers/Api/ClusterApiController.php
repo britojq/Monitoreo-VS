@@ -88,6 +88,7 @@ class ClusterApiController extends Controller
                 'maintenance_windows' => \App\Models\MaintenanceWindow::all(),
                 'wol_devices' => \App\Models\WolDevice::all(),
                 'hardware_lifecycle' => \App\Models\HardwareLifecycle::all(),
+                'ups_devices' => \App\Models\UpsDevice::all(),
             ],
             'snmp_metrics_history' => \App\Models\SnmpMetricHistory::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
             'snmp_interface_metrics' => \App\Models\SnmpInterfaceMetric::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
@@ -111,6 +112,7 @@ class ClusterApiController extends Controller
             'predictive_anomalies' => \App\Models\PredictiveAnomaly::latest('id')->take(100)->get(),
             'snmp_metric_hourly_rollups' => \App\Models\SnmpMetricHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
             'snmp_interface_hourly_rollups' => \App\Models\SnmpInterfaceHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
+            'ups_telemetry_histories' => \App\Models\UpsTelemetryHistory::where('recorded_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
         ];
 
         $acceptGzip = $request->boolean('gzip') || str_contains($request->header('Accept-Encoding', ''), 'gzip');
