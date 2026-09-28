@@ -262,18 +262,18 @@
             @endif
 
             <!-- SECCIÓN DERECHA: ROL CLÚSTER, ASISTENTE IA, BADGE GLOBAL, RELOJ & PERFIL -->
-            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
-                <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (MAESTRO / ESCLAVO) CON TOOLTIP HUD -->
+            <!-- SECCIÓN DERECHA: ROL CLÚSTER, ALERTAS, BATERÍA UPS, ASISTENTE IA, ESTADO GLOBAL, RELOJ & PERFIL -->
+            <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (SOLO ICONO CON TOOLTIP HUD) -->
                 <div class="relative group">
-                    <div class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border text-xs font-mono font-bold cursor-pointer transition-all duration-200 {{ $isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20' }}"
-                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Este servidor sincroniza su telemetría web desde el Master (' . $clusterConfig['master_api_url'] . '). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.' : 'MODO MAESTRO (MASTER): Este servidor ejecuta los escaneos periódicos oficiales a la infraestructura y pfSense, gestiona la configuración y sirve la API de telemetría.' }}">
-                        <span class="material-symbols-outlined text-sm {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">
+                    <div class="flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20' }}"
+                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ')' : 'MODO MAESTRO (MASTER): Ejecuta escaneos oficiales y sirve API de telemetría' }}">
+                        <span class="material-symbols-outlined text-base {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">
                             {{ $isClusterSlave ? 'cloud_sync' : 'dns' }}
                         </span>
-                        <span class="hidden sm:inline">{{ $isClusterSlave ? 'ESCLAVO' : 'MAESTRO' }}</span>
                     </div>
 
-                    <!-- HUD TOOLTIP EN HOVER (AL POSICIONAR EL MOUSE) -->
+                    <!-- HUD TOOLTIP EN HOVER -->
                     <div class="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-96 p-3.5 rounded-xl bg-[#06111f] border {{ $isClusterSlave ? 'border-amber-500/60 shadow-amber-500/20' : 'border-cyan-500/60 shadow-cyan-500/20' }} shadow-2xl backdrop-blur-xl text-xs font-mono transition-all duration-200 pointer-events-none">
                         <div class="flex items-center gap-2 pb-2 mb-2 border-b {{ $isClusterSlave ? 'border-amber-500/30 text-amber-400' : 'border-cyan-500/30 text-cyan-300' }} font-bold">
                             <span class="material-symbols-outlined text-base">{{ $isClusterSlave ? 'cloud_sync' : 'dns' }}</span>
@@ -295,24 +295,201 @@
                     </div>
                 </div>
 
-                <!-- BADGE DE ALERTAS CRÍTICAS / EMERGENCIA (TOPBAR) -->
+                <!-- BADGE DE ALERTAS CRÍTICAS / EMERGENCIA (SOLO ICONO CON CONTADOR FLOTANTE) -->
                 @php
                     $criticalAlertsCount = \App\Models\Alert::whereIn('status', ['firing', 'acknowledged'])
                         ->whereIn('severity', ['critical', 'emergency'])->count();
                 @endphp
                 <a href="{{ route('admin.alerts.index', ['tab' => 'active', 'severity' => 'critical']) }}" 
-                   class="relative flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 rounded-full transition text-xs font-mono font-semibold {{ $criticalAlertsCount > 0 ? 'bg-red-950/60 border border-red-500/60 text-red-400 hover:bg-red-900/60 shadow-md shadow-red-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-slate-400 hover:text-white' }}"
+                   class="relative flex items-center justify-center w-8 h-8 rounded-full transition {{ $criticalAlertsCount > 0 ? 'bg-red-950/60 border border-red-500/60 text-red-400 hover:bg-red-900/60 shadow-md shadow-red-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-slate-400 hover:text-white hover:border-slate-500' }}"
                    title="{{ $criticalAlertsCount > 0 ? $criticalAlertsCount . ' incidentes críticos o de emergencia activos' : 'Sin alertas críticas activas' }}">
-                    <span class="material-symbols-outlined text-sm {{ $criticalAlertsCount > 0 ? 'text-red-400 animate-pulse' : 'text-slate-400' }}">notifications_active</span>
+                    <span class="material-symbols-outlined text-base {{ $criticalAlertsCount > 0 ? 'text-red-400 animate-pulse' : 'text-slate-400' }}">
+                        {{ $criticalAlertsCount > 0 ? 'notifications_active' : 'notifications' }}
+                    </span>
                     @if($criticalAlertsCount > 0)
-                        <span class="hidden sm:inline text-red-300 font-bold ml-1">{{ $criticalAlertsCount }} Críticas</span>
-                        <span class="sm:hidden absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-red-600 text-white text-[8.5px] font-bold">
+                        <span class="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-bold font-mono shadow-sm">
                             {{ $criticalAlertsCount }}
                         </span>
-                    @else
-                        <span class="hidden sm:inline text-slate-400 ml-1">0 Alertas</span>
                     @endif
                 </a>
+
+                <!-- BADGE DE BATERÍA / UPS (SOLO ICONO CON VISTA PREVIA HUD AL POSICIONAR EL MOUSE) -->
+                @php
+                    $hUps = $headerUpsDevice ?? null;
+                    $hIsOnBat = $hUps && $hUps->is_on_battery;
+                    $hBatPct = $hUps ? ($hUps->battery_percent ?? 100) : 100;
+                    $hBatV = $hUps ? ($hUps->battery_voltage ?? 2.25) : 2.25;
+                    $hInV = $hUps ? ($hUps->input_voltage ?? 225.1) : 225.1;
+                    $hOutV = $hUps ? ($hUps->output_voltage ?? 208.3) : 208.3;
+                    $hLoadPct = $hUps ? ($hUps->load_percent ?? 8) : 8;
+                    $hLoadWatts = round(($hLoadPct / 100) * 6000);
+                    $hTempC = $hUps ? ($hUps->temperature_c ?? 43.0) : 43.0;
+                    $hRuntimeMin = round(($hBatPct / 100) * 135);
+
+                    // Mini Gráfica SVG Sparkline
+                    $hHist = $headerUpsHistories ?? collect();
+                    $inSparkPoints = [];
+                    $outSparkPoints = [];
+                    if ($hHist->isNotEmpty()) {
+                        $allSparkV = [];
+                        foreach ($hHist as $hItem) {
+                            $allSparkV[] = (float) $hItem->input_voltage;
+                            $allSparkV[] = (float) $hItem->output_voltage;
+                        }
+                        $minSparkV = !empty($allSparkV) ? min($allSparkV) - 2 : 200;
+                        $maxSparkV = !empty($allSparkV) ? max($allSparkV) + 2 : 230;
+                        $sparkRange = max(1, $maxSparkV - $minSparkV);
+                        $sparkCount = $hHist->count();
+
+                        foreach ($hHist as $idx => $hItem) {
+                            $px = round(5 + ($idx / max(1, $sparkCount - 1)) * 310, 1);
+                            $pyIn = round(55 - (((float)$hItem->input_voltage - $minSparkV) / $sparkRange) * 45, 1);
+                            $pyOut = round(55 - (((float)$hItem->output_voltage - $minSparkV) / $sparkRange) * 45, 1);
+                            $inSparkPoints[] = "{$px},{$pyIn}";
+                            $outSparkPoints[] = "{$px},{$pyOut}";
+                        }
+                    }
+                @endphp
+                <div class="relative group" id="topbar-ups-container">
+                    <a href="{{ route('admin.ups.index') }}" 
+                       id="topbar-ups-btn"
+                       class="relative flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $hIsOnBat ? 'bg-red-950/80 text-red-400 border-red-500/60 animate-pulse shadow-md shadow-red-500/30' : ($hBatPct < 25 ? 'bg-amber-950/80 text-amber-400 border-amber-500/60 shadow-md shadow-amber-500/30' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 hover:text-white shadow-sm shadow-cyan-500/20') }}"
+                       title="UPS ZTG LV6KL: {{ $hIsOnBat ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : 'RED NORMAL (' . $hBatPct . '%)' }}">
+                        <span id="topbar-ups-icon" class="material-symbols-outlined text-base {{ $hIsOnBat ? 'text-red-400' : 'text-cyan-400' }}">
+                            {{ $hIsOnBat ? 'battery_alert' : ($hBatPct >= 95 ? 'battery_charging_full' : 'battery_std') }}
+                        </span>
+                        @if($hIsOnBat)
+                            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                        @endif
+                    </a>
+
+                    <!-- HUD TOOLTIP EN HOVER: VISTA PREVIA DETALLADA DE ADMIN/UPS -->
+                    <div class="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-96 p-4 rounded-xl bg-[#06111f]/95 border border-cyan-500/60 shadow-2xl shadow-cyan-950/60 backdrop-blur-xl text-xs font-mono transition-all duration-200">
+                        <a href="{{ route('admin.ups.index') }}" class="block">
+                            <!-- HEADER DE LA VISTA PREVIA -->
+                            <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-obsidian-border/70">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-lg {{ $hIsOnBat ? 'text-red-400 animate-pulse' : 'text-cyan-400' }}">
+                                        {{ $hIsOnBat ? 'power_off' : 'bolt' }}
+                                    </span>
+                                    <div>
+                                        <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>UPS ZTG LV6KL</span>
+                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40">6 kVA</span>
+                                        </div>
+                                        <div class="text-[9px] text-obsidian-muted">Sede Valle Seco • Rack Principal</div>
+                                    </div>
+                                </div>
+                                <span id="topbar-ups-status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider {{ $hIsOnBat ? 'bg-red-950 text-red-400 border border-red-500/60 animate-pulse' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/60' }}">
+                                    {{ $hIsOnBat ? 'Modo Batería' : 'Red Normal' }}
+                                </span>
+                            </div>
+
+                            <!-- CUADRÍCULA DE MÉTRICAS BÁSICAS -->
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <!-- BATERÍA & AUTONOMÍA -->
+                                <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
+                                    <div class="flex items-center justify-between text-[9px] text-obsidian-muted uppercase font-bold">
+                                        <span>Batería</span>
+                                        <span id="topbar-ups-runtime" class="text-cyan-300">~{{ $hRuntimeMin }} min</span>
+                                    </div>
+                                    <div class="flex items-baseline gap-1 my-1">
+                                        <span id="topbar-ups-bat-pct" class="text-base font-black {{ $hBatPct < 25 ? 'text-red-400' : ($hBatPct < 60 ? 'text-amber-400' : 'text-emerald-400') }}">
+                                            {{ $hBatPct }}%
+                                        </span>
+                                        <span class="text-[9px] text-obsidian-muted">({{ number_format($hBatV, 2) }} V/c)</span>
+                                    </div>
+                                    <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-obsidian-border/50">
+                                        <div id="topbar-ups-bat-bar" class="h-full rounded-full transition-all {{ $hBatPct < 25 ? 'bg-red-500' : ($hBatPct < 60 ? 'bg-amber-400' : 'bg-emerald-500') }}" style="width: {{ $hBatPct }}%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- CONSUMO DE CARGA -->
+                                <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
+                                    <div class="flex items-center justify-between text-[9px] text-obsidian-muted uppercase font-bold">
+                                        <span>Carga Rack</span>
+                                        <span id="topbar-ups-temp" class="text-amber-300">{{ number_format($hTempC, 1) }} °C</span>
+                                    </div>
+                                    <div class="flex items-baseline gap-1 my-1">
+                                        <span id="topbar-ups-load-pct" class="text-base font-black text-purple-300">
+                                            {{ $hLoadPct }}%
+                                        </span>
+                                        <span id="topbar-ups-load-watts" class="text-[9px] text-obsidian-muted">~{{ $hLoadWatts }} W</span>
+                                    </div>
+                                    <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-obsidian-border/50">
+                                        <div id="topbar-ups-load-bar" class="h-full rounded-full bg-purple-500 transition-all" style="width: {{ $hLoadPct }}%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- VOLTAJE ENTRADA -->
+                                <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
+                                    <span class="text-[9px] text-obsidian-muted uppercase font-bold block">Entrada (Red)</span>
+                                    <span id="topbar-ups-in-v" class="text-xs font-bold text-white font-mono mt-0.5 block">
+                                        {{ number_format($hInV, 1) }} <span class="text-[9px] text-obsidian-muted">VAC</span>
+                                    </span>
+                                </div>
+
+                                <!-- VOLTAJE SALIDA -->
+                                <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
+                                    <span class="text-[9px] text-obsidian-muted uppercase font-bold block">Salida (UPS)</span>
+                                    <span id="topbar-ups-out-v" class="text-xs font-bold text-cyan-300 font-mono mt-0.5 block">
+                                        {{ number_format($hOutV, 1) }} <span class="text-[9px] text-obsidian-muted">VAC</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- MINI GRÁFICA DE TELEMETRÍA (SPARKLINE VECTORIAL) -->
+                            <div class="p-2.5 rounded-lg bg-[#040c17] border border-obsidian-border/60 mb-2.5">
+                                <div class="flex items-center justify-between text-[9px] font-bold text-obsidian-muted mb-1.5">
+                                    <span class="uppercase tracking-wider flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs text-cyan-400">show_chart</span>
+                                        <span>Telemetría Reciente (VAC)</span>
+                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="flex items-center gap-1 text-cyan-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Entrada
+                                        </span>
+                                        <span class="flex items-center gap-1 text-emerald-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Salida
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="h-14 w-full relative">
+                                    @if(!empty($inSparkPoints))
+                                    <svg viewBox="0 0 320 60" class="w-full h-full overflow-visible" preserveAspectRatio="none">
+                                        <defs>
+                                            <linearGradient id="gradTopUpsIn" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stop-color="#00f3ff" stop-opacity="0.25"/>
+                                                <stop offset="100%" stop-color="#00f3ff" stop-opacity="0.0"/>
+                                            </linearGradient>
+                                        </defs>
+                                        <line x1="5" y1="8" x2="315" y2="8" stroke="#132438" stroke-dasharray="2,2" />
+                                        <line x1="5" y1="30" x2="315" y2="30" stroke="#132438" stroke-dasharray="2,2" />
+                                        <line x1="5" y1="52" x2="315" y2="52" stroke="#132438" />
+
+                                        <polygon points="5,55 {{ implode(' ', $inSparkPoints) }} 315,55" fill="url(#gradTopUpsIn)" />
+                                        <polyline points="{{ implode(' ', $inSparkPoints) }}" fill="none" stroke="#00f3ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                        <polyline points="{{ implode(' ', $outSparkPoints) }}" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    @else
+                                    <div class="flex items-center justify-center h-full text-[10px] text-obsidian-muted">
+                                        Sin datos históricos disponibles
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- FOOTER / CALL TO ACTION -->
+                            <div class="flex items-center justify-between pt-2 border-t border-obsidian-border/50 text-[10px] text-cyan-300 font-bold hover:text-cyan-200 transition">
+                                <span>Ver Diagnóstico & Alertas</span>
+                                <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
 
                 @if(request()->routeIs('admin.dashboard'))
                     <!-- BOTÓN ASISTENTE IA -->
@@ -320,26 +497,30 @@
                             id="btn-open-ai-chat" 
                             onclick="handleAiChatClick()" 
                             title="Asistente Virtual IA - Sede Valle Seco" 
-                            class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-cyan-500/25 hover:scale-[1.02] cursor-pointer group">
-                        <span class="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">smart_toy</span>
-                        <span class="hidden sm:inline">IA</span>
-                        <span class="flex h-2 w-2 relative">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
-                        </span>
+                            class="flex items-center justify-center w-8 h-8 rounded-full border border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono transition-all duration-200 shadow-sm hover:shadow-cyan-500/25 hover:scale-105 cursor-pointer group">
+                        <span class="material-symbols-outlined text-base group-hover:rotate-12 transition-transform">smart_toy</span>
                     </button>
 
-                    <!-- BADGE GLOBAL -->
-                    <div id="global-status-badge" class="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full border text-xs font-mono font-semibold {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 glow-green' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-950/60 text-amber-400 border-amber-500/50' : 'bg-red-950/60 text-red-400 border-red-500/50 glow-red') }}"
+                    <!-- BADGE GLOBAL (SOLO ICONO CON TOOLTIP E INDICADOR) -->
+                    @php
+                        $gStatus = $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL';
+                        $gIcon = ($gStatus === 'OPERACIONAL') ? 'check_circle' : (($gStatus === 'DEGRADADO') ? 'warning' : 'error');
+                        $gColor = ($gStatus === 'OPERACIONAL') ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 glow-green' : (($gStatus === 'DEGRADADO') ? 'bg-amber-950/60 text-amber-400 border-amber-500/50' : 'bg-red-950/60 text-red-400 border-red-500/50 glow-red');
+                    @endphp
+                    <div id="global-status-badge" 
+                         class="relative flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $gColor }}"
+                         title="Estado Global: {{ $gStatus }}"
                          data-tech-title="ESTADO GLOBAL DE INFRAESTRUCTURA"
                          data-tech-type="SISTEMA"
                          data-tech-ip="Red Corporativa Nacional"
                          data-tech-protocol="Orquestador Asíncrono Python"
                          data-tech-latency="< 2.5s ciclo"
-                         data-tech-status="{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}"
+                         data-tech-status="{{ $gStatus }}"
                          data-tech-details="Chequeo continuo en tiempo real de servicios y sedes regionales.">
-                        <span class="w-2 h-2 rounded-full {{ ($latestSnapshot && $latestSnapshot->global_status == 'OPERACIONAL') ? 'bg-emerald-400 pulse-dot' : (($latestSnapshot && $latestSnapshot->global_status == 'DEGRADADO') ? 'bg-amber-400' : 'bg-red-400 pulse-dot') }}"></span>
-                        <span id="global-status-text">{{ $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL' }}</span>
+                        <span id="global-status-icon" class="material-symbols-outlined text-base">
+                            {{ $gIcon }}
+                        </span>
+                        <span id="global-status-text" class="sr-only">{{ $gStatus }}</span>
                     </div>
 
                     <!-- RELOJ & SINCRONIZACIÓN -->
@@ -936,13 +1117,62 @@
         }
     });
 
-    // Cerrar modal al presionar Escape
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeAboutSystemModal();
-            const menu = document.getElementById('help-dropdown-menu');
-            if (menu) menu.classList.add('hidden');
-        }
+    // Sondeo de telemetría de UPS para actualizar el icono y tooltip del Topbar
+    function pollTopBarUps() {
+        fetch('{{ route("admin.ups.live") }}', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data || !data.success || !data.device) return;
+            var dev = data.device;
+            var comp = data.computed || {};
+            var isBat = !!dev.is_on_battery;
+            var batPct = Number(dev.battery_percent || 100);
+
+            var btn = document.getElementById('topbar-ups-btn');
+            var icon = document.getElementById('topbar-ups-icon');
+            if (btn && icon) {
+                if (isBat) {
+                    btn.className = 'relative flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 bg-red-950/80 text-red-400 border-red-500/60 animate-pulse shadow-md shadow-red-500/30';
+                    icon.innerText = 'battery_alert';
+                    icon.className = 'material-symbols-outlined text-base text-red-400';
+                } else {
+                    btn.className = 'relative flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 ' + (
+                        batPct < 25 ? 'bg-amber-950/80 text-amber-400 border-amber-500/60 shadow-md shadow-amber-500/30' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 hover:text-white shadow-sm shadow-cyan-500/20'
+                    );
+                    icon.innerText = batPct >= 95 ? 'battery_charging_full' : 'battery_std';
+                    icon.className = 'material-symbols-outlined text-base text-cyan-400';
+                }
+            }
+
+            var elStatusBadge = document.getElementById('topbar-ups-status-badge');
+            if (elStatusBadge) {
+                elStatusBadge.innerText = isBat ? 'Modo Batería' : 'Red Normal';
+                elStatusBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ' + (isBat ? 'bg-red-950 text-red-400 border border-red-500/60 animate-pulse' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/60');
+            }
+            var elBatPct = document.getElementById('topbar-ups-bat-pct');
+            if (elBatPct) elBatPct.innerText = batPct + '%';
+            var elBatBar = document.getElementById('topbar-ups-bat-bar');
+            if (elBatBar) elBatBar.style.width = batPct + '%';
+            var elRuntime = document.getElementById('topbar-ups-runtime');
+            if (elRuntime) elRuntime.innerText = '~' + (comp.estimated_runtime_human || comp.estimated_runtime_minutes + ' min');
+            var elInV = document.getElementById('topbar-ups-in-v');
+            if (elInV) elInV.innerHTML = Number(dev.input_voltage || 0).toFixed(1) + ' <span class="text-[9px] text-obsidian-muted">VAC</span>';
+            var elOutV = document.getElementById('topbar-ups-out-v');
+            if (elOutV) elOutV.innerHTML = Number(dev.output_voltage || 0).toFixed(1) + ' <span class="text-[9px] text-obsidian-muted">VAC</span>';
+            var elLoadPct = document.getElementById('topbar-ups-load-pct');
+            if (elLoadPct) elLoadPct.innerText = (dev.load_percent || 0) + '%';
+            var elLoadWatts = document.getElementById('topbar-ups-load-watts');
+            if (elLoadWatts) elLoadWatts.innerText = '~' + (comp.load_watts || 0) + ' W';
+            var elTemp = document.getElementById('topbar-ups-temp');
+            if (elTemp) elTemp.innerText = Number(dev.temperature_c || 40).toFixed(1) + ' °C';
+        })
+        .catch(function() {});
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setInterval(pollTopBarUps, 15000);
     });
 </script>
 @endsection
