@@ -30,5 +30,6 @@
   "cron_schedules": [
     "07:30",
     "16:00"
-  ]
+  ],
+  "ai_web_enabled": true
 }

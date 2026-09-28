@@ -343,5 +343,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         // Configuración de Directorio Activo & Autenticación LDAP
         Route::post('ldap/update', [AdminLdapController::class, 'update'])->name('ldap.update');
         Route::post('ldap/test-connection', [AdminLdapController::class, 'testConnection'])->name('ldap.testConnection');
+
+        // Control y Desactivación del Asistente Virtual IA
+        Route::post('settings/ai/toggle', [AdminAdvancedSettingsController::class, 'toggleAi'])->name('settings.ai.toggle');
     });
 });

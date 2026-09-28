@@ -37,14 +37,20 @@
             <button type="button" 
                     id="btn-open-ai-chat" 
                     onclick="handleAiChatClick()" 
-                    title="Asistente Virtual IA - Sede Valle Seco" 
-                    class="flex items-center gap-1.5 px-3 py-1 rounded-full border border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-cyan-500/25 hover:scale-[1.02] cursor-pointer group">
-                <span class="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">smart_toy</span>
+                    title="{{ ($isAiEnabled ?? true) ? 'Asistente Virtual IA - Sede Valle Seco' : 'Asistente Virtual IA - Desactivado por el módulo administrativo' }}" 
+                    class="flex items-center gap-1.5 px-3 py-1 rounded-full border {{ ($isAiEnabled ?? true) ? 'border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black shadow-cyan-500/25' : 'border-slate-700/60 bg-slate-900/60 text-slate-500 opacity-60 hover:border-slate-600 hover:text-slate-400' }} font-mono text-xs font-semibold transition-all duration-200 shadow-sm hover:scale-[1.02] cursor-pointer group">
+                <span class="material-symbols-outlined text-sm {{ ($isAiEnabled ?? true) ? 'group-hover:rotate-12 transition-transform' : '' }}">smart_toy</span>
                 <span>IA</span>
+                @if($isAiEnabled ?? true)
                 <span class="flex h-2 w-2 relative">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
                 </span>
+                @else
+                <span class="flex h-2 w-2 relative">
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-500"></span>
+                </span>
+                @endif
             </button>
 
             <!-- BADGE GLOBAL -->

@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
             $ldapService = new \App\Services\LdapAuthService();
             $view->with('ldapConfig', $ldapService->getConfig());
             $view->with('isLdapEnabled', $ldapService->isEnabled());
+
+            $aiService = new \App\Services\AiConfigService();
+            $view->with('aiConfig', $aiService->getConfig());
+            $view->with('isAiEnabled', $aiService->isEnabled());
         });
 
         view()->composer('layouts.admin', function ($view) {

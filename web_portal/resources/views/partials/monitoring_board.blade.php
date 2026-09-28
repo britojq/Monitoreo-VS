@@ -1024,6 +1024,55 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL AVISO DE ASISTENTE IA DESACTIVADO POR ADMINISTRACIÓN                -->
+<!-- ========================================================================= -->
+<div id="modal-ai-disabled-notice" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-rose-500/40 shadow-2xl space-y-4 font-mono bg-[#040d1a]/95">
+        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-400 flex items-center justify-center shadow-lg shadow-rose-950/40">
+                    <span class="material-symbols-outlined text-xl">power_settings_new</span>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Asistente IA Corporativo</h3>
+                    <p class="text-[10px] text-rose-400 font-bold uppercase tracking-wider">Desactivado por Administración</p>
+                </div>
+            </div>
+            <button onclick="closeAiDisabledNoticeModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-200 text-[11px] space-y-1.5">
+                <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
+                    <span class="material-symbols-outlined text-sm text-rose-400">block</span>
+                    <span>SERVICIO DESACTIVADO POR EL MÓDULO ADMINISTRATIVO</span>
+                </p>
+                <p class="leading-relaxed font-sans text-rose-200">
+                    El Asistente Virtual corporativo de IA se encuentra actualmente <strong>desactivado por el módulo administrativo</strong> desde la Configuración Avanzada del sistema.
+                </p>
+            </div>
+            <p class="text-[10px] text-obsidian-muted leading-relaxed">
+                🔒 Mientras el servicio se mantenga inactivo, las consultas interactivas del asistente inteligente en la web quedan suspendidas. Si requiere asistencia operativa, contacte a la administración o al personal de guardia.
+            </p>
+        </div>
+
+        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between gap-2">
+            @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->hasPermission('settings.manage')))
+                <a href="{{ route('admin.settings.advanced') }}#seccion-ia" class="px-3.5 py-2 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs flex items-center gap-1.5 transition">
+                    <span class="material-symbols-outlined text-sm">tune</span>
+                    <span>Gestionar en Ajustes</span>
+                </a>
+            @else
+                <div></div>
+            @endif
+            <button type="button" onclick="closeAiDisabledNoticeModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-200 text-xs font-bold transition">
+                Entendido
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- VENTANA EMERGENTE TIPO CHAT: ASISTENTE IA MONITOR VALLE SECO              -->
 <!-- ========================================================================= -->
 <div id="modal-ai-chat" class="fixed inset-0 z-[100000] bg-black/75 backdrop-blur-sm hidden items-center justify-center p-2 sm:p-4">
@@ -1669,8 +1718,18 @@
     // =========================================================================
     let aiChatHistory = [];
     const isUserAuthenticated = {{ Auth::check() ? 'true' : 'false' }};
+    const isAiServiceEnabled = {{ ($isAiEnabled ?? true) ? 'true' : 'false' }};
 
     function handleAiChatClick() {
+        if (!isAiServiceEnabled) {
+            const disabledModal = document.getElementById('modal-ai-disabled-notice');
+            if (disabledModal) {
+                disabledModal.classList.remove('hidden');
+                disabledModal.classList.add('flex');
+            }
+            return;
+        }
+
         if (!isUserAuthenticated) {
             const promptModal = document.getElementById('modal-ai-login-prompt');
             if (promptModal) {
@@ -1687,6 +1746,14 @@
                     if (input) input.focus();
                 }, 100);
             }
+        }
+    }
+
+    function closeAiDisabledNoticeModal() {
+        const disabledModal = document.getElementById('modal-ai-disabled-notice');
+        if (disabledModal) {
+            disabledModal.classList.add('hidden');
+            disabledModal.classList.remove('flex');
         }
     }
 
@@ -1818,6 +1885,17 @@
                 if (promptModal) {
                     promptModal.classList.remove('hidden');
                     promptModal.classList.add('flex');
+                }
+                return;
+            }
+
+            if (res.status === 403 && data.ai_disabled) {
+                closeAiChatModal();
+                closeAiLoginPromptModal();
+                const disabledModal = document.getElementById('modal-ai-disabled-notice');
+                if (disabledModal) {
+                    disabledModal.classList.remove('hidden');
+                    disabledModal.classList.add('flex');
                 }
                 return;
             }

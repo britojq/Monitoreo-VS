@@ -25,6 +25,16 @@ class AiChatController extends Controller
             ], 401);
         }
 
+        // 1.0 Verificación de activación global administrativa
+        $aiConfigService = new \App\Services\AiConfigService();
+        if (!$aiConfigService->isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'El Asistente Virtual corporativo de IA se encuentra actualmente desactivado por el módulo administrativo desde la Configuración Avanzada.',
+                'ai_disabled' => true,
+            ], 403);
+        }
+
         $user = Auth::user();
 
         // 1.1 Verificación de Permiso Granular RBAC

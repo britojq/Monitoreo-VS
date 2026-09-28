@@ -809,6 +809,124 @@
             </div>
         </form>
     </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECCIÓN: ASISTENTE VIRTUAL CORPORATIVO DE IA                              -->
+    <!-- ========================================================================= -->
+    <div id="seccion-ia" class="glass-card rounded-xl p-6 space-y-5 border {{ ($isAiEnabled ?? true) ? 'border-cyan-500/30' : 'border-rose-500/40' }} transition-colors">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ ($isAiEnabled ?? true) ? 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40 shadow-lg shadow-cyan-950/50' : 'bg-rose-950/80 text-rose-400 border border-rose-500/40 shadow-lg shadow-rose-950/50' }}">
+                    <span class="material-symbols-outlined text-xl">{{ ($isAiEnabled ?? true) ? 'smart_toy' : 'power_settings_new' }}</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        Asistente Virtual Corporativo de IA
+                        @if($isAiEnabled ?? true)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                HABILITADO
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-950/80 text-rose-400 border border-rose-500/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                DESACTIVADO POR ADMINISTRACIÓN
+                            </span>
+                        @endif
+                    </h2>
+                    <p class="text-xs text-obsidian-muted mt-0.5">
+                        Control de visibilidad y disponibilidad del asistente inteligente en la barra superior y endpoints web.
+                    </p>
+                </div>
+            </div>
+
+            <!-- BOTÓN INTERRUPTOR (ACTIVAR / DESACTIVAR) -->
+            <form action="{{ route('admin.settings.ai.toggle') }}" method="POST" onsubmit="return confirm('¿Confirmas que deseas {{ ($isAiEnabled ?? true) ? 'DESACTIVAR' : 'ACTIVAR' }} el Asistente Virtual corporativo de IA en el portal web?');">
+                @csrf
+                @if($isAiEnabled ?? true)
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-rose-950/30 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">power_settings_new</span>
+                        Desactivar Asistente IA
+                    </button>
+                @else
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 font-bold text-xs font-mono uppercase flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">check_circle</span>
+                        Activar Asistente IA
+                    </button>
+                @endif
+            </form>
+        </div>
+
+        <!-- CUADRÍCULA: DETALLES DE COMPORTAMIENTO & AUDITORÍA -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+            <!-- EXPLICACIÓN Y DIRECTRICES (2 COLS) -->
+            <div class="lg:col-span-2 space-y-3 font-mono text-xs">
+                <div class="p-4 rounded-xl bg-[#030c18]/80 border border-obsidian-border/80 space-y-3 leading-relaxed text-gray-300">
+                    <div class="flex items-center gap-2 text-obsidian-cyan font-bold text-xs">
+                        <span class="material-symbols-outlined text-base">info</span>
+                        <span>Comportamiento del Asistente en la Plataforma</span>
+                    </div>
+                    <p class="text-xs text-gray-300 font-sans leading-relaxed">
+                        @if($isAiEnabled ?? true)
+                            El Asistente Virtual se encuentra <strong class="text-emerald-400">activo y operativo</strong>. Los usuarios autenticados con los permisos correspondientes pueden interactuar mediante el botón de la barra superior para soporte sobre servidores, redes y servicios corporativos.
+                        @else
+                            El Asistente Virtual se encuentra <strong class="text-rose-400">desactivado administrativamente</strong>. El botón del menú superior se muestra atenuado y cualquier intento de interacción desplegará un aviso informativo institucional indicando que el servicio fue deshabilitado por la administración.
+                        @endif
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-[11px]">
+                        <div class="p-3 rounded-lg bg-obsidian-panel/60 border border-obsidian-border/60">
+                            <span class="text-obsidian-muted block mb-1 font-bold">Barra Superior (Menú):</span>
+                            <span class="{{ ($isAiEnabled ?? true) ? 'text-emerald-400' : 'text-amber-400' }}">
+                                {{ ($isAiEnabled ?? true) ? 'Icono iluminado con indicador pulsante' : 'Icono atenuado y tooltip de aviso administrativo' }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-obsidian-panel/60 border border-obsidian-border/60">
+                            <span class="text-obsidian-muted block mb-1 font-bold">API / Inferencia Web:</span>
+                            <span class="{{ ($isAiEnabled ?? true) ? 'text-emerald-400' : 'text-rose-400' }}">
+                                {{ ($isAiEnabled ?? true) ? 'Respuestas en tiempo real activas' : 'Bloqueo 403 con notificación corporativa' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUDITORÍA Y ESTADO IA (1 COL) -->
+            <div class="bg-[#040d1a]/80 border border-obsidian-border/70 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div class="text-[11px] uppercase font-bold text-obsidian-muted flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">tune</span>
+                    Auditoría del Asistente IA
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Estado en Portal:</span>
+                    <span class="font-bold {{ ($isAiEnabled ?? true) ? 'text-emerald-400' : 'text-rose-400' }}">
+                        {{ ($isAiEnabled ?? true) ? 'HABILITADO' : 'DESHABILITADO' }}
+                    </span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Ámbito de Control:</span>
+                    <span class="text-white">Menú Superior & Web</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Permiso Requerido:</span>
+                    <span class="text-cyan-300 font-bold">ai.chat (RBAC)</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Último cambio:</span>
+                    <span class="text-white">{{ $aiConfig['updated_at'] ?: 'Por defecto' }}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-obsidian-border/40">
+                    <span class="text-obsidian-muted">Modificado por:</span>
+                    <span class="text-cyan-300 truncate max-w-[140px]" title="{{ $aiConfig['updated_by'] }}">{{ $aiConfig['updated_by'] ?: 'Sistema' }}</span>
+                </div>
+                <div class="pt-2">
+                    <span class="text-[10px] text-obsidian-muted flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs text-obsidian-cyan">verified_user</span>
+                        <span>Gobernanza centralizada en config.json</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
