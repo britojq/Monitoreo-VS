@@ -90,7 +90,7 @@
             </div>
             <div class="my-2">
                 <div id="hud-mode-title" class="text-lg font-bold font-mono {{ $device->is_on_battery ? 'text-red-400' : 'text-emerald-400' }}">
-                    {{ $device->is_on_battery ? 'EN BATERÍA' : 'LÍNEA COMERCIAL' }}
+                    {{ $device->is_on_battery ? 'EN BATERÍA' : 'LINEA CONECTADA' }}
                 </div>
                 <div class="text-[11px] font-mono text-obsidian-muted mt-0.5" id="hud-mode-sub">
                     @if($device->is_on_battery)
@@ -655,7 +655,7 @@
                 statusIcon.innerText = 'power_off';
                 headerIcon.className = 'w-10 h-10 rounded-xl bg-red-950/80 border-red-500/50 text-red-400 border flex items-center justify-center shrink-0 transition-colors';
             } else {
-                modeTitle.innerText = 'LÍNEA COMERCIAL';
+                modeTitle.innerText = 'LINEA CONECTADA';
                 modeTitle.className = 'text-lg font-bold font-mono text-emerald-400';
                 modeSub.innerHTML = '<span>Alimentación de red estable (Online)</span>';
                 statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-400 border border-emerald-500/60';
