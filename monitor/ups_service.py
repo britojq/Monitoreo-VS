@@ -147,14 +147,21 @@ def query_ups_serial(port: str = "/dev/ttyS0", baud: int = 2400, timeout: float 
             logger.warning(f"Trama Q1 incompleta recibida: {repr(raw_ans)}")
             return None
 
-        in_v = float(parts[0])
-        in_fault_v = float(parts[1])
-        out_v = float(parts[2])
-        load_pct = int(parts[3])
-        freq = float(parts[4])
-        bat_v = float(parts[5])
-        temp_c = float(parts[6])
-        status_bits = parts[7]
+        import re
+        try:
+            in_v = float(re.sub(r"[^0-9.]", "", parts[0].replace("%", "5")))
+            in_fault_v = float(re.sub(r"[^0-9.]", "", parts[1].replace("%", "5")))
+            out_v = float(re.sub(r"[^0-9.]", "", parts[2].replace("%", "5")))
+            load_pct = int(float(re.sub(r"[^0-9.]", "", parts[3])))
+            freq = float(re.sub(r"[^0-9.]", "", parts[4].replace("%", "5")))
+            bat_v = float(re.sub(r"[^0-9.]", "", parts[5].replace("%", "5")))
+            temp_c = float(re.sub(r"[^0-9.]", "", parts[6].replace("%", "5")))
+            status_bits = re.sub(r"[^01]", "", parts[7])
+            if len(status_bits) < 8:
+                status_bits = status_bits.ljust(8, "0")
+        except (ValueError, IndexError) as err:
+            logger.warning(f"Error parseando campos de trama Q1: {err} (trama: {clean})")
+            return None
 
         # Decodificación de bits de estado: b7 b6 b5 b4 b3 b2 b1 b0
         # b7: Utility Fail (1 = Corte de luz / En batería)
