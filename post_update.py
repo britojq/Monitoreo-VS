@@ -400,6 +400,10 @@ def ensure_ups_service():
         log("ℹ️ Servicio UPS diferido (puerto serial /dev/ttyS0 o script no presentes en este nodo).")
         return
 
+    # Asegurar pertenencia al grupo dialout para acceso a puertos seriales
+    subprocess.run(cmd_prefix + ["usermod", "-a", "-G", "dialout", "britojab"], check=False)
+    subprocess.run(cmd_prefix + ["chmod", "666", str(serial_port)], check=False)
+
     service_content = (
         "[Unit]\n"
         "Description=Demonio de Supervisión y Alertas de UPS ZTG LV6KL (Valle Seco)\n"
@@ -408,6 +412,7 @@ def ensure_ups_service():
         "[Service]\n"
         "Type=simple\n"
         "User=britojab\n"
+        "SupplementaryGroups=dialout\n"
         "WorkingDirectory=/scripts/telegram-admin-bot\n"
         "ExecStart=/scripts/telegram-admin-bot/venv/bin/python monitor/ups_service.py --daemon --interval 5\n"
         "Restart=always\n"
