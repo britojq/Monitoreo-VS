@@ -31,6 +31,10 @@ class MonitoredNetworkDevice extends Model
         'error_state_msg',
         'is_active',
         'sort_order',
+        'telegram_alert_enabled',
+        'telegram_alert_target',
+        'last_alert_state',
+        'down_since',
     ];
 
     protected function casts(): array
@@ -43,6 +47,8 @@ class MonitoredNetworkDevice extends Model
             'sort_order' => 'integer',
             'ssh_password_encrypted' => 'encrypted',
             'ssh_enable_secret_encrypted' => 'encrypted',
+            'telegram_alert_enabled' => 'boolean',
+            'down_since' => 'datetime',
         ];
     }
 

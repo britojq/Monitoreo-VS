@@ -74,6 +74,12 @@
                 <h4 class="font-sans font-bold text-white text-xs truncate" title="{{ $s->name }}">
                     {{ $cleanName }}
                 </h4>
+                @if($s->telegram_alert_enabled)
+                    <span class="px-1.5 py-0.2 rounded text-[8.5px] font-mono shrink-0 inline-flex items-center gap-0.5 {{ $s->telegram_alert_target === 'group' ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }}" title="Notificaciones Telegram activas (Destino: {{ $s->telegram_alert_target === 'group' ? 'Grupo Corporativo' : 'Administrador Privado' }})">
+                        <span class="material-symbols-outlined text-[10px]">{{ $s->telegram_alert_target === 'group' ? 'group' : 'notifications_active' }}</span>
+                        <span>{{ $s->telegram_alert_target === 'group' ? 'Grupo' : 'Owner' }}</span>
+                    </span>
+                @endif
             </div>
 
             <div class="flex items-center gap-1.5 shrink-0">

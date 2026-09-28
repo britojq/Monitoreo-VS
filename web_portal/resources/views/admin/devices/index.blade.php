@@ -268,6 +268,14 @@
                                         {{ $d->is_active ? 'Activo' : 'Off' }}
                                     </span>
                                 @endif
+                                @if($d->telegram_alert_enabled)
+                                    <div class="mt-0.5">
+                                        <span class="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold font-mono {{ $d->telegram_alert_target === 'group' ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }}" title="Notificaciones Telegram: {{ $d->telegram_alert_target === 'group' ? 'Grupo Corporativo' : 'Administrador Privado' }}">
+                                            <span class="material-symbols-outlined text-[9px]">{{ $d->telegram_alert_target === 'group' ? 'group' : 'notifications_active' }}</span>
+                                            <span>{{ $d->telegram_alert_target === 'group' ? 'Grupo' : 'Owner' }}</span>
+                                        </span>
+                                    </div>
+                                @endif
                             </td>
 
                             <!-- ACCIONES (GESTIÓN DE DISPOSITIVO) -->
@@ -643,6 +651,26 @@ exit</code></pre>
                     <textarea name="notes" rows="4" placeholder="Detalles de cascadas, puertos de enlace, conexiones directas..." class="w-full px-3.5 py-2.5 rounded-xl bg-[#020b14] border border-cyan-500/40 text-cyan-200 text-xs font-mono focus:border-cyan-400 focus:outline-hidden scrollbar-thin leading-relaxed"></textarea>
                 </div>
 
+                <!-- NOTIFICACIONES TELEGRAM -->
+                <div class="p-3.5 rounded-xl bg-[#020b14] border border-cyan-500/40 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                            <label for="create-device-telegram-alert" class="text-white text-xs font-mono font-semibold cursor-pointer select-none">
+                                Notificar caídas y recuperaciones por Telegram
+                            </label>
+                        </div>
+                        <input type="checkbox" id="create-device-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-device-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-cyan-400 cursor-pointer focus:ring-0"/>
+                    </div>
+                    <div id="create-device-target-wrapper" class="hidden pt-1.5 border-t border-cyan-500/20">
+                        <label class="block text-cyan-400 mb-1 text-[10.5px] uppercase font-bold font-mono">Destino de Notificación:</label>
+                        <select name="telegram_alert_target" class="w-full bg-[#051424] border border-cyan-500/40 rounded-lg p-2 text-white text-xs font-mono">
+                            <option value="owner">👤 Administrador (Chat Privado)</option>
+                            <option value="group">👥 Grupo Corporativo</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- ACTIVO -->
                 <div class="flex items-center gap-2 pt-1">
                     <input type="checkbox" name="is_active" id="create-is-active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan focus:ring-0">
@@ -856,6 +884,26 @@ exit</code></pre>
                         <span class="text-[10px] text-obsidian-muted normal-case font-normal">Saltos de línea permitidos</span>
                     </label>
                     <textarea name="notes" id="edit-notes" rows="5" placeholder="Detalles técnicos..." class="w-full px-3.5 py-2.5 rounded-xl bg-[#020b14] border border-cyan-500/40 text-cyan-200 text-xs font-mono focus:border-cyan-400 focus:outline-hidden scrollbar-thin leading-relaxed"></textarea>
+                </div>
+
+                <!-- NOTIFICACIONES TELEGRAM -->
+                <div class="p-3.5 rounded-xl bg-[#020b14] border border-cyan-500/40 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                            <label for="edit-device-telegram-alert" class="text-white text-xs font-mono font-semibold cursor-pointer select-none">
+                                Notificar caídas y recuperaciones por Telegram
+                            </label>
+                        </div>
+                        <input type="checkbox" id="edit-device-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-device-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-cyan-400 cursor-pointer focus:ring-0"/>
+                    </div>
+                    <div id="edit-device-target-wrapper" class="hidden pt-1.5 border-t border-cyan-500/20">
+                        <label class="block text-cyan-400 mb-1 text-[10.5px] uppercase font-bold font-mono">Destino de Notificación:</label>
+                        <select id="edit-device-telegram-target" name="telegram_alert_target" class="w-full bg-[#051424] border border-cyan-500/40 rounded-lg p-2 text-white text-xs font-mono">
+                            <option value="owner">👤 Administrador (Chat Privado)</option>
+                            <option value="group">👥 Grupo Corporativo</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- ACTIVO -->
@@ -1189,6 +1237,10 @@ exit</code></pre>
 
     // --- MODAL DE CREACIÓN DE DISPOSITIVO ---
     function openDeviceCreateModal() {
+        const form = document.getElementById('form-device-create');
+        if (form) form.reset();
+        const wrapper = document.getElementById('create-device-target-wrapper');
+        if (wrapper) wrapper.classList.add('hidden');
         const m = document.getElementById('modal-device-create');
         if (m) {
             m.classList.remove('hidden');
@@ -1227,6 +1279,15 @@ exit</code></pre>
         document.getElementById('edit-access-port').value = dev.access_port || (acc === 'SSH' ? 22 : (acc === 'TELNET' ? 23 : (acc === 'WEB' ? 80 : (acc === 'VNC' ? 5900 : ''))));
         document.getElementById('edit-notes').value = dev.notes || '';
         document.getElementById('edit-is-active').checked = !!dev.is_active;
+
+        const alertCheck = document.getElementById('edit-device-telegram-alert');
+        const alertTarget = document.getElementById('edit-device-telegram-target');
+        const alertWrapper = document.getElementById('edit-device-target-wrapper');
+        if (alertCheck) {
+            alertCheck.checked = !!dev.telegram_alert_enabled;
+            if (alertTarget) alertTarget.value = dev.telegram_alert_target || 'owner';
+            if (alertWrapper) alertWrapper.classList.toggle('hidden', !dev.telegram_alert_enabled);
+        }
 
         document.getElementById('edit-ssh-username').value = dev.ssh_username || '';
         document.getElementById('edit-ssh-password').value = '';

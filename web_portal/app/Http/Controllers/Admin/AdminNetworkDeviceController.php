@@ -69,6 +69,8 @@ class AdminNetworkDeviceController extends Controller
             'ports' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'is_active' => ['boolean'],
+            'telegram_alert_enabled' => ['nullable', 'boolean'],
+            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
         ]);
 
         $validated['access_type'] = strtoupper(trim($validated['access_type']));
@@ -94,6 +96,8 @@ class AdminNetworkDeviceController extends Controller
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
+        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
         $nextNum = (MonitoredNetworkDevice::where('monitored_site_id', $validated['monitored_site_id'])->max('device_number') ?? 0) + 1;
         $validated['device_number'] = $nextNum;
         $validated['sort_order'] = MonitoredNetworkDevice::count() + 1;
@@ -116,6 +120,8 @@ class AdminNetworkDeviceController extends Controller
                 'ports' => $validated['ports'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'is_active' => $validated['is_active'],
+                'telegram_alert_enabled' => $validated['telegram_alert_enabled'],
+                'telegram_alert_target' => $validated['telegram_alert_target'],
             ]
         );
 
@@ -152,6 +158,8 @@ class AdminNetworkDeviceController extends Controller
             'ports' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'is_active' => ['boolean'],
+            'telegram_alert_enabled' => ['nullable', 'boolean'],
+            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
         ]);
 
         $validated['access_type'] = strtoupper(trim($validated['access_type']));
@@ -182,6 +190,8 @@ class AdminNetworkDeviceController extends Controller
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
+        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
         $oldIp = $device->ip;
 
         $device->update($validated);
@@ -204,6 +214,8 @@ class AdminNetworkDeviceController extends Controller
                     'ports' => $validated['ports'] ?? null,
                     'notes' => $validated['notes'] ?? null,
                     'is_active' => $validated['is_active'],
+                    'telegram_alert_enabled' => $validated['telegram_alert_enabled'],
+                    'telegram_alert_target' => $validated['telegram_alert_target'],
                 ]);
             } else {
                 $nextSiteDevNum = (MonitoredSiteDevice::where('monitored_site_id', $siteId)->max('device_number') ?? 0) + 1;
@@ -221,6 +233,8 @@ class AdminNetworkDeviceController extends Controller
                     'ports' => $validated['ports'] ?? null,
                     'notes' => $validated['notes'] ?? null,
                     'is_active' => $validated['is_active'],
+                    'telegram_alert_enabled' => $validated['telegram_alert_enabled'],
+                    'telegram_alert_target' => $validated['telegram_alert_target'],
                 ]);
             }
         }

@@ -912,6 +912,15 @@ async def run_full_scan():
     finally:
         conn.close()
 
+    # 6. Despacho reactivo de alertas de Telegram para servicios y dispositivos configurados
+    try:
+        from monitor.device_service_notifier import evaluate_and_notify_all
+        s_notif, d_notif = await evaluate_and_notify_all(all_services, all_net_devices)
+        if s_notif > 0 or d_notif > 0:
+            print(f"🔔 [NOTIFICADOR] {s_notif} alertas de servicio y {d_notif} de equipo despachadas a Telegram.")
+    except Exception as e_notif:
+        print(f"⚠️ [NOTIFICADOR] Aviso evaluando alertas de Telegram: {e_notif}")
+
     update_last_scan_time()
     print(f"✅ Escaneo completado en {total_duration}s. Estado: {global_status} | Servicios: {serv_online}/{serv_total} | Sedes: {sites_online}/{sites_total} | Proxies: {proxies_online}/{proxies_total} | Disp. Valle Seco: {net_online}/{net_total}")
 
@@ -1038,22 +1047,28 @@ async def sync_from_master() -> bool:
                             INSERT INTO monitored_services
                             (id, letter, name, type, scope, host_ip, web_url, port, credentials,
                              check_interface, dns_test_domain, normal_state_msg, error_state_msg,
-                             is_active, sort_order, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                             is_active, sort_order, telegram_alert_enabled, telegram_alert_target,
+                             last_alert_state, down_since, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON DUPLICATE KEY UPDATE
                             letter=VALUES(letter), name=VALUES(name), type=VALUES(type), scope=VALUES(scope),
                             host_ip=VALUES(host_ip), web_url=VALUES(web_url), port=VALUES(port),
                             credentials=VALUES(credentials), check_interface=VALUES(check_interface),
                             dns_test_domain=VALUES(dns_test_domain), normal_state_msg=VALUES(normal_state_msg),
                             error_state_msg=VALUES(error_state_msg), is_active=VALUES(is_active),
-                            sort_order=VALUES(sort_order), updated_at=VALUES(updated_at)
+                            sort_order=VALUES(sort_order), telegram_alert_enabled=VALUES(telegram_alert_enabled),
+                            telegram_alert_target=VALUES(telegram_alert_target), last_alert_state=VALUES(last_alert_state),
+                            down_since=VALUES(down_since), updated_at=VALUES(updated_at)
                         """
                         srv_records = [
                             (s["id"], s.get("letter"), s["name"], s.get("type", "WEB"), s.get("scope", "LOCAL"),
                              s.get("host_ip"), s.get("web_url"), s.get("port"), s.get("credentials"),
                              s.get("check_interface"), s.get("dns_test_domain"), s.get("normal_state_msg"),
                              s.get("error_state_msg"), 1 if s.get("is_active", True) else 0,
-                             s.get("sort_order", 0), _clean_mysql_dt(s.get("created_at")), _clean_mysql_dt(s.get("updated_at") or s.get("created_at")))
+                             s.get("sort_order", 0), 1 if s.get("telegram_alert_enabled") else 0,
+                             s.get("telegram_alert_target", "owner"), s.get("last_alert_state"),
+                             _clean_mysql_dt(s.get("down_since")), _clean_mysql_dt(s.get("created_at")),
+                             _clean_mysql_dt(s.get("updated_at") or s.get("created_at")))
                             for s in cfg_services if "id" in s and "name" in s
                         ]
                         if srv_records:
@@ -1087,15 +1102,21 @@ async def sync_from_master() -> bool:
                             INSERT INTO monitored_network_devices
                             (id, monitored_site_id, device_number, name, ip, mac, vendor_data,
                              access_type, access_port, model, serial, ports, notes,
-                             normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                             normal_state_msg, error_state_msg, is_active, sort_order,
+                             telegram_alert_enabled, telegram_alert_target, last_alert_state, down_since,
+                             created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON DUPLICATE KEY UPDATE
                             monitored_site_id=VALUES(monitored_site_id), device_number=VALUES(device_number),
                             name=VALUES(name), ip=VALUES(ip), mac=VALUES(mac), vendor_data=VALUES(vendor_data),
                             access_type=VALUES(access_type), access_port=VALUES(access_port),
                             model=VALUES(model), serial=VALUES(serial), ports=VALUES(ports), notes=VALUES(notes),
                             normal_state_msg=VALUES(normal_state_msg), error_state_msg=VALUES(error_state_msg),
-                            is_active=VALUES(is_active), sort_order=VALUES(sort_order), updated_at=VALUES(updated_at)
+                            is_active=VALUES(is_active), sort_order=VALUES(sort_order),
+                            telegram_alert_enabled=VALUES(telegram_alert_enabled),
+                            telegram_alert_target=VALUES(telegram_alert_target),
+                            last_alert_state=VALUES(last_alert_state), down_since=VALUES(down_since),
+                            updated_at=VALUES(updated_at)
                         """
                         net_dev_records = [
                             (nd["id"], nd.get("monitored_site_id"), nd.get("device_number", 1),
@@ -1104,7 +1125,10 @@ async def sync_from_master() -> bool:
                              nd.get("model"), nd.get("serial"), nd.get("ports"), nd.get("notes"),
                              nd.get("normal_state_msg"), nd.get("error_state_msg"),
                              1 if nd.get("is_active", True) else 0, nd.get("sort_order", 0),
-                             _clean_mysql_dt(nd.get("created_at")), _clean_mysql_dt(nd.get("updated_at") or nd.get("created_at")))
+                             1 if nd.get("telegram_alert_enabled") else 0,
+                             nd.get("telegram_alert_target", "owner"), nd.get("last_alert_state"),
+                             _clean_mysql_dt(nd.get("down_since")), _clean_mysql_dt(nd.get("created_at")),
+                             _clean_mysql_dt(nd.get("updated_at") or nd.get("created_at")))
                             for nd in cfg_net_devs if "id" in nd and "name" in nd
                         ]
                         if net_dev_records:

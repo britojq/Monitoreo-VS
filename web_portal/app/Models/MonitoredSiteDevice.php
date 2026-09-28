@@ -27,6 +27,10 @@ class MonitoredSiteDevice extends Model
         'normal_state_msg',
         'error_state_msg',
         'is_active',
+        'telegram_alert_enabled',
+        'telegram_alert_target',
+        'last_alert_state',
+        'down_since',
     ];
 
     protected function casts(): array
@@ -36,6 +40,8 @@ class MonitoredSiteDevice extends Model
             'is_active' => 'boolean',
             'device_number' => 'integer',
             'access_port' => 'integer',
+            'telegram_alert_enabled' => 'boolean',
+            'down_since' => 'datetime',
         ];
     }
 

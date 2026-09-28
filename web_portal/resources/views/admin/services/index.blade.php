@@ -316,6 +316,26 @@
                 <input type="text" name="credentials" placeholder="usuario:clave" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
             </div>
 
+            <!-- NOTIFICACIONES TELEGRAM -->
+            <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                        <label for="create-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
+                            Notificar caídas y recuperaciones por Telegram
+                        </label>
+                    </div>
+                    <input type="checkbox" id="create-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                </div>
+                <div id="create-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
+                    <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
+                    <select name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
+                        <option value="owner">👤 Administrador (Chat Privado)</option>
+                        <option value="group">👥 Grupo Corporativo</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2 pt-1">
                 <input type="checkbox" id="create-service-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
                 <label for="create-service-active" class="text-obsidian-muted cursor-pointer select-none">Activar monitoreo inmediatamente</label>
@@ -396,6 +416,26 @@
             <div>
                 <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
                 <input type="text" id="edit-service-credentials" name="credentials" placeholder="user:pass o token" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+            </div>
+
+            <!-- NOTIFICACIONES TELEGRAM -->
+            <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                        <label for="edit-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
+                            Notificar caídas y recuperaciones por Telegram
+                        </label>
+                    </div>
+                    <input type="checkbox" id="edit-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                </div>
+                <div id="edit-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
+                    <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
+                    <select id="edit-service-telegram-target" name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
+                        <option value="owner">👤 Administrador (Chat Privado)</option>
+                        <option value="group">👥 Grupo Corporativo</option>
+                    </select>
+                </div>
             </div>
 
             <div class="flex items-center gap-2 pt-1">
@@ -592,6 +632,8 @@
 
     function openCreateServiceModal() {
         document.getElementById('form-create-service').reset();
+        const wrapper = document.getElementById('create-service-target-wrapper');
+        if (wrapper) wrapper.classList.add('hidden');
         openModal('modal-create-service');
     }
 
@@ -606,6 +648,16 @@
         document.getElementById('edit-service-url').value = s.web_url || '';
         document.getElementById('edit-service-credentials').value = s.credentials || '';
         document.getElementById('edit-service-active').checked = !!s.is_active;
+
+        const alertCheck = document.getElementById('edit-service-telegram-alert');
+        const alertTarget = document.getElementById('edit-service-telegram-target');
+        const alertWrapper = document.getElementById('edit-service-target-wrapper');
+        if (alertCheck) {
+            alertCheck.checked = !!s.telegram_alert_enabled;
+            if (alertTarget) alertTarget.value = s.telegram_alert_target || 'owner';
+            if (alertWrapper) alertWrapper.classList.toggle('hidden', !s.telegram_alert_enabled);
+        }
+
         openModal('modal-edit-service');
     }
 

@@ -212,6 +212,8 @@ class AdminSiteController extends Controller
             'ports' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'is_active' => ['boolean'],
+            'telegram_alert_enabled' => ['nullable', 'boolean'],
+            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
         ]);
 
         $validated['access_type'] = strtoupper(trim($validated['access_type'] ?? 'SIN SOPORTE'));
@@ -232,6 +234,8 @@ class AdminSiteController extends Controller
         $maxNum = $site->devices()->max('device_number') ?? 0;
         $validated['device_number'] = $maxNum + 1;
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
+        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
 
         $siteDevice = $site->devices()->create($validated);
 
@@ -251,6 +255,8 @@ class AdminSiteController extends Controller
                 'ports' => $validated['ports'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'is_active' => $validated['is_active'],
+                'telegram_alert_enabled' => $validated['telegram_alert_enabled'],
+                'telegram_alert_target' => $validated['telegram_alert_target'],
             ]
         );
 

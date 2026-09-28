@@ -48,6 +48,8 @@ class AdminServiceController extends Controller
             'error_state_msg' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
             'sort_order' => ['nullable', 'integer'],
+            'telegram_alert_enabled' => ['nullable', 'boolean'],
+            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
         ]);
 
         if (empty($validated['letter'])) {
@@ -59,6 +61,8 @@ class AdminServiceController extends Controller
         $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['sort_order'] = $validated['sort_order'] ?? MonitoredService::count();
+        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
+        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
 
         MonitoredService::create($validated);
 
@@ -85,6 +89,8 @@ class AdminServiceController extends Controller
             'error_state_msg' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
             'sort_order' => ['nullable', 'integer'],
+            'telegram_alert_enabled' => ['nullable', 'boolean'],
+            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
         ]);
 
         if (empty($validated['letter'])) {
@@ -94,6 +100,8 @@ class AdminServiceController extends Controller
         }
         $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
+        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
 
         $service->update($validated);
 
