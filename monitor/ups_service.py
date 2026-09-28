@@ -31,16 +31,23 @@ from monitor.monitor_db import get_db_connection
 from monitor.telegram_dispatcher import TelegramDispatcher
 
 LOG_DIR = Path("/tmp/monitor")
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 LOG_FILE = LOG_DIR / "ups_service.log"
+
+log_handlers = [logging.StreamHandler(sys.stdout)]
+try:
+    file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+    log_handlers.append(file_handler)
+except Exception as e:
+    sys.stderr.write(f"Aviso: No se pudo abrir {LOG_FILE} ({e}). Registrando en stdout.\n")
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [ups.service] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ],
+    handlers=log_handlers,
 )
 logger = logging.getLogger("ups.service")
 
