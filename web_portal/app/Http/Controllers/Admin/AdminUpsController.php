@@ -178,6 +178,17 @@ class AdminUpsController extends Controller
      */
     public function updateSettings(Request $request): RedirectResponse|JsonResponse
     {
+        $user = auth()->user();
+        if (!$user || (!$user->isAdmin() && !(method_exists($user, 'hasPermission') && $user->hasPermission('ups.manage')))) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Acceso denegado: Se requiere rol de Administrador o permiso ups.manage para modificar la configuración de alertas.',
+                ], 403);
+            }
+            abort(403, 'Acceso denegado: Se requiere rol de Administrador o permiso ups.manage.');
+        }
+
         $device = UpsDevice::firstOrFail();
 
         $validated = $request->validate([
@@ -208,7 +219,7 @@ class AdminUpsController extends Controller
                 'entity_label' => $device->name,
                 'description' => "Configuración de alertas de UPS modificada. Alertas: " .
                     ($validated['telegram_alert_enabled'] ? 'Activadas' : 'Desactivadas') .
-                    ", Destino: " . ($validated['telegram_alert_target'] === 'group' ? 'Grupo Corporativo' : 'Administrador Privado'),
+                    ", Destino: " . ($validated['telegram_alert_target'] === 'group' ? 'Grupo Corporativo + Administrador' : 'Administrador Privado'),
                 'old_values' => ['enabled' => $oldEnabled, 'target' => $oldTarget],
                 'new_values' => ['enabled' => $validated['telegram_alert_enabled'], 'target' => $validated['telegram_alert_target']],
                 'changed_fields' => ['telegram_alert_enabled', 'telegram_alert_target'],

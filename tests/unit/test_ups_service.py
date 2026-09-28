@@ -6,6 +6,7 @@ recuperación con tiempo de corte y cumplimiento de la REGLA DE ORO #1.
 
 import asyncio
 from datetime import datetime, timedelta
+import json
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -14,6 +15,7 @@ from monitor.ups_service import (
     calculate_battery_percentage,
     format_duration,
     get_notification_target,
+    get_notification_targets,
     build_ups_outage_alert,
     build_ups_recovery_alert,
     build_ups_battery_low_alert,
@@ -40,6 +42,31 @@ class TestUpsService:
         with patch.dict(os.environ, {"TESTING": "1"}):
             target = get_notification_target("group")
             assert target == "38914901"
+
+    def test_get_notification_targets_dual_dispatch_prod(self):
+        """En entorno productivo (nodo master), la opción group despacha a ambos: Owner y Grupo."""
+        mock_cfg = json.dumps({
+            "owner_id": "38914901",
+            "allowed_group_ids": ["-1001383163558"],
+            "node_role": "master",
+        })
+        with patch("pathlib.Path.read_text", return_value=mock_cfg):
+            with patch.dict(os.environ, {"TESTING": "0", "APP_ENV": "production"}):
+                targets = get_notification_targets("group")
+                assert "38914901" in targets
+                assert "-1001383163558" in targets
+                assert len(targets) == 2
+
+    def test_get_notification_targets_safety_filter(self):
+        """En entorno no productivo (ej. testing), la opción group se restringe únicamente al Owner."""
+        with patch.dict(os.environ, {"TESTING": "1"}):
+            targets = get_notification_targets("group")
+            assert targets == ["38914901"]
+
+    def test_get_notification_targets_owner_only(self):
+        """Cuando la opción es 'owner', despacha únicamente al Administrador Privado."""
+        targets = get_notification_targets("owner")
+        assert targets == ["38914901"]
 
     def test_build_ups_outage_alert(self):
         device = {"name": "UPS ZTG LV6KL", "model": "6kVA"}
@@ -120,6 +147,64 @@ class TestUpsService:
         assert call_args[0] == "38914901"
         assert "CORTE ELÉCTRICO / APAGÓN DETECTADO" in call_args[1]
         mock_conn.commit.assert_called()
+
+    @pytest.mark.anyio
+    async def test_poll_and_process_ups_dual_dispatch_on_outage(self):
+        """Verifica que con target='group' en producción se envíe a Owner y a Grupo."""
+        mock_dispatcher = MagicMock()
+        mock_dispatcher.send_text = AsyncMock(return_value=(True, None))
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+
+        device_row = {
+            "id": 1,
+            "name": "UPS ZTG LV6KL",
+            "model": "6kVA",
+            "serial_port": "/dev/ttyS0",
+            "baud_rate": 2400,
+            "telegram_alert_enabled": 1,
+            "telegram_alert_target": "group",
+            "last_alert_state": "NORMAL",
+            "outage_since": None,
+        }
+        mock_cursor.fetchone.return_value = device_row
+
+        mock_telemetry = {
+            "input_voltage": 0.0,
+            "input_fault_voltage": 0.0,
+            "output_voltage": 208.0,
+            "load_percent": 10,
+            "frequency": 60.0,
+            "battery_voltage": 2.22,
+            "battery_percent": 95,
+            "temperature_c": 42.0,
+            "is_online": True,
+            "is_on_battery": True,
+            "is_battery_low": False,
+            "is_bypass": False,
+            "is_ups_failed": False,
+            "beeper_on": True,
+        }
+
+        mock_cfg = json.dumps({
+            "owner_id": "38914901",
+            "allowed_group_ids": ["-1001383163558"],
+            "node_role": "master",
+        })
+        with patch("pathlib.Path.read_text", return_value=mock_cfg):
+            with patch.dict(os.environ, {"TESTING": "0", "APP_ENV": "production"}):
+                with patch("monitor.ups_service.get_db_connection", return_value=mock_conn):
+                    with patch("monitor.ups_service.query_ups_serial", return_value=mock_telemetry):
+                        res = await poll_and_process_ups(dispatcher=mock_dispatcher)
+
+        assert res is not None
+        # En producción con target='group', debe llamarse 2 veces: Owner + Grupo
+        assert mock_dispatcher.send_text.call_count == 2
+        calls = [c[0][0] for c in mock_dispatcher.send_text.call_args_list]
+        assert "38914901" in calls
+        assert "-1001383163558" in calls
 
     @pytest.mark.anyio
     async def test_cmd_ups(self):

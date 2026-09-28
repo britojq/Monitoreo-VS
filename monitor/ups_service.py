@@ -52,8 +52,13 @@ logging.basicConfig(
 logger = logging.getLogger("ups.service")
 
 
-def get_notification_target(target_type: str) -> str:
-    """Resuelve el ID de Telegram respetando la REGLA DE ORO #1."""
+def get_notification_targets(target_type: str) -> List[str]:
+    """
+    Resuelve los IDs de Telegram para el despacho de alertas de energía respetando la REGLA DE ORO #1.
+    Si target_type es 'group', en entorno productivo (nodo master) realiza un despacho DUAL
+    simultáneo hacia el Administrador Privado (Owner) y el Grupo Corporativo.
+    En entornos de desarrollo/test o modo esclavo, se restringe exclusivamente al Owner.
+    """
     config_file = BASE_DIR / "config" / "config.json"
     owner_id = "38914901"
     group_id = "-1001383163558"
@@ -70,16 +75,31 @@ def get_notification_target(target_type: str) -> str:
         except Exception:
             pass
 
-    if target_type == "group":
-        if node_role == "slave" or os.environ.get("TESTING") == "1" or os.environ.get("APP_ENV") == "local":
+    targets = [owner_id]
+
+    if str(target_type).strip().lower() == "group":
+        is_non_prod = (
+            node_role == "slave"
+            or os.environ.get("TESTING") == "1"
+            or os.environ.get("APP_ENV") == "local"
+        )
+        if is_non_prod:
             logger.warning(
-                f"🚨 REGLA DE ORO #1: Despacho a grupo redirigido a Owner ({owner_id}) "
+                f"🚨 REGLA DE ORO #1: Despacho a grupo restringido a Owner ({owner_id}) "
                 f"debido al entorno no productivo (rol: {node_role})."
             )
-            return owner_id
-        return group_id
+        else:
+            if group_id not in targets:
+                targets.append(group_id)
 
-    return owner_id
+    return targets
+
+
+def get_notification_target(target_type: str) -> str:
+    """Compatibilidad hacia atrás con llamada singular (retorna destino grupal o principal)."""
+    targets = get_notification_targets(target_type)
+    return targets[-1] if str(target_type).strip().lower() == "group" else targets[0]
+
 
 
 def format_duration(seconds: float | int) -> str:
@@ -305,7 +325,7 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
         last_state = (device.get("last_alert_state") or "NORMAL").upper()
         alert_enabled = bool(device.get("telegram_alert_enabled", 1))
         target_setting = device.get("telegram_alert_target") or "owner"
-        target_chat = get_notification_target(target_setting)
+        target_chats = get_notification_targets(target_setting)
 
         if dispatcher is None and alert_enabled:
             dispatcher = TelegramDispatcher()
@@ -321,19 +341,23 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
             outage_since = now
             if alert_enabled and dispatcher:
                 msg = build_ups_outage_alert(device, telemetry)
-                ok, err = await dispatcher.send_text(target_chat, msg, parse_mode="HTML")
-                if ok:
-                    logger.info(f"📤 Alerta de corte eléctrico despachada a {target_chat}")
-                else:
-                    logger.warning(f"❌ Falló despacho de alerta de corte eléctrico: {err}")
+                for t_chat in target_chats:
+                    ok, err = await dispatcher.send_text(t_chat, msg, parse_mode="HTML")
+                    if ok:
+                        logger.info(f"📤 Alerta de corte eléctrico despachada a {t_chat}")
+                    else:
+                        logger.warning(f"❌ Falló despacho de alerta de corte eléctrico a {t_chat}: {err}")
 
         # CASO 2: Batería baja durante el corte
         elif current_state == "BATTERY_LOW" and last_state == "ON_BATTERY":
             if alert_enabled and dispatcher:
                 msg = build_ups_battery_low_alert(device, telemetry)
-                ok, err = await dispatcher.send_text(target_chat, msg, parse_mode="HTML")
-                if ok:
-                    logger.info(f"📤 Alerta de batería baja despachada a {target_chat}")
+                for t_chat in target_chats:
+                    ok, err = await dispatcher.send_text(t_chat, msg, parse_mode="HTML")
+                    if ok:
+                        logger.info(f"📤 Alerta de batería baja despachada a {t_chat}")
+                    else:
+                        logger.warning(f"❌ Falló despacho de alerta de batería baja a {t_chat}: {err}")
 
         # CASO 3: Restablecimiento de la energía (ON_BATTERY / BATTERY_LOW -> NORMAL)
         elif current_state == "NORMAL" and last_state in ("ON_BATTERY", "BATTERY_LOW"):
@@ -351,11 +375,12 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
 
             if alert_enabled and dispatcher:
                 msg = build_ups_recovery_alert(device, telemetry, dur_str)
-                ok, err = await dispatcher.send_text(target_chat, msg, parse_mode="HTML")
-                if ok:
-                    logger.info(f"📤 Notificación de energía restablecida despachada a {target_chat}")
-                else:
-                    logger.warning(f"❌ Falló despacho de energía restablecida: {err}")
+                for t_chat in target_chats:
+                    ok, err = await dispatcher.send_text(t_chat, msg, parse_mode="HTML")
+                    if ok:
+                        logger.info(f"📤 Notificación de energía restablecida despachada a {t_chat}")
+                    else:
+                        logger.warning(f"❌ Falló despacho de energía restablecida a {t_chat}: {err}")
             outage_since = None
 
         # Actualizar tabla ups_devices en MariaDB

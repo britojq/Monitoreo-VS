@@ -228,8 +228,13 @@
     <!-- ========================================================================= -->
     <!-- SECCIÓN INFERIOR: CONFIGURACIÓN DE ALERTAS & ESPECIFICACIONES TÉCNICAS    -->
     <!-- ========================================================================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    @php
+        $canManageUps = auth()->check() && (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('ups.manage')));
+    @endphp
 
+    <div class="grid grid-cols-1 {{ $canManageUps ? 'lg:grid-cols-2' : '' }} gap-6">
+
+        @if($canManageUps)
         <!-- PANEL 1: CONFIGURACIÓN DE ALERTAS TELEGRAM -->
         <div class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg flex flex-col justify-between">
             <div>
@@ -282,9 +287,9 @@
                             <label class="flex items-start gap-2.5 p-3 rounded-lg bg-[#06111f] border border-obsidian-border/70 cursor-pointer hover:border-purple-500/50 transition">
                                 <input type="radio" name="telegram_alert_target" value="group" {{ $device->telegram_alert_target === 'group' ? 'checked' : '' }} {{ $isClusterSlave ? 'disabled' : '' }} class="mt-1 text-purple-500 focus:ring-0">
                                 <div>
-                                    <span class="text-xs font-bold font-mono text-white block">👥 Grupo Corporativo</span>
+                                    <span class="text-xs font-bold font-mono text-white block">👥 Grupo Corporativo + Owner</span>
                                     <span class="text-[10px] font-mono text-obsidian-muted block mt-0.5">
-                                        Grupo Sede: <code class="text-purple-300">-1001383163558</code>
+                                        Despacho dual a <code class="text-purple-300">-1001383163558</code> y Administrador
                                     </span>
                                 </div>
                             </label>
@@ -293,7 +298,7 @@
 
                     <!-- AVISO DE REGLA DE SEGURIDAD -->
                     <div class="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-[10px] font-mono text-cyan-200/80 leading-relaxed">
-                        <span class="font-bold text-cyan-300">🛡️ Control de Seguridad:</span> En servidores de desarrollo o modo esclavo, las alertas dirigidas a grupo se reenrutan automáticamente al chat privado del Administrador para evitar avisos accidentales.
+                        <span class="font-bold text-cyan-300">🛡️ Control de Seguridad:</span> En servidores de desarrollo o modo esclavo, las alertas dirigidas a grupo se omiten y despachan únicamente al chat privado del Administrador para evitar avisos accidentales.
                     </div>
 
                     @if(!$isClusterSlave)
@@ -308,6 +313,7 @@
                 </form>
             </div>
         </div>
+        @endif
 
         <!-- PANEL 2: FICHA TÉCNICA DEL UPS & PARÁMETROS NOMINALES -->
         <div class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg flex flex-col justify-between">
