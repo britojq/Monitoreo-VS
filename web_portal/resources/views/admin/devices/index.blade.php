@@ -43,6 +43,10 @@
             <span class="material-symbols-outlined text-base">power</span>
             <span>Wake-on-LAN (WoL)</span>
         </a>
+        <a href="{{ route('admin.ups.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">battery_charging_full</span>
+            <span>Monitoreo UPS ZTG</span>
+        </a>
     </div>
 
     <!-- CABECERA -->

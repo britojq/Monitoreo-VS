@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="es">
+<html class="dark" lang="es" style="background-color: #051424; color: #d4e4fa;">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -60,9 +60,10 @@
     </script>
     
     <style>
-        body {
-            background-color: #051424;
-            color: #d4e4fa;
+        /* Estilos Críticos Inmediatos Anti-FOUC (Cero Destello Blanco) */
+        html, body {
+            background-color: #051424 !important;
+            color: #d4e4fa !important;
             font-family: 'Inter', sans-serif;
         }
         .glass-panel {

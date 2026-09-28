@@ -4,6 +4,26 @@
 
 @section('admin_content')
 <div class="space-y-6">
+    <!-- PESTAÑAS EQUIPOS & HARDWARE -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
+        <a href="{{ route('admin.devices.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">router</span>
+            <span>Dispositivos de Red</span>
+        </a>
+        <a href="{{ route('admin.lifecycle.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.lifecycle.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">inventory_2</span>
+            <span>Ciclo de Vida & Inventario</span>
+        </a>
+        <a href="{{ route('admin.wol.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">power</span>
+            <span>Wake-on-LAN (WoL)</span>
+        </a>
+        <a href="{{ route('admin.ups.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
+            <span class="material-symbols-outlined text-base">battery_charging_full</span>
+            <span>Monitoreo UPS ZTG</span>
+        </a>
+    </div>
+
     <!-- ========================================================================= -->
     <!-- BARRA SUPERIOR: ESTADO EN VIVO Y RESUMEN GENERAL                          -->
     <!-- ========================================================================= -->
@@ -277,11 +297,12 @@
                     </div>
 
                     @if(!$isClusterSlave)
-                    <div class="pt-2">
-                        <button type="submit" class="w-full py-2.5 px-4 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs uppercase tracking-wider hover:bg-cyan-300 transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-cyan-950/40">
+                    <div class="pt-2 space-y-3">
+                        <button type="submit" id="btn-save-ups-settings" class="w-full py-2.5 px-4 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs uppercase tracking-wider hover:bg-cyan-300 transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-cyan-950/40">
                             <span class="material-symbols-outlined text-base">save</span>
-                            <span>Guardar Configuración de Alertas</span>
+                            <span id="btn-save-text">Guardar Configuración de Alertas</span>
                         </button>
+                        <div id="ups-settings-feedback" class="hidden text-xs font-mono transition-all duration-300"></div>
                     </div>
                     @endif
                 </form>
@@ -349,6 +370,7 @@
 
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
@@ -580,8 +602,71 @@
         }
     }
 
+    // Guardado Asíncrono de Alertas UPS (AJAX - Sin Recarga de Página)
+    function initUpsSettingsForm() {
+        const formUpsSettings = document.getElementById('form-ups-settings');
+        if (!formUpsSettings) return;
+
+        formUpsSettings.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-ups-settings');
+            const btnText = document.getElementById('btn-save-text');
+            const feedback = document.getElementById('ups-settings-feedback');
+
+            if (btn) btn.disabled = true;
+            if (btnText) btnText.innerText = 'Guardando configuración...';
+            if (feedback) {
+                feedback.className = 'hidden';
+                feedback.innerHTML = '';
+            }
+
+            try {
+                const formData = new FormData(formUpsSettings);
+                const resp = await fetch(formUpsSettings.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    if (feedback) {
+                        feedback.className = 'p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/70 text-emerald-300 text-xs font-mono flex items-center justify-between shadow-lg shadow-emerald-950/30';
+                        feedback.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-base text-emerald-400">check_circle</span>
+                                <span>${data.message || 'Configuración guardada exitosamente.'}</span>
+                            </div>
+                        `;
+                        setTimeout(() => {
+                            feedback.className = 'hidden';
+                        }, 5000);
+                    }
+                } else {
+                    throw new Error(data.message || 'Error al guardar la configuración.');
+                }
+            } catch (err) {
+                if (feedback) {
+                    feedback.className = 'p-3 rounded-lg border border-red-500/60 bg-red-950/70 text-red-300 text-xs font-mono flex items-center gap-2 shadow-lg shadow-red-950/30';
+                    feedback.innerHTML = `
+                        <span class="material-symbols-outlined text-base text-red-400">error</span>
+                        <span>${err.message || 'Ocurrió un error al procesar la solicitud.'}</span>
+                    `;
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+                if (btnText) btnText.innerText = 'Guardar Configuración de Alertas';
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initChart();
+        initUpsSettingsForm();
         setInterval(pollUpsLive, 5000);
     });
 </script>

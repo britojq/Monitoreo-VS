@@ -72,6 +72,20 @@ class AdminUpsController extends Controller
                 ->values();
         }
 
+        // Muestreo Inteligente (Downsampling a máx 120 puntos para evitar saturar el hilo UI del navegador)
+        $totalHistoryCount = $histories->count();
+        if ($totalHistoryCount > 120) {
+            $step = (int) ceil($totalHistoryCount / 120);
+            $sampled = collect();
+            for ($i = 0; $i < $totalHistoryCount; $i += $step) {
+                $sampled->push($histories[$i]);
+            }
+            if ($histories->isNotEmpty() && $sampled->last()?->id !== $histories->last()->id) {
+                $sampled->push($histories->last());
+            }
+            $histories = $sampled;
+        }
+
         // Cálculo de métricas adicionales
         $loadWatts = round((($device->load_percent ?? 0) / 100.0) * 6000);
         $estimatedRuntimeMinutes = $this->calculateEstimatedRuntime(
@@ -162,7 +176,7 @@ class AdminUpsController extends Controller
     /**
      * Actualiza la configuración de alertas de Telegram para el UPS.
      */
-    public function updateSettings(Request $request): RedirectResponse
+    public function updateSettings(Request $request): RedirectResponse|JsonResponse
     {
         $device = UpsDevice::firstOrFail();
 
@@ -200,6 +214,15 @@ class AdminUpsController extends Controller
                 'changed_fields' => ['telegram_alert_enabled', 'telegram_alert_target'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
+            ]);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuración de alertas de UPS actualizada exitosamente.',
+                'telegram_alert_enabled' => (bool) $device->telegram_alert_enabled,
+                'telegram_alert_target' => $device->telegram_alert_target,
             ]);
         }
 
