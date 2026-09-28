@@ -98,10 +98,13 @@ class AdminUpsController extends Controller
             $outageDurationStr = Carbon::parse($device->outage_since)->diffForHumans(null, true);
         }
 
+        $outputVoltageEquipos = $device->output_voltage_equipos;
+
         // Preparar puntos para el gráfico Chart.js
         $chartLabels = [];
         $chartInputV = [];
         $chartOutputV = [];
+        $chartOutputEquiposV = [];
         $chartLoadPct = [];
         $chartBatteryPct = [];
         $chartTemp = [];
@@ -110,6 +113,7 @@ class AdminUpsController extends Controller
             $chartLabels[] = Carbon::parse($h->recorded_at)->format('H:i:s');
             $chartInputV[] = (float) $h->input_voltage;
             $chartOutputV[] = (float) $h->output_voltage;
+            $chartOutputEquiposV[] = (float) $h->output_voltage_equipos;
             $chartLoadPct[] = (int) $h->load_percent;
             $chartBatteryPct[] = (int) $h->battery_percent;
             $chartTemp[] = (float) $h->temperature_c;
@@ -117,6 +121,7 @@ class AdminUpsController extends Controller
 
         return view('admin.ups.index', compact(
             'device',
+            'outputVoltageEquipos',
             'histories',
             'loadWatts',
             'estimatedRuntimeMinutes',
@@ -124,6 +129,7 @@ class AdminUpsController extends Controller
             'chartLabels',
             'chartInputV',
             'chartOutputV',
+            'chartOutputEquiposV',
             'chartLoadPct',
             'chartBatteryPct',
             'chartTemp'
@@ -169,6 +175,7 @@ class AdminUpsController extends Controller
                 'outage_duration' => $outageDurationStr,
                 'last_seen_human' => $lastSeenHuman,
                 'status_state' => $device->is_on_battery ? 'ON_BATTERY' : ($device->is_online ? 'NORMAL' : 'OFFLINE'),
+                'output_voltage_equipos' => $device->output_voltage_equipos,
             ],
         ]);
     }

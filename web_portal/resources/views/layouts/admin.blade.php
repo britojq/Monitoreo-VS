@@ -321,30 +321,28 @@
                     $hBatV = $hUps ? ($hUps->battery_voltage ?? 2.25) : 2.25;
                     $hInV = $hUps ? ($hUps->input_voltage ?? 225.1) : 225.1;
                     $hOutV = $hUps ? ($hUps->output_voltage ?? 208.3) : 208.3;
+                    $hOutEquipos = $hUps ? ($hUps->output_voltage_equipos ?? 110.0) : 110.0;
                     $hLoadPct = $hUps ? ($hUps->load_percent ?? 8) : 8;
                     $hLoadWatts = round(($hLoadPct / 100) * 6000);
                     $hTempC = $hUps ? ($hUps->temperature_c ?? 43.0) : 43.0;
                     $hRuntimeMin = round(($hBatPct / 100) * 135);
 
-                    // Mini Gráfica SVG Sparkline
+                    // Mini Gráfica SVG Sparkline Dual: Entrada 220V (Ámbar, banda superior) y Salida 110V (Cyan, banda inferior)
                     $hHist = $headerUpsHistories ?? collect();
                     $inSparkPoints = [];
                     $outSparkPoints = [];
                     if ($hHist->isNotEmpty()) {
-                        $allSparkV = [];
-                        foreach ($hHist as $hItem) {
-                            $allSparkV[] = (float) $hItem->input_voltage;
-                            $allSparkV[] = (float) $hItem->output_voltage;
-                        }
-                        $minSparkV = !empty($allSparkV) ? min($allSparkV) - 2 : 200;
-                        $maxSparkV = !empty($allSparkV) ? max($allSparkV) + 2 : 230;
-                        $sparkRange = max(1, $maxSparkV - $minSparkV);
                         $sparkCount = $hHist->count();
-
                         foreach ($hHist as $idx => $hItem) {
                             $px = round(5 + ($idx / max(1, $sparkCount - 1)) * 310, 1);
-                            $pyIn = round(55 - (((float)$hItem->input_voltage - $minSparkV) / $sparkRange) * 45, 1);
-                            $pyOut = round(55 - (((float)$hItem->output_voltage - $minSparkV) / $sparkRange) * 45, 1);
+                            $inVItem = (float) $hItem->input_voltage;
+                            $outEqItem = (float) $hItem->output_voltage_equipos;
+
+                            // Entrada (banda superior Y: 6 a 26, centrado en ~220V)
+                            $pyIn = round(26 - (min(250, max(180, $inVItem)) - 180) / (250 - 180) * 20, 1);
+                            // Salida (banda inferior Y: 34 a 54, centrado en ~110V)
+                            $pyOut = round(54 - (min(135, max(90, $outEqItem)) - 90) / (135 - 90) * 20, 1);
+
                             $inSparkPoints[] = "{$px},{$pyIn}";
                             $outSparkPoints[] = "{$px},{$pyOut}";
                         }
@@ -426,17 +424,23 @@
 
                                 <!-- VOLTAJE ENTRADA -->
                                 <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
-                                    <span class="text-[9px] text-obsidian-muted uppercase font-bold block">Entrada (Red)</span>
-                                    <span id="topbar-ups-in-v" class="text-xs font-bold text-white font-mono mt-0.5 block">
+                                    <div class="flex items-center justify-between text-[9px] text-obsidian-muted uppercase font-bold">
+                                        <span>Entrada Red</span>
+                                        <span class="text-[8px] px-1 py-0.2 rounded bg-amber-950/80 text-amber-300 border border-amber-500/40">220V</span>
+                                    </div>
+                                    <span id="topbar-ups-in-v" class="text-xs font-bold text-amber-300 font-mono mt-0.5 block">
                                         {{ number_format($hInV, 1) }} <span class="text-[9px] text-obsidian-muted">VAC</span>
                                     </span>
                                 </div>
 
                                 <!-- VOLTAJE SALIDA -->
                                 <div class="p-2 rounded-lg bg-[#040c17] border border-obsidian-border/60">
-                                    <span class="text-[9px] text-obsidian-muted uppercase font-bold block">Salida (UPS)</span>
+                                    <div class="flex items-center justify-between text-[9px] text-obsidian-muted uppercase font-bold">
+                                        <span>Salida Equipos</span>
+                                        <span class="text-[8px] px-1 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">110V</span>
+                                    </div>
                                     <span id="topbar-ups-out-v" class="text-xs font-bold text-cyan-300 font-mono mt-0.5 block">
-                                        {{ number_format($hOutV, 1) }} <span class="text-[9px] text-obsidian-muted">VAC</span>
+                                        {{ number_format($hOutEquipos, 1) }} <span class="text-[9px] text-obsidian-muted">VAC</span>
                                     </span>
                                 </div>
                             </div>
@@ -449,30 +453,22 @@
                                         <span>Telemetría Reciente (VAC)</span>
                                     </span>
                                     <div class="flex items-center gap-2">
-                                        <span class="flex items-center gap-1 text-cyan-400">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Entrada
+                                        <span class="flex items-center gap-1 text-amber-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Entrada (220V)
                                         </span>
-                                        <span class="flex items-center gap-1 text-emerald-400">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Salida
+                                        <span class="flex items-center gap-1 text-cyan-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Salida (110V)
                                         </span>
                                     </div>
                                 </div>
                                 <div class="h-14 w-full relative">
                                     @if(!empty($inSparkPoints))
                                     <svg viewBox="0 0 320 60" class="w-full h-full overflow-visible" preserveAspectRatio="none">
-                                        <defs>
-                                            <linearGradient id="gradTopUpsIn" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stop-color="#00f3ff" stop-opacity="0.25"/>
-                                                <stop offset="100%" stop-color="#00f3ff" stop-opacity="0.0"/>
-                                            </linearGradient>
-                                        </defs>
-                                        <line x1="5" y1="8" x2="315" y2="8" stroke="#132438" stroke-dasharray="2,2" />
-                                        <line x1="5" y1="30" x2="315" y2="30" stroke="#132438" stroke-dasharray="2,2" />
-                                        <line x1="5" y1="52" x2="315" y2="52" stroke="#132438" />
+                                        <line x1="5" y1="16" x2="315" y2="16" stroke="#132438" stroke-dasharray="2,2" />
+                                        <line x1="5" y1="44" x2="315" y2="44" stroke="#132438" stroke-dasharray="2,2" />
 
-                                        <polygon points="5,55 {{ implode(' ', $inSparkPoints) }} 315,55" fill="url(#gradTopUpsIn)" />
-                                        <polyline points="{{ implode(' ', $inSparkPoints) }}" fill="none" stroke="#00f3ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                        <polyline points="{{ implode(' ', $outSparkPoints) }}" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                        <polyline points="{{ implode(' ', $inSparkPoints) }}" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                        <polyline points="{{ implode(' ', $outSparkPoints) }}" fill="none" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
                                     </svg>
                                     @else
                                     <div class="flex items-center justify-center h-full text-[10px] text-obsidian-muted">
@@ -1160,7 +1156,8 @@
             var elInV = document.getElementById('topbar-ups-in-v');
             if (elInV) elInV.innerHTML = Number(dev.input_voltage || 0).toFixed(1) + ' <span class="text-[9px] text-obsidian-muted">VAC</span>';
             var elOutV = document.getElementById('topbar-ups-out-v');
-            if (elOutV) elOutV.innerHTML = Number(dev.output_voltage || 0).toFixed(1) + ' <span class="text-[9px] text-obsidian-muted">VAC</span>';
+            var outEq = dev.output_voltage_equipos !== undefined ? dev.output_voltage_equipos : comp.output_voltage_equipos;
+            if (elOutV) elOutV.innerHTML = Number(outEq !== undefined ? outEq : 110.0).toFixed(1) + ' <span class="text-[9px] text-obsidian-muted">VAC</span>';
             var elLoadPct = document.getElementById('topbar-ups-load-pct');
             if (elLoadPct) elLoadPct.innerText = (dev.load_percent || 0) + '%';
             var elLoadWatts = document.getElementById('topbar-ups-load-watts');

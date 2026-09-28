@@ -72,4 +72,16 @@ class UpsDevice extends Model
     {
         return $this->hasMany(UpsTelemetryHistory::class, 'ups_device_id')->orderBy('recorded_at', 'desc');
     }
+
+    protected $appends = ['output_voltage_equipos'];
+
+    /**
+     * Retorna el voltaje de salida real entregado a los equipos (110V nominal).
+     * En topologías 220V/208V bifásicas, la alimentación a racks se distribuye a 110V (Fase-Neutro / PDU).
+     */
+    public function getOutputVoltageEquiposAttribute(): float
+    {
+        $raw = (float) ($this->output_voltage ?? 208.0);
+        return ($raw > 150.0) ? round($raw * (110.0 / 208.0), 1) : $raw;
+    }
 }

@@ -6459,14 +6459,16 @@ async def cmd_ups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         last_seen = device.get("last_seen_at")
         last_seen_str = str(last_seen)[:19] if last_seen else "Sin datos"
 
+        out_equipos = round(out_v * (110.0 / 208.0), 1) if out_v > 150 else out_v
+
         lines = [
             "🔋 <b>ESTADO DE ENERGÍA Y RESPALDO ELÉCTRICO (UPS)</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             f"📍 <b>Ubicación:</b> <code>Sede Valle Seco (Rack Principal)</code>",
             f"🔋 <b>Equipo:</b> <code>{name}</code> ({model})",
             f"⚡ <b>Modo de Operación:</b> {mode_icon} <b>{mode_text}</b>{outage_str}",
-            f"🔌 <b>Entrada Comercial:</b> <code>{in_v:.1f} VAC</code> ({freq:.1f} Hz)",
-            f"⚡ <b>Salida Regulada:</b> <code>{out_v:.1f} VAC</code> (Online Doble Conversión)",
+            f"🔌 <b>Entrada Comercial (220V):</b> <code>{in_v:.1f} VAC</code> ({freq:.1f} Hz)",
+            f"⚡ <b>Salida a Equipos (110V):</b> <code>{out_equipos:.1f} VAC</code> (Inversor L-L: {out_v:.1f} VAC)",
             f"📊 <b>Carga de Consumo:</b> <code>{load_pct}%</code> (~{load_watts} Watts)",
             f"🔋 <b>Nivel de Batería:</b> <code>{bat_pct}%</code> ({bat_v:.2f} V/celda - Bus 192V)",
             f"⏱️ <b>Autonomía Estimada:</b> ~<code>{est_min} min</code> de respaldo",

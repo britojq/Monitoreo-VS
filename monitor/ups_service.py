@@ -230,6 +230,8 @@ def build_ups_outage_alert(device: dict, telemetry: dict) -> str:
     bat_pct = telemetry.get("battery_percent", 100)
     load_pct = telemetry.get("load_percent", 0)
     temp_c = telemetry.get("temperature_c", 40.0)
+    raw_out = float(telemetry.get("output_voltage") or 208.0)
+    out_equipos = round(raw_out * (110.0 / 208.0), 1) if raw_out > 150 else raw_out
     now_str = datetime.now().strftime("%d/%m/%Y %I:%M:%S %p")
 
     return (
@@ -238,6 +240,8 @@ def build_ups_outage_alert(device: dict, telemetry: dict) -> str:
         f"📍 <b>Ubicación:</b> <code>Sede Valle Seco (Rack Principal)</code>\n"
         f"🔋 <b>Equipo:</b> <code>{name}</code> ({model})\n"
         "⚠️ <b>Condición:</b> <b>OPERANDO EN MODO BATERÍA</b>\n"
+        f"🔌 <b>Entrada Comercial (220V):</b> 0.0 VAC (Interrumpida)\n"
+        f"⚡ <b>Salida a Equipos (110V):</b> {out_equipos:.1f} VAC (Activa)\n"
         f"🔋 <b>Nivel de Batería:</b> {bat_pct}% ({telemetry.get('battery_voltage', 2.25):.2f} V/celda)\n"
         f"📊 <b>Carga de Consumo:</b> {load_pct}% (~{int(load_pct * 60)} Watts)\n"
         f"🌡️ <b>Temperatura Inversor:</b> {temp_c:.1f} °C\n"
@@ -250,9 +254,10 @@ def build_ups_outage_alert(device: dict, telemetry: dict) -> str:
 def build_ups_recovery_alert(device: dict, telemetry: dict, duration_str: str) -> str:
     """Construye mensaje corporativo de restablecimiento de energía eléctrica."""
     name = html.escape(str(device.get("name") or "UPS ZTG LV6KL"))
-    in_v = telemetry.get("input_voltage", 220.0)
-    out_v = telemetry.get("output_voltage", 208.0)
-    freq = telemetry.get("frequency", 60.0)
+    in_v = float(telemetry.get("input_voltage") or 220.0)
+    raw_out = float(telemetry.get("output_voltage") or 208.0)
+    out_equipos = round(raw_out * (110.0 / 208.0), 1) if raw_out > 150 else raw_out
+    freq = float(telemetry.get("frequency") or 60.0)
     bat_pct = telemetry.get("battery_percent", 100)
     now_str = datetime.now().strftime("%d/%m/%Y %I:%M:%S %p")
 
@@ -261,8 +266,8 @@ def build_ups_recovery_alert(device: dict, telemetry: dict, duration_str: str) -
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"📍 <b>Ubicación:</b> <code>Sede Valle Seco (Rack Principal)</code>\n"
         f"🔋 <b>Equipo:</b> <code>{name}</code>\n"
-        f"🔌 <b>Entrada Comercial:</b> {in_v:.1f} VAC ({freq:.1f} Hz)\n"
-        f"⚡ <b>Salida Regulada:</b> {out_v:.1f} VAC (Online Inversor)\n"
+        f"🔌 <b>Entrada Comercial (220V):</b> {in_v:.1f} VAC ({freq:.1f} Hz)\n"
+        f"⚡ <b>Salida a Equipos (110V):</b> {out_equipos:.1f} VAC (Inversor L-L: {raw_out:.1f} VAC)\n"
         f"⏱️ <b>Tiempo en Batería:</b> {duration_str}\n"
         f"🔋 <b>Estado Batería:</b> {bat_pct}% (Recarga en curso)\n"
         f"🕒 <b>Restablecido:</b> {now_str}\n"
@@ -500,8 +505,10 @@ if __name__ == "__main__":
             print("       ESTADO EN TIEMPO REAL: UPS ZTG LV6KL 6kVA     ")
             print("=====================================================")
             print(f" Estado de Línea:     {'MODO BATERÍA (CORTE ELÉCTRICO)' if result.get('is_on_battery') else 'RED COMERCIAL NORMAL'}")
-            print(f" Voltaje de Entrada:  {result.get('input_voltage')} VAC")
-            print(f" Voltaje de Salida:   {result.get('output_voltage')} VAC")
+            print(f" Entrada Red (220V):  {result.get('input_voltage')} VAC")
+            raw_out_cli = float(result.get('output_voltage') or 208.0)
+            out_eq_cli = round(raw_out_cli * (110.0 / 208.0), 1) if raw_out_cli > 150 else raw_out_cli
+            print(f" Salida Equipos (110V): {out_eq_cli} VAC (Inversor L-L: {raw_out_cli} VAC)")
             print(f" Frecuencia:          {result.get('frequency')} Hz")
             print(f" Consumo de Carga:    {result.get('load_percent')} %")
             print(f" Nivel de Batería:    {result.get('battery_percent')} % ({result.get('battery_voltage')} V/celda)")

@@ -132,16 +132,19 @@
             </div>
         </div>
 
-        <!-- CARD 3: VOLTAJES DE ENTRADA & SALIDA -->
+        <!-- CARD 3: VOLTAJES DE ENTRADA & SALIDA (TOPOLOGÍA 220V IN ➔ 110V OUT) -->
         <div class="p-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-md flex flex-col justify-between">
             <div class="flex items-center justify-between">
-                <span class="text-[10px] font-mono uppercase font-bold text-obsidian-muted tracking-wider">Voltajes AC</span>
+                <span class="text-[10px] font-mono uppercase font-bold text-obsidian-muted tracking-wider">Voltajes AC (Topología 220V ➔ 110V)</span>
                 <span class="material-symbols-outlined text-lg text-yellow-400">bolt</span>
             </div>
             <div class="my-2 flex items-center justify-between gap-3">
                 <div>
-                    <span class="text-[9px] uppercase font-mono text-obsidian-muted block">Entrada (Red)</span>
-                    <span id="hud-in-v" class="text-lg font-bold font-mono text-white">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[9px] uppercase font-mono text-obsidian-muted block">Entrada (Red)</span>
+                        <span class="text-[8px] px-1 py-0.2 rounded bg-amber-950/80 text-amber-300 border border-amber-500/40">220V</span>
+                    </div>
+                    <span id="hud-in-v" class="text-lg font-bold font-mono text-amber-300">
                         {{ number_format($device->input_voltage ?? 0.0, 1) }} <span class="text-xs text-obsidian-muted">VAC</span>
                     </span>
                 </div>
@@ -149,15 +152,18 @@
                     <span class="material-symbols-outlined text-base">arrow_forward</span>
                 </div>
                 <div>
-                    <span class="text-[9px] uppercase font-mono text-obsidian-muted block">Salida (UPS)</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[9px] uppercase font-mono text-obsidian-muted block">Salida Equipos</span>
+                        <span class="text-[8px] px-1 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">110V</span>
+                    </div>
                     <span id="hud-out-v" class="text-lg font-bold font-mono text-cyan-300">
-                        {{ number_format($device->output_voltage ?? 0.0, 1) }} <span class="text-xs text-obsidian-muted">VAC</span>
+                        {{ number_format($outputVoltageEquipos, 1) }} <span class="text-xs text-obsidian-muted">VAC</span>
                     </span>
                 </div>
             </div>
             <div class="pt-2 border-t border-obsidian-border/50 flex items-center justify-between text-[11px] font-mono text-obsidian-muted">
-                <span>Regulación: <strong class="text-emerald-400">Doble Conversión</strong></span>
-                <span>Nominal: <strong class="text-white">{{ number_format($device->rating_voltage ?? 208.0, 0) }} VAC</strong></span>
+                <span>Conversión: <strong class="text-emerald-400">220V In ➔ 110V Out</strong></span>
+                <span>Inversor L-L: <strong class="text-cyan-300" id="hud-inverter-v">{{ number_format($device->output_voltage ?? 208.0, 1) }} VAC</strong></span>
             </div>
         </div>
 
@@ -342,8 +348,18 @@
                     </div>
 
                     <div class="flex items-center justify-between p-2 rounded bg-[#06111f]/70 border border-obsidian-border/50">
-                        <span class="text-obsidian-muted">Tensión & Corriente Nominal:</span>
-                        <span class="text-white font-bold">208.0 VAC / 28.0 A (60 Hz)</span>
+                        <span class="text-obsidian-muted">Tensión Entrada Comercial:</span>
+                        <span class="text-amber-300 font-bold">220.0 VAC (Bifásica L1-L2, 60 Hz)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-2 rounded bg-[#06111f]/70 border border-obsidian-border/50">
+                        <span class="text-obsidian-muted">Tensión Salida a Equipos:</span>
+                        <span class="text-cyan-300 font-bold">110.0 VAC (Cargas Racks / PDUs)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-2 rounded bg-[#06111f]/70 border border-obsidian-border/50">
+                        <span class="text-obsidian-muted">Inversor Interno (L-L):</span>
+                        <span class="text-white font-bold">208.0 VAC / 28.0 A (Fase a Fase)</span>
                     </div>
 
                     <div class="flex items-center justify-between p-2 rounded bg-[#06111f]/70 border border-obsidian-border/50">
@@ -384,6 +400,7 @@
     const initialLabels = @json($chartLabels);
     const initialInputV = @json($chartInputV);
     const initialOutputV = @json($chartOutputV);
+    const initialOutputEquiposV = @json($chartOutputEquiposV);
     const initialLoadPct = @json($chartLoadPct);
     const initialBatteryPct = @json($chartBatteryPct);
     const initialTemp = @json($chartTemp);
@@ -398,7 +415,7 @@
         if (viewType === 'voltages') {
             datasets = [
                 {
-                    label: 'Voltaje Entrada (VAC)',
+                    label: 'Entrada Comercial (220V)',
                     data: initialInputV,
                     borderColor: '#f59e0b',
                     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -406,16 +423,18 @@
                     tension: 0.25,
                     fill: false,
                     pointRadius: initialInputV.length > 30 ? 0 : 2,
+                    yAxisID: 'y',
                 },
                 {
-                    label: 'Voltaje Salida (VAC)',
-                    data: initialOutputV,
+                    label: 'Salida a Equipos (110V)',
+                    data: initialOutputEquiposV,
                     borderColor: '#00f0ff',
                     backgroundColor: 'rgba(0, 240, 255, 0.1)',
                     borderWidth: 2,
                     tension: 0.25,
                     fill: false,
-                    pointRadius: initialOutputV.length > 30 ? 0 : 2,
+                    pointRadius: initialOutputEquiposV.length > 30 ? 0 : 2,
+                    yAxisID: 'y1',
                 }
             ];
             yAxisLabel = 'VAC';
@@ -430,6 +449,7 @@
                     tension: 0.25,
                     fill: true,
                     pointRadius: initialBatteryPct.length > 30 ? 0 : 2,
+                    yAxisID: 'y',
                 },
                 {
                     label: 'Carga de Consumo (%)',
@@ -440,6 +460,7 @@
                     tension: 0.25,
                     fill: true,
                     pointRadius: initialLoadPct.length > 30 ? 0 : 2,
+                    yAxisID: 'y',
                 }
             ];
             yAxisLabel = '%';
@@ -454,6 +475,7 @@
                     tension: 0.25,
                     fill: true,
                     pointRadius: initialTemp.length > 30 ? 0 : 2,
+                    yAxisID: 'y',
                 }
             ];
             yAxisLabel = '°C';
@@ -499,12 +521,44 @@
                         }
                     },
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: viewType === 'voltages',
+                            text: 'Entrada Red (220V)',
+                            color: '#f59e0b',
+                            font: { family: 'JetBrains Mono', size: 10 }
+                        },
                         grid: { color: 'rgba(28, 46, 71, 0.4)' },
+                        suggestedMin: viewType === 'voltages' ? 180 : 0,
+                        suggestedMax: viewType === 'voltages' ? 245 : 100,
                         ticks: {
-                            color: '#8295b0',
+                            color: viewType === 'voltages' ? '#f59e0b' : '#8295b0',
                             font: { family: 'JetBrains Mono', size: 9 },
                             callback: function(value) {
-                                return value + ' ' + yAxisLabel;
+                                return value + ' ' + (viewType === 'voltages' ? 'V' : yAxisLabel);
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: viewType === 'voltages',
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Salida Equipos (110V)',
+                            color: '#00f0ff',
+                            font: { family: 'JetBrains Mono', size: 10 }
+                        },
+                        grid: { drawOnChartArea: false },
+                        suggestedMin: 90,
+                        suggestedMax: 130,
+                        ticks: {
+                            color: '#00f0ff',
+                            font: { family: 'JetBrains Mono', size: 9 },
+                            callback: function(value) {
+                                return value + ' V';
                             }
                         }
                     }
@@ -554,10 +608,18 @@
 
             const dev = data.device;
             const comp = data.computed || {};
+            const outEquipos = dev.output_voltage_equipos !== undefined ? dev.output_voltage_equipos : comp.output_voltage_equipos;
 
             // Actualizar HUD
-            document.getElementById('hud-in-v').innerHTML = `${Number(dev.input_voltage || 0).toFixed(1)} <span class="text-xs text-obsidian-muted">VAC</span>`;
-            document.getElementById('hud-out-v').innerHTML = `${Number(dev.output_voltage || 0).toFixed(1)} <span class="text-xs text-obsidian-muted">VAC</span>`;
+            if (document.getElementById('hud-in-v')) {
+                document.getElementById('hud-in-v').innerHTML = `${Number(dev.input_voltage || 0).toFixed(1)} <span class="text-xs text-obsidian-muted">VAC</span>`;
+            }
+            if (document.getElementById('hud-out-v')) {
+                document.getElementById('hud-out-v').innerHTML = `${Number(outEquipos !== undefined ? outEquipos : 110.0).toFixed(1)} <span class="text-xs text-obsidian-muted">VAC</span>`;
+            }
+            if (document.getElementById('hud-inverter-v')) {
+                document.getElementById('hud-inverter-v').innerText = `${Number(dev.output_voltage || 208.0).toFixed(1)} VAC`;
+            }
             document.getElementById('hud-freq').innerText = `${Number(dev.frequency || 60.0).toFixed(1)} Hz`;
             document.getElementById('hud-bypass').innerText = dev.is_bypass ? 'Activo' : 'Inactivo';
             
