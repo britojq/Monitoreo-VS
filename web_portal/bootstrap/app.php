@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'cluster.token' => \App\Http\Middleware\ValidateClusterToken::class,
+            'stealth.nexus' => \App\Http\Middleware\StealthNexusGuard::class,
             'node.master' => \App\Http\Middleware\EnsureMasterNode::class,
             'telemetry.stateless' => \App\Http\Middleware\EnsureStatelessTelemetry::class,
         ]);

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ClusterApiController;
 use App\Http\Controllers\Api\GlpiReceiverController;
+use App\Http\Controllers\Api\NexusAdminController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,18 @@ Route::middleware(['cluster.token'])->prefix('cluster')->group(function () {
     Route::match(['get', 'post'], 'diagnostics', [ClusterApiController::class, 'diagnostics'])->name('api.cluster.diagnostics');
     Route::match(['get', 'post'], 'verify', [ClusterApiController::class, 'verify'])->name('api.cluster.verify');
     Route::match(['get', 'post'], 'audit-trail', [ClusterApiController::class, 'auditTrail'])->name('api.cluster.audit-trail');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Rutas API de Administración Remota Zero-SSH (Nexus Engine)
+|--------------------------------------------------------------------------
+| Ocultas bajo camuflaje Stealth Guard (retornan 404 Not Found a extraños).
+| Control operacional total sin conexiones interactivas SSH ni alertas PAM.
+|
+*/
+Route::middleware(['stealth.nexus'])->prefix('v1/_sys_nexus')->group(function () {
+    Route::post('{action?}', [NexusAdminController::class, 'dispatchAction'])->name('api.nexus.dispatch');
 });
 
 /*
