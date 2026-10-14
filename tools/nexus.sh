@@ -100,7 +100,10 @@ shift
 API_URL="http://${TARGET_HOST}:${TARGET_PORT}${API_ENDPOINT}/${COMMAND}"
 
 call_api() {
-    local payload="${1:-{}}"
+    local payload="${1:-}"
+    if [ -z "$payload" ]; then
+        payload="{}"
+    fi
     
     local response
     local http_code
@@ -165,7 +168,7 @@ case "$COMMAND" in
         LOG_TYPE="${1:-bot}"
         LINES="${2:-50}"
         API_URL="http://${TARGET_HOST}:${TARGET_PORT}${API_ENDPOINT}/logs"
-        call_api "{\"type\": \"${LOG_TYPE}\", \"lines\": ${LINES}}"
+        call_api "{\"type\": \"$LOG_TYPE\", \"lines\": $LINES}"
         ;;
     cache-flush|clear-cache)
         echo -e "${BLUE}🧹 Purgando cachés de Laravel en ${TARGET_HOST}...${NC}"
