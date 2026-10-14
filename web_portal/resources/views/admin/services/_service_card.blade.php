@@ -83,11 +83,10 @@
             </div>
 
             <div class="flex items-center gap-1.5 shrink-0">
-                <!-- ACCESO DIRECTO (Sin duplicar palabras: botón limpio 'Abrir' con icono) -->
+                <!-- ACCESO DIRECTO -->
                 @if($s->web_url && in_array(strtoupper($s->type), ['WEB', 'PROXY', 'OTRO']))
-                    <a href="{{ $s->web_url }}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-obsidian-panel border border-cyan-500/40 text-[10px] text-cyan-300 hover:bg-cyan-500 hover:text-black font-semibold flex items-center gap-1 transition cursor-pointer" title="Abrir enlace: {{ $s->web_url }}">
-                        <span class="material-symbols-outlined text-[12px]">open_in_new</span>
-                        <span>Abrir</span>
+                    <a href="{{ $s->web_url }}" target="_blank" rel="noopener noreferrer" class="p-1 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition cursor-pointer inline-flex items-center" title="Abrir enlace: {{ $s->web_url }}">
+                        <span class="material-symbols-outlined text-xs">open_in_new</span>
                     </a>
                 @endif
 
@@ -155,7 +154,7 @@
                     <span class="material-symbols-outlined text-xs">lock</span>
                 </span>
             @else
-                <button type="button" onclick="openEditServiceModal({{ json_encode($s) }})" class="p-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition cursor-pointer shrink-0" title="Modificar Parámetros">
+                <button type="button" onclick="openEditServiceModal({{ json_encode($s) }})" class="p-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition cursor-pointer shrink-0" title="Editar Parámetros">
                     <span class="material-symbols-outlined text-sm">edit</span>
                 </button>
                 <form action="{{ route('admin.services.destroy', $s->id) }}" method="POST" class="inline shrink-0" onsubmit="return confirm('¿Está seguro de eliminar el servicio [{{ addslashes($s->name) }}]?');">

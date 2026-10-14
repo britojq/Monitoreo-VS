@@ -315,7 +315,7 @@ class SnmpOidsSeeder extends Seeder
                 'unit' => null,
                 'is_standard' => false,
                 'is_counter_wrap' => false,
-                'description' => 'Identificador de dispositivos vecinos detectados por CDP',
+                'description' => 'Identificador de dispositivos interconectados detectados por CDP',
             ],
             [
                 'name' => 'ciscoLLDPRemSysName',
@@ -326,7 +326,7 @@ class SnmpOidsSeeder extends Seeder
                 'unit' => null,
                 'is_standard' => true,
                 'is_counter_wrap' => false,
-                'description' => 'Nombre de host de vecinos detectados vía protocolo LLDP',
+                'description' => 'Nombre de host de dispositivos detectados vía protocolo LLDP',
             ],
 
             // Genéricos (HOST-RESOURCES-MIB)

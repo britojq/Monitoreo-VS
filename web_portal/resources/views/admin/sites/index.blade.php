@@ -15,50 +15,75 @@
                 <span class="text-obsidian-border font-mono text-xs">/</span>
                 <span class="text-xs font-mono text-obsidian-muted">Sedes Regionales & Equipos</span>
             </div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-purple-400">domain</span>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-400 text-2xl">domain</span>
                 Sedes Regionales y Equipos de Red Monitoreados
-            </h2>
+            </h1>
             <p class="text-xs font-mono text-obsidian-muted">Gestión de enlaces troncales, gateways de sedes y topología de equipos locales</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center gap-1.5 shadow-sm">
-                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </div>
-            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !$isClusterSlave)
-                <button type="button" onclick="openCreateSiteModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold font-mono text-xs transition shadow-sm cursor-pointer">
-                    <span class="material-symbols-outlined text-sm">domain_add</span>
-                    <span>+ Agregar Sede</span>
+            @if($isClusterSlave ?? false)
+                <span class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 inline-flex items-center justify-center shadow-xs cursor-help" title="Fuente: Servidor Esclavo (Réplica)">
+                    <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                </span>
+            @else
+                <span class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 inline-flex items-center justify-center shadow-xs cursor-help" title="Fuente: Servidor Maestro">
+                    <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                </span>
+            @endif
+
+            <!-- BOTÓN UNIFICADO DESPLEGAR / PLEGAR TODAS (SOLO ICONO CON TOOLTIP) -->
+            <button type="button" id="btn-toggle-all-sites" onclick="toggleAllAdminSites()" class="w-9 h-9 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white hover:border-purple-500/50 transition flex items-center justify-center shadow-xs cursor-pointer group" title="Desplegar Todo">
+                <span class="material-symbols-outlined text-base text-purple-400 group-hover:scale-110 transition-transform" id="icon-toggle-all-sites">unfold_more</span>
+            </button>
+
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !($isClusterSlave ?? false))
+                <button type="button" onclick="openCreateSiteModal()" class="w-9 h-9 rounded-xl bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition flex items-center justify-center shadow-xs cursor-pointer" title="Agregar Nueva Sede Regional">
+                    <span class="material-symbols-outlined text-base">domain_add</span>
                 </button>
             @endif
         </div>
     </div>
 
-    <!-- LISTADO DE SEDES -->
-    <div class="space-y-4">
+    <!-- LISTADO DE SEDES (ORDENABLE VÍA DRAG & DROP) -->
+    <div id="sites-sortable-list" class="space-y-4">
         @foreach($sites as $site)
-            <div class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80">
-                <!-- CABECERA DE SEDE (SIN NOMENCLATURA DE LETRAS) -->
+            <div class="glass-card rounded-xl p-5 space-y-4 border border-obsidian-border/80 transition-all hover:border-purple-500/30 site-draggable-card"
+                 id="site-card-{{ $site->id }}"
+                 data-site-id="{{ $site->id }}"
+                 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !($isClusterSlave ?? false))
+                     draggable="true"
+                 @endif>
+                <!-- CABECERA DE SEDE (CLICKEABLE PARA DESPLEGAR / ARRASTRABLE PARA REORDENAR) -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/60 pb-3">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md shrink-0">
-                            <span class="material-symbols-outlined text-xl">domain</span>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
-                                <span>{{ $site->name }}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
-                                    {{ $site->devices->where('is_active', true)->count() }} Equipos Activos
-                                </span>
-                            </h3>
-                            <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
-                                <span>Gateway IP: <strong class="text-white">{{ $site->ip ?: 'No configurado' }}</strong></span>
-                                @if($site->address)
-                                    <span class="text-obsidian-border">|</span>
-                                    <span class="truncate max-w-xs">{{ $site->address }}</span>
-                                @endif
-                            </p>
+                    <div class="flex items-center space-x-2.5 min-w-0">
+                        @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites')) && !($isClusterSlave ?? false))
+                            <div class="drag-handle cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-obsidian-muted hover:text-purple-300 hover:bg-purple-950/40 transition-all shrink-0 select-none"
+                                 title="Haga clic sostenido y arrastre para cambiar el orden de esta sede">
+                                <span class="material-symbols-outlined text-xl select-none leading-none">drag_indicator</span>
+                            </div>
+                        @endif
+                        <div class="flex items-center space-x-3 cursor-pointer select-none group/title min-w-0"
+                             onclick="toggleAdminSiteDevices('admin-site-devices-{{ $site->id }}', this)"
+                             title="Haga clic para desplegar/contraer equipos de {{ $site->name }}">
+                            <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md shrink-0 group-hover/title:border-purple-400 group-hover/title:bg-purple-900/80 transition-all">
+                                <span class="material-symbols-outlined text-xl">domain</span>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-base font-bold text-white font-sans flex items-center gap-2 flex-wrap">
+                                    <span class="group-hover/title:text-purple-300 transition-colors truncate">{{ $site->name }}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan shrink-0">
+                                        {{ $site->devices->where('is_active', true)->count() }} Equipos Activos
+                                    </span>
+                                </h3>
+                                <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
+                                    <span>Gateway IP: <strong class="text-white">{{ $site->ip ?: 'No configurado' }}</strong></span>
+                                    @if($site->address)
+                                        <span class="text-obsidian-border">|</span>
+                                        <span class="truncate max-w-xs">{{ $site->address }}</span>
+                                    @endif
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -102,6 +127,18 @@
                                 </form>
                             @endif
                         @endif
+
+                        <!-- BOTÓN DESPLEGABLE CON CHEVRON -->
+                        <button type="button"
+                                onclick="toggleAdminSiteDevices('admin-site-devices-{{ $site->id }}', this)"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-purple-500/30 hover:border-purple-400 text-purple-300 hover:text-white hover:bg-purple-950/60 font-mono text-xs transition cursor-pointer group/chevron shadow-xs"
+                                title="Desplegar o contraer equipos de {{ $site->name }}">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">devices</span>
+                            <span class="text-[11px] font-bold">Equipos ({{ $site->devices->count() }})</span>
+                            <span class="material-symbols-outlined text-base transition-transform duration-200 chevron-icon" id="chevron-{{ $site->id }}">
+                                expand_more
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -115,8 +152,8 @@
                     </div>
                 </div>
 
-                <!-- EQUIPOS DE RED ASOCIADOS A ESTA SEDE -->
-                <div>
+                <!-- EQUIPOS DE RED ASOCIADOS A ESTA SEDE (DESPLEGABLE) -->
+                <div id="admin-site-devices-{{ $site->id }}" class="hidden pt-3 border-t border-obsidian-border/60 space-y-3 transition-all duration-300">
                     <div class="flex items-center justify-between mb-2.5">
                         <span class="text-[11px] font-mono uppercase text-obsidian-muted font-semibold flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-sm text-cyan-400">devices</span>
@@ -235,7 +272,12 @@
                                         <!-- NOMBRE E IP -->
                                         <div class="flex items-center gap-1.5">
                                             <span class="w-2 h-2 rounded-full shrink-0 {{ $isUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}" title="{{ $isUp ? 'Online (ICMP Respondido)' : 'Offline' }}"></span>
-                                            <div class="text-white font-sans font-bold text-xs truncate" title="{{ $dev->name }}">{{ $dev->name }}</div>
+                                            <div class="min-w-0">
+                                                <div class="text-white font-sans font-bold text-xs truncate" title="{{ $dev->display_identity ?? $dev->name }}">{{ $dev->display_identity ?? $dev->name }}</div>
+                                                @if($dev->technical_subtitle && $dev->technical_subtitle !== ($dev->display_identity ?? $dev->name))
+                                                    <div class="text-[9.5px] font-mono text-obsidian-muted truncate" title="Nombre de Equipo (Hostname): {{ $dev->technical_subtitle }}">Host: {{ $dev->technical_subtitle }}</div>
+                                                @endif
+                                            </div>
                                         </div>
 
                                         <div class="flex items-center justify-between text-[11px] font-mono mt-1">
@@ -288,55 +330,65 @@
     </div>
 </div>
 
+<!-- NOTIFICACIÓN FLOTANTE (TOAST) PARA REORDENAMIENTO -->
+<div id="sites-toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="px-4 py-2.5 rounded-xl bg-[#06111f] border border-cyan-500/60 shadow-2xl shadow-cyan-950/80 text-white font-mono text-xs flex items-center gap-2.5">
+        <span class="material-symbols-outlined text-base text-cyan-400 shrink-0" id="sites-toast-icon">check_circle</span>
+        <span id="sites-toast-msg">Orden guardado</span>
+    </div>
+</div>
+
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
 <!-- ========================================================================= -->
 <!-- MODAL CREAR NUEVA SEDE (Solo Administrador)                               -->
 <!-- ========================================================================= -->
-<div id="modal-create-site" onclick="if(event.target === this) closeModal('modal-create-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-create-site" onclick="if(event.target === this) closeModal('modal-create-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 px-6 shrink-0 bg-[#061527]">
             <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
                 <span class="material-symbols-outlined text-purple-400 text-base">domain_add</span>
                 Agregar Nueva Sede Regional
             </h3>
             <button type="button" onclick="closeModal('modal-create-site')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-create-site" action="{{ route('admin.sites.store') }}" method="POST" class="space-y-4 font-mono text-xs">
+        <form id="form-create-site" action="{{ route('admin.sites.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre de la Sede *</label>
-                <input type="text" name="name" required placeholder="ej. CIAU Morón / CIAU Pto Cabello" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre de la Sede *</label>
+                    <input type="text" name="name" required placeholder="ej. CIAU Morón / CIAU Pto Cabello" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
+                        <input type="text" name="ip" placeholder="ej. 10.20.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
+                        <input type="text" name="address" placeholder="Av. Principal, Edif. ..." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Principal:</label>
+                        <input type="text" name="phone_1" placeholder="ej. 0242-2210000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Secundario:</label>
+                        <input type="text" name="phone_2" placeholder="ej. 0414-0000000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="create-site-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="create-site-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo de sede inmediatamente</label>
+                </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
-                    <input type="text" name="ip" placeholder="ej. 10.20.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
-                    <input type="text" name="address" placeholder="Av. Principal, Edif. ..." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Principal:</label>
-                    <input type="text" name="phone_1" placeholder="ej. 0242-3600000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Secundario:</label>
-                    <input type="text" name="phone_2" placeholder="ej. 0414-0000000" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 pt-1">
-                <input type="checkbox" id="create-site-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="create-site-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo de sede inmediatamente</label>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
-                <button type="button" onclick="closeModal('modal-create-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeModal('modal-create-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-1 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">save</span>
                     Guardar Sede
@@ -349,9 +401,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL AGREGAR DISPOSITIVO A SEDE (Solo Administrador)                     -->
 <!-- ========================================================================= -->
-<div id="modal-add-device" onclick="if(event.target === this) closeModal('modal-add-device')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-xl w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-add-device" onclick="if(event.target === this) closeModal('modal-add-device')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-xl w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 px-6 shrink-0 bg-[#061527]">
             <div>
                 <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
                     <span class="material-symbols-outlined text-cyan-400 text-base">router</span>
@@ -361,67 +413,133 @@
             </div>
             <button type="button" onclick="closeModal('modal-add-device')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-add-device" method="POST" class="space-y-4 font-mono text-xs">
+        <form id="form-add-device" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre del Dispositivo *</label>
-                    <input type="text" name="name" required placeholder="ej. SW Cisco Taquillas / ATU 01" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección IP *</label>
-                    <input type="text" name="ip" required placeholder="ej. 10.20.106.240" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección MAC</label>
-                    <input type="text" name="mac" placeholder="00:00:00:00:00:00" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Fabricante / Vendor</label>
-                    <input type="text" name="vendor_data" placeholder="ej. Cisco Systems" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Modelo de Hardware</label>
-                    <input type="text" name="model" placeholder="ej. Catalyst 2960" class="w-full bg-obsidian-panel border border-cyan-500/40 rounded-lg p-2 text-cyan-200 focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Número de Serie (Serial)</label>
-                    <input type="text" name="serial" placeholder="ej. FOC1234..." class="w-full bg-obsidian-panel border border-amber-500/40 rounded-lg p-2 text-amber-200 focus:border-amber-400 focus:outline-hidden"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Especificación de Puertos</label>
-                    <input type="text" name="ports" placeholder="ej. SW: 24 puertos" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Acceso</label>
-                        <select name="access_type" id="modal-add-access-type" onchange="handleAddDeviceAccessChange(this.value)" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden">
-                            <option value="SSH">SSH</option>
-                            <option value="TELNET">TELNET</option>
-                            <option value="WEB">WEB</option>
-                            <option value="VNC">VNC</option>
-                            <option value="SIN SOPORTE">SIN SOPORTE</option>
-                        </select>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre del Dispositivo *</label>
+                        <input type="text" name="name" required placeholder="ej. SW Cisco Taquillas / ATU 01" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
                     </div>
                     <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Puerto</label>
-                        <input type="number" name="access_port" id="modal-add-access-port" value="22" min="1" max="65535" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección IP *</label>
+                        <input type="text" name="ip" required placeholder="ej. 10.20.106.240" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
                     </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección MAC</label>
+                        <input type="text" name="mac" placeholder="00:00:00:00:00:00" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Fabricante / Vendor</label>
+                        <input type="text" name="vendor_data" placeholder="ej. Cisco Systems" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Modelo de Hardware</label>
+                        <input type="text" name="model" placeholder="ej. Catalyst 2960" class="w-full bg-obsidian-panel border border-cyan-500/40 rounded-lg p-2 text-cyan-200 focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Número de Serie (Serial)</label>
+                        <input type="text" name="serial" placeholder="ej. FOC1234..." class="w-full bg-obsidian-panel border border-amber-500/40 rounded-lg p-2 text-amber-200 focus:border-amber-400 focus:outline-hidden"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Especificación de Puertos</label>
+                        <input type="text" name="ports" placeholder="ej. SW: 24 puertos" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Acceso</label>
+                            <select name="access_type" id="modal-add-access-type" onchange="handleAddDeviceAccessChange(this.value)" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden">
+                                <option value="SSH">SSH</option>
+                                <option value="TELNET">TELNET</option>
+                                <option value="WEB">WEB</option>
+                                <option value="VNC">VNC</option>
+                                <option value="SIN SOPORTE">SIN SOPORTE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Puerto</label>
+                            <input type="number" name="access_port" id="modal-add-access-port" value="22" min="1" max="65535" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Notas Técnicas & Distribución de Puertos</label>
+                    <textarea name="notes" rows="3" placeholder="Información técnica..." class="w-full bg-[#020b14] border border-cyan-500/40 rounded-lg p-2 text-cyan-200 focus:border-cyan-400 focus:outline-hidden text-xs"></textarea>
+                </div>
+
+                <!-- SECCIÓN: INTEGRACIÓN CON INVENTARIO ITAM -->
+                <div class="p-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/20 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-cyan-300 cursor-pointer">
+                            <input type="checkbox" id="modal-sync-inventory" name="sync_inventory" value="1" checked onchange="toggleInventoryFields(this.checked)" class="rounded bg-obsidian-panel border-cyan-500/50 text-cyan-400"/>
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-cyan-400">inventory_2</span>
+                                Registrar simultáneamente en el Inventario de Activos (ITAM)
+                            </span>
+                        </label>
+                    </div>
+
+                    <div id="inventory-fields-container" class="space-y-3 pt-1 border-t border-cyan-500/20">
+                        <div class="flex items-center gap-4 text-[11px]">
+                            <label class="flex items-center gap-1.5 cursor-pointer text-white">
+                                <input type="radio" name="inventory_action" id="inv-action-create" value="create" checked onchange="handleInventoryActionChange(this.value)" class="text-cyan-400 bg-obsidian-panel border-obsidian-border"/>
+                                <span>Crear nuevo activo</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer text-obsidian-muted hover:text-white">
+                                <input type="radio" name="inventory_action" id="inv-action-link" value="link" onchange="handleInventoryActionChange(this.value)" class="text-cyan-400 bg-obsidian-panel border-obsidian-border"/>
+                                <span>Vincular a activo existente</span>
+                            </label>
+                        </div>
+
+                        <!-- MODO CREAR NUEVO ACTIVO -->
+                        <div id="inventory-create-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Tipo de Activo en Inventario *</label>
+                                <select name="asset_type" id="modal-asset-type" class="w-full bg-obsidian-panel border border-cyan-500/40 rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden text-xs">
+                                    <option value="desktop" selected>💻 Estación de Trabajo / PC</option>
+                                    <option value="switch">🔀 Switch de Red</option>
+                                    <option value="router">🌐 Router WAN / Gateway</option>
+                                    <option value="server">🖥️ Servidor</option>
+                                    <option value="printer">🖨️ Impresora de Red</option>
+                                    <option value="network">📡 Dispositivo de Red (Otro)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Estado Operativo</label>
+                                <select name="asset_status" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden text-xs">
+                                    <option value="assigned" selected>Asignado / En Producción</option>
+                                    <option value="in_stock">En Stock / Almacén</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- MODO VINCULAR A ACTIVO EXISTENTE -->
+                        <div id="inventory-link-fields" class="hidden">
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Seleccionar Activo Registrado en Inventario</label>
+                            <select name="existing_asset_id" id="modal-existing-asset-id" class="w-full bg-obsidian-panel border border-cyan-500/40 rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden text-xs">
+                                <option value="">-- Seleccionar activo existente --</option>
+                                @if(isset($unlinkedAssets))
+                                    @foreach($unlinkedAssets as $uAsset)
+                                        <option value="{{ $uAsset->id }}">
+                                            [{{ $uAsset->asset_tag }}] {{ $uAsset->name }} ({{ strtoupper($uAsset->type) }}) - {{ $uAsset->model ?? 'Sin modelo' }} {{ $uAsset->ip_address ? "[IP: {$uAsset->ip_address}]" : '' }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                            <p class="text-[10px] text-obsidian-muted mt-1">Vincula las métricas de monitoreo de red con la ficha de resguardo y auditoría del activo en el ITAM.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="add-device-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="add-device-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo del dispositivo</label>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Notas Técnicas & Distribución de Puertos</label>
-                <textarea name="notes" rows="3" placeholder="Información técnica..." class="w-full bg-[#020b14] border border-cyan-500/40 rounded-lg p-2 text-cyan-200 focus:border-cyan-400 focus:outline-hidden text-xs"></textarea>
-            </div>
-
-            <div class="flex items-center gap-2 pt-1">
-                <input type="checkbox" id="add-device-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="add-device-active" class="text-obsidian-muted cursor-pointer select-none">Habilitar monitoreo del dispositivo</label>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
-                <button type="button" onclick="closeModal('modal-add-device')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeModal('modal-add-device')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center gap-1 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">add_circle</span>
                     Registrar Equipo
@@ -434,80 +552,82 @@
 <!-- ========================================================================= -->
 <!-- MODAL EDITAR SEDE & GESTIONAR EQUIPOS DINÁMICAMENTE (Solo Administrador) -->
 <!-- ========================================================================= -->
-<div id="modal-edit-site" onclick="if(event.target === this) closeModal('modal-edit-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-4xl w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto custom-scroll bg-[#040d1a]/95">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-edit-site" onclick="if(event.target === this) closeModal('modal-edit-site')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 px-6 shrink-0 bg-[#061527]">
             <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-base">tune</span>
                 Configurar Sede & Administrar Equipos de Red
             </h3>
             <button type="button" onclick="closeModal('modal-edit-site')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-edit-site" method="POST" class="space-y-5 font-mono text-xs">
+        <form id="form-edit-site" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
             @method('PUT')
             
-            <!-- SECCIÓN 1: DATOS BÁSICOS DE LA SEDE -->
-            <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
-                <span class="text-[11px] font-bold text-purple-300 uppercase tracking-wider block border-b border-obsidian-border/40 pb-1.5 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-sm">domain</span>
-                    1. Parámetros Principales de la Sede
-                </span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre de la Sede *</label>
-                        <input type="text" id="edit_st_name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+            <div class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 custom-scroll">
+                <!-- SECCIÓN 1: DATOS BÁSICOS DE LA SEDE -->
+                <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
+                    <span class="text-[11px] font-bold text-purple-300 uppercase tracking-wider block border-b border-obsidian-border/40 pb-1.5 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">domain</span>
+                        1. Parámetros Principales de la Sede
+                    </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Nombre de la Sede *</label>
+                            <input type="text" id="edit_st_name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
+                            <input type="text" id="edit_st_ip" name="ip" placeholder="ej. 192.168.1.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
-                        <input type="text" id="edit_st_ip" name="ip" placeholder="ej. 192.168.1.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
+                            <input type="text" id="edit_st_address" name="address" placeholder="Ubicación o Edificio" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Principal:</label>
+                            <input type="text" id="edit_st_phone_1" name="phone_1" placeholder="ej. 0241-1234567" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Secundario:</label>
+                            <input type="text" id="edit_st_phone_2" name="phone_2" placeholder="ej. 0414-7654321" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="edit_st_active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                        <label for="edit_st_active" class="text-obsidian-muted cursor-pointer select-none">Sede activa en el monitoreo continuo</label>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
-                        <input type="text" id="edit_st_address" name="address" placeholder="Ubicación o Edificio" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                <!-- SECCIÓN 2: EQUIPOS ASOCIADOS A ESTA SEDE (REPETIDOR DINÁMICO) -->
+                <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-obsidian-border/40 pb-2 gap-2">
+                        <div>
+                            <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm">router</span>
+                                2. Equipos de Red de esta Sede
+                            </span>
+                            <p class="text-[10px] text-obsidian-muted">Ajuste técnico uniforme, adición dinámica y retiro de equipos</p>
+                        </div>
+                        <button type="button" onclick="addNewDeviceRow()" class="px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500 hover:text-black transition text-xs font-mono font-bold flex items-center gap-1 self-start sm:self-auto cursor-pointer shadow-xs">
+                            <span class="material-symbols-outlined text-sm">add_circle</span>
+                            <span>+ Agregar Dispositivo a esta Sede</span>
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Principal:</label>
-                        <input type="text" id="edit_st_phone_1" name="phone_1" placeholder="ej. 0241-1234567" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                    
+                    <div id="devices-edit-container" class="space-y-3 max-h-80 overflow-y-auto custom-scroll pr-1">
+                        <!-- Dinámico vía JS -->
                     </div>
-                    <div>
-                        <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Teléfono Secundario:</label>
-                        <input type="text" id="edit_st_phone_2" name="phone_2" placeholder="ej. 0414-7654321" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 pt-1">
-                    <input type="checkbox" id="edit_st_active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                    <label for="edit_st_active" class="text-obsidian-muted cursor-pointer select-none">Sede activa en el monitoreo continuo</label>
                 </div>
             </div>
 
-            <!-- SECCIÓN 2: EQUIPOS ASOCIADOS A ESTA SEDE (REPETIDOR DINÁMICO) -->
-            <div class="space-y-3 bg-obsidian-panel/60 p-4 rounded-xl border border-obsidian-border/60">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-obsidian-border/40 pb-2 gap-2">
-                    <div>
-                        <span class="text-[11px] font-bold text-obsidian-cyan uppercase tracking-wider block flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-sm">router</span>
-                            2. Equipos de Red de esta Sede
-                        </span>
-                        <p class="text-[10px] text-obsidian-muted">Ajuste técnico uniforme, adición dinámica y retiro de equipos</p>
-                    </div>
-                    <button type="button" onclick="addNewDeviceRow()" class="px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500 hover:text-black transition text-xs font-mono font-bold flex items-center gap-1 self-start sm:self-auto cursor-pointer shadow-xs">
-                        <span class="material-symbols-outlined text-sm">add_circle</span>
-                        <span>+ Agregar Dispositivo a esta Sede</span>
-                    </button>
-                </div>
-                
-                <div id="devices-edit-container" class="space-y-3 max-h-80 overflow-y-auto custom-scroll pr-1">
-                    <!-- Dinámico vía JS -->
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
-                <button type="button" onclick="closeModal('modal-edit-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeModal('modal-edit-site')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold hover:bg-white transition flex items-center gap-1 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">save</span>
                     Guardar Cambios de Sede & Equipos
@@ -522,9 +642,9 @@
 <!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL PARA SEDES                     -->
 <!-- ========================================================================= -->
 <div id="modal-site-history" onclick="if(event.target === this) closeModal('modal-site-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">
-    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto custom-scroll p-5 sm:p-6 bg-[#07172b]/95">
-        <!-- CABECERA DEL HISTÓRICO -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 pb-4">
+    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#07172b]/95">
+        <!-- CABECERA DEL HISTÓRICO (FIJA) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 p-4 sm:p-5 shrink-0 bg-[#061527]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md shrink-0">
                     <span class="material-symbols-outlined text-xl">domain</span>
@@ -541,17 +661,19 @@
             <!-- CONTROLES DE RANGO TEMPORAL -->
             <div class="flex items-center gap-2 self-end sm:self-auto">
                 <div class="inline-flex rounded-lg p-1 bg-obsidian-panel border border-obsidian-border text-xs font-mono">
-                    <button type="button" onclick="loadSiteHistory('6h')" id="btn-site-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn">6H</button>
-                    <button type="button" onclick="loadSiteHistory('24h')" id="btn-site-range-24h" class="px-2.5 py-1 rounded-md bg-obsidian-purple text-white font-bold transition site-range-btn">24H</button>
-                    <button type="button" onclick="loadSiteHistory('7d')" id="btn-site-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn">7D</button>
-                    <button type="button" onclick="loadSiteHistory('30d')" id="btn-site-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn">30D</button>
+                    <button type="button" onclick="loadSiteHistory('6h')" id="btn-site-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn cursor-pointer">6H</button>
+                    <button type="button" onclick="loadSiteHistory('24h')" id="btn-site-range-24h" class="px-2.5 py-1 rounded-md bg-obsidian-purple text-white font-bold transition site-range-btn cursor-pointer">24H</button>
+                    <button type="button" onclick="loadSiteHistory('7d')" id="btn-site-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn cursor-pointer">7D</button>
+                    <button type="button" onclick="loadSiteHistory('30d')" id="btn-site-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition site-range-btn cursor-pointer">30D</button>
                 </div>
-                <button type="button" onclick="closeModal('modal-site-history')" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition" title="Cerrar">&times;</button>
+                <button type="button" onclick="closeModal('modal-site-history')" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition cursor-pointer" title="Cerrar">&times;</button>
             </div>
         </div>
 
-        <!-- 4 TARJETAS DE MÉTRICAS KPI -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <!-- CUERPO DESLIZABLE INDEPENDIENTE -->
+        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+            <!-- 4 TARJETAS DE MÉTRICAS KPI -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="glass-card rounded-xl p-3 border border-obsidian-border bg-obsidian-panel/40">
                 <div class="flex items-center justify-between text-obsidian-muted text-[10px] font-mono uppercase">
                     <span>Disponibilidad Enlace</span>
@@ -653,6 +775,7 @@
                 </table>
             </div>
         </div>
+        </div>
     </div>
 </div>
 
@@ -660,9 +783,9 @@
 <!-- MODAL TELEMETRÍA E HISTÓRICO DE DISPOSITIVO                               -->
 <!-- ========================================================================= -->
 <div id="modal-device-history" onclick="if(event.target === this) closeDeviceHistoryModal()" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-6">
-    <div class="glass-panel w-full max-w-4xl rounded-2xl border border-obsidian-border flex flex-col overflow-hidden shadow-2xl bg-[#040d1a]/95 animate-in fade-in zoom-in-95 duration-200">
-        <!-- CABECERA -->
-        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between bg-[#061527]">
+    <div class="glass-panel w-full max-w-4xl rounded-2xl border border-obsidian-border flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden shadow-2xl bg-[#040d1a]/95 animate-in fade-in zoom-in-95 duration-200">
+        <!-- CABECERA (FIJA) -->
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md">
                     <span class="material-symbols-outlined text-2xl">show_chart</span>
@@ -670,18 +793,17 @@
                 <div>
                     <h3 class="text-base font-bold text-white font-mono flex items-center gap-2">
                         <span id="hist-device-name">--</span>
-                        <span id="hist-device-slot" class="px-2 py-0.5 rounded text-[10px] bg-obsidian-panel border border-obsidian-border text-purple-300 font-mono">--</span>
                     </h3>
                     <p class="text-xs text-obsidian-muted font-mono" id="hist-device-ip">--</p>
                 </div>
             </div>
-            <button type="button" onclick="closeDeviceHistoryModal()" class="text-obsidian-muted hover:text-white p-1 rounded-lg hover:bg-white/10 transition leading-none text-xl" title="Cerrar">
+            <button type="button" onclick="closeDeviceHistoryModal()" class="text-obsidian-muted hover:text-white p-1 rounded-lg hover:bg-white/10 transition leading-none text-xl cursor-pointer" title="Cerrar">
                 &times;
             </button>
         </div>
 
-        <!-- CONTENIDO -->
-        <div class="p-6 space-y-6 overflow-y-auto max-h-[75vh] custom-scroll">
+        <!-- CONTENIDO DESLIZABLE INDEPENDIENTE -->
+        <div class="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
             <!-- SELECTOR DE RANGO Y STATS -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-1.5 p-1 bg-obsidian-panel rounded-lg border border-obsidian-border font-mono text-xs">
@@ -860,6 +982,23 @@
         else pInput.value = '';
     }
 
+    function toggleInventoryFields(checked) {
+        const c = document.getElementById('inventory-fields-container');
+        if (c) c.style.display = checked ? 'block' : 'none';
+    }
+
+    function handleInventoryActionChange(action) {
+        const createBox = document.getElementById('inventory-create-fields');
+        const linkBox = document.getElementById('inventory-link-fields');
+        if (action === 'create') {
+            if (createBox) createBox.classList.remove('hidden');
+            if (linkBox) linkBox.classList.add('hidden');
+        } else {
+            if (createBox) createBox.classList.add('hidden');
+            if (linkBox) linkBox.classList.remove('hidden');
+        }
+    }
+
     function openAddDeviceModal(siteId, siteName) {
         const form = document.getElementById('form-add-device');
         if (form) {
@@ -872,6 +1011,20 @@
         if (accessSelect) accessSelect.value = 'SSH';
         const accessPort = document.getElementById('modal-add-access-port');
         if (accessPort) accessPort.value = 22;
+
+        const syncCheck = document.getElementById('modal-sync-inventory');
+        if (syncCheck) {
+            syncCheck.checked = true;
+            toggleInventoryFields(true);
+        }
+        const createRadio = document.getElementById('inv-action-create');
+        if (createRadio) {
+            createRadio.checked = true;
+            handleInventoryActionChange('create');
+        }
+        const assetTypeSelect = document.getElementById('modal-asset-type');
+        if (assetTypeSelect) assetTypeSelect.value = 'desktop';
+
         openModal('modal-add-device');
     }
 
@@ -1258,10 +1411,9 @@
     }
 
     // --- MODAL DE HISTÓRICO & TELEMETRÍA DE DISPOSITIVO ---
-    function openDeviceHistoryModal(id, name, ip, slot) {
+    function openDeviceHistoryModal(id, name, ip, devNum = null) {
         currentDeviceId = id;
         document.getElementById('hist-device-name').innerText = name;
-        document.getElementById('hist-device-slot').innerText = 'ID #' + slot;
         document.getElementById('hist-device-ip').innerText = 'Host IP: ' + ip;
 
         openModal('modal-device-history');
@@ -1392,6 +1544,171 @@
                 }
             }
         });
+    }
+
+    function toggleAdminSiteDevices(containerId, triggerEl) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let chevron = triggerEl ? triggerEl.querySelector('.chevron-icon') : null;
+        if (!chevron && containerId.startsWith('admin-site-devices-')) {
+            const siteId = containerId.replace('admin-site-devices-', '');
+            chevron = document.getElementById('chevron-' + siteId);
+        }
+
+        const isHidden = container.classList.contains('hidden');
+        if (isHidden) {
+            container.classList.remove('hidden');
+            if (chevron) {
+                chevron.style.transform = 'rotate(180deg)';
+                chevron.classList.add('text-purple-400');
+                chevron.classList.remove('text-obsidian-muted');
+            }
+        } else {
+            container.classList.add('hidden');
+            if (chevron) {
+                chevron.style.transform = 'rotate(0deg)';
+                chevron.classList.remove('text-purple-400');
+                chevron.classList.add('text-obsidian-muted');
+            }
+        }
+    }
+
+    // --- BOTÓN UNIFICADO DESPLEGAR / PLEGAR TODAS ---
+    let allSitesExpanded = false;
+    function toggleAllAdminSites() {
+        allSitesExpanded = !allSitesExpanded;
+        const btnIcon = document.getElementById('icon-toggle-all-sites');
+        const btn = document.getElementById('btn-toggle-all-sites');
+        if (btnIcon) btnIcon.textContent = allSitesExpanded ? 'unfold_less' : 'unfold_more';
+        if (btn) btn.title = allSitesExpanded ? 'Plegar Todo' : 'Desplegar Todo';
+        const btnText = document.getElementById('text-toggle-all-sites');
+        if (btnText) btnText.textContent = allSitesExpanded ? 'Plegar Todo' : 'Desplegar Todo';
+
+        document.querySelectorAll('[id^="admin-site-devices-"]').forEach(container => {
+            const siteId = container.id.replace('admin-site-devices-', '');
+            const chevron = document.getElementById('chevron-' + siteId);
+            if (allSitesExpanded) {
+                container.classList.remove('hidden');
+                if (chevron) {
+                    chevron.style.transform = 'rotate(180deg)';
+                    chevron.classList.add('text-purple-400');
+                    chevron.classList.remove('text-obsidian-muted');
+                }
+            } else {
+                container.classList.add('hidden');
+                if (chevron) {
+                    chevron.style.transform = 'rotate(0deg)';
+                    chevron.classList.remove('text-purple-400');
+                    chevron.classList.add('text-obsidian-muted');
+                }
+            }
+        });
+    }
+
+    // --- REORDENAMIENTO DE SEDES VÍA DRAG & DROP (NATIVO HTML5) ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const list = document.getElementById('sites-sortable-list');
+        if (!list) return;
+
+        let draggedItem = null;
+
+        list.addEventListener('dragstart', (e) => {
+            const card = e.target.closest('.site-draggable-card');
+            if (!card) return;
+
+            draggedItem = card;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', card.getAttribute('data-site-id'));
+
+            setTimeout(() => {
+                card.classList.add('opacity-40', 'border-purple-500', 'scale-[0.99]', 'shadow-2xl', 'shadow-purple-950/80');
+            }, 0);
+        });
+
+        list.addEventListener('dragend', (e) => {
+            const card = e.target.closest('.site-draggable-card');
+            if (card) {
+                card.classList.remove('opacity-40', 'border-purple-500', 'scale-[0.99]', 'shadow-2xl', 'shadow-purple-950/80');
+            }
+            draggedItem = null;
+        });
+
+        list.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            const targetCard = e.target.closest('.site-draggable-card');
+            if (!targetCard || targetCard === draggedItem) return;
+
+            const rect = targetCard.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+
+            if (e.clientY < midpoint) {
+                list.insertBefore(draggedItem, targetCard);
+            } else {
+                list.insertBefore(draggedItem, targetCard.nextSibling);
+            }
+        });
+
+        list.addEventListener('drop', (e) => {
+            e.preventDefault();
+            saveSitesOrder();
+        });
+    });
+
+    let reorderDebounce = null;
+    function saveSitesOrder() {
+        clearTimeout(reorderDebounce);
+        reorderDebounce = setTimeout(() => {
+            const cards = document.querySelectorAll('#sites-sortable-list .site-draggable-card');
+            const order = Array.from(cards).map(c => parseInt(c.getAttribute('data-site-id'))).filter(Boolean);
+
+            if (!order.length) return;
+
+            fetch('{{ route('admin.sites.reorder') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ order: order })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showSitesToast('✅ ' + data.message);
+                } else {
+                    showSitesToast('❌ ' + (data.message || 'Error guardando orden'), true);
+                }
+            })
+            .catch(err => {
+                console.error('Error guardando orden de sedes:', err);
+                showSitesToast('❌ Error de comunicación al guardar orden', true);
+            });
+        }, 250);
+    }
+
+    function showSitesToast(message, isError = false) {
+        const toast = document.getElementById('sites-toast');
+        const msgEl = document.getElementById('sites-toast-msg');
+        const iconEl = document.getElementById('sites-toast-icon');
+        if (!toast || !msgEl) return;
+
+        msgEl.textContent = message;
+        if (iconEl) {
+            iconEl.textContent = isError ? 'error' : 'check_circle';
+            iconEl.className = 'material-symbols-outlined text-base shrink-0 ' + (isError ? 'text-red-400' : 'text-cyan-400');
+        }
+
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 2500);
     }
 </script>
 @endsection

@@ -3,18 +3,30 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateUpsSettingsRequest;
 use App\Models\AuditLog;
+use App\Models\InventoryAsset;
 use App\Models\UpsDevice;
+use App\Models\UpsPowerEvent;
 use App\Models\UpsTelemetryHistory;
-use App\Services\ClusterConfigService;
+use App\Services\Hardware\UpsHardwareService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Controlador administrativo de supervisión y telemetría de UPS.
+ * Diseñado bajo arquitectura Slim Controller (Principio S y D).
+ * La comunicación de hardware y procesos del sistema se delega a UpsHardwareService.
+ */
 class AdminUpsController extends Controller
 {
+    public function __construct(
+        protected UpsHardwareService $hardwareService
+    ) {}
+
     /**
      * Muestra el panel interactivo de monitoreo de energía y telemetría de UPS.
      */
@@ -86,7 +98,7 @@ class AdminUpsController extends Controller
             $histories = $sampled;
         }
 
-        // Cálculo de métricas adicionales
+        // Cálculo de métricas adicionales delegando a UpsHardwareService
         $loadWatts = round((($device->load_percent ?? 0) / 100.0) * 6000);
         $estimatedRuntimeMinutes = $this->calculateEstimatedRuntime(
             $device->battery_percent ?? 100,
@@ -119,10 +131,20 @@ class AdminUpsController extends Controller
             $chartTemp[] = (float) $h->temperature_c;
         }
 
+        // Últimos eventos eléctricos (micro-fluctuaciones y cortes) paginados a 5 ítems
+        $powerEvents = UpsPowerEvent::where('ups_device_id', $device->id)
+            ->orderBy('started_at', 'desc')
+            ->paginate(5, ['*'], 'events_page');
+
+        // Activos de inventario para vinculación ITAM (Regla de Oro #8)
+        $inventoryAssets = InventoryAsset::orderBy('name')->get(['id', 'name', 'ip_address', 'brand', 'model']);
+
         return view('admin.ups.index', compact(
             'device',
+            'inventoryAssets',
             'outputVoltageEquipos',
             'histories',
+            'powerEvents',
             'loadWatts',
             'estimatedRuntimeMinutes',
             'outageDurationStr',
@@ -138,9 +160,14 @@ class AdminUpsController extends Controller
 
     /**
      * Endpoint JSON para polling en tiempo real desde el dashboard.
+     * Si un usuario navega directamente en el navegador (Accept: text/html), se redirige a la vista completa /admin/ups (Error #6).
      */
-    public function live(): JsonResponse
+    public function live(Request $request): JsonResponse|RedirectResponse
     {
+        if (!$request->expectsJson() && !$request->ajax() && !str_contains($request->header('Accept', ''), 'application/json')) {
+            return redirect()->route('admin.ups.index');
+        }
+
         $device = UpsDevice::first();
 
         if (!$device) {
@@ -181,35 +208,56 @@ class AdminUpsController extends Controller
     }
 
     /**
-     * Actualiza la configuración de alertas de Telegram para el UPS.
+     * Actualiza la configuración y metadatos del UPS, sincronizando en cascada con el inventario ITAM.
      */
-    public function updateSettings(Request $request): RedirectResponse|JsonResponse
+    public function updateSettings(UpdateUpsSettingsRequest $request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
-        if (!$user || (!$user->isAdmin() && !(method_exists($user, 'hasPermission') && $user->hasPermission('ups.manage')))) {
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Acceso denegado: Se requiere rol de Administrador o permiso ups.manage para modificar la configuración de alertas.',
-                ], 403);
-            }
-            abort(403, 'Acceso denegado: Se requiere rol de Administrador o permiso ups.manage.');
-        }
-
         $device = UpsDevice::firstOrFail();
-
-        $validated = $request->validate([
-            'telegram_alert_enabled' => ['required', 'boolean'],
-            'telegram_alert_target' => ['required', 'in:owner,group'],
-        ]);
+        $validated = $request->validated();
 
         $oldEnabled = $device->telegram_alert_enabled;
         $oldTarget = $device->telegram_alert_target;
+        $oldPort = $device->serial_port;
+        $oldBaud = $device->baud_rate;
+        $oldName = $device->name;
+        $oldModel = $device->model;
+        $oldSerial = $device->serial_number;
 
-        $device->update([
+        $updates = [
             'telegram_alert_enabled' => $validated['telegram_alert_enabled'],
             'telegram_alert_target' => $validated['telegram_alert_target'],
-        ]);
+        ];
+
+        if (array_key_exists('name', $validated) && !empty($validated['name'])) {
+            $updates['name'] = trim($validated['name']);
+        }
+        if (array_key_exists('model', $validated) && !empty($validated['model'])) {
+            $updates['model'] = trim($validated['model']);
+        }
+        if (array_key_exists('serial_number', $validated)) {
+            $updates['serial_number'] = !empty($validated['serial_number']) ? trim($validated['serial_number']) : null;
+        }
+        if (!empty($validated['rating_voltage'])) {
+            $updates['rating_voltage'] = (float) $validated['rating_voltage'];
+        }
+        if (!empty($validated['rating_battery_voltage'])) {
+            $updates['rating_battery_voltage'] = (float) $validated['rating_battery_voltage'];
+        }
+        if (array_key_exists('inventory_asset_id', $validated)) {
+            $updates['inventory_asset_id'] = $validated['inventory_asset_id'] ? (int) $validated['inventory_asset_id'] : null;
+        }
+
+        if (!empty($validated['serial_port'])) {
+            $updates['serial_port'] = trim($validated['serial_port']);
+        }
+        if (!empty($validated['baud_rate'])) {
+            $updates['baud_rate'] = (int) $validated['baud_rate'];
+        }
+
+        $device->update($updates);
+
+        // Sincronización en Cascada hacia el censo ITAM (Regla de Oro #8)
+        $syncedPeripheral = $device->syncToInventoryPeripheral();
 
         // Registrar en Auditoría del Sistema
         if (class_exists(AuditLog::class) && auth()->check()) {
@@ -224,12 +272,10 @@ class AdminUpsController extends Controller
                 'auditable_id' => $device->id,
                 'entity_name' => 'Supervisión UPS',
                 'entity_label' => $device->name,
-                'description' => "Configuración de alertas de UPS modificada. Alertas: " .
-                    ($validated['telegram_alert_enabled'] ? 'Activadas' : 'Desactivadas') .
-                    ", Destino: " . ($validated['telegram_alert_target'] === 'group' ? 'Grupo Corporativo + Administrador' : 'Administrador Privado'),
-                'old_values' => ['enabled' => $oldEnabled, 'target' => $oldTarget],
-                'new_values' => ['enabled' => $validated['telegram_alert_enabled'], 'target' => $validated['telegram_alert_target']],
-                'changed_fields' => ['telegram_alert_enabled', 'telegram_alert_target'],
+                'description' => "Identidad y configuración de UPS actualizada. Modelo: {$device->model}, Puerto: {$device->serial_port} @{$device->baud_rate} bps, Sincronizado a ITAM: " . ($syncedPeripheral ? 'Sí (' . $syncedPeripheral->asset_tag . ')' : 'No'),
+                'old_values' => ['name' => $oldName, 'model' => $oldModel, 'serial' => $oldSerial, 'port' => $oldPort, 'baud' => $oldBaud, 'enabled' => $oldEnabled, 'target' => $oldTarget],
+                'new_values' => ['name' => $device->name, 'model' => $device->model, 'serial' => $device->serial_number, 'port' => $device->serial_port, 'baud' => $device->baud_rate, 'enabled' => $device->telegram_alert_enabled, 'target' => $device->telegram_alert_target],
+                'changed_fields' => array_keys($updates),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
@@ -238,41 +284,109 @@ class AdminUpsController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Configuración de alertas de UPS actualizada exitosamente.',
+                'message' => 'Identidad y configuración de UPS actualizada y sincronizada con éxito al inventario ITAM.',
+                'name' => $device->name,
+                'model' => $device->model,
+                'serial_number' => $device->serial_number,
+                'serial_port' => $device->serial_port,
+                'baud_rate' => $device->baud_rate,
+                'rating_voltage' => $device->rating_voltage,
+                'rating_battery_voltage' => $device->rating_battery_voltage,
                 'telegram_alert_enabled' => (bool) $device->telegram_alert_enabled,
                 'telegram_alert_target' => $device->telegram_alert_target,
             ]);
         }
 
-        return redirect()->route('admin.ups.index')->with('success', 'Configuración de alertas de UPS actualizada exitosamente.');
+        return redirect()->route('admin.ups.index')->with('success', 'Identidad y configuración de UPS actualizada y sincronizada con éxito.');
+    }
+
+    /**
+     * Interroga en vivo al hardware del UPS enviando instrucciones Megatec Q1, I y F.
+     */
+    public function interrogateHardware(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isAdmin() && !(method_exists($user, 'hasPermission') && $user->hasPermission('ups.manage')))) {
+            return response()->json(['success' => false, 'message' => 'Acceso denegado.'], 403);
+        }
+
+        $port = trim((string) $request->input('serial_port', ''));
+        $baud = (int) $request->input('baud_rate', 2400);
+
+        if (empty($port)) {
+            $device = UpsDevice::first();
+            $port = $device?->serial_port ?? '/dev/ttyS0';
+            $baud = $device?->baud_rate ?? 2400;
+        }
+
+        $result = $this->hardwareService->interrogateHardware($port, $baud);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Retorna la lista de puertos seriales físicos y adaptadores USB detectados en el servidor.
+     */
+    public function listPorts(): JsonResponse
+    {
+        $device = UpsDevice::first();
+        $result = $this->hardwareService->listAvailablePorts($device?->serial_port, $device?->baud_rate);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Prueba comunicación serial en vivo hacia el UPS con trama Megatec Q1.
+     */
+    public function testSerial(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isAdmin() && !(method_exists($user, 'hasPermission') && $user->hasPermission('ups.manage')))) {
+            return response()->json(['success' => false, 'message' => 'Acceso denegado.'], 403);
+        }
+
+        $port = trim((string) $request->input('serial_port', ''));
+        $baud = (int) $request->input('baud_rate', 2400);
+
+        if (empty($port)) {
+            $device = UpsDevice::first();
+            $port = $device?->serial_port ?? '/dev/ttyS0';
+            $baud = $device?->baud_rate ?? 2400;
+        }
+
+        $result = $this->hardwareService->testSerial($port, $baud);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Ejecuta escaneo completo de todos los puertos disponibles buscando el UPS.
+     */
+    public function scanPorts(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isAdmin() && !(method_exists($user, 'hasPermission') && $user->hasPermission('ups.manage')))) {
+            return response()->json(['success' => false, 'message' => 'Acceso denegado.'], 403);
+        }
+
+        $result = $this->hardwareService->scanPorts();
+
+        return response()->json($result);
     }
 
     /**
      * Calcula la autonomía estimada en minutos para banco de 16 baterías AGM (192Vdc).
      */
-    private function calculateEstimatedRuntime(int $batteryPercent, int $loadPercent): int
+    public function calculateEstimatedRuntime(int $batteryPercent, int $loadPercent): int
     {
-        $loadPct = max(5, $loadPercent);
-        $batPct = max(1, $batteryPercent);
-
-        // Banco típico de 16x 12V 7.2Ah = ~1380 Wh utilizables
-        // A carga del 8% (~480W), tiempo estimado ~80-100 min al 100% de batería.
-        $baseRuntimeAtFullBat = 650.0 / $loadPct;
-        $estMinutes = round(($batPct / 100.0) * $baseRuntimeAtFullBat);
-
-        return (int) max(1, min(600, $estMinutes));
+        return $this->hardwareService->calculateEstimatedRuntime($batteryPercent, $loadPercent);
     }
 
     /**
      * Formatea minutos a cadena legible.
      */
-    private function formatRuntime(int $minutes): string
+    public function formatRuntime(int $minutes): string
     {
-        if ($minutes < 60) {
-            return "{$minutes} min";
-        }
-        $h = floor($minutes / 60);
-        $m = $minutes % 60;
-        return $m > 0 ? "{$h}h {$m}m" : "{$h}h";
+        return $this->hardwareService->formatRuntime($minutes);
     }
 }

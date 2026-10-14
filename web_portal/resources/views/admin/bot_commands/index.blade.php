@@ -3,46 +3,77 @@
 @section('page_title', 'Comandos y Parámetros del Bot')
 
 @section('admin_content')
-<div class="space-y-6">
-    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.bot.commands.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">terminal</span>
-            <span>Comandos & Políticas</span>
-        </a>
-        <a href="{{ route('admin.bot.templates.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">edit_note</span>
-            <span>Plantillas de Mensajería</span>
-        </a>
-    </div>
-
-    <!-- ENCABEZADO -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-obsidian-card p-6 rounded-2xl border border-obsidian-border shadow-xl">
+<div class="space-y-4">
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <div class="flex items-center gap-3">
-                <span class="p-2.5 rounded-xl bg-obsidian-cyan/10 text-obsidian-cyan border border-obsidian-cyan/20">
-                    <span class="material-symbols-outlined text-2xl">terminal</span>
-                </span>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-black tracking-wide text-white uppercase">Comandos y Mensajes del Bot</h1>
-                    <p class="text-xs text-obsidian-muted mt-0.5">Gestión de comandos dinámicos, textos de ayuda y políticas operativas en el Servidor Maestro</p>
-                </div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Bot de Telegram</span>
             </div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">terminal</span>
+                Comandos y Políticas del Bot
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Gestión de comandos dinámicos, textos de ayuda y políticas operativas en el Servidor Maestro</p>
         </div>
 
-        <!-- INDICADOR FUENTE Y MODO ESCLAVO -->
-        <div class="flex items-center gap-2">
-            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </div>
-            @if($isClusterSlave)
-            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                <span class="material-symbols-outlined text-xs">lock</span>
-                <span>Solo Lectura (Modo Esclavo)</span>
-            </span>
+        <div class="flex flex-wrap items-center gap-2">
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Solo Lectura)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.bot.commands.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Comandos y Políticas de Ejecución del Bot">
+            <span class="material-symbols-outlined text-sm">terminal</span>
+            <span>Comandos &amp; Políticas</span>
+        </a>
+        <a href="{{ route('admin.bot.templates.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Plantillas de Mensajería y Reportes">
+            <span class="material-symbols-outlined text-sm">edit_note</span>
+            <span>Plantillas de Mensajería</span>
+        </a>
     </div>
 
     <!-- TABS DE NAVEGACIÓN -->
@@ -105,7 +136,7 @@
                             <th class="py-3 px-4">Comando</th>
                             <th class="py-3 px-4">Categoría</th>
                             <th class="py-3 px-4">Nivel Acceso</th>
-                            <th class="py-3 px-4">Descripción Oficial</th>
+                            <th class="py-3 px-4">Descripción Registrada</th>
                             <th class="py-3 px-4 text-center">Estado</th>
                             <th class="py-3 px-4 text-right">Acciones</th>
                         </tr>
@@ -276,71 +307,74 @@
 
 @if(!$isClusterSlave)
 <!-- MODAL DE EDICIÓN DE COMANDO -->
-<div id="editCommandModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-    <div class="bg-obsidian-card w-full max-w-xl p-6 rounded-2xl border border-obsidian-border shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        <button type="button" onclick="closeEditModal()" class="absolute top-4 right-4 text-obsidian-muted hover:text-white">
-            <span class="material-symbols-outlined">close</span>
-        </button>
-
-        <div class="flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-obsidian-cyan">edit_square</span>
-            <h3 class="text-base font-bold text-white" id="modalCommandTitle">Editar Comando</h3>
+<div id="editCommandModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden p-3 sm:p-4">
+    <div class="bg-obsidian-card w-full max-w-xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-obsidian-cyan">edit_square</span>
+                <h3 class="text-base font-bold text-white" id="modalCommandTitle">Editar Comando</h3>
+            </div>
+            <button type="button" onclick="closeEditModal()" class="text-obsidian-muted hover:text-white leading-none cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
 
-        <form id="editCommandForm" method="POST" class="space-y-4">
+        <form id="editCommandForm" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
             @method('PUT')
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Título Descriptivo</label>
-                    <input type="text" name="title" id="cmdTitle" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+            <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-obsidian-muted mb-1">Título Descriptivo</label>
+                        <input type="text" name="title" id="cmdTitle" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-obsidian-muted mb-1">Categoría</label>
+                        <select name="category" id="cmdCategory" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+                            @foreach($categories as $c)
+                            <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                            <option value="General">General</option>
+                        </select>
+                    </div>
                 </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-obsidian-muted mb-1">Nivel de Acceso</label>
+                        <select name="access_level" id="cmdAccess" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+                            <option value="all">Público / Operador (Todos)</option>
+                            <option value="admin">Administrador</option>
+                            <option value="owner">Propietario (Owner)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-obsidian-muted mb-1">Orden de Presentación</label>
+                        <input type="number" name="sort_order" id="cmdOrder" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+                    </div>
+                </div>
+
                 <div>
-                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Categoría</label>
-                    <select name="category" id="cmdCategory" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
-                        @foreach($categories as $c)
-                        <option value="{{ $c }}">{{ $c }}</option>
-                        @endforeach
-                        <option value="General">General</option>
-                    </select>
+                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Descripción Breve (1 Línea)</label>
+                    <input type="text" name="description" id="cmdDesc" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Texto de Ayuda Telegram (<code class="text-obsidian-cyan">/help [comando]</code>)</label>
+                    <textarea name="help_text" id="cmdHelp" rows="6" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl p-3 text-xs font-mono text-white focus:border-obsidian-cyan outline-none"></textarea>
+                    <span class="text-[10px] text-obsidian-muted">Soporta etiquetas HTML (&lt;b&gt;, &lt;code&gt;, &lt;i&gt;).</span>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Nivel de Acceso</label>
-                    <select name="access_level" id="cmdAccess" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
-                        <option value="all">Público / Operador (Todos)</option>
-                        <option value="admin">Administrador</option>
-                        <option value="owner">Propietario (Owner)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-obsidian-muted mb-1">Orden de Presentación</label>
-                    <input type="number" name="sort_order" id="cmdOrder" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-obsidian-muted mb-1">Descripción Breve (1 Línea)</label>
-                <input type="text" name="description" id="cmdDesc" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl px-3 py-2 text-xs text-white focus:border-obsidian-cyan outline-none">
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-obsidian-muted mb-1">Texto de Ayuda Telegram (<code class="text-obsidian-cyan">/help [comando]</code>)</label>
-                <textarea name="help_text" id="cmdHelp" rows="6" class="w-full bg-obsidian-panel border border-obsidian-border rounded-xl p-3 text-xs font-mono text-white focus:border-obsidian-cyan outline-none"></textarea>
-                <span class="text-[10px] text-obsidian-muted">Soporta etiquetas HTML (&lt;b&gt;, &lt;code&gt;, &lt;i&gt;).</span>
-            </div>
-
-            <div class="flex items-center justify-between pt-4 border-t border-obsidian-border">
-                <label class="flex items-center gap-2 text-xs text-white cursor-pointer">
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
+                <label class="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
                     <input type="checkbox" name="is_active" value="1" id="cmdActive" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan">
                     Comando Activo
                 </label>
                 <div class="flex gap-2">
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-obsidian-panel text-obsidian-muted hover:text-white text-xs font-bold transition">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl bg-obsidian-cyan text-black text-xs font-bold uppercase tracking-wider hover:bg-obsidian-cyan/90 transition shadow-lg shadow-obsidian-cyan/20">Guardar Cambios</button>
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-obsidian-panel text-obsidian-muted hover:text-white text-xs font-bold transition cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-obsidian-cyan text-black text-xs font-bold uppercase tracking-wider hover:bg-obsidian-cyan/90 transition shadow-lg shadow-obsidian-cyan/20 cursor-pointer">Guardar Cambios</button>
                 </div>
             </div>
         </form>
@@ -349,26 +383,29 @@
 @endif
 
 <!-- MODAL DE PREVISUALIZACIÓN TELEGRAM -->
-<div id="helpPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-    <div class="bg-[#182533] w-full max-w-md p-6 rounded-2xl border border-obsidian-border shadow-2xl relative text-[#e4ecf2]">
-        <button type="button" onclick="closeHelpModal()" class="absolute top-4 right-4 text-obsidian-muted hover:text-white">
-            <span class="material-symbols-outlined">close</span>
-        </button>
+<div id="helpPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden p-3 sm:p-4">
+    <div class="bg-[#182533] w-full max-w-md rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden text-[#e4ecf2]">
+        <div class="p-4 px-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#17212b]">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[#5288c1]">chat</span>
+                <div>
+                    <h4 class="text-xs font-bold text-white" id="previewBotName">Monitor Valle Seco</h4>
+                    <span class="text-[10px] text-[#7d95ab]">bot</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeHelpModal()" class="text-obsidian-muted hover:text-white leading-none cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
 
-        <div class="flex items-center gap-2 mb-4 pb-2 border-b border-white/10">
-            <span class="material-symbols-outlined text-[#5288c1]">chat</span>
-            <div>
-                <h4 class="text-xs font-bold text-white" id="previewBotName">Monitor Valle Seco</h4>
-                <span class="text-[10px] text-[#7d95ab]">bot</span>
+        <div class="p-4 sm:p-5 overflow-y-auto flex-1 custom-scroll">
+            <div class="bg-[#2b5278] p-4 rounded-2xl rounded-tl-sm text-xs leading-relaxed font-sans shadow-md" id="previewContent">
+                <!-- Inyectado vía JS -->
             </div>
         </div>
 
-        <div class="bg-[#2b5278] p-4 rounded-2xl rounded-tl-sm text-xs leading-relaxed font-sans shadow-md" id="previewContent">
-            <!-- Inyectado vía JS -->
-        </div>
-
-        <div class="mt-4 flex justify-end">
-            <button type="button" onclick="closeHelpModal()" class="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition">Cerrar</button>
+        <div class="p-3.5 px-6 border-t border-white/10 flex justify-end shrink-0 bg-[#17212b]">
+            <button type="button" onclick="closeHelpModal()" class="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition cursor-pointer">Cerrar</button>
         </div>
     </div>
 </div>

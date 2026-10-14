@@ -35,14 +35,15 @@
         </div>
     </div>
 
-    @if ($errors->any())
+    @if(isset($errors) && (is_object($errors) ? (method_exists($errors, 'any') && $errors->any()) : !empty($errors)))
         <div class="p-4 rounded-xl bg-red-950/50 border border-red-500/50 text-red-300 text-xs font-mono space-y-1">
             <div class="flex items-center gap-2 font-bold mb-1">
                 <span class="material-symbols-outlined text-base">error</span>
                 <span>Se encontraron los siguientes errores:</span>
             </div>
             <ul class="list-disc list-inside space-y-0.5 text-[11px]">
-                @foreach ($errors->all() as $error)
+                @php $allErrors = (is_object($errors) && method_exists($errors, 'all')) ? $errors->all() : (is_array($errors) ? $errors : []); @endphp
+                @foreach ($allErrors as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
@@ -206,7 +207,7 @@
                                 <span>¿Requiere modificar su información o restablecer su clave corporativa?</span>
                             </div>
                             <p class="leading-relaxed">
-                                Comuníquese con la Dirección de Tecnología o utilice las herramientas institucionales de autoservicio de contraseñas de la corporación.
+                                Comuníquese con la Dirección de Tecnología o utilice las herramientas corporativas de autoservicio de contraseñas de la corporación.
                             </p>
                         </div>
                     </div>
@@ -278,15 +279,15 @@
             @endif
 
             <!-- ============================================================== -->
-            <!-- TARJETA COMÚN: FICHA INSTITUCIONAL ATIT (FIRMA DE REPORTES)    -->
+            <!-- TARJETA COMÚN: FICHA DE IDENTIDAD ATIT (FIRMA DE REPORTES)     -->
             <!-- ============================================================== -->
             <div class="glass-card rounded-2xl p-6 border border-obsidian-cyan/40 space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border pb-3">
                     <div class="flex items-center gap-2.5">
                         <span class="material-symbols-outlined text-2xl text-obsidian-cyan">assignment_ind</span>
                         <div>
-                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha Institucional ATIT / empresa</h3>
-                            <p class="text-[11px] font-mono text-obsidian-muted">Firma oficial adjuntada a reportes de Telegram enviados desde la Web</p>
+                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Identidad ATIT / empresa</h3>
+                            <p class="text-[11px] font-mono text-obsidian-muted">Firma corporativa adjuntada a reportes de Telegram enviados desde la Web</p>
                         </div>
                     </div>
                     <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ $user->hasCompleteAtitProfile() ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
@@ -306,7 +307,7 @@
                                 <span>Título / Grado Académico</span>
                             </label>
                             <input type="text" name="academic_title" id="input_academic_title" value="{{ old('academic_title', $user->academic_title) }}" placeholder="Ej: Ing., Lic., T.S.U., Tec." class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
-                            <p class="text-[10px] text-obsidian-muted/70 mt-1">Prefijo opcional para su nombre oficial (ej: Ing.).</p>
+                            <p class="text-[10px] text-obsidian-muted/70 mt-1">Prefijo opcional para su nombre corporativo (ej: Ing.).</p>
                         </div>
 
                         <!-- CÉDULA DE IDENTIDAD -->
@@ -358,7 +359,7 @@ N° Personal: {{ $user->personal_number ?? '(Sin ficha)' }}
                     <div class="pt-2 flex justify-end">
                         <button type="submit" class="px-6 py-2.5 rounded-lg bg-obsidian-cyan text-black font-mono font-bold text-xs uppercase flex items-center gap-2 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
                             <span class="material-symbols-outlined text-base">save</span>
-                            Guardar Ficha Institucional
+                            Guardar Ficha de Identidad
                         </button>
                     </div>
                 </form>

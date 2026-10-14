@@ -3,40 +3,75 @@
 @section('page_title', 'Configuración de Proxies')
 
 @section('admin_content')
-<div class="space-y-6">
-    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.services.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">dns</span>
-            <span>Servicios Principales</span>
-        </a>
-        <a href="{{ route('admin.proxies.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">public</span>
-            <span>Proxies & Pasarelas</span>
-        </a>
-        <a href="{{ route('admin.ssl.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">lock</span>
-            <span>Certificados SSL/TLS</span>
-        </a>
-    </div>
-
+<div class="space-y-4">
     <!-- CABECERA -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <div class="flex items-center gap-2 mb-1.5">
-                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-xs font-mono font-semibold group shadow-sm">
-                    <span class="material-symbols-outlined text-sm group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
                     Dashboard
                 </a>
                 <span class="text-obsidian-border font-mono text-xs">/</span>
-                <span class="text-xs font-mono text-obsidian-muted">Proxies Corporativos</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Proxies Corporativos</span>
             </div>
-            <h2 class="text-lg font-bold text-white">Proxies Corporativos & Salidas a Internet</h2>
-            <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión</p>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">public</span>
+                Proxies Corporativos & Salidas a Internet
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Datos del Historial de conexión, pasarelas PFsense y estados de salida</p>
         </div>
-        <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan text-xs font-mono">
-            Fuente: SERVIDOR MAESTRO
+        <div class="flex flex-wrap items-center gap-2">
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Réplica)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.services.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Servicios Principales Monitoreados">
+            <span class="material-symbols-outlined text-sm">dns</span>
+            <span>Servicios Principales</span>
+        </a>
+        <a href="{{ route('admin.proxies.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Proxies Corporativos & Pasarelas">
+            <span class="material-symbols-outlined text-sm">public</span>
+            <span>Proxies & Pasarelas</span>
+        </a>
+        <a href="{{ route('admin.ssl.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Certificados de Seguridad SSL/TLS">
+            <span class="material-symbols-outlined text-sm">lock</span>
+            <span>Certificados SSL/TLS</span>
+        </a>
     </div>
 
     <!-- TABLA DE PROXIES -->
@@ -122,53 +157,55 @@
 
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_proxies')) && !$isClusterSlave)
 <!-- MODAL EDITAR PROXY (Solo Administrador) -->
-<div id="modal-edit-proxy" onclick="if(event.target === this) closeModal('modal-edit-proxy')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-edit-proxy" onclick="if(event.target === this) closeModal('modal-edit-proxy')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 px-6 shrink-0 bg-[#061527]">
             <h3 class="text-sm font-bold text-white uppercase font-mono">Editar Proxy</h3>
             <button type="button" onclick="closeModal('modal-edit-proxy')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-edit-proxy" method="POST" class="space-y-4 font-mono text-xs">
+        <form id="form-edit-proxy" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
             @method('PUT')
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1">Identificador</label>
-                    <span id="edit_p_id_badge" class="px-3 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border font-bold text-obsidian-cyan text-xs w-full block text-center">#--</span>
-                    <input type="hidden" name="letter" id="edit_p_letter" required maxlength="5"/>
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1">Identificador</label>
+                        <span id="edit_p_id_badge" class="px-3 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border font-bold text-obsidian-cyan text-xs w-full block text-center">#--</span>
+                        <input type="hidden" name="letter" id="edit_p_letter" required maxlength="5"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1">Nombre</label>
+                        <input type="text" name="name" id="edit_p_name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-obsidian-muted mb-1">Nombre</label>
-                    <input type="text" name="name" id="edit_p_name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    <label class="block text-obsidian-muted mb-1">IP y Puerto (ej. 10.20.0.1:8080)</label>
+                    <input type="text" name="ip_port" id="edit_p_ip_port" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-obsidian-muted">Credenciales (usuario:clave)</label>
+                        <span class="text-[10px] text-obsidian-cyan/90 font-mono">Dejar vacío conserva la clave</span>
+                    </div>
+                    <div class="relative">
+                        <input type="text" name="auth_userpass" id="edit_p_auth" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 pr-10 text-white font-mono text-xs placeholder:text-obsidian-muted/40" placeholder="usuario:clave"/>
+                        <button type="button" onclick="toggleAuthVisibility()" id="btn-toggle-auth" class="absolute right-2 top-1/2 -translate-y-1/2 text-obsidian-muted hover:text-white p-1 rounded transition cursor-pointer" title="Alternar visibilidad">
+                            <span class="material-symbols-outlined text-sm" id="icon-toggle-auth">visibility_off</span>
+                        </button>
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-2">
+                        <input type="checkbox" name="remove_auth" id="edit_p_remove_auth" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-red-500 focus:ring-0 cursor-pointer" onchange="handleRemoveAuthToggle(this)"/>
+                        <label for="edit_p_remove_auth" class="text-[10.5px] text-red-400/80 hover:text-red-400 cursor-pointer select-none">Remover credenciales (dejar proxy sin autenticación)</label>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" value="1" id="edit_p_active" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="edit_p_active" class="text-white">Proxy Habilitado</label>
                 </div>
             </div>
-            <div>
-                <label class="block text-obsidian-muted mb-1">IP y Puerto (ej. 10.20.0.1:8080)</label>
-                <input type="text" name="ip_port" id="edit_p_ip_port" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-            <div>
-                <div class="flex items-center justify-between mb-1">
-                    <label class="block text-obsidian-muted">Credenciales (usuario:clave)</label>
-                    <span class="text-[10px] text-obsidian-cyan/90 font-mono">Dejar vacío conserva la clave</span>
-                </div>
-                <div class="relative">
-                    <input type="text" name="auth_userpass" id="edit_p_auth" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 pr-10 text-white font-mono text-xs placeholder:text-obsidian-muted/40" placeholder="usuario:clave"/>
-                    <button type="button" onclick="toggleAuthVisibility()" id="btn-toggle-auth" class="absolute right-2 top-1/2 -translate-y-1/2 text-obsidian-muted hover:text-white p-1 rounded transition" title="Alternar visibilidad">
-                        <span class="material-symbols-outlined text-sm" id="icon-toggle-auth">visibility_off</span>
-                    </button>
-                </div>
-                <div class="mt-1.5 flex items-center gap-2">
-                    <input type="checkbox" name="remove_auth" id="edit_p_remove_auth" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-red-500 focus:ring-0 cursor-pointer" onchange="handleRemoveAuthToggle(this)"/>
-                    <label for="edit_p_remove_auth" class="text-[10.5px] text-red-400/80 hover:text-red-400 cursor-pointer select-none">Remover credenciales (dejar proxy sin autenticación)</label>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <input type="checkbox" name="is_active" value="1" id="edit_p_active" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="edit_p_active" class="text-white">Proxy Habilitado</label>
-            </div>
-            <div class="pt-3 border-t border-obsidian-border flex justify-end gap-2">
-                <button type="button" onclick="closeModal('modal-edit-proxy')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white">Cancelar</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold">Actualizar Proxy</button>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeModal('modal-edit-proxy')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold cursor-pointer">Actualizar Proxy</button>
             </div>
         </form>
     </div>
@@ -177,9 +214,9 @@
 
 <!-- MODAL HISTÓRICO Y GRÁFICO DE LÍNEA TEMPORAL PARA PROXIES -->
 <div id="modal-proxy-history" onclick="if(event.target === this) closeModal('modal-proxy-history')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">
-    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto custom-scroll p-5 sm:p-6 bg-[#07172b]/95">
-        <!-- CABECERA DEL HISTÓRICO -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 pb-4">
+    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#07172b]/95">
+        <!-- CABECERA DEL HISTÓRICO (FIJA) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 p-4 sm:p-5 shrink-0 bg-[#061527]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
                     <span class="material-symbols-outlined text-xl">public</span>
@@ -197,17 +234,19 @@
             <!-- CONTROLES DE RANGO TEMPORAL -->
             <div class="flex items-center gap-2 self-end sm:self-auto">
                 <div class="inline-flex rounded-lg p-1 bg-obsidian-panel border border-obsidian-border text-xs font-mono">
-                    <button type="button" onclick="loadProxyHistory('6h')" id="btn-proxy-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn">6H</button>
-                    <button type="button" onclick="loadProxyHistory('24h')" id="btn-proxy-range-24h" class="px-2.5 py-1 rounded-md bg-amber-400 text-black font-bold transition proxy-range-btn">24H</button>
-                    <button type="button" onclick="loadProxyHistory('7d')" id="btn-proxy-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn">7D</button>
-                    <button type="button" onclick="loadProxyHistory('30d')" id="btn-proxy-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn">30D</button>
+                    <button type="button" onclick="loadProxyHistory('6h')" id="btn-proxy-range-6h" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn cursor-pointer">6H</button>
+                    <button type="button" onclick="loadProxyHistory('24h')" id="btn-proxy-range-24h" class="px-2.5 py-1 rounded-md bg-amber-400 text-black font-bold transition proxy-range-btn cursor-pointer">24H</button>
+                    <button type="button" onclick="loadProxyHistory('7d')" id="btn-proxy-range-7d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn cursor-pointer">7D</button>
+                    <button type="button" onclick="loadProxyHistory('30d')" id="btn-proxy-range-30d" class="px-2.5 py-1 rounded-md text-obsidian-muted hover:text-white transition proxy-range-btn cursor-pointer">30D</button>
                 </div>
-                <button type="button" onclick="closeModal('modal-proxy-history')" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition" title="Cerrar">&times;</button>
+                <button type="button" onclick="closeModal('modal-proxy-history')" class="p-1.5 rounded-lg text-obsidian-muted hover:text-white hover:bg-obsidian-panel text-xl leading-none transition cursor-pointer" title="Cerrar">&times;</button>
             </div>
         </div>
 
-        <!-- 4 TARJETAS DE MÉTRICAS KPI -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <!-- CUERPO DESLIZABLE INDEPENDIENTE -->
+        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+            <!-- 4 TARJETAS DE MÉTRICAS KPI -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="glass-card rounded-xl p-3 border border-obsidian-border bg-obsidian-panel/40">
                 <div class="flex items-center justify-between text-obsidian-muted text-[10px] font-mono uppercase">
                     <span>Disponibilidad Túnel</span>
@@ -308,6 +347,7 @@
                     </tbody>
                 </table>
             </div>
+        </div>
         </div>
     </div>
 </div>

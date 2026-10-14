@@ -10,3 +10,7 @@ Artisan::command('inspire', function () {
 
 // Programar ejecución automática diaria a las 02:00 AM (Fase 8)
 Schedule::command('telemetry:housekeeping --force')->dailyAt('02:00');
+
+// Programar verificación diaria de cero datos ficticios en MariaDB (Regla de Oro #6)
+Schedule::command('audit:verify-zero-dummy-data')->dailyAt('03:00');
+

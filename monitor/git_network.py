@@ -24,10 +24,44 @@ GITHUB_TEST_URL = "https://github.com"
 
 
 def load_corporate_proxies() -> List[Dict[str, str]]:
-    """Lee y decodifica la lista de proxies configurados en config.json o bot.conf."""
+    """Lee y decodifica la lista de proxies configurados directamente desde MariaDB (SSOT)."""
     proxies = []
 
-    # 1. Intentar desde config.json
+    # 1. Cargar desde MariaDB (SSOT)
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT letter, name, ip_port, auth_userpass, is_active "
+                    "FROM monitored_proxies WHERE is_active = 1 ORDER BY letter"
+                )
+                for r in cur.fetchall():
+                    ip_port = (r.get("ip_port") or "").strip()
+                    if not ip_port:
+                        continue
+                    name = (r.get("name") or f"Proxy {r.get('letter', '')}").strip()
+                    auth = (r.get("auth_userpass") or "").strip()
+                    if auth and ":" in auth and auth != "USUARIO:CLAVE":
+                        user, pwd = auth.split(":", 1)
+                        user_enc = urllib.parse.quote(user)
+                        pwd_enc = urllib.parse.quote(pwd)
+                        url = f"http://{user_enc}:{pwd_enc}@{ip_port}"
+                    else:
+                        url = f"http://{ip_port}"
+                    proxies.append({
+                        "name": name,
+                        "url": url
+                    })
+                if proxies:
+                    return proxies
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"Error consultando proxies desde MariaDB: {e}")
+
+    # 2. Respaldo exclusivo de contingencia: config.json (sin archivos .conf)
     cfg_json = CONFIG_DIR / "config.json"
     if cfg_json.exists():
         try:
@@ -44,40 +78,6 @@ def load_corporate_proxies() -> List[Dict[str, str]]:
                     return proxies
         except Exception as e:
             logger.warning(f"Error leyendo proxies de config.json: {e}")
-
-    # 2. Leer desde bot.conf
-    bot_conf = CONFIG_DIR / "bot.conf"
-    if not bot_conf.exists():
-        bot_conf = BASE_DIR / "bot.conf"
-
-    if bot_conf.exists():
-        try:
-            content = bot_conf.read_text(encoding="utf-8")
-            data = {}
-            for line in content.splitlines():
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    data[k.strip()] = v.strip().strip("'\"")
-
-            for letter in ("A", "B", "C", "D"):
-                ip = data.get(f"IPADDRPORTPROXY{letter}")
-                auth = data.get(f"USERPASSWDPROXY{letter}")
-                name = data.get(f"NAMEPROXY{letter}", f"Proxy {letter}")
-                if ip:
-                    if auth and ":" in auth:
-                        user, pwd = auth.split(":", 1)
-                        user_enc = urllib.parse.quote(user)
-                        pwd_enc = urllib.parse.quote(pwd)
-                        url = f"http://{user_enc}:{pwd_enc}@{ip}"
-                    else:
-                        url = f"http://{ip}"
-                    proxies.append({
-                        "name": name,
-                        "url": url
-                    })
-        except Exception as e:
-            logger.warning(f"Error leyendo proxies de bot.conf: {e}")
 
     return proxies
 

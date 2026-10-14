@@ -47,12 +47,12 @@ class AdminTelegramDispatchController extends Controller
             'destination.in' => 'El destino seleccionado no es válido.',
         ]);
 
-        // Verificar si la ficha institucional está completa
+        // Verificar si la ficha de operador está completa
         if (!$user->hasCompleteAtitProfile()) {
             return response()->json([
                 'success' => false,
                 'incomplete_profile' => true,
-                'message' => 'Para enviar reportes oficiales debes registrar tu Nombre real, Cédula de Identidad, N° de Personal y Teléfono en tu perfil institucional.',
+                'message' => 'Para enviar reportes debes registrar tu Nombre real, Cédula de Identidad, N° de Personal y Teléfono en tu perfil de usuario.',
                 'profile_url' => route('admin.profile.show'),
             ], 422);
         }
@@ -65,7 +65,7 @@ class AdminTelegramDispatchController extends Controller
 
         // RESTRICCIÓN DE SEGURIDAD Y PRIVACIDAD DE ROL:
         // Los operadores tienen estrictamente restringido el envío al Owner privado.
-        // Su destino se fija de manera forzada y exclusiva al Grupo Corporativo institucional.
+        // Su destino se fija de manera forzada y exclusiva al Grupo Corporativo.
         if (!$user->isAdmin()) {
             $destination = 'group';
         }

@@ -4,63 +4,61 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS CENTRO DE ALERTAS & IA -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.alerts.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">notifications_active</span>
-            <span>Alertas & Correlación</span>
-        </a>
-        <a href="{{ route('admin.predictive.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">psychology</span>
-            <span>IA Predictiva & Salud de Enlaces</span>
-        </a>
-    </div>
-
-    <!-- ========================================================================= -->
-    <!-- ENCABEZADO Y MOTOR DE IA                                                  -->
-    <!-- ========================================================================= -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/90 backdrop-blur-md shadow-md">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-purple-950/70 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
-                <span class="material-symbols-outlined text-lg">psychology</span>
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Alertas &amp; Respaldos</span>
             </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Motor de Inteligencia Artificial Predictiva & Capacidad
-                    </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-950/80 text-purple-300 border border-purple-500/40">
-                        <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
-                        Motor Local de IA
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-400 text-2xl">psychology</span>
+                Motor de Inteligencia Artificial Predictiva &amp; Capacidad
+                <span class="w-6 h-6 rounded-md bg-purple-950/80 border border-purple-500/40 text-purple-300 inline-flex items-center justify-center cursor-help" title="Motor Local de IA Activo">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                </span>
+                @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('predictive.run') && !auth()->user()->hasPermission('predictive.manage'))
+                    <span class="w-6 h-6 rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                        <span class="material-symbols-outlined text-xs">visibility</span>
                     </span>
-                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('predictive.run') && !auth()->user()->hasPermission('predictive.manage'))
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
-                            <span class="material-symbols-outlined text-[11px]">visibility</span>
-                            MODO CONSULTA
-                        </span>
-                    @endif
-                </div>
-                <p class="text-[10px] font-mono text-obsidian-muted">
-                    Inferencia estadística, detección temprana de saturación de recursos y anomalías operacionales antes del corte de servicio.
-                </p>
-            </div>
+                @endif
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Inferencia estadística, detección temprana de saturación de recursos y anomalías operacionales antes del corte de servicio</p>
         </div>
 
-        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div class="flex flex-wrap items-center gap-2">
             @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('predictive.run')))
                 <form action="{{ route('admin.predictive.run') }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                        <span class="material-symbols-outlined text-sm">auto_fix_high</span>
-                        <span>Ejecutar Análisis IA</span>
+                    <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black transition text-xs font-mono font-bold shadow-xs cursor-pointer" title="Ejecutar Análisis IA Ahora">
+                        <span class="material-symbols-outlined text-base">auto_fix_high</span>
                     </button>
                 </form>
             @endif
-            <a href="{{ route('admin.predictive.index') }}" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                <span>Refrescar</span>
+            <a href="{{ route('admin.predictive.index') }}" class="p-2 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/50 transition cursor-pointer shadow-xs" title="Refrescar">
+                <span class="material-symbols-outlined text-base">refresh</span>
             </a>
         </div>
+    </div>
+
+    <!-- PESTAÑAS HUB ALERTAS & RESPALDOS (PANEL DE NAVEGACIÓN UNIFICADO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.alerts.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Sistema Inteligente de Alertas y Correlación de Incidentes">
+            <span class="material-symbols-outlined text-sm">notifications_active</span>
+            <span>Alertas &amp; Correlación</span>
+        </a>
+        <a href="{{ route('admin.configs.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.configs.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Respaldos y Auditoría de Configuraciones de Red (GitOps)">
+            <span class="material-symbols-outlined text-sm">settings_backup_restore</span>
+            <span>Respaldos de Configuración</span>
+        </a>
+        <a href="{{ route('admin.predictive.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="IA Predictiva &amp; Salud de Enlaces">
+            <span class="material-symbols-outlined text-sm">psychology</span>
+            <span>IA Predictiva &amp; Salud de Enlaces</span>
+        </a>
     </div>
 
     <!-- ========================================================================= -->
@@ -192,8 +190,18 @@
                                 <div class="text-[10px] text-obsidian-muted mt-1">Confianza: <span class="text-white font-bold">{{ $ano->confidence }}%</span></div>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="font-bold text-white uppercase">{{ str_replace('_', ' ', $ano->entity_type) }} #{{ $ano->entity_id }}</div>
-                                <div class="text-[10px] text-cyan-300">Métrica: {{ $ano->metric_name ?? 'Global' }}</div>
+                                @php
+                                    $res = $ano->resolved_entity;
+                                @endphp
+                                @if($res)
+                                    <a href="{{ $res['url'] }}" class="font-bold text-white hover:text-cyan-300 transition block truncate max-w-[200px]" title="Ver ficha en {{ $res['type_label'] }}">
+                                        {{ $res['name'] }}
+                                    </a>
+                                    <div class="text-[10px] text-cyan-300 font-mono">{{ $res['ip'] ?? $res['type_label'] }}</div>
+                                @else
+                                    <div class="font-bold text-white uppercase">{{ str_replace('_', ' ', $ano->entity_type) }} #{{ $ano->entity_id }}</div>
+                                    <div class="text-[10px] text-cyan-300">Métrica: {{ $ano->metric_name ?? 'Global' }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 max-w-xs text-obsidian-text">
                                 {{ $ano->description }}

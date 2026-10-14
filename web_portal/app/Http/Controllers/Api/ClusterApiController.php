@@ -12,15 +12,24 @@ use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Contracts\ClusterAuditLoggerInterface;
+use App\Contracts\ClusterVerifierInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 class ClusterApiController extends Controller
 {
     protected ClusterConfigService $clusterService;
+    protected ClusterVerifierInterface $verifier;
+    protected ClusterAuditLoggerInterface $auditLogger;
 
-    public function __construct(ClusterConfigService $clusterService)
-    {
+    public function __construct(
+        ClusterConfigService $clusterService,
+        ClusterVerifierInterface $verifier,
+        ClusterAuditLoggerInterface $auditLogger
+    ) {
         $this->clusterService = $clusterService;
+        $this->verifier = $verifier;
+        $this->auditLogger = $auditLogger;
     }
 
     /**
@@ -66,6 +75,9 @@ class ClusterApiController extends Controller
                 'proxies' => MonitoredProxy::orderBy('letter')->get(),
                 'network_devices' => MonitoredNetworkDevice::orderBy('sort_order')->get(),
                 'discovery_subnets' => \App\Models\DiscoverySubnet::all(),
+                'discovered_devices' => \App\Models\DiscoveredDevice::all(),
+                'bot_commands' => \App\Models\BotCommand::all(),
+                'bot_message_templates' => \App\Models\BotMessageTemplate::all(),
                 'snmp_oids' => \App\Models\SnmpOid::all(),
                 'snmp_devices' => \App\Models\SnmpDevice::select([
                     'id', 'name', 'ip_address', 'snmp_version', 'snmp_port',
@@ -89,6 +101,11 @@ class ClusterApiController extends Controller
                 'wol_devices' => \App\Models\WolDevice::all(),
                 'hardware_lifecycle' => \App\Models\HardwareLifecycle::all(),
                 'ups_devices' => \App\Models\UpsDevice::all(),
+                'inventory_assets' => \App\Models\InventoryAsset::all(),
+                'inventory_components' => \App\Models\InventoryComponent::all(),
+                'inventory_peripherals' => \App\Models\InventoryPeripheral::all(),
+                'inventory_assignments' => \App\Models\InventoryAssignment::all(),
+                'maintenance_tickets' => \App\Models\MaintenanceTicket::all(),
             ],
             'snmp_metrics_history' => \App\Models\SnmpMetricHistory::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
             'snmp_interface_metrics' => \App\Models\SnmpInterfaceMetric::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
@@ -113,7 +130,16 @@ class ClusterApiController extends Controller
             'snmp_metric_hourly_rollups' => \App\Models\SnmpMetricHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
             'snmp_interface_hourly_rollups' => \App\Models\SnmpInterfaceHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
             'ups_telemetry_histories' => \App\Models\UpsTelemetryHistory::where('recorded_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
+            'ups_power_events' => \App\Models\UpsPowerEvent::latest('id')->take(200)->get(),
+            'inventory_components_histories' => \App\Models\InventoryComponentHistory::latest('id')->take(500)->get(),
         ];
+
+        $this->auditLogger->logAccess(
+            $request,
+            'cluster_telemetry_sync',
+            'Sincronización de telemetría y catálogo solicitada desde ' . ($request->ip() ?: 'desconocido'),
+            ['node_role' => $this->clusterService->getNodeRole()]
+        );
 
         $acceptGzip = $request->boolean('gzip') || str_contains($request->header('Accept-Encoding', ''), 'gzip');
         if ($acceptGzip && function_exists('gzencode')) {
@@ -219,6 +245,61 @@ class ClusterApiController extends Controller
             'services' => $services,
             'last_deployment' => $lastDeployment,
             'audit_log_snippet' => $logSnippet,
+        ]);
+    }
+
+    /**
+     * Inspección remota de salud, paridad, agentes GLPI e instaladores.
+     * Cero SSH requerido. Registrado automáticamente en audit_logs.
+     */
+    public function verify(Request $request): JsonResponse
+    {
+        $scope = strtolower($request->query('scope', 'all'));
+
+        $data = match ($scope) {
+            'installers' => ['installers' => $this->verifier->verifyInstallers()],
+            'agents' => ['glpi_agents' => $this->verifier->verifyAgents()],
+            'parity' => ['runtime_parity' => $this->verifier->verifyParity()],
+            default => $this->verifier->verifyAll(),
+        };
+
+        $this->auditLogger->logAccess(
+            $request,
+            'cluster_api_verification',
+            "Inspección técnica remota (scope: {$scope}) ejecutada desde " . ($request->ip() ?: 'desconocido'),
+            ['scope' => $scope, 'status' => $data['status'] ?? 'ok']
+        );
+
+        return response()->json(array_merge([
+            'success' => true,
+            'node_role' => $this->clusterService->getNodeRole(),
+            'hostname' => gethostname(),
+            'scope' => $scope,
+        ], $data));
+    }
+
+    /**
+     * Retorna la bitácora reciente de accesos y sincronizaciones de clúster.
+     */
+    public function auditTrail(Request $request): JsonResponse
+    {
+        $limit = min(100, max(1, (int) $request->query('limit', 50)));
+        $logs = \App\Models\AuditLog::where('module', 'Cluster API')
+            ->orderBy('id', 'desc')
+            ->take($limit)
+            ->get();
+
+        $this->auditLogger->logAccess(
+            $request,
+            'cluster_audit_trail_view',
+            'Consulta de bitácora forense de clúster desde ' . ($request->ip() ?: 'desconocido'),
+            ['limit' => $limit, 'count' => $logs->count()]
+        );
+
+        return response()->json([
+            'success' => true,
+            'count' => $logs->count(),
+            'logs' => $logs,
         ]);
     }
 }

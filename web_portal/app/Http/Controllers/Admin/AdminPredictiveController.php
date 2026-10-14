@@ -65,13 +65,24 @@ class AdminPredictiveController extends Controller
     {
         $cmd = '/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/predictive_analyzer.py --analyze --json 2>&1';
         $output = shell_exec($cmd);
-        $result = json_decode($output, true);
+        $jsonStart = strpos((string) $output, '[');
+        $jsonStr = $jsonStart !== false ? substr((string) $output, $jsonStart) : (string) $output;
+        $result = json_decode($jsonStr, true);
 
         AuditLog::create([
             'user_id' => Auth::id(),
-            'action' => 'predictive_analysis_executed',
-            'details' => 'Ejecución manual del motor local de IA y análisis predictivo de telemetría.',
+            'user_name' => Auth::user()?->name ?? 'Sistema',
+            'user_email' => Auth::user()?->email,
+            'user_role' => Auth::user()?->role,
+            'event' => 'executed',
+            'module' => 'predictive',
+            'auditable_type' => PredictiveAnomaly::class,
+            'auditable_id' => null,
+            'entity_name' => 'Análisis Predictivo',
+            'entity_label' => 'Motor Local de IA',
+            'description' => 'Ejecución manual del motor local de IA y análisis predictivo de telemetría.',
             'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
 
         $count = is_array($result) ? count($result) : 0;
@@ -90,9 +101,18 @@ class AdminPredictiveController extends Controller
 
         AuditLog::create([
             'user_id' => Auth::id(),
-            'action' => 'predictive_anomaly_acknowledged',
-            'details' => "Anomalía predictiva #{$anomaly->id} marcada como atendida ({$anomaly->anomaly_type})",
+            'user_name' => Auth::user()?->name ?? 'Sistema',
+            'user_email' => Auth::user()?->email,
+            'user_role' => Auth::user()?->role,
+            'event' => 'acknowledged',
+            'module' => 'predictive',
+            'auditable_type' => PredictiveAnomaly::class,
+            'auditable_id' => $anomaly->id,
+            'entity_name' => "Anomalía Predictiva #{$anomaly->id}",
+            'entity_label' => $anomaly->anomaly_type,
+            'description' => "Anomalía predictiva #{$anomaly->id} marcada como atendida ({$anomaly->anomaly_type})",
             'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
 
         return redirect()->route('admin.predictive.index')
@@ -106,13 +126,23 @@ class AdminPredictiveController extends Controller
     {
         $anomaly = PredictiveAnomaly::findOrFail($id);
         $anomalyId = $anomaly->id;
+        $anomalyType = $anomaly->anomaly_type;
         $anomaly->delete();
 
         AuditLog::create([
             'user_id' => Auth::id(),
-            'action' => 'predictive_anomaly_deleted',
-            'details' => "Anomalía predictiva #{$anomalyId} eliminada",
+            'user_name' => Auth::user()?->name ?? 'Sistema',
+            'user_email' => Auth::user()?->email,
+            'user_role' => Auth::user()?->role,
+            'event' => 'deleted',
+            'module' => 'predictive',
+            'auditable_type' => PredictiveAnomaly::class,
+            'auditable_id' => $anomalyId,
+            'entity_name' => "Anomalía Predictiva #{$anomalyId}",
+            'entity_label' => $anomalyType,
+            'description' => "Anomalía predictiva #{$anomalyId} descartada",
             'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
 
         return redirect()->route('admin.predictive.index')

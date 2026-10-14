@@ -21,65 +21,11 @@ use Illuminate\View\View;
 class AdminSnmpController extends Controller
 {
     /**
-     * Muestra el panel principal de Dispositivos y Monitoreo SNMP.
-     * Accesible tanto para Administradores como para Operadores (Modo Consulta).
+     * Redirige al panel unificado de Radar & Telemetría SNMP (Pestaña SNMP).
      */
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
-        $statusFilter = $request->query('status');
-        $typeFilter = $request->query('device_type');
-        $siteFilter = $request->query('site_id');
-        $search = $request->query('search');
-
-        $query = SnmpDevice::with(['site', 'networkDevice', 'interfaces'])
-            ->orderByDesc('is_active')
-            ->orderBy('name');
-
-        if (!empty($statusFilter)) {
-            $query->where('last_poll_status', $statusFilter);
-        }
-
-        if (!empty($typeFilter)) {
-            $query->where('device_type', $typeFilter);
-        }
-
-        if (!empty($siteFilter)) {
-            $query->where('site_id', $siteFilter);
-        }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('ip_address', 'like', "%{$search}%")
-                  ->orWhere('vendor', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhere('sys_name', 'like', "%{$search}%");
-            });
-        }
-
-        // Métricas HUD
-        $totalDevices = SnmpDevice::count();
-        $onlineDevices = SnmpDevice::where('last_poll_status', 'success')->count();
-        $failingDevices = SnmpDevice::where('consecutive_failures', '>', 0)->count();
-        $totalInterfaces = SnmpInterface::count();
-        $monitoredInterfaces = SnmpInterface::where('is_monitored', true)->count();
-
-        $devices = $query->paginate(15)->withQueryString();
-        $sites = MonitoredSite::where('is_active', true)->orderBy('sort_order')->get();
-        $recentLogs = SnmpActivationLog::latest('executed_at')->take(5)->get();
-        $oidsCount = SnmpOid::where('is_active', true)->count();
-
-        return view('admin.snmp.index', compact(
-            'devices',
-            'sites',
-            'recentLogs',
-            'totalDevices',
-            'onlineDevices',
-            'failingDevices',
-            'totalInterfaces',
-            'monitoredInterfaces',
-            'oidsCount'
-        ));
+        return redirect()->route('admin.discovery.index', array_merge(['tab' => 'snmp'], $request->query()));
     }
 
     /**
@@ -226,7 +172,7 @@ class AdminSnmpController extends Controller
         // Lanzar descubrimiento de interfaces y sondeo inicial en segundo plano
         $this->launchAsyncCommand("/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/snmp_poller.py --interfaces {$device->id}");
 
-        return redirect()->route('admin.snmp.index')
+        return redirect()->route('admin.discovery.index', ['tab' => 'snmp'])
             ->with('status', "Dispositivo {$device->name} registrado exitosamente. Se inició el sondeo inicial en segundo plano.");
     }
 
@@ -291,7 +237,7 @@ class AdminSnmpController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        return redirect()->route('admin.snmp.index')
+        return redirect()->route('admin.discovery.index', ['tab' => 'snmp'])
             ->with('status', "Dispositivo {$device->name} actualizado correctamente.");
     }
 
@@ -329,7 +275,7 @@ class AdminSnmpController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        return redirect()->route('admin.snmp.index')
+        return redirect()->route('admin.discovery.index', ['tab' => 'snmp'])
             ->with('status', "Dispositivo {$name} eliminado.");
     }
 

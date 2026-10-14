@@ -87,7 +87,7 @@ class AuthController extends Controller
                 $telegramService->notifyUserLogin($user, $request->ip(), 'local');
 
                 $request->session()->regenerate();
-                return redirect()->intended(route('admin.dashboard'));
+                return $this->safeRedirectToIntended($request);
             }
 
             RateLimiter::hit($throttleKey, 60);
@@ -171,6 +171,33 @@ class AuthController extends Controller
             $telegramService->notifyLdapAutoRegistered($user, $request->ip());
         } else {
             $telegramService->notifyUserLogin($user, $request->ip(), 'ldap');
+        }
+
+        return $this->safeRedirectToIntended($request);
+    }
+
+    /**
+     * Obtiene la redirección segura post-login, descartando endpoints JSON, telemetría o APIs.
+     */
+    protected function safeRedirectToIntended(Request $request): RedirectResponse
+    {
+        $intended = $request->session()->get('url.intended');
+        if ($intended) {
+            $path = parse_url($intended, PHP_URL_PATH) ?? '';
+            // Si la URL intencionada es un endpoint de telemetría, live, API, o recurso no HTML, descartarla
+            if (
+                str_contains($path, '/live') ||
+                str_contains($path, '/api/') ||
+                str_contains($path, '/ajax') ||
+                str_contains($path, '/history') ||
+                str_contains($path, '/diff') ||
+                str_contains($path, '/preview') ||
+                str_ends_with($path, '.json') ||
+                str_ends_with($path, '.js') ||
+                str_ends_with($path, '.css')
+            ) {
+                $request->session()->forget('url.intended');
+            }
         }
 
         return redirect()->intended(route('admin.dashboard'));

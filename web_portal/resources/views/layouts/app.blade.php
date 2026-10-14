@@ -48,6 +48,7 @@
                         "obsidian-red": "#ef4444",
                         "obsidian-amber": "#f59e0b",
                         "obsidian-text": "#d4e4fa",
+                        "obsidian-dark": "#040b15",
                         "obsidian-muted": "#8295b0",
                     },
                     fontFamily: {
@@ -65,6 +66,9 @@
             background-color: #051424 !important;
             color: #d4e4fa !important;
             font-family: 'Inter', sans-serif;
+        }
+        input, select, textarea {
+            color-scheme: dark;
         }
         .glass-panel {
             background: rgba(11, 23, 38, 0.75);
@@ -148,8 +152,8 @@
         <div onclick="closeUserSessionModal()" class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer"></div>
 
         <!-- Contenedor del Modal Centrado -->
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
-            <div class="w-full max-w-sm glass-panel rounded-2xl border border-obsidian-border bg-[#071629]/95 p-6 shadow-2xl relative text-center space-y-5 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto border-cyan-500/20">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 pointer-events-none">
+            <div class="w-full max-w-sm glass-panel rounded-2xl border border-obsidian-border bg-[#071629]/95 p-5 sm:p-6 shadow-2xl relative text-center space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto border-cyan-500/20 max-h-[85vh] sm:max-h-[88vh] overflow-y-auto custom-scroll">
                 <!-- Botón Cerrar en esquina -->
                 <button type="button" onclick="closeUserSessionModal()" class="absolute top-4 right-4 text-obsidian-muted hover:text-white transition text-xl leading-none cursor-pointer" title="Cerrar ventana">
                     &times;
@@ -223,8 +227,8 @@
     <!-- ========================================================================= -->
     <div id="inactivity-warning-modal" class="fixed inset-0 z-[60] hidden transition-all duration-300">
         <div class="fixed inset-0 bg-black/85 backdrop-blur-md"></div>
-        <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div class="w-full max-w-sm glass-panel rounded-2xl border border-amber-500/50 bg-[#0d1829]/95 p-6 shadow-2xl relative text-center space-y-4">
+        <div class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4">
+            <div class="w-full max-w-sm glass-panel rounded-2xl border border-amber-500/50 bg-[#0d1829]/95 p-5 sm:p-6 shadow-2xl relative text-center space-y-4 max-h-[85vh] sm:max-h-[88vh] overflow-y-auto custom-scroll">
                 <div class="w-14 h-14 mx-auto rounded-full bg-amber-500/20 border border-amber-500/60 flex items-center justify-center text-amber-400 text-3xl shadow-lg shadow-amber-500/20 animate-bounce">
                     <span class="material-symbols-outlined text-3xl">timer</span>
                 </div>

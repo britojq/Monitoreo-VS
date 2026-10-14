@@ -3,63 +3,113 @@
 @section('page_title', 'Energía & UPS')
 
 @section('admin_content')
-<div class="space-y-6">
-    <!-- PESTAÑAS EQUIPOS & HARDWARE -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.devices.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">router</span>
-            <span>Dispositivos de Red</span>
-        </a>
-        <a href="{{ route('admin.lifecycle.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.lifecycle.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">inventory_2</span>
-            <span>Ciclo de Vida & Inventario</span>
-        </a>
-        <a href="{{ route('admin.wol.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">power</span>
-            <span>Wake-on-LAN (WoL)</span>
-        </a>
-        <a href="{{ route('admin.ups.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">battery_charging_full</span>
-            <span>Monitoreo UPS ZTG</span>
-        </a>
-    </div>
-
+@php
+    $canManageUps = auth()->check() && (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('ups.manage')));
+@endphp
+<div class="space-y-4">
     <!-- ========================================================================= -->
     <!-- BARRA SUPERIOR: ESTADO EN VIVO Y RESUMEN GENERAL                          -->
     <!-- ========================================================================= -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/90 border border-obsidian-border/90 backdrop-blur-md shadow-lg">
-        <div class="flex items-center gap-3">
-            <div id="ups-header-icon" class="w-10 h-10 rounded-xl {{ $device->is_on_battery ? 'bg-red-950/80 border-red-500/50 text-red-400' : 'bg-cyan-950/80 border-cyan-500/50 text-cyan-400' }} border flex items-center justify-center shrink-0 transition-colors">
-                <span class="material-symbols-outlined text-2xl" id="ups-status-icon">
-                    {{ $device->is_on_battery ? 'power_off' : 'battery_charging_full' }}
-                </span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Energía &amp; Telemetría Eléctrica</span>
             </div>
-            <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <h1 class="text-sm sm:text-base font-bold text-white uppercase font-mono tracking-wider">
-                        {{ $device->name }}
-                    </h1>
-                    <span id="ups-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold {{ $device->is_on_battery ? 'bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse' : ($device->is_online ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/60' : 'bg-slate-900 text-slate-400 border border-slate-700') }}">
-                        <span id="ups-pulse-dot" class="w-1.5 h-1.5 rounded-full {{ $device->is_on_battery ? 'bg-red-400' : ($device->is_online ? 'bg-emerald-400' : 'bg-slate-400') }}"></span>
-                        <span id="ups-status-text">{{ $device->is_on_battery ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : ($device->is_online ? 'RED COMERCIAL NORMAL' : 'DESCONECTADO') }}</span>
+            <div class="flex items-center gap-3">
+                <div id="ups-header-icon" class="w-10 h-10 rounded-xl {{ $device->is_on_battery ? 'bg-red-950/80 border-red-500/50 text-red-400' : 'bg-cyan-950/80 border-cyan-500/50 text-cyan-400' }} border flex items-center justify-center shrink-0 transition-colors">
+                    <span class="material-symbols-outlined text-2xl" id="ups-status-icon">
+                        {{ $device->is_on_battery ? 'power_off' : 'battery_charging_full' }}
                     </span>
                 </div>
-                <p class="text-[11px] font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
-                    <span>Modelo: <strong class="text-cyan-300">{{ $device->model }}</strong></span>
-                    <span>•</span>
-                    <span>Puerto: <strong class="text-white">{{ $device->serial_port }}</strong> @ {{ $device->baud_rate }} bps</span>
-                    <span>•</span>
-                    <span id="ups-last-seen" class="text-slate-400">Actualizado: {{ $device->last_seen_at ? $device->last_seen_at->diffForHumans() : 'Sin datos' }}</span>
-                </p>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl font-black text-white tracking-wide uppercase font-mono">
+                            {{ $device->name }}
+                        </h1>
+                        @if($device->is_generic)
+                        <span class="w-6 h-6 rounded-md bg-amber-950/90 text-amber-300 border border-amber-500/60 inline-flex items-center justify-center cursor-help animate-pulse" title="Pendiente de Identificación Corporativa">
+                            <span class="material-symbols-outlined text-xs">warning</span>
+                        </span>
+                        @endif
+                        <span id="ups-status-badge" class="w-6 h-6 rounded-md inline-flex items-center justify-center cursor-help {{ $device->is_on_battery ? 'bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse' : ($device->is_online ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/60' : 'bg-slate-900 text-slate-400 border border-slate-700') }}" title="{{ $device->is_on_battery ? 'Modo Batería (Corte Eléctrico Activo)' : ($device->is_online ? 'Red Comercial Normal (Alimentación Estable)' : 'UPS Desconectado') }}">
+                            <span id="ups-pulse-dot" class="w-2 h-2 rounded-full {{ $device->is_on_battery ? 'bg-red-400' : ($device->is_online ? 'bg-emerald-400' : 'bg-slate-400') }}"></span>
+                            <span id="ups-status-text" class="sr-only">{{ $device->is_on_battery ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : ($device->is_online ? 'RED COMERCIAL NORMAL' : 'DESCONECTADO') }}</span>
+                        </span>
+                    </div>
+                    <p class="text-[11px] font-mono text-obsidian-muted flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span>Modelo: <strong class="text-cyan-300">{{ $device->model }}</strong></span>
+                        <span>•</span>
+                        <span>Puerto: <strong class="text-white">{{ $device->serial_port }}</strong> @ {{ $device->baud_rate }} bps</span>
+                        <span>•</span>
+                        <span id="ups-last-seen" class="text-slate-400">Actualizado: {{ $device->last_seen_at ? $device->last_seen_at->diffForHumans() : 'Sin datos' }}</span>
+                        @if($device->inventoryAsset)
+                        <span>•</span>
+                        <a href="{{ route('admin.devices.index', ['search' => $device->inventoryAsset->ip_address]) }}" class="text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1" title="Ver ficha técnica del servidor anfitrión en ITAM">
+                            <span class="material-symbols-outlined text-xs">dns</span>
+                            <span>Anfitrión: <strong class="text-white">{{ $device->inventoryAsset->display_identity ?? $device->inventoryAsset->name }}</strong> ({{ $device->inventoryAsset->ip_address }})</span>
+                        </a>
+                        @endif
+                    </p>
+                </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 self-start sm:self-auto">
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06111f] border border-cyan-500/30 text-cyan-300 text-xs font-mono">
+        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            @if($canManageUps)
+            <button type="button" onclick="document.getElementById('panel-ups-settings')?.scrollIntoView({behavior: 'smooth'})" class="w-9 h-9 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition flex items-center justify-center shadow-xs cursor-pointer" title="Configurar Identidad y Parámetros del UPS">
+                <span class="material-symbols-outlined text-base">settings</span>
+            </button>
+            @endif
+            <span class="w-9 h-9 rounded-xl bg-[#06111f] border border-cyan-500/40 text-cyan-300 inline-flex items-center justify-center shadow-xs cursor-help" title="Sondeo Serial Activo (Frecuencia: Cada 5 Segundos)">
                 <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                <span>SONDEO SERIAL ACTIVO (5s)</span>
             </span>
         </div>
+    </div>
+
+    @if($device->is_generic)
+    <!-- ALERTA DE EQUIPO GENÉRICO / CAMBIO DE HARDWARE (REGLA DE ORO #8) -->
+    <div class="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/60 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-amber-400 text-2xl shrink-0 animate-bounce">device_unknown</span>
+            <div class="text-xs font-mono">
+                <span class="font-bold text-amber-300 uppercase tracking-wide">⚠️ Nuevo UPS Detectado en {{ $device->serial_port }}</span>
+                <p class="text-amber-200/80 text-[11px] mt-0.5">Se asignaron parámetros genéricos provisionales. Puede personalizar el nombre y modelo manualmente o usar el botón de auto-extracción para sincronizar con ITAM.</p>
+            </div>
+        </div>
+        <button type="button" onclick="document.getElementById('panel-ups-settings')?.scrollIntoView({behavior: 'smooth'})" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-mono font-bold text-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-md">
+            <span class="material-symbols-outlined text-sm">edit</span>
+            <span>Asignar Identidad</span>
+        </button>
+    </div>
+    @endif
+
+    <!-- PESTAÑAS EQUIPOS & HARDWARE (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.devices.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Equipos y Activos de Red Monitoreados">
+            <span class="material-symbols-outlined text-sm">devices</span>
+            <span>Equipos &amp; Activos</span>
+        </a>
+        <a href="{{ route('admin.inventory.peripherals.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.inventory.peripherals.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Inventario de Periféricos y Stock de Repuestos">
+            <span class="material-symbols-outlined text-sm">keyboard</span>
+            <span>Periféricos &amp; Stock</span>
+        </a>
+        <a href="{{ route('admin.inventory.deploy') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.inventory.deploy*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Despliegue Remoto Agente GLPI">
+            <span class="material-symbols-outlined text-sm">send_to_mobile</span>
+            <span>Despliegue GLPI</span>
+        </a>
+        <a href="{{ route('admin.wol.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Encendido Remoto Wake-on-LAN">
+            <span class="material-symbols-outlined text-sm">power</span>
+            <span>Wake-on-LAN (WoL)</span>
+        </a>
+        <a href="{{ route('admin.ups.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Monitoreo Serial de Energía & UPS">
+            <span class="material-symbols-outlined text-sm">battery_charging_full</span>
+            <span>Monitoreo UPS</span>
+        </a>
     </div>
 
     @if($isClusterSlave)
@@ -196,6 +246,132 @@
     </div>
 
     <!-- ========================================================================= -->
+    <!-- TABLA HISTÓRICA: MICRO-FLUCTUACIONES & FALLAS DEL SERVICIO ELÉCTRICO      -->
+    <!-- ========================================================================= -->
+    <div class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-obsidian-border/60 mb-4">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400 text-xl">electric_bolt</span>
+                <div>
+                    <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
+                        <span>Registro de Micro-Fluctuaciones &amp; Fallas de Servicio Eléctrico</span>
+                        <span class="w-5 h-5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-300 inline-flex items-center justify-center cursor-help" title="{{ $powerEvents->total() }} {{ Str::plural('evento', $powerEvents->total()) }} registrados">
+                            <span class="material-symbols-outlined text-xs">history</span>
+                        </span>
+                    </h3>
+                    <p class="text-[10px] font-mono text-obsidian-muted">
+                        Auditoría cronológica de variaciones transitorias absorbidas por batería (≤45s) y fallas comerciales confirmadas (>45s).
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-[11px] font-mono text-obsidian-muted flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Filtro Anti-Spam (45s) Activo
+                </span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+                <thead>
+                    <tr class="border-b border-obsidian-border/80 text-obsidian-muted uppercase text-[10px] tracking-wider bg-[#06111f]/60">
+                        <th class="py-2.5 px-3">Fecha</th>
+                        <th class="py-2.5 px-3">Hora de Inicio</th>
+                        <th class="py-2.5 px-3">Tipo de Falla / Evento</th>
+                        <th class="py-2.5 px-3">Duración en Batería</th>
+                        <th class="py-2.5 px-3">Voltaje Comercial</th>
+                        <th class="py-2.5 px-3">Estado</th>
+                        <th class="py-2.5 px-3">Detalle Técnico</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-obsidian-border/40">
+                    @forelse($powerEvents as $event)
+                    <tr class="hover:bg-cyan-500/5 transition">
+                        <!-- FECHA -->
+                        <td class="py-2.5 px-3 text-white font-medium whitespace-nowrap">
+                            {{ $event->started_at ? $event->started_at->timezone('America/Caracas')->format('d/m/Y') : '—' }}
+                        </td>
+
+                        <!-- HORA -->
+                        <td class="py-2.5 px-3 text-obsidian-muted whitespace-nowrap">
+                            {{ $event->started_at ? $event->started_at->timezone('America/Caracas')->format('h:i:s A') : '—' }}
+                        </td>
+
+                        <!-- TIPO DE FALLA -->
+                        <td class="py-2.5 px-3 whitespace-nowrap">
+                            @if($event->event_type === 'outage')
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/40 inline-flex items-center gap-1 shadow-sm">
+                                    <span class="material-symbols-outlined text-xs">bolt</span>
+                                    Falla de Servicio (>45s)
+                                </span>
+                            @else
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 shadow-sm">
+                                    <span class="material-symbols-outlined text-xs">offline_bolt</span>
+                                    Micro-Fluctuación (≤45s)
+                                </span>
+                            @endif
+                        </td>
+
+                        <!-- DURACIÓN EN BATERÍA -->
+                        <td class="py-2.5 px-3 text-cyan-300 font-bold whitespace-nowrap">
+                            {{ $event->duration_label }}
+                        </td>
+
+                        <!-- VOLTAJE COMERCIAL -->
+                        <td class="py-2.5 px-3 text-slate-300 whitespace-nowrap">
+                            @if($event->input_voltage !== null)
+                                <span class="{{ $event->input_voltage < 100 ? 'text-red-400 font-bold' : 'text-slate-300' }}">
+                                    {{ number_format($event->input_voltage, 1) }} VAC
+                                </span>
+                            @else
+                                <span class="text-obsidian-muted">0.0 VAC</span>
+                            @endif
+                        </td>
+
+                        <!-- ESTADO -->
+                        <td class="py-2.5 px-3 whitespace-nowrap">
+                            @if($event->status === 'resolved')
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    Resuelto
+                                </span>
+                            @else
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 inline-flex items-center gap-1 animate-pulse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                                    En Curso
+                                </span>
+                            @endif
+                        </td>
+
+                        <!-- DETALLE TÉCNICO -->
+                        <td class="py-2.5 px-3 text-obsidian-muted text-[11px] truncate max-w-[280px]" title="{{ $event->description }}">
+                            {{ $event->description ?? 'Amortiguado por inversor' }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-obsidian-muted">
+                            <span class="material-symbols-outlined text-3xl mb-1 text-obsidian-border block">check_circle</span>
+                            <p class="text-xs font-semibold text-slate-300">Sin eventos de falla ni micro-fluctuaciones</p>
+                            <p class="text-[10px] text-obsidian-muted mt-0.5">El fluido eléctrico comercial se ha mantenido estable y sin transitorios.</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINACIÓN (5 ÍTEMS) -->
+        @if($powerEvents->hasPages())
+        <div class="pt-3 mt-3 border-t border-obsidian-border/50 flex items-center justify-between">
+            {{ $powerEvents->appends(request()->query())->links('vendor.pagination.obsidian') }}
+        </div>
+        @endif
+    </div>
+
+    <!-- ========================================================================= -->
     <!-- CURVAS DE TELEMETRÍA EN TIEMPO REAL (CHART.JS)                            -->
     <!-- ========================================================================= -->
     <div class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg">
@@ -241,23 +417,92 @@
     <div class="grid grid-cols-1 {{ $canManageUps ? 'lg:grid-cols-2' : '' }} gap-6">
 
         @if($canManageUps)
-        <!-- PANEL 1: CONFIGURACIÓN DE ALERTAS TELEGRAM -->
-        <div class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg flex flex-col justify-between">
+        <!-- PANEL 1: IDENTIDAD, COMUNICACIÓN & CONFIGURACIÓN DEL UPS -->
+        <div id="panel-ups-settings" class="p-4 sm:p-5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/80 backdrop-blur-md shadow-lg flex flex-col justify-between">
             <div>
-                <div class="flex items-center gap-2 pb-3 border-b border-obsidian-border/60 mb-4">
-                    <span class="material-symbols-outlined text-purple-400 text-xl">notifications_active</span>
-                    <div>
-                        <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                            Alertas Reactivas a Telegram (Apagón & Restablecimiento)
-                        </h3>
-                        <p class="text-[10px] font-mono text-obsidian-muted">
-                            Despacho instantáneo ante eventos de corte eléctrico, batería baja o retorno de red comercial.
-                        </p>
+                <div class="flex items-center justify-between pb-3 border-b border-obsidian-border/60 mb-4 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-cyan-400 text-xl">tune</span>
+                        <div>
+                            <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
+                                Identidad, Comunicación &amp; Alertas del UPS
+                            </h3>
+                            <p class="text-[10px] font-mono text-obsidian-muted">
+                                Personalización de modelo, calibración de placa, puerto serial y sincronización con Inventario ITAM.
+                            </p>
+                        </div>
                     </div>
+                    @if(!$isClusterSlave)
+                    <button type="button" id="btn-interrogate-hw" class="px-2.5 py-1 rounded-lg bg-cyan-950/70 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+                        <span class="material-symbols-outlined text-xs">auto_fix_high</span>
+                        <span id="btn-interrogate-text">Auto-Extraer Identidad</span>
+                    </button>
+                    @endif
                 </div>
 
                 <form action="{{ route('admin.ups.settings') }}" method="POST" id="form-ups-settings" class="space-y-4">
                     @csrf
+
+                    <!-- SECCIÓN 1: IDENTIDAD DEL ACTIVO & VINCULACIÓN ITAM -->
+                    <div class="space-y-3 p-3 rounded-lg bg-[#06111f] border border-obsidian-border/70">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[11px] font-mono uppercase font-bold text-cyan-300 block tracking-wider flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-xs">badge</span>
+                                <span>Identidad del Equipo &amp; Censo ITAM</span>
+                            </label>
+                            <span class="text-[9.5px] font-mono text-obsidian-muted">Censo Maestro de Activos</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="input_ups_name" class="text-[10px] font-mono text-obsidian-muted block mb-1">Nombre Etiqueta / Rol:</label>
+                                <input type="text" name="name" id="input_ups_name" value="{{ $device->name }}" {{ $isClusterSlave ? 'disabled' : '' }} required class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500" placeholder="Ej: UPS ZTG LV6KL - Sede Valle Seco">
+                            </div>
+                            <div>
+                                <label for="input_ups_model" class="text-[10px] font-mono text-obsidian-muted block mb-1">Marca &amp; Modelo:</label>
+                                <input type="text" name="model" id="input_ups_model" value="{{ $device->model }}" {{ $isClusterSlave ? 'disabled' : '' }} required class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500" placeholder="Ej: ZTG LV6KL 6kVA">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="input_ups_serial" class="text-[10px] font-mono text-obsidian-muted block mb-1">Número de Serie:</label>
+                                <input type="text" name="serial_number" id="input_ups_serial" value="{{ $device->serial_number }}" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500" placeholder="Ej: LV6KL-VS-01">
+                            </div>
+                            <div>
+                                <label for="select_inventory_asset" class="text-[10px] font-mono text-obsidian-muted block mb-1">Servidor Anfitrión Asociado (ITAM):</label>
+                                <select name="inventory_asset_id" id="select_inventory_asset" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+                                    <option value="">-- Sin servidor anfitrión asignado --</option>
+                                    @foreach($inventoryAssets as $ast)
+                                    <option value="{{ $ast->id }}" {{ (int)($device->inventory_asset_id ?? 0) === $ast->id ? 'selected' : '' }}>
+                                        {{ $ast->name }} ({{ $ast->ip_address ?: 'Sin IP' }})
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: CALIBRACIÓN ELÉCTRICA DE PLACA -->
+                    <div class="space-y-3 p-3 rounded-lg bg-[#06111f] border border-obsidian-border/70">
+                        <label class="text-[11px] font-mono uppercase font-bold text-amber-300 block tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs">battery_charging_full</span>
+                            <span>Especificaciones de Placa &amp; Banco de Baterías</span>
+                        </label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="input_rating_voltage" class="text-[10px] font-mono text-obsidian-muted block mb-1">Tensión Nominal Salida (VAC):</label>
+                                <input type="number" step="0.1" name="rating_voltage" id="input_rating_voltage" value="{{ $device->rating_voltage ?? 208.0 }}" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+                                <span class="text-[9px] font-mono text-slate-500">Típico: 208.0V o 220.0V (Bifásica) / 120.0V</span>
+                            </div>
+                            <div>
+                                <label for="input_rating_bat_voltage" class="text-[10px] font-mono text-obsidian-muted block mb-1">Tensión Banco Baterías (Vdc):</label>
+                                <input type="number" step="0.1" name="rating_battery_voltage" id="input_rating_bat_voltage" value="{{ $device->rating_battery_voltage ?? 192.0 }}" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+                                <span class="text-[9px] font-mono text-slate-500">192Vdc = 16 bat (6kVA) | 96Vdc = 8 bat (3kVA)</span>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- TOGGLE DE ACTIVACIÓN -->
                     <div class="flex items-center justify-between p-3 rounded-lg bg-[#06111f] border border-obsidian-border/70">
@@ -302,6 +547,60 @@
                         </div>
                     </div>
 
+                    <!-- COMUNICACIÓN SERIAL (PUERTO Y VELOCIDAD) -->
+                    <div class="space-y-3 pt-3 border-t border-obsidian-border/60">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[11px] font-mono uppercase font-bold text-obsidian-muted block tracking-wider">
+                                Comunicación Serial (RS-232 / USB):
+                            </label>
+                            <button type="button" id="btn-refresh-ports" class="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition">
+                                <span class="material-symbols-outlined text-xs">sync</span>
+                                Detectar Puertos
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="serial_port_select" class="text-[10px] font-mono text-obsidian-muted block mb-1">Puerto Serial:</label>
+                                <select name="serial_port" id="serial_port_select" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#06111f] border border-obsidian-border/70 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+                                    <option value="/dev/ttyS0" {{ $device->serial_port === '/dev/ttyS0' ? 'selected' : '' }}>/dev/ttyS0 (COM 1 - Físico)</option>
+                                    <option value="/dev/ttyS1" {{ $device->serial_port === '/dev/ttyS1' ? 'selected' : '' }}>/dev/ttyS1 (COM 2 - Físico)</option>
+                                    <option value="/dev/ttyUSB0" {{ $device->serial_port === '/dev/ttyUSB0' ? 'selected' : '' }}>/dev/ttyUSB0 (Adaptador USB 1)</option>
+                                    <option value="/dev/ttyUSB1" {{ $device->serial_port === '/dev/ttyUSB1' ? 'selected' : '' }}>/dev/ttyUSB1 (Adaptador USB 2)</option>
+                                    @if(!in_array($device->serial_port, ['/dev/ttyS0', '/dev/ttyS1', '/dev/ttyUSB0', '/dev/ttyUSB1']))
+                                    <option value="{{ $device->serial_port }}" selected>{{ $device->serial_port }} (Personalizado)</option>
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="baud_rate_select" class="text-[10px] font-mono text-obsidian-muted block mb-1">Velocidad (Baudios):</label>
+                                <select name="baud_rate" id="baud_rate_select" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#06111f] border border-obsidian-border/70 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+                                    <option value="2400" {{ (int)$device->baud_rate === 2400 ? 'selected' : '' }}>2400 bps (Megatec Q1)</option>
+                                    <option value="9600" {{ (int)$device->baud_rate === 9600 ? 'selected' : '' }}>9600 bps</option>
+                                    <option value="1200" {{ (int)$device->baud_rate === 1200 ? 'selected' : '' }}>1200 bps</option>
+                                    <option value="4800" {{ (int)$device->baud_rate === 4800 ? 'selected' : '' }}>4800 bps</option>
+                                    <option value="19200" {{ (int)$device->baud_rate === 19200 ? 'selected' : '' }}>19200 bps</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- BOTONES DE DIAGNÓSTICO EN VIVO -->
+                        @if(!$isClusterSlave)
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <button type="button" id="btn-test-serial" class="py-2 px-3 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs hover:bg-cyan-900/50 hover:border-cyan-400 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">cable</span>
+                                <span id="btn-test-serial-text">Probar Comunicación</span>
+                            </button>
+                            <button type="button" id="btn-scan-ports" class="py-2 px-3 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 font-mono text-xs hover:bg-purple-900/50 hover:border-purple-400 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">search</span>
+                                <span id="btn-scan-ports-text">Escanear y Autodetectar</span>
+                            </button>
+                        </div>
+                        <div id="serial-test-feedback" class="hidden text-xs font-mono p-2.5 rounded-lg border transition-all duration-300 leading-relaxed"></div>
+                        @endif
+                    </div>
+
                     <!-- AVISO DE REGLA DE SEGURIDAD -->
                     <div class="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-[10px] font-mono text-cyan-200/80 leading-relaxed">
                         <span class="font-bold text-cyan-300">🛡️ Control de Seguridad:</span> En servidores de desarrollo o modo esclavo, las alertas dirigidas a grupo se omiten y despachan únicamente al chat privado del Administrador para evitar avisos accidentales.
@@ -311,7 +610,7 @@
                     <div class="pt-2 space-y-3">
                         <button type="submit" id="btn-save-ups-settings" class="w-full py-2.5 px-4 rounded-lg bg-obsidian-cyan text-black font-bold font-mono text-xs uppercase tracking-wider hover:bg-cyan-300 transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-cyan-950/40">
                             <span class="material-symbols-outlined text-base">save</span>
-                            <span id="btn-save-text">Guardar Configuración de Alertas</span>
+                            <span id="btn-save-text">Guardar Configuración de UPS</span>
                         </button>
                         <div id="ups-settings-feedback" class="hidden text-xs font-mono transition-all duration-300"></div>
                     </div>
@@ -601,7 +900,9 @@
     // Polling en tiempo real cada 5 segundos
     async function pollUpsLive() {
         try {
-            const resp = await fetch('{{ route("admin.ups.live") }}');
+            const resp = await fetch('{{ route("admin.ups.live") }}', {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
             if (!resp.ok) return;
             const data = await resp.json();
             if (!data.success || !data.device) return;
@@ -649,18 +950,20 @@
                 modeTitle.innerText = 'EN BATERÍA';
                 modeTitle.className = 'text-lg font-bold font-mono text-red-400';
                 modeSub.innerHTML = `<span class="text-red-300 font-bold">Corte activo: ${comp.outage_duration || 'Iniciando'}</span>`;
-                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse';
-                statusText.innerText = 'MODO BATERÍA (CORTE ELÉCTRICO)';
-                pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-red-400';
+                statusBadge.className = 'w-6 h-6 rounded-md bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse inline-flex items-center justify-center cursor-help';
+                statusBadge.title = 'Modo Batería (Corte Eléctrico Activo)';
+                if (statusText) statusText.innerText = 'MODO BATERÍA (CORTE ELÉCTRICO)';
+                pulseDot.className = 'w-2 h-2 rounded-full bg-red-400';
                 statusIcon.innerText = 'power_off';
                 headerIcon.className = 'w-10 h-10 rounded-xl bg-red-950/80 border-red-500/50 text-red-400 border flex items-center justify-center shrink-0 transition-colors';
             } else {
                 modeTitle.innerText = 'LINEA CONECTADA';
                 modeTitle.className = 'text-lg font-bold font-mono text-emerald-400';
                 modeSub.innerHTML = '<span>Alimentación de red estable (Online)</span>';
-                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-400 border border-emerald-500/60';
-                statusText.innerText = 'RED COMERCIAL NORMAL';
-                pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+                statusBadge.className = 'w-6 h-6 rounded-md bg-emerald-950/90 text-emerald-400 border border-emerald-500/60 inline-flex items-center justify-center cursor-help';
+                statusBadge.title = 'Red Comercial Normal (Alimentación Estable)';
+                if (statusText) statusText.innerText = 'RED COMERCIAL NORMAL';
+                pulseDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
                 statusIcon.innerText = 'battery_charging_full';
                 headerIcon.className = 'w-10 h-10 rounded-xl bg-cyan-950/80 border-cyan-500/50 text-cyan-400 border flex items-center justify-center shrink-0 transition-colors';
             }
@@ -727,14 +1030,208 @@
                 }
             } finally {
                 if (btn) btn.disabled = false;
-                if (btnText) btnText.innerText = 'Guardar Configuración de Alertas';
+                if (btnText) btnText.innerText = 'Guardar Configuración de UPS';
             }
         });
+    }
+
+    // Diagnóstico y Autodescubrimiento Serial de UPS (AJAX)
+    function initUpsSerialControls() {
+        const btnRefresh = document.getElementById('btn-refresh-ports');
+        const btnTest = document.getElementById('btn-test-serial');
+        const btnTestText = document.getElementById('btn-test-serial-text');
+        const btnScan = document.getElementById('btn-scan-ports');
+        const btnScanText = document.getElementById('btn-scan-ports-text');
+        const selectPort = document.getElementById('serial_port_select');
+        const selectBaud = document.getElementById('baud_rate_select');
+        const feedback = document.getElementById('serial-test-feedback');
+
+        if (btnRefresh && selectPort) {
+            btnRefresh.addEventListener('click', async () => {
+                btnRefresh.classList.add('animate-spin');
+                try {
+                    const resp = await fetch('{{ route("admin.ups.ports") }}', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    });
+                    const data = await resp.json();
+                    if (data.success && Array.isArray(data.ports)) {
+                        const currentVal = selectPort.value;
+                        selectPort.innerHTML = '';
+                        data.ports.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.path;
+                            opt.textContent = p.label;
+                            if (p.path === currentVal || p.path === data.current_port) opt.selected = true;
+                            selectPort.appendChild(opt);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Error refrescando puertos:', e);
+                } finally {
+                    btnRefresh.classList.remove('animate-spin');
+                }
+            });
+        }
+
+        if (btnTest) {
+            btnTest.addEventListener('click', async () => {
+                btnTest.disabled = true;
+                if (btnTestText) btnTestText.innerText = 'Probando enlace...';
+                if (feedback) {
+                    feedback.className = 'p-3 rounded-lg border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 text-xs font-mono flex items-center gap-2';
+                    feedback.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Enviando trama Megatec Q1 al puerto serial...</span>';
+                }
+
+                try {
+                    const resp = await fetch('{{ route("admin.ups.test-serial") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            serial_port: selectPort ? selectPort.value : null,
+                            baud_rate: selectBaud ? selectBaud.value : 2400
+                        })
+                    });
+                    const data = await resp.json();
+                    if (feedback) {
+                        if (data.success) {
+                            feedback.className = 'p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/70 text-emerald-300 text-xs font-mono flex items-start gap-2 shadow-lg';
+                            feedback.innerHTML = `<span class="material-symbols-outlined text-emerald-400 text-base shrink-0">check_circle</span><div><strong class="block text-emerald-200">¡Conexión Confirmada!</strong><span class="text-[11px]">${data.message}</span></div>`;
+                        } else {
+                            feedback.className = 'p-3 rounded-lg border border-red-500/60 bg-red-950/70 text-red-300 text-xs font-mono flex items-start gap-2 shadow-lg';
+                            feedback.innerHTML = `<span class="material-symbols-outlined text-red-400 text-base shrink-0">cancel</span><div><strong class="block text-red-200">Sin Respuesta</strong><span class="text-[11px]">${data.message}</span></div>`;
+                        }
+                    }
+                } catch (err) {
+                    if (feedback) {
+                        feedback.className = 'p-3 rounded-lg border border-red-500/60 bg-red-950/70 text-red-300 text-xs font-mono flex items-center gap-2';
+                        feedback.innerHTML = `<span class="material-symbols-outlined text-red-400 text-base">error</span><span>${err.message || 'Error de comunicación con el servidor'}</span>`;
+                    }
+                } finally {
+                    btnTest.disabled = false;
+                    if (btnTestText) btnTestText.innerText = 'Probar Comunicación';
+                }
+            });
+        }
+
+        if (btnScan) {
+            btnScan.addEventListener('click', async () => {
+                btnScan.disabled = true;
+                if (btnScanText) btnScanText.innerText = 'Escaneando puertos...';
+                if (feedback) {
+                    feedback.className = 'p-3 rounded-lg border border-purple-500/40 bg-purple-950/40 text-purple-300 text-xs font-mono flex items-center gap-2';
+                    feedback.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">radar</span><span>Escaneando puertos seriales activos a 2400 y 9600 baudios...</span>';
+                }
+
+                try {
+                    const resp = await fetch('{{ route("admin.ups.scan-ports") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const data = await resp.json();
+                    if (feedback) {
+                        if (data.success) {
+                            feedback.className = 'p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/70 text-emerald-300 text-xs font-mono flex items-start gap-2 shadow-lg';
+                            feedback.innerHTML = `<span class="material-symbols-outlined text-emerald-400 text-base shrink-0">check_circle</span><div><strong class="block text-emerald-200">¡UPS Encontrado!</strong><span class="text-[11px]">${data.message}</span></div>`;
+                            if (btnRefresh) btnRefresh.click();
+                        } else {
+                            feedback.className = 'p-3 rounded-lg border border-amber-500/60 bg-amber-950/70 text-amber-300 text-xs font-mono flex items-start gap-2 shadow-lg';
+                            feedback.innerHTML = `<span class="material-symbols-outlined text-amber-400 text-base shrink-0">info</span><div><strong class="block text-amber-200">Escaneo Finalizado</strong><span class="text-[11px]">${data.message}</span></div>`;
+                        }
+                    }
+                } catch (err) {
+                    if (feedback) {
+                        feedback.className = 'p-3 rounded-lg border border-red-500/60 bg-red-950/70 text-red-300 text-xs font-mono flex items-center gap-2';
+                        feedback.innerHTML = `<span class="material-symbols-outlined text-red-400 text-base">error</span><span>${err.message || 'Error durante el escaneo'}</span>`;
+                    }
+                } finally {
+                    btnScan.disabled = false;
+                    if (btnScanText) btnScanText.innerText = 'Escanear y Autodetectar';
+                }
+            });
+        }
+
+        const btnInterrogate = document.getElementById('btn-interrogate-hw');
+        const btnInterrogateText = document.getElementById('btn-interrogate-text');
+
+        if (btnInterrogate) {
+            btnInterrogate.addEventListener('click', async () => {
+                btnInterrogate.disabled = true;
+                if (btnInterrogateText) btnInterrogateText.innerText = 'Interrogando...';
+                if (feedback) {
+                    feedback.className = 'p-3 rounded-lg border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 text-xs font-mono flex items-center gap-2';
+                    feedback.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Consultando instrucciones Megatec I & F y descriptores USB...</span>';
+                }
+
+                try {
+                    const resp = await fetch('{{ route("admin.ups.interrogate") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            serial_port: selectPort ? selectPort.value : null,
+                            baud_rate: selectBaud ? selectBaud.value : 2400
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.success && data.data) {
+                        const info = data.data.info;
+                        const rating = data.data.rating;
+                        const usb = data.data.usb;
+
+                        let detectedModel = (info && info.model) ? info.model : (usb && usb.usb_model ? (usb.usb_vendor + ' ' + usb.usb_model).trim() : '');
+                        if (detectedModel) {
+                            const inputModel = document.getElementById('input_ups_model');
+                            const inputName = document.getElementById('input_ups_name');
+                            if (inputModel) inputModel.value = detectedModel;
+                            if (inputName) inputName.value = 'UPS ' + detectedModel + ' - Sede Valle Seco';
+                        }
+                        if (rating) {
+                            const inV = document.getElementById('input_rating_voltage');
+                            const inBat = document.getElementById('input_rating_bat_voltage');
+                            if (inV && rating.rating_voltage) inV.value = rating.rating_voltage;
+                            if (inBat && rating.rating_battery_voltage) inBat.value = rating.rating_battery_voltage;
+                        }
+                        if (feedback) {
+                            feedback.className = 'p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/70 text-emerald-300 text-xs font-mono';
+                            feedback.innerHTML = `✨ <strong>¡Datos de hardware extraídos con éxito!</strong> Revise los campos autorellenados y guarde los cambios.`;
+                        }
+                    } else {
+                        if (feedback) {
+                            feedback.className = 'p-3 rounded-lg border border-amber-500/60 bg-amber-950/70 text-amber-300 text-xs font-mono';
+                            feedback.innerHTML = `⚠️ ` + (data.message || 'El UPS no devolvió cadenas de texto legibles. Puede asignar el nombre manualmente.');
+                        }
+                    }
+                } catch (err) {
+                    if (feedback) {
+                        feedback.className = 'p-3 rounded-lg border border-red-500/60 bg-red-950/70 text-red-300 text-xs font-mono';
+                        feedback.innerHTML = `❌ Error consultando el servicio: ` + err.message;
+                    }
+                } finally {
+                    btnInterrogate.disabled = false;
+                    if (btnInterrogateText) btnInterrogateText.innerText = 'Auto-Extraer Identidad';
+                }
+            });
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         initChart();
         initUpsSettingsForm();
+        initUpsSerialControls();
         setInterval(pollUpsLive, 5000);
     });
 </script>

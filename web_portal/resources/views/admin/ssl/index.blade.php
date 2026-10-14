@@ -4,22 +4,6 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.services.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">dns</span>
-            <span>Servicios Principales</span>
-        </a>
-        <a href="{{ route('admin.proxies.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">public</span>
-            <span>Proxies & Pasarelas</span>
-        </a>
-        <a href="{{ route('admin.ssl.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">lock</span>
-            <span>Certificados SSL/TLS</span>
-        </a>
-    </div>
-
     <!-- ========================================================================= -->
     <!-- ENCABEZADO Y ACCIONES PRINCIPALES                                         -->
     <!-- ========================================================================= -->
@@ -33,14 +17,12 @@
                     <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
                         Monitoreo de Certificados SSL/TLS
                     </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40" title="Sistema de inspección criptográfica y prevención de caducidad">
+                    <span class="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 inline-flex items-center justify-center cursor-help" title="Inspección criptográfica y prevención de caducidad activo">
                         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                        ACTIVO
                     </span>
                     @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('ssl.manage') && !auth()->user()->hasPermission('ssl.recheck'))
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40" title="Modo Consulta: Acceso de lectura sin permisos de modificación">
-                            <span class="material-symbols-outlined text-[11px]">visibility</span>
-                            MODO CONSULTA
+                        <span class="w-6 h-6 rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                            <span class="material-symbols-outlined text-xs">visibility</span>
                         </span>
                     @endif
                 </div>
@@ -51,35 +33,102 @@
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Réplica)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.recheck'))
                 <!-- RE-INSPECCIONAR TODOS -->
-                <form action="{{ route('admin.ssl.recheck_all') }}" method="POST" class="inline" onsubmit="return confirm('¿Desea re-inspeccionar todos los certificados SSL ahora?');">
-                    @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs" title="Ejecutar re-inspección inmediata de todos los dominios SSL registrados">
-                        <span class="material-symbols-outlined text-sm">sync</span>
-                        <span>Escanear Todos</span>
-                    </button>
-                </form>
+                <div class="relative group">
+                    <form action="{{ route('admin.ssl.recheck_all') }}" method="POST" class="inline" onsubmit="return confirm('¿Desea re-inspeccionar todos los certificados SSL ahora?');">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition shadow-xs cursor-pointer">
+                            <span class="material-symbols-outlined text-base">sync</span>
+                        </button>
+                    </form>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">sync</span>
+                            <span class="font-bold text-cyan-200">Escanear Certificados SSL</span>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage')) && !$isClusterSlave)
                 <!-- AGREGAR DOMINIO SSL -->
-                <button type="button" onclick="openAddSslModal()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-950/30" title="Registrar un nuevo dominio HTTPS para inspección continua">
-                    <span class="material-symbols-outlined text-sm">add_circle</span>
-                    <span>+ Agregar Dominio</span>
-                </button>
+                <div class="relative group">
+                    <button type="button" onclick="openAddSslModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">lock</span>
+                        <span class="font-bold text-sm leading-none">+</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">lock</span>
+                            <span class="font-bold text-cyan-200">Agregar Dominio SSL</span>
+                        </div>
+                    </div>
+                </div>
             @elseif($isClusterSlave && (auth()->user()->isAdmin() || auth()->user()->hasPermission('ssl.manage')))
-                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                    <span class="material-symbols-outlined text-xs">lock</span>
-                    <span>Solo Lectura (Modo Esclavo)</span>
-                </span>
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.services.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Servicios Principales Monitoreados">
+            <span class="material-symbols-outlined text-sm">dns</span>
+            <span>Servicios Principales</span>
+        </a>
+        <a href="{{ route('admin.proxies.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Proxies Corporativos & Pasarelas">
+            <span class="material-symbols-outlined text-sm">public</span>
+            <span>Proxies & Pasarelas</span>
+        </a>
+        <a href="{{ route('admin.ssl.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Certificados de Seguridad SSL/TLS">
+            <span class="material-symbols-outlined text-sm">lock</span>
+            <span>Certificados SSL/TLS</span>
+        </a>
     </div>
 
     <!-- ========================================================================= -->
@@ -383,10 +432,10 @@
 <!-- ============================================================================= -->
 <!-- MODAL: DETALLES CRIPTOGRÁFICOS E HISTORIAL DE CERTIFICADO                      -->
 <!-- ============================================================================= -->
-<div id="modal-cert-details" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="relative w-full max-w-3xl rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden font-sans">
-        <!-- CABECERA -->
-        <div class="px-5 py-3 border-b border-obsidian-border bg-obsidian-panel/90 flex items-center justify-between">
+<div id="modal-cert-details" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="relative w-full max-w-3xl rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-sans">
+        <!-- CABECERA FIJA -->
+        <div class="px-5 py-3 border-b border-obsidian-border bg-obsidian-panel/90 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded-lg bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
                     <span class="material-symbols-outlined text-base">verified</span>
@@ -401,8 +450,8 @@
             </button>
         </div>
 
-        <!-- PESTAÑAS -->
-        <div class="px-5 pt-2 border-b border-obsidian-border/60 bg-obsidian-panel/40 flex items-center gap-4 text-xs font-mono">
+        <!-- PESTAÑAS FIJAS -->
+        <div class="px-5 pt-2 border-b border-obsidian-border/60 bg-obsidian-panel/40 flex items-center gap-4 text-xs font-mono shrink-0">
             <button type="button" onclick="switchCertTab('tab-general')" id="btn-tab-general" class="pb-2 border-b-2 border-cyan-400 text-cyan-300 font-bold transition">
                 Resumen & Criptografía
             </button>
@@ -414,8 +463,8 @@
             </button>
         </div>
 
-        <!-- CUERPO DEL MODAL -->
-        <div class="p-5 max-h-[70vh] overflow-y-auto custom-scroll space-y-4 text-xs">
+        <!-- CUERPO DEL MODAL DESLIZABLE -->
+        <div class="p-5 flex-1 min-h-0 overflow-y-auto custom-scroll space-y-4 text-xs">
             <!-- PESTAÑA 1: RESUMEN Y CRIPTOGRAFÍA -->
             <div id="tab-general" class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-[11px]">
@@ -491,8 +540,8 @@
             </div>
         </div>
 
-        <!-- PIE DEL MODAL -->
-        <div class="px-5 py-3 border-t border-obsidian-border bg-obsidian-panel/80 flex items-center justify-end">
+        <!-- PIE DEL MODAL FIJO -->
+        <div class="px-5 py-3 border-t border-obsidian-border bg-obsidian-panel/80 flex items-center justify-end shrink-0">
             <button type="button" onclick="closeCertDetailsModal()" class="px-4 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white hover:bg-obsidian-border transition text-xs font-mono cursor-pointer">
                 Cerrar
             </button>
@@ -504,12 +553,12 @@
 <!-- ============================================================================= -->
 <!-- MODAL: AGREGAR NUEVO DOMINIO SSL (SOLO ADMINISTRADOR)                          -->
 <!-- ============================================================================= -->
-<div id="modal-add-ssl" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="relative w-full max-w-md rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden font-sans">
-        <form action="{{ route('admin.ssl.store') }}" method="POST">
+<div id="modal-add-ssl" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="relative w-full max-w-md rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-sans">
+        <form action="{{ route('admin.ssl.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <!-- CABECERA -->
-            <div class="px-5 py-3 border-b border-obsidian-border bg-obsidian-panel/90 flex items-center justify-between">
+            <!-- CABECERA FIJA -->
+            <div class="px-5 py-3 border-b border-obsidian-border bg-obsidian-panel/90 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2.5">
                     <div class="w-7 h-7 rounded-lg bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
                         <span class="material-symbols-outlined text-base">add_moderator</span>
@@ -524,8 +573,8 @@
                 </button>
             </div>
 
-            <!-- FORMULARIO -->
-            <div class="p-5 space-y-3.5 text-xs font-mono">
+            <!-- FORMULARIO DESLIZABLE -->
+            <div class="p-5 space-y-3.5 text-xs font-mono overflow-y-auto flex-1 custom-scroll">
                 <div>
                     <label class="block text-[11px] text-cyan-300 font-bold mb-1">Nombre de Dominio o IP (FQDN):</label>
                     <input type="text" name="domain" required placeholder="ej: portal.empresa.com.ve" class="w-full bg-[#051424] border border-obsidian-border rounded-lg px-3 py-1.5 text-white placeholder-obsidian-muted focus:outline-none focus:border-cyan-500">
@@ -564,8 +613,8 @@
                 </div>
             </div>
 
-            <!-- PIE -->
-            <div class="px-5 py-3 border-t border-obsidian-border bg-obsidian-panel/80 flex items-center justify-end gap-2">
+            <!-- PIE FIJO -->
+            <div class="px-5 py-3 border-t border-obsidian-border bg-obsidian-panel/80 flex items-center justify-end gap-2 shrink-0">
                 <button type="button" onclick="closeAddSslModal()" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white transition text-xs font-mono cursor-pointer">
                     Cancelar
                 </button>

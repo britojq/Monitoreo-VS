@@ -389,13 +389,13 @@ class CleanMonitoringSeeder extends Seeder
                 'name' => 'EQUIPO 01',
                 'ip' => '10.20.27.81',
                 'mac' => '24:B6:FD:11:22:01',
-                'vendor_data' => 'Dell Inc.',
-                'access_type' => 'SSH',
-                'access_port' => 22,
-                'model' => 'Servidor de Red',
+                'vendor_data' => 'Estación PC',
+                'access_type' => 'VNC',
+                'access_port' => 5900,
+                'model' => 'Estación de Trabajo PC',
                 'serial' => '00000000',
-                'ports' => '2x GE',
-                'notes' => 'Servidor telecontrol subestación Planta Centro / Transmisión.',
+                'ports' => '1x GE',
+                'notes' => 'Estación de trabajo PC Coordinación Transmisión.',
                 'is_active' => true,
             ],
             [
@@ -403,13 +403,13 @@ class CleanMonitoringSeeder extends Seeder
                 'name' => 'EQUIPO 02',
                 'ip' => '10.20.27.82',
                 'mac' => '24:B6:FD:11:22:02',
-                'vendor_data' => 'Dell Inc.',
-                'access_type' => 'SSH',
-                'access_port' => 22,
-                'model' => 'Servidor de Red',
+                'vendor_data' => 'Estación PC',
+                'access_type' => 'VNC',
+                'access_port' => 5900,
+                'model' => 'Estación de Trabajo PC',
                 'serial' => '00000000',
-                'ports' => '2x GE',
-                'notes' => 'Servidor secundario telecontrol Transmisión.',
+                'ports' => '1x GE',
+                'notes' => 'Estación de trabajo PC Coordinación Transmisión.',
                 'is_active' => true,
             ],
             [
@@ -417,18 +417,18 @@ class CleanMonitoringSeeder extends Seeder
                 'name' => 'EQUIPO 03',
                 'ip' => '10.20.27.83',
                 'mac' => '24:B6:FD:11:22:03',
-                'vendor_data' => 'Cisco Systems',
-                'access_type' => 'TELNET',
-                'access_port' => 23,
-                'model' => 'Switch de Red',
+                'vendor_data' => 'Estación PC',
+                'access_type' => 'VNC',
+                'access_port' => 5900,
+                'model' => 'Estación de Trabajo PC',
                 'serial' => '00000000',
-                'ports' => '24x FE',
-                'notes' => 'Switch de comunicaciones Transmisión.',
+                'ports' => '1x GE',
+                'notes' => 'Estación de trabajo PC Coordinación Transmisión.',
                 'is_active' => true,
             ],
         ];
 
-        // 3. POBLAR Y SINCRONIZAR AMBAS TABLAS DE DISPOSITIVOS DE FORMA NO DESTRUCTIVA
+        // 3. POBLAR Y ACTUALIZAR TABLA MAESTRA inventory_assets DE FORMA NO DESTRUCTIVA
         $deviceOrder = 1;
         $siteCounters = [];
 
@@ -437,50 +437,37 @@ class CleanMonitoringSeeder extends Seeder
             $siteCounters[$siteId] = ($siteCounters[$siteId] ?? 0) + 1;
             $devNum = $siteCounters[$siteId];
 
-            // 1. Tabla monitored_site_devices (no destructivo)
-            $existingSiteDev = DB::table('monitored_site_devices')
-                ->where('monitored_site_id', $siteId)
-                ->where('device_number', $devNum)
-                ->first();
-
-            if (!$existingSiteDev) {
-                DB::table('monitored_site_devices')->insert([
-                    'monitored_site_id' => $siteId,
-                    'device_number' => $devNum,
-                    'ip' => $d['ip'],
-                    'name' => $d['name'],
-                    'mac' => $d['mac'],
-                    'vendor_data' => $d['vendor_data'],
-                    'access_type' => $d['access_type'],
-                    'access_port' => $d['access_port'],
-                    'model' => $d['model'],
-                    'serial' => $d['serial'],
-                    'ports' => $d['ports'],
-                    'notes' => $d['notes'],
-                    'normal_state_msg' => "✅ - {$d['name']}",
-                    'error_state_msg' => "❌ - {$d['name']}",
-                    'is_active' => $d['is_active'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Deducción de tipo de hardware ITAM
+            $upper = strtoupper($d['name'] . ' ' . ($d['model'] ?? ''));
+            $type = 'desktop';
+            if (str_contains($upper, 'ROUTER')) {
+                $type = 'router';
+            } elseif (str_contains($upper, 'SW') || str_contains($upper, 'SWITCH')) {
+                $type = 'switch';
+            } elseif (str_contains($upper, 'IMPRESORA') || str_contains($upper, 'PRINTER')) {
+                $type = 'printer';
+            } elseif (str_contains($upper, 'SERVIDOR') || str_contains($upper, 'SERVER') || str_contains($upper, 'MONITOREO')) {
+                $type = 'server';
             }
 
-            // 2. Tabla monitored_network_devices (no destructivo)
-            $existingNetDev = DB::table('monitored_network_devices')
-                ->where('ip', $d['ip'])
+            $existing = DB::table('inventory_assets')
+                ->where('ip_address', $d['ip'])
                 ->first();
 
-            if (!$existingNetDev) {
-                DB::table('monitored_network_devices')->insert([
+            if (!$existing) {
+                DB::table('inventory_assets')->insert([
                     'monitored_site_id' => $siteId,
                     'device_number' => $devNum,
                     'name' => $d['name'],
-                    'mac' => $d['mac'],
-                    'vendor_data' => $d['vendor_data'],
+                    'type' => $type,
+                    'status' => 'assigned',
+                    'brand' => $d['vendor_data'],
+                    'model' => $d['model'],
+                    'serial_number' => ($d['serial'] && $d['serial'] !== '00000000') ? $d['serial'] : ('SN-' . strtoupper(substr(md5($d['ip']), 0, 8))),
+                    'mac_address' => $d['mac'],
+                    'ip_address' => $d['ip'],
                     'access_type' => $d['access_type'],
                     'access_port' => $d['access_port'],
-                    'model' => $d['model'],
-                    'serial' => $d['serial'],
                     'ports' => $d['ports'],
                     'notes' => $d['notes'],
                     'normal_state_msg' => "✅ - {$d['name']}",
@@ -491,7 +478,22 @@ class CleanMonitoringSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
             } else {
-                $deviceOrder++;
+                DB::table('inventory_assets')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'monitored_site_id' => $siteId,
+                        'device_number' => $devNum,
+                        'name' => $d['name'],
+                        'type' => $type,
+                        'brand' => $existing->brand ?: $d['vendor_data'],
+                        'model' => $existing->model ?: $d['model'],
+                        'access_type' => $d['access_type'],
+                        'access_port' => $d['access_port'],
+                        'ports' => $d['ports'],
+                        'is_active' => $d['is_active'],
+                        'sort_order' => $deviceOrder++,
+                        'updated_at' => now(),
+                    ]);
             }
         }
 
@@ -523,46 +525,7 @@ class CleanMonitoringSeeder extends Seeder
             ['id' => 20, 'letter' => 'T', 'name' => 'Servidor de Correo CARABOBO (thunderbird)', 'type' => 'SMTP', 'scope' => 'regional', 'host_ip' => '10.18.32.6', 'web_url' => 'mailr2-t4.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 17],
         ];
 
-        // 4.1 Protección de URLs y dominios operativos reales:
-        // Cargar URLs legítimas desde config/monitoreo.conf si está presente en el servidor
-        $confServices = [];
-        $confPaths = [
-            base_path('../config/monitoreo.conf'),
-            '/scripts/telegram-admin-bot/config/monitoreo.conf',
-            base_path('config/monitoreo.conf')
-        ];
-        foreach ($confPaths as $cPath) {
-            if (file_exists($cPath)) {
-                $lines = @file($cPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-                foreach ($lines as $line) {
-                    $line = trim($line);
-                    if (str_starts_with($line, '#') || !str_contains($line, '=')) continue;
-                    [$k, $v] = explode('=', $line, 2);
-                    $k = trim($k);
-                    $v = trim(trim($v), '"\'');
-                    if (preg_match('/^(TYPESERVICE|NAMESERVICE|WEBSERVICE|IPSERVICE|TESTHOSTDNS)([A-Z])$/', $k, $m)) {
-                        $var = $m[1];
-                        $letter = $m[2];
-                        $confServices[$letter][$var] = $v;
-                    }
-                }
-                break;
-            }
-        }
-
         foreach ($services as $srv) {
-            $letter = $srv['letter'] ?? '';
-            // Si config/monitoreo.conf tiene valores reales, tienen precedencia
-            if (isset($confServices[$letter]['WEBSERVICE']) && !empty($confServices[$letter]['WEBSERVICE'])) {
-                $srv['web_url'] = $confServices[$letter]['WEBSERVICE'];
-            }
-            if (isset($confServices[$letter]['TESTHOSTDNS']) && !empty($confServices[$letter]['TESTHOSTDNS'])) {
-                $srv['dns_test_domain'] = $confServices[$letter]['TESTHOSTDNS'];
-            }
-            if (isset($confServices[$letter]['NAMESERVICE']) && !empty($confServices[$letter]['NAMESERVICE'])) {
-                $srv['name'] = $confServices[$letter]['NAMESERVICE'];
-            }
-
             // Des-sanitización automática: si el seeder fue procesado para repositorio público con 'empresa'
             $srv['web_url'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['web_url']);
             $srv['dns_test_domain'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['dns_test_domain']);

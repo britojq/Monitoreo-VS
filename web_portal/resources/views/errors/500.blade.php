@@ -158,7 +158,7 @@
         </div>
     </main>
 
-    <!-- PIE INSTITUCIONAL -->
+    <!-- PIE CORPORATIVO -->
     <footer class="relative z-10 text-center max-w-xl mx-auto space-y-1 pt-4 text-[10px] font-mono text-obsidian-muted/80">
         <p class="text-obsidian-text/80 font-semibold">
             Sistema de Monitoreo de Infraestructura • Valle Seco

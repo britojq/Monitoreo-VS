@@ -1,46 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Models\BotSetting;
 use Illuminate\Support\Facades\Log;
 
 class ClusterConfigService
 {
-    protected string $configPath = '/scripts/telegram-admin-bot/config/config.json';
-
+    /**
+     * Obtiene la configuración de cluster directamente desde MariaDB (SSOT).
+     */
     public function getConfig(): array
     {
+        $role = (string) BotSetting::get('cluster_node_role', 'master');
         $default = [
-            'node_role' => 'master',
-            'cluster_token' => '',
-            'master_api_url' => 'http://10.20.23.252',
-            'cluster_last_sync_at' => null,
-            'cluster_last_sync_status' => 'standalone',
-            'slave_sync_interval_minutes' => 2,
+            'node_role' => (strtolower($role) === 'slave') ? 'slave' : 'master',
+            'cluster_token' => (string) BotSetting::get('cluster_token', ''),
+            'master_api_url' => rtrim((string) BotSetting::get('cluster_master_api_url', 'http://10.20.23.252'), '/'),
+            'cluster_last_sync_at' => BotSetting::get('cluster_last_sync_at', null),
+            'cluster_last_sync_status' => (string) BotSetting::get('cluster_last_sync_status', 'master_active'),
+            'slave_sync_interval_minutes' => max(1, min(1440, (int) BotSetting::get('cluster_slave_sync_interval_minutes', 2))),
         ];
 
-        if (file_exists($this->configPath)) {
-            try {
-                $raw = @file_get_contents($this->configPath);
-                $data = json_decode($raw, true) ?: [];
-
-                $default['node_role'] = strtolower($data['node_role'] ?? 'master') === 'slave' ? 'slave' : 'master';
-                $default['cluster_token'] = $data['cluster_token'] ?? '';
-                $default['master_api_url'] = rtrim($data['master_api_url'] ?? 'http://10.20.23.252', '/');
-                $default['cluster_last_sync_at'] = $data['cluster_last_sync_at'] ?? null;
-                $default['cluster_last_sync_status'] = $data['cluster_last_sync_status'] ?? ($default['node_role'] === 'master' ? 'master_active' : 'pending');
-                $default['slave_sync_interval_minutes'] = max(1, min(1440, (int)($data['slave_sync_interval_minutes'] ?? 2)));
-
-                // Generar token por defecto si está vacío
-                if (empty($default['cluster_token'])) {
-                    $default['cluster_token'] = hash('sha256', 'ValleSeco_Cluster_' . ($data['bot_token'] ?? 'SecretKey2026'));
-                    $data['cluster_token'] = $default['cluster_token'];
-                    $data['node_role'] = $default['node_role'];
-                    $this->writeRawConfig($data);
-                }
-            } catch (\Throwable $e) {
-                Log::error('Error leyendo config de cluster: ' . $e->getMessage());
-            }
+        // Generar token por defecto si está vacío
+        if (empty($default['cluster_token'])) {
+            $botToken = (string) BotSetting::get('bot_token', 'SecretKey2026');
+            $default['cluster_token'] = hash('sha256', 'ValleSeco_Cluster_' . $botToken);
+            BotSetting::set('cluster_token', $default['cluster_token'], 'cluster', 'Token de Autenticación de Cluster', 'text');
+            BotSetting::set('cluster_node_role', $default['node_role'], 'cluster', 'Rol del Nodo en Cluster', 'text');
+            BotSetting::syncToFile();
         }
 
         return $default;
@@ -71,58 +61,47 @@ class ClusterConfigService
         return $this->getConfig()['master_api_url'];
     }
 
+    /**
+     * Actualiza y persiste los parámetros del cluster en MariaDB (SSOT).
+     */
     public function updateConfig(array $attributes): bool
     {
         try {
-            $data = $this->readRawConfig();
-
             if (isset($attributes['node_role'])) {
-                $role = strtolower(trim($attributes['node_role']));
-                $data['node_role'] = ($role === 'slave') ? 'slave' : 'master';
+                $role = strtolower(trim((string) $attributes['node_role']));
+                BotSetting::set('cluster_node_role', ($role === 'slave') ? 'slave' : 'master', 'cluster', 'Rol del Nodo en Cluster', 'text');
             }
 
-            if (isset($attributes['cluster_token']) && !empty(trim($attributes['cluster_token']))) {
-                $data['cluster_token'] = trim($attributes['cluster_token']);
+            if (isset($attributes['cluster_token']) && !empty(trim((string) $attributes['cluster_token']))) {
+                BotSetting::set('cluster_token', trim((string) $attributes['cluster_token']), 'cluster', 'Token de Autenticación de Cluster', 'text');
             }
 
-            if (isset($attributes['master_api_url']) && !empty(trim($attributes['master_api_url']))) {
-                $data['master_api_url'] = rtrim(trim($attributes['master_api_url']), '/');
+            if (isset($attributes['master_api_url']) && !empty(trim((string) $attributes['master_api_url']))) {
+                BotSetting::set('cluster_master_api_url', rtrim(trim((string) $attributes['master_api_url']), '/'), 'cluster', 'URL API del Nodo Maestro', 'text');
             }
 
             if (isset($attributes['cluster_last_sync_at'])) {
-                $data['cluster_last_sync_at'] = $attributes['cluster_last_sync_at'];
+                BotSetting::set('cluster_last_sync_at', (string) $attributes['cluster_last_sync_at'], 'cluster', 'Última Sincronización de Cluster', 'text');
             }
 
             if (isset($attributes['cluster_last_sync_status'])) {
-                $data['cluster_last_sync_status'] = $attributes['cluster_last_sync_status'];
+                BotSetting::set('cluster_last_sync_status', (string) $attributes['cluster_last_sync_status'], 'cluster', 'Estado de Sincronización del Cluster', 'text');
             }
 
             if (isset($attributes['slave_sync_interval_minutes'])) {
-                $data['slave_sync_interval_minutes'] = max(1, min(1440, (int)$attributes['slave_sync_interval_minutes']));
+                $interval = max(1, min(1440, (int) $attributes['slave_sync_interval_minutes']));
+                BotSetting::set('cluster_slave_sync_interval_minutes', $interval, 'cluster', 'Intervalo de Sincronización de Esclavo (minutos)', 'integer');
             }
 
-            $data['cluster_updated_at'] = date('Y-m-d H:i:s');
+            BotSetting::set('cluster_updated_at', date('Y-m-d H:i:s'), 'cluster', 'Fecha de Actualización del Cluster', 'text');
 
-            $this->writeRawConfig($data);
+            // Exportación unidireccional automática a config.json para demonios en Python
+            BotSetting::syncToFile();
+
             return true;
         } catch (\Throwable $e) {
-            Log::error('Error actualizando config de cluster: ' . $e->getMessage());
+            Log::error('Error actualizando config de cluster en MariaDB: ' . $e->getMessage());
             return false;
         }
-    }
-
-    protected function readRawConfig(): array
-    {
-        if (!file_exists($this->configPath)) {
-            return [];
-        }
-        $raw = @file_get_contents($this->configPath);
-        return json_decode($raw, true) ?: [];
-    }
-
-    protected function writeRawConfig(array $data): void
-    {
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        @file_put_contents($this->configPath, $json . "\n");
     }
 }

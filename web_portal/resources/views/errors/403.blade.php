@@ -31,7 +31,7 @@
     <!-- LÍNEAS DE CUADRÍCULA DECORATIVAS EN FONDO -->
     <div class="absolute inset-0 bg-[radial-gradient(#1c2e47_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none"></div>
 
-    <!-- CABECERA INSTITUCIONAL -->
+    <!-- CABECERA CORPORATIVA -->
     <header class="relative z-10 text-center max-w-2xl mx-auto space-y-2">
         <div class="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-red-950/80 border border-red-500/40 text-red-400 text-xs font-mono shadow-lg shadow-red-900/20">
             <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
@@ -165,7 +165,7 @@
         </div>
     </main>
 
-    <!-- PIE INSTITUCIONAL CORPORATIVO -->
+    <!-- PIE CORPORATIVO -->
     <footer class="relative z-10 text-center max-w-xl mx-auto space-y-1.5 pt-6 text-[10px] font-mono text-obsidian-muted/80">
         <p class="text-obsidian-text/80 font-semibold">
             Sistema de Monitoreo y Gestión de Red • División de Infraestructura Tecnológica

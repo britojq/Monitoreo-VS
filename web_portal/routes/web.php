@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminConfigController;
 use App\Http\Controllers\Admin\AdminCronController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminDiscoveryController;
+use App\Http\Controllers\Admin\AdminIpamController;
 use App\Http\Controllers\Admin\AdminLdapController;
 use App\Http\Controllers\Admin\AdminNetRadarController;
 use App\Http\Controllers\Admin\AdminNetworkDeviceController;
@@ -29,6 +30,13 @@ use App\Http\Controllers\Admin\AdminUpsController;
 use App\Http\Controllers\Admin\AdminWolController;
 use App\Http\Controllers\Admin\AdminPredictiveController;
 use App\Http\Controllers\Admin\AdminLifecycleController;
+use App\Http\Controllers\Admin\InventoryAssetController;
+use App\Http\Controllers\Admin\AdminPeripheralController;
+use App\Http\Controllers\Admin\AdminGlpiDeployController;
+use App\Http\Controllers\Admin\InventoryAssignmentController;
+use App\Http\Controllers\Admin\AdminInventoryAuditController;
+use App\Http\Controllers\Admin\AdminReportController;
+use App\Http\Controllers\Admin\MaintenanceTicketController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\HelpController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -38,12 +46,14 @@ use App\Http\Controllers\Admin\TelnetSessionController;
 use App\Http\Controllers\Admin\VncSessionController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PublicActaVerificationController;
 use App\Http\Controllers\PublicMonitoringController;
 use Illuminate\Support\Facades\Route;
 
 // --- VISTAS PÚBLICAS (Sin Autenticación) ---
 Route::get('/', [PublicMonitoringController::class, 'index'])->name('home');
 Route::get('/api/status', [PublicMonitoringController::class, 'apiStatus'])->name('api.status');
+Route::get('/acta/verificar/{code}', [PublicActaVerificationController::class, 'verify'])->name('public.acta.verify');
 
 // --- PREVISUALIZACIÓN DE PANTALLA DE SEGURIDAD Y BANEO (Demostración) ---
 Route::get('/preview/banned', function () {
@@ -58,6 +68,31 @@ Route::get('/preview/banned', function () {
 Route::get('/preview-403', function () {
     abort(403, 'Acceso Denegado: Su cuenta de usuario y su dirección IP han sido suspendidas por intentar manipular funciones administrativas no autorizadas.');
 });
+
+// --- RUTAS DE AUTO-DESPLIEGUE AGENTE GLPI (ITAM) ---
+Route::get('/deploy/win', function () {
+    $path = public_path('instaladores/glpi-win.ps1');
+    if (!file_exists($path)) abort(404, 'Script de despliegue Windows no encontrado.');
+    return response()->file($path, ['Content-Type' => 'text/plain; charset=utf-8']);
+})->name('deploy.win');
+
+Route::get('/deploy/linux', function () {
+    $path = public_path('instaladores/glpi-linux.sh');
+    if (!file_exists($path)) abort(404, 'Script de despliegue Linux no encontrado.');
+    return response()->file($path, ['Content-Type' => 'text/x-sh; charset=utf-8']);
+})->name('deploy.linux');
+
+Route::get('/deploy/switch/win', function () {
+    $path = public_path('instaladores/glpi-switch.ps1');
+    if (!file_exists($path)) abort(404, 'Script de conmutación Windows no encontrado.');
+    return response()->file($path, ['Content-Type' => 'text/plain; charset=utf-8']);
+})->name('deploy.switch.win');
+
+Route::get('/deploy/switch/linux', function () {
+    $path = public_path('instaladores/glpi-switch.sh');
+    if (!file_exists($path)) abort(404, 'Script de conmutación Linux no encontrado.');
+    return response()->file($path, ['Content-Type' => 'text/x-sh; charset=utf-8']);
+})->name('deploy.switch.linux');
 
 // --- AUTENTICACIÓN ---
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -76,21 +111,21 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
-    Route::get('services', [AdminServiceController::class, 'index'])->name('services.index');
-    Route::get('services/{service}/history', [AdminServiceController::class, 'history'])->name('services.history');
+    Route::get('services', [AdminServiceController::class, 'index'])->name('services.index')->middleware('permission:infra.view');
+    Route::get('services/{service}/history', [AdminServiceController::class, 'history'])->name('services.history')->middleware('permission:infra.view');
 
-    Route::get('sites', [AdminSiteController::class, 'index'])->name('sites.index');
-    Route::get('sites/{site}/history', [AdminSiteController::class, 'history'])->name('sites.history');
+    Route::get('sites', [AdminSiteController::class, 'index'])->name('sites.index')->middleware('permission:infra.view');
+    Route::get('sites/{site}/history', [AdminSiteController::class, 'history'])->name('sites.history')->middleware('permission:infra.view');
 
-    Route::get('devices', [AdminNetworkDeviceController::class, 'index'])->name('devices.index');
-    Route::get('devices/{device}/history', [AdminNetworkDeviceController::class, 'history'])->name('devices.history');
+    Route::get('devices', [AdminNetworkDeviceController::class, 'index'])->name('devices.index')->middleware('permission:infra.view');
+    Route::get('devices/{device}/history', [AdminNetworkDeviceController::class, 'history'])->name('devices.history')->middleware('permission:infra.view');
 
-    Route::get('proxies', [AdminProxyController::class, 'index'])->name('proxies.index');
-    Route::get('proxies/{proxy}/history', [AdminProxyController::class, 'history'])->name('proxies.history');
+    Route::get('proxies', [AdminProxyController::class, 'index'])->name('proxies.index')->middleware('permission:infra.view');
+    Route::get('proxies/{proxy}/history', [AdminProxyController::class, 'history'])->name('proxies.history')->middleware('permission:infra.view');
 
     // Supervisión de Energía y Telemetría de UPS
     Route::get('ups', [AdminUpsController::class, 'index'])->name('ups.index')->middleware('permission:ups.view');
-    Route::get('ups/live', [AdminUpsController::class, 'live'])->name('ups.live')->middleware('permission:ups.view');
+    Route::get('ups/live', [AdminUpsController::class, 'live'])->name('ups.live')->middleware(['permission:ups.view', 'telemetry.stateless']);
 
     // Perfil de Usuario (Accesible para Administradores y Operadores)
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
@@ -100,49 +135,49 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('ayuda', [HelpController::class, 'index'])->name('help.index');
 
     // Envíos Manuales de Reportes Oficiales a Telegram (Accesible para Operadores y Administradores)
-    Route::post('telegram/dispatch', [AdminTelegramDispatchController::class, 'dispatch'])->name('telegram.dispatch');
-    Route::post('telegram/dispatch/preview', [AdminTelegramDispatchController::class, 'preview'])->name('telegram.dispatch.preview');
-    Route::get('telegram/dispatch/status', [AdminTelegramDispatchController::class, 'getLatestDispatch'])->name('telegram.dispatch.status');
+    Route::post('telegram/dispatch', [AdminTelegramDispatchController::class, 'dispatch'])->name('telegram.dispatch')->middleware('permission:telegram.dispatch');
+    Route::post('telegram/dispatch/preview', [AdminTelegramDispatchController::class, 'preview'])->name('telegram.dispatch.preview')->middleware('permission:telegram.dispatch');
+    Route::get('telegram/dispatch/status', [AdminTelegramDispatchController::class, 'getLatestDispatch'])->name('telegram.dispatch.status')->middleware('permission:telegram.dispatch');
 
     // Control Remoto VNC (Accesible para Operadores y Administradores)
-    Route::post('vnc/session', [VncSessionController::class, 'createSession'])->name('vnc.session');
-    Route::get('vnc/viewer', [VncSessionController::class, 'viewer'])->name('vnc.viewer');
+    Route::post('vnc/session', [VncSessionController::class, 'createSession'])->name('vnc.session')->middleware('permission:remote.vnc');
+    Route::get('vnc/viewer', [VncSessionController::class, 'viewer'])->name('vnc.viewer')->middleware('permission:remote.vnc');
 
     // Control Remoto Telnet (Accesible para Operadores y Administradores)
-    Route::post('telnet/session', [TelnetSessionController::class, 'createSession'])->name('telnet.session');
-    Route::get('telnet/terminal', [TelnetSessionController::class, 'terminal'])->name('telnet.terminal');
+    Route::post('telnet/session', [TelnetSessionController::class, 'createSession'])->name('telnet.session')->middleware('permission:remote.telnet');
+    Route::get('telnet/terminal', [TelnetSessionController::class, 'terminal'])->name('telnet.terminal')->middleware('permission:remote.telnet');
 
     // Control Remoto SSH (Accesible para Operadores y Administradores)
-    Route::post('ssh/session', [SshSessionController::class, 'createSession'])->name('ssh.session');
-    Route::get('ssh/terminal', [SshSessionController::class, 'terminal'])->name('ssh.terminal');
+    Route::post('ssh/session', [SshSessionController::class, 'createSession'])->name('ssh.session')->middleware('permission:remote.ssh');
+    Route::get('ssh/terminal', [SshSessionController::class, 'terminal'])->name('ssh.terminal')->middleware('permission:remote.ssh');
 
     // Aceptación de Términos de Uso y Seguridad (Accesible para todos los usuarios autenticados)
     Route::post('terms/accept', [AdminTermsController::class, 'accept'])->name('terms.accept');
 
     // Auto-Discovery de Red y Detección Anti-Rogue (Consulta para Operador y Administrador)
-    Route::get('discovery', [AdminDiscoveryController::class, 'index'])->name('discovery.index');
-    Route::get('discovery/history/{id}', [AdminDiscoveryController::class, 'history'])->name('discovery.history');
+    Route::get('discovery', [AdminDiscoveryController::class, 'index'])->name('discovery.index')->middleware('permission:discovery.view');
+    Route::get('discovery/history/{id}', [AdminDiscoveryController::class, 'history'])->name('discovery.history')->middleware('permission:discovery.view');
 
     // Monitoreo y Telemetría SNMP (Consulta para Operador y Administrador)
-    Route::get('snmp', [AdminSnmpController::class, 'index'])->name('snmp.index');
-    Route::get('snmp/{id}', [AdminSnmpController::class, 'show'])->name('snmp.show');
-    Route::get('snmp/{id}/interfaces', [AdminSnmpController::class, 'interfaces'])->name('snmp.interfaces');
-    Route::get('snmp/interfaces/{id}/metrics', [AdminSnmpController::class, 'interfaceMetrics'])->name('snmp.interface.metrics');
+    Route::get('snmp', [AdminSnmpController::class, 'index'])->name('snmp.index')->middleware('permission:snmp.view');
+    Route::get('snmp/{id}', [AdminSnmpController::class, 'show'])->name('snmp.show')->middleware('permission:snmp.view');
+    Route::get('snmp/{id}/interfaces', [AdminSnmpController::class, 'interfaces'])->name('snmp.interfaces')->middleware('permission:snmp.view');
+    Route::get('snmp/interfaces/{id}/metrics', [AdminSnmpController::class, 'interfaceMetrics'])->name('snmp.interface.metrics')->middleware('permission:snmp.view');
 
     // Monitoreo de Certificados SSL/TLS (Consulta para Operador y Administrador)
-    Route::get('ssl', [AdminSslController::class, 'index'])->name('ssl.index');
-    Route::get('ssl/{id}', [AdminSslController::class, 'show'])->name('ssl.show');
+    Route::get('ssl', [AdminSslController::class, 'index'])->name('ssl.index')->middleware('permission:ssl.view');
+    Route::get('ssl/{id}', [AdminSslController::class, 'show'])->name('ssl.show')->middleware('permission:ssl.view');
 
     // Sistema de Alertas, Escalación y Correlación (Consulta y Gestión para Operador y Administrador)
-    Route::get('alerts', [AdminAlertController::class, 'index'])->name('alerts.index');
-    Route::get('alerts/{id}', [AdminAlertController::class, 'show'])->name('alerts.show');
+    Route::get('alerts', [AdminAlertController::class, 'index'])->name('alerts.index')->middleware('permission:alerts.view');
+    Route::get('alerts/{id}', [AdminAlertController::class, 'show'])->name('alerts.show')->middleware('permission:alerts.view');
     Route::post('alerts/{id}/ack', [AdminAlertController::class, 'acknowledge'])->name('alerts.ack');
     Route::post('alerts/{id}/silence', [AdminAlertController::class, 'silence'])->name('alerts.silence');
 
     // Respaldos y Auditoría de Configuraciones de Red (Consulta para Operador y Administrador)
-    Route::get('configs', [AdminConfigController::class, 'index'])->name('configs.index');
-    Route::get('configs/{id}', [AdminConfigController::class, 'show'])->name('configs.show');
-    Route::get('configs/{id}/diff', [AdminConfigController::class, 'diff'])->name('configs.diff');
+    Route::get('configs', [AdminConfigController::class, 'index'])->name('configs.index')->middleware('permission:cisco.view');
+    Route::get('configs/{id}', [AdminConfigController::class, 'show'])->name('configs.show')->middleware('permission:cisco.view');
+    Route::get('configs/{id}/diff', [AdminConfigController::class, 'diff'])->name('configs.diff')->middleware('permission:cisco.view');
 
     // NET Radar & Monitoreo de Tráfico / Actualizaciones (Consulta y Exportación para Operador y Administrador)
     Route::get('netradar', [AdminNetRadarController::class, 'index'])->name('netradar.index')->middleware('permission:netradar.view');
@@ -151,26 +186,94 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('netradar/export-report', [AdminNetRadarController::class, 'exportReport'])->name('netradar.exportReport')->middleware('permission:netradar.export');
     Route::post('netradar/scan', [AdminNetRadarController::class, 'scanNow'])->name('netradar.scan')->middleware('permission:netradar.scan');
 
-    // Telemetría Push en Tiempo Real (Fase 6: Traps, Syslog, NetFlow)
-    Route::get('traps', [AdminTrapController::class, 'index'])->name('traps.index');
-    Route::get('traps/{id}', [AdminTrapController::class, 'show'])->name('traps.show');
+    // Telemetría Push en Tiempo Real (Fase 6: Traps)
+    Route::get('traps', [AdminTrapController::class, 'index'])->name('traps.index')->middleware('permission:traps.view');
+    Route::get('traps/{id}', [AdminTrapController::class, 'show'])->name('traps.show')->middleware('permission:traps.view');
 
-    Route::get('syslog', [AdminSyslogController::class, 'index'])->name('syslog.index');
-    Route::get('syslog/live', [AdminSyslogController::class, 'live'])->name('syslog.live');
-
-    Route::get('netflow', [AdminNetflowController::class, 'index'])->name('netflow.index');
-    Route::get('netflow/top-talkers', [AdminNetflowController::class, 'topTalkers'])->name('netflow.top');
+    // Módulos NetFlow y Syslog desactivados temporalmente (sin exportadores activos en la infraestructura)
+    // Redirección segura para que no exista otra manera de acceder a ellos directamente por URL
+    Route::redirect('syslog', '/admin/netradar')->name('syslog.index');
+    Route::redirect('syslog/live', '/admin/netradar')->name('syslog.live');
+    Route::redirect('netflow', '/admin/netradar')->name('netflow.index');
+    Route::redirect('netflow/top-talkers', '/admin/netradar')->name('netflow.top');
 
     // Topología Visual, Wake-on-LAN, IA Predictiva y Ciclo de Vida (Fase 7)
-    Route::get('topology', [AdminTopologyController::class, 'index'])->name('topology.index');
-    Route::get('topology/data', [AdminTopologyController::class, 'data'])->name('topology.data');
+    Route::get('topology', [AdminTopologyController::class, 'index'])->name('topology.index')->middleware('permission:topology.view');
+    Route::get('topology/data', [AdminTopologyController::class, 'data'])->name('topology.data')->middleware(['permission:topology.view', 'telemetry.stateless']);
 
-    Route::get('wol', [AdminWolController::class, 'index'])->name('wol.index');
+    Route::get('wol', [AdminWolController::class, 'index'])->name('wol.index')->middleware('permission:wol.view');
 
-    Route::get('predictive', [AdminPredictiveController::class, 'index'])->name('predictive.index');
+    Route::get('predictive', [AdminPredictiveController::class, 'index'])->name('predictive.index')->middleware('permission:predictive.view');
 
-    Route::get('lifecycle', [AdminLifecycleController::class, 'index'])->name('lifecycle.index');
+    Route::redirect('lifecycle', '/admin/devices', 301)->name('lifecycle.index');
 
+    // Gestión Visual de Direcciones IP (IPAM Grid)
+    Route::get('ipam', [AdminIpamController::class, 'index'])->name('ipam.index')->middleware('permission:ipam.view,infra.view');
+    Route::get('ipam/grid', [AdminIpamController::class, 'grid'])->name('ipam.grid')->middleware(['permission:ipam.view,infra.view', 'telemetry.stateless']);
+
+    // Gestión de Activos de TI (ITAM)
+    Route::get('inventory/assets', [InventoryAssetController::class, 'index'])->name('inventory.assets.index')->middleware('permission:inventory.view');
+    Route::get('inventory/assets/create', [InventoryAssetController::class, 'create'])->name('inventory.assets.create')->middleware('permission:inventory.manage');
+    Route::post('inventory/assets', [InventoryAssetController::class, 'store'])->name('inventory.assets.store')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::get('inventory/assets/{id}', [InventoryAssetController::class, 'show'])->name('inventory.assets.show')->middleware('permission:inventory.view');
+    Route::get('inventory/assets/{id}/edit', [InventoryAssetController::class, 'edit'])->name('inventory.assets.edit')->middleware('permission:inventory.manage');
+    Route::put('inventory/assets/{id}', [InventoryAssetController::class, 'update'])->name('inventory.assets.update')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::delete('inventory/assets/{id}', [InventoryAssetController::class, 'destroy'])->name('inventory.assets.destroy')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/{id}/approve', [InventoryAssetController::class, 'approve'])->name('inventory.assets.approve')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/bulk-maintenance', [InventoryAssetController::class, 'bulkMaintenance'])->name('inventory.assets.bulk-maintenance')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/bulk-complete-maintenance', [InventoryAssetController::class, 'bulkCompleteMaintenance'])->name('inventory.assets.bulk-complete-maintenance')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/bulk-mobilize', [InventoryAssetController::class, 'bulkMobilize'])->name('inventory.assets.bulk-mobilize')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/{id}/peripherals', [InventoryAssetController::class, 'associatePeripheral'])->name('inventory.assets.peripherals.store')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::delete('inventory/assets/{id}/peripherals/{peripheralId}', [InventoryAssetController::class, 'disassociatePeripheral'])->name('inventory.assets.peripherals.destroy')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/assets/{id}/upload-assignment-scan', [InventoryAssetController::class, 'uploadAssignmentScan'])->name('inventory.assets.upload-assignment-scan')->middleware(['node.master', 'permission:inventory.manage']);
+
+    // Periféricos Independientes & Stock de Hardware (ITAM)
+    Route::get('inventory/peripherals', [AdminPeripheralController::class, 'index'])->name('inventory.peripherals.index')->middleware('permission:inventory.view');
+    Route::post('inventory/peripherals', [AdminPeripheralController::class, 'store'])->name('inventory.peripherals.store')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::put('inventory/peripherals/{peripheral}', [AdminPeripheralController::class, 'update'])->name('inventory.peripherals.update')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::delete('inventory/peripherals/{peripheral}', [AdminPeripheralController::class, 'destroy'])->name('inventory.peripherals.destroy')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/peripherals/{peripheral}/unlink', [AdminPeripheralController::class, 'unlink'])->name('inventory.peripherals.unlink')->middleware(['node.master', 'permission:inventory.manage']);
+
+    // Mesa de Asignaciones, Devoluciones y Pases de Movilización (Fase 4 ITAM)
+    Route::get('inventory/assignments', [InventoryAssignmentController::class, 'index'])->name('inventory.assignments.index')->middleware('permission:inventory.view');
+    Route::get('inventory/assignments/create', [InventoryAssignmentController::class, 'create'])->name('inventory.assignments.create')->middleware('permission:inventory.assign,inventory.manage');
+    Route::post('inventory/assignments', [InventoryAssignmentController::class, 'store'])->name('inventory.assignments.store')->middleware(['node.master', 'permission:inventory.assign,inventory.manage']);
+    Route::get('inventory/assignments/{assignment}', [InventoryAssignmentController::class, 'show'])->name('inventory.assignments.show')->middleware('permission:inventory.view');
+    Route::get('inventory/assignments/{assignment}/pdf', [InventoryAssignmentController::class, 'pdfActa'])->name('inventory.assignments.pdf')->middleware('permission:inventory.view');
+    Route::get('inventory/assignments/{assignment}/pdf-movilizacion', [InventoryAssignmentController::class, 'pdfMovilizacion'])->name('inventory.assignments.pdf-movilizacion')->middleware('permission:inventory.view');
+    Route::post('inventory/assignments/{assignment}/upload-scan', [InventoryAssignmentController::class, 'uploadScan'])->name('inventory.assignments.upload-scan')->middleware(['node.master', 'permission:inventory.assign,inventory.manage']);
+    Route::get('inventory/assignments/{assignment}/view-scan', [InventoryAssignmentController::class, 'viewScan'])->name('inventory.assignments.view-scan')->middleware('permission:inventory.view');
+    Route::delete('inventory/assignments/{assignment}', [InventoryAssignmentController::class, 'destroy'])->name('inventory.assignments.destroy')->middleware(['node.master', 'permission:inventory.assign,inventory.manage']);
+
+    // Mantenimiento Técnico, Órdenes de Servicio y Garantías (Fase 5 ITAM)
+    Route::get('inventory/maintenance', [MaintenanceTicketController::class, 'index'])->name('inventory.maintenance.index')->middleware('permission:inventory.view');
+    Route::get('inventory/maintenance/create', [MaintenanceTicketController::class, 'create'])->name('inventory.maintenance.create')->middleware('permission:inventory.maintenance');
+    Route::post('inventory/maintenance', [MaintenanceTicketController::class, 'store'])->name('inventory.maintenance.store')->middleware(['node.master', 'permission:inventory.maintenance']);
+    Route::get('inventory/maintenance/{ticket}', [MaintenanceTicketController::class, 'show'])->name('inventory.maintenance.show')->middleware('permission:inventory.view');
+    Route::get('inventory/maintenance/{ticket}/edit', [MaintenanceTicketController::class, 'edit'])->name('inventory.maintenance.edit')->middleware('permission:inventory.maintenance');
+    Route::put('inventory/maintenance/{ticket}', [MaintenanceTicketController::class, 'update'])->name('inventory.maintenance.update')->middleware(['node.master', 'permission:inventory.maintenance']);
+    Route::get('inventory/maintenance/{ticket}/pdf', [MaintenanceTicketController::class, 'pdf'])->name('inventory.maintenance.pdf')->middleware('permission:inventory.view');
+    Route::delete('inventory/maintenance/{ticket}', [MaintenanceTicketController::class, 'destroy'])->name('inventory.maintenance.destroy')->middleware(['node.master', 'permission:inventory.maintenance']);
+
+    // Despliegue Remoto y Auto-Discovery de Agente GLPI
+    Route::get('inventory/deploy', [AdminGlpiDeployController::class, 'index'])->name('inventory.deploy')->middleware('permission:inventory.view');
+    Route::post('inventory/deploy/execute', [AdminGlpiDeployController::class, 'deploy'])->name('inventory.deploy.execute')->middleware(['node.master', 'permission:inventory.deploy']);
+    Route::post('inventory/deploy/quick-status', [AdminGlpiDeployController::class, 'quickStatus'])->name('inventory.deploy.status')->middleware(['permission:inventory.view', 'telemetry.stateless']);
+    Route::post('inventory/deploy/scan-subnet', [AdminGlpiDeployController::class, 'scanSubnet'])->name('inventory.deploy.scan-subnet')->middleware(['node.master', 'permission:inventory.deploy']);
+    Route::post('inventory/deploy/promote-asset', [AdminGlpiDeployController::class, 'promoteToAsset'])->name('inventory.deploy.promote-asset')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/deploy/bulk-promote', [AdminGlpiDeployController::class, 'bulkPromote'])->name('inventory.deploy.bulk-promote')->middleware(['node.master', 'permission:inventory.manage']);
+    Route::post('inventory/deploy/trigger-agent', [AdminGlpiDeployController::class, 'triggerAgent'])->name('inventory.deploy.trigger-agent')->middleware(['permission:inventory.deploy']);
+    Route::get('inventory/deploy/drift-summary', [AdminGlpiDeployController::class, 'driftSummary'])->name('inventory.deploy.drift-summary')->middleware(['permission:inventory.view', 'telemetry.stateless']);
+    Route::post('inventory/deploy/drift-acknowledge', [AdminGlpiDeployController::class, 'acknowledgeDrift'])->name('inventory.deploy.drift-acknowledge')->middleware(['permission:inventory.manage']);
+
+    // Auditoría Forense y Trazabilidad Cronológica de Activos (Fase C ITAM)
+    Route::get('inventory/audit', [AdminInventoryAuditController::class, 'index'])->name('inventory.audit.index')->middleware('permission:inventory.view');
+    Route::get('inventory/audit/export', [AdminInventoryAuditController::class, 'export'])->name('inventory.audit.export')->middleware('permission:inventory.view');
+    Route::get('inventory/assets/{id}/timeline', [AdminInventoryAuditController::class, 'timeline'])->name('inventory.assets.timeline')->middleware(['permission:inventory.view', 'telemetry.stateless']);
+
+    // Centro Unificado de Reportes y Exportación Consolidada (Fase C)
+    Route::get('reports', [AdminReportController::class, 'index'])->name('reports.index')->middleware('permission:reports.view,inventory.view,infra.view');
+    Route::get('reports/export', [AdminReportController::class, 'export'])->name('reports.export')->middleware('permission:reports.export,inventory.view,infra.view');
 
     // Procesamiento de SNMP Traps (Permiso granular traps.process)
     Route::post('traps/{id}/process', [AdminTrapController::class, 'markProcessed'])->name('traps.process')->middleware('permission:traps.process');
@@ -232,6 +335,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('sites/{site}/toggle', [AdminSiteController::class, 'toggle'])->name('sites.toggle')->middleware('permission:infra.manage_sites');
         Route::post('sites/{site}/devices', [AdminSiteController::class, 'addDevice'])->name('sites.devices.store')->middleware('permission:infra.manage_sites|infra.manage_devices');
         Route::delete('sites/devices/{device}', [AdminSiteController::class, 'deleteDevice'])->name('sites.devices.destroy')->middleware('permission:infra.manage_sites|infra.manage_devices');
+        Route::post('sites/reorder', [AdminSiteController::class, 'reorder'])->name('sites.reorder')->middleware('permission:infra.manage_sites');
 
         Route::post('devices', [AdminNetworkDeviceController::class, 'store'])->name('devices.store')->middleware('permission:infra.manage_devices');
         Route::put('devices/{device}', [AdminNetworkDeviceController::class, 'update'])->name('devices.update')->middleware('permission:infra.manage_devices');
@@ -250,10 +354,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::delete('proxies/{proxy}', [AdminProxyController::class, 'destroy'])->name('proxies.destroy')->middleware('permission:infra.manage_proxies');
         Route::post('proxies/{proxy}/toggle', [AdminProxyController::class, 'toggle'])->name('proxies.toggle')->middleware('permission:infra.manage_proxies');
 
-        // Supervisión y Configuración de Alertas de UPS
+        // Supervisión y Configuración de Alertas y Puerto Serial de UPS
         Route::post('ups/settings', [AdminUpsController::class, 'updateSettings'])->name('ups.settings')->middleware('permission:ups.manage');
+        Route::get('ups/ports', [AdminUpsController::class, 'listPorts'])->name('ups.ports')->middleware('permission:ups.manage');
+        Route::post('ups/test-serial', [AdminUpsController::class, 'testSerial'])->name('ups.test-serial')->middleware('permission:ups.manage');
+        Route::post('ups/scan-ports', [AdminUpsController::class, 'scanPorts'])->name('ups.scan-ports')->middleware('permission:ups.manage');
+        Route::post('ups/interrogate', [AdminUpsController::class, 'interrogateHardware'])->name('ups.interrogate')->middleware('permission:ups.manage');
 
-        // Sincronización a monitoreo.conf
+        // Sincronización del Sistema (Base de Datos Centralizada)
         Route::post('sync', [SyncController::class, 'triggerSyncManual'])->name('sync.manual')->middleware('permission:infra.manage_services|infra.manage_sites|infra.manage_proxies');
 
         // Auto-Discovery: Clasificación, Intrusos y Subredes

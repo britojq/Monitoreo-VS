@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🌡️ CLI RÁPIDO DE TEMPERATURA Y ESTADO TÉRMICO
+# Ubicación: /scripts/telegram-admin-bot/temperatura
+# ==============================================================================
+REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+DIR="$(cd "$(dirname "$REAL_SCRIPT")/.." && pwd)"
+DIR="${DIR:-/scripts/telegram-admin-bot}"
+PYTHON_BIN="$DIR/venv/bin/python"
+if [ ! -f "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+fi
+
+exec "$PYTHON_BIN" "$DIR/monitor/thermal_guard.py" "${@:---status}"

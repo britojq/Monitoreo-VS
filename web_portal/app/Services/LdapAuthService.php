@@ -2,18 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\BotSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class LdapAuthService
 {
-    protected string $configPath = '/scripts/telegram-admin-bot/config/config.json';
-
     /**
-     * Obtener configuración actual de LDAP (persiste en config.json y fallback a services.php / .env)
-     */
-    /**
-     * Obtener configuración actual de LDAP (persiste en config.json y fallback a services.php / .env)
+     * Obtener configuración actual de LDAP directamente desde MariaDB (SSOT)
+     * con fallback a variables de entorno si la base de datos estuviera inicializándose.
      */
     public function getConfig(): array
     {
@@ -28,28 +25,24 @@ class LdapAuthService
             'updated_by' => null,
         ];
 
-        if (file_exists($this->configPath)) {
-            try {
-                $raw = @file_get_contents($this->configPath);
-                $data = json_decode($raw, true) ?: [];
-                if (isset($data['ldap_config']) && is_array($data['ldap_config'])) {
-                    $c = $data['ldap_config'];
-                    $default['enabled'] = (bool)($c['enabled'] ?? true);
-                    $default['host'] = trim($c['host'] ?? $default['host']);
-                    $default['port'] = max(1, min(65535, (int)($c['port'] ?? $default['port'])));
-                    $default['base_dn'] = trim($c['base_dn'] ?? $default['base_dn']);
-                    $default['allowed_areas'] = is_array($c['allowed_areas'] ?? null)
-                        ? implode(', ', $c['allowed_areas'])
-                        : (string)($c['allowed_areas'] ?? $default['allowed_areas']);
-                    $default['default_role'] = in_array($c['default_role'] ?? 'operator', ['admin', 'operator'])
-                        ? $c['default_role']
-                        : 'operator';
-                    $default['updated_at'] = $c['updated_at'] ?? null;
-                    $default['updated_by'] = $c['updated_by'] ?? null;
-                }
-            } catch (\Throwable $e) {
-                Log::error('Error leyendo config LDAP de config.json: ' . $e->getMessage());
+        try {
+            $c = BotSetting::get('ldap_config');
+            if (is_array($c)) {
+                $default['enabled'] = (bool)($c['enabled'] ?? true);
+                $default['host'] = trim((string)($c['host'] ?? $default['host']));
+                $default['port'] = max(1, min(65535, (int)($c['port'] ?? $default['port'])));
+                $default['base_dn'] = trim((string)($c['base_dn'] ?? $default['base_dn']));
+                $default['allowed_areas'] = is_array($c['allowed_areas'] ?? null)
+                    ? implode(', ', $c['allowed_areas'])
+                    : (string)($c['allowed_areas'] ?? $default['allowed_areas']);
+                $default['default_role'] = in_array($c['default_role'] ?? 'operator', ['admin', 'operator'], true)
+                    ? $c['default_role']
+                    : 'operator';
+                $default['updated_at'] = $c['updated_at'] ?? null;
+                $default['updated_by'] = $c['updated_by'] ?? null;
             }
+        } catch (\Throwable $e) {
+            Log::error('Error leyendo config LDAP de MariaDB: ' . $e->getMessage());
         }
 
         // Si la base DN configurada contiene el placeholder 'empresa' o está vacía, auto-sanar con valor seguro
@@ -69,33 +62,26 @@ class LdapAuthService
     }
 
     /**
-     * Actualizar y persistir la configuración de LDAP en config.json
+     * Actualizar y persistir la configuración de LDAP en MariaDB (SSOT)
      */
     public function updateConfig(array $attributes, ?string $updatedBy = null): bool
     {
-        if (!file_exists($this->configPath)) {
-            return false;
-        }
-
         try {
-            $raw = @file_get_contents($this->configPath);
-            $data = json_decode($raw, true) ?: [];
-
-            $currentLdap = $data['ldap_config'] ?? [];
+            $currentLdap = $this->getConfig();
 
             $enabled = isset($attributes['enabled']) ? (bool)$attributes['enabled'] : ($currentLdap['enabled'] ?? true);
-            $host = trim($attributes['host'] ?? ($currentLdap['host'] ?? '10.20.0.22'));
+            $host = trim((string)($attributes['host'] ?? ($currentLdap['host'] ?? '10.20.0.22')));
             $port = max(1, min(65535, (int)($attributes['port'] ?? ($currentLdap['port'] ?? 389))));
-            $baseDn = trim($attributes['base_dn'] ?? ($currentLdap['base_dn'] ?? base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==')));
+            $baseDn = trim((string)($attributes['base_dn'] ?? ($currentLdap['base_dn'] ?? base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ=='))));
             if (empty($baseDn) || stripos($baseDn, 'dc=empresa') !== false) {
                 $baseDn = base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ==');
             }
-            $allowedAreas = trim($attributes['allowed_areas'] ?? ($currentLdap['allowed_areas'] ?? 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES'));
-            $defaultRole = in_array($attributes['default_role'] ?? '', ['admin', 'operator'])
+            $allowedAreas = trim((string)($attributes['allowed_areas'] ?? ($currentLdap['allowed_areas'] ?? 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES')));
+            $defaultRole = in_array($attributes['default_role'] ?? '', ['admin', 'operator'], true)
                 ? $attributes['default_role']
                 : ($currentLdap['default_role'] ?? 'operator');
 
-            $data['ldap_config'] = [
+            $ldapData = [
                 'enabled' => $enabled,
                 'host' => $host,
                 'port' => $port,
@@ -106,15 +92,14 @@ class LdapAuthService
                 'updated_by' => $updatedBy ?? 'Administrador',
             ];
 
-            $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            if (@file_put_contents($this->configPath, $json . "\n") !== false) {
-                return true;
-            }
-        } catch (\Throwable $e) {
-            Log::error('Error guardando config LDAP: ' . $e->getMessage());
-        }
+            BotSetting::set('ldap_config', $ldapData, 'ldap', 'Configuración de Conexión y Autenticación LDAP', 'json');
+            BotSetting::syncToFile();
 
-        return false;
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Error guardando config LDAP en MariaDB: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -165,7 +150,7 @@ class LdapAuthService
     }
 
     /**
-     * Corrige silenciosamente la Base DN en config.json si tenía placeholders genéricos o estaba corrupta.
+     * Corrige silenciosamente la Base DN en MariaDB si tenía placeholders genéricos o estaba corrupta.
      */
     protected function healConfigBaseDn(string $realBaseDn): void
     {
@@ -174,22 +159,19 @@ class LdapAuthService
         }
 
         try {
-            if (file_exists($this->configPath)) {
-                $raw = @file_get_contents($this->configPath);
-                $data = json_decode($raw, true);
-                if (is_array($data) && isset($data['ldap_config']) && is_array($data['ldap_config'])) {
-                    $current = $data['ldap_config']['base_dn'] ?? '';
-                    if (empty($current) || stripos($current, 'dc=empresa') !== false) {
-                        $data['ldap_config']['base_dn'] = $realBaseDn;
-                        $data['ldap_config']['updated_at'] = date('Y-m-d H:i:s');
-                        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                        @file_put_contents($this->configPath, $json . "\n");
-                        Log::info("LDAP: Base DN auto-sanada dinámicamente en config.json -> {$realBaseDn}");
-                    }
+            $currentLdap = BotSetting::get('ldap_config');
+            if (is_array($currentLdap)) {
+                $current = $currentLdap['base_dn'] ?? '';
+                if (empty($current) || stripos($current, 'dc=empresa') !== false) {
+                    $currentLdap['base_dn'] = $realBaseDn;
+                    $currentLdap['updated_at'] = date('Y-m-d H:i:s');
+                    BotSetting::set('ldap_config', $currentLdap, 'ldap', 'Configuración de Conexión y Autenticación LDAP', 'json');
+                    BotSetting::syncToFile();
+                    Log::info("LDAP: Base DN auto-sanada dinámicamente en MariaDB -> {$realBaseDn}");
                 }
             }
         } catch (\Throwable $e) {
-            // Ignorar errores de escritura silenciosamente
+            // Ignorar errores silenciosamente
         }
     }
 
@@ -546,7 +528,7 @@ class LdapAuthService
         }
 
         $filter = "(|" . implode('', $filterParts) . ")";
-        $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn'];
+        $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn', 'employeenumber', 'title', 'department'];
 
         $search = @ldap_search($conn, $baseDn, $filter, $attributes, 0, 20, 4);
         if (!$search) {
@@ -569,6 +551,24 @@ class LdapAuthService
                 $sede = $e['o'][0] ?? 'No especificada';
                 $st = $e['st'][0] ?? '';
 
+                // Extraer cédula de identidad desde employeenumber o UID
+                $rawEmp = $e['employeenumber'][0] ?? null;
+                $cedula = '';
+                if ($rawEmp) {
+                    $cleanDigits = preg_replace('/^1(?=\d{7,8}$)/', '', trim($rawEmp));
+                    $cleanDigits = preg_replace('/\D/', '', $cleanDigits);
+                    if (!empty($cleanDigits)) {
+                        $cedula = 'V-' . number_format((int)$cleanDigits, 0, '', '.');
+                    }
+                }
+                if (empty($cedula) && preg_match('/^[a-zA-Z]?(\d{6,8})$/', $uid, $m)) {
+                    $cedula = 'V-' . number_format((int)$m[1], 0, '', '.');
+                }
+
+                $dept = $e['department'][0] ?? ($e['description'][0] ?? 'ATIT Carabobo');
+                $role = $e['title'][0] ?? 'Personal Corporativo';
+                $phone = $e['telephonenumber'][0] ?? '';
+
                 // Verificar si pertenece a las áreas estándar
                 $isDefaultArea = false;
                 foreach ($allowedAreas as $area) {
@@ -582,7 +582,11 @@ class LdapAuthService
                     'uid' => strtoupper($uid),
                     'name' => $cn,
                     'email' => strtolower($mail),
+                    'cedula' => $cedula,
                     'description' => trim($desc),
+                    'department' => trim($dept),
+                    'role' => trim($role),
+                    'phone' => trim($phone),
                     'sede' => trim($sede),
                     'state' => trim($st),
                     'is_default_area' => $isDefaultArea,

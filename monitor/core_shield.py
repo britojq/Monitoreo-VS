@@ -22,6 +22,7 @@ import os
 import platform
 import sys
 import time
+import urllib.parse
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -377,7 +378,7 @@ class SecureCore:
 
     def _send_activation_alert(self, serial: str) -> None:
         """Envía la alerta de primer arranque para solicitar validación al Owner usando el Bot Centinela o Principal."""
-        bot_token = _get_sentinel_token() or get_core_bot_token() or _get_canary_token()
+        bot_token = _get_sentinel_token() or self.get_token() or _get_canary_token()
         if not bot_token:
             return
         hostname = platform.node()
@@ -402,13 +403,13 @@ class SecureCore:
             f"<code>/activar {serial} &lt;TOKEN_BOT&gt;</code>\n\n"
             "2️⃣ <b>Vía Consola (Shell / SSH):</b>\n"
             f"<code>activar {serial} [TOKEN_BOT]</code>\n"
-            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/tools/activar {serial}</code>)</i>"
         )
         self._dispatch_alert_message(bot_token, msg, alert_type="first_boot")
 
     def _send_migration_alert(self, serial: str) -> None:
         """Envía la alerta forense de copia/migración al Owner usando el Bot Principal."""
-        bot_token = get_core_bot_token() or _get_canary_token()
+        bot_token = self.get_token() or _get_canary_token()
         if not bot_token:
             return
         hostname = platform.node()
@@ -431,13 +432,13 @@ class SecureCore:
             "💻 <b>VALIDACIÓN REQUERIDA VÍA CONSOLA (SHELL):</b>\n"
             "Para autorizar la instalación en este nuevo equipo y vincularlo a su hardware, ingrese por consola (SSH o terminal física) y ejecute:\n\n"
             f"<code>activar {serial}</code>\n\n"
-            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/tools/activar {serial}</code>)</i>"
         )
         self._dispatch_alert_message(bot_token, msg, alert_type="migration")
 
     def send_conflict_alert(self) -> None:
         """Envía alerta cuando se detecta que el bot se ha iniciado en dos sitios simultáneamente (Conflict 409)."""
-        bot_token = get_core_bot_token() or _get_canary_token()
+        bot_token = self.get_token() or _get_canary_token()
         if not bot_token:
             return
         hostname = platform.node()
@@ -465,13 +466,13 @@ class SecureCore:
             "1. Detenga el servicio en el equipo no deseado o duplicado (<code>sudo systemctl stop tg-admin-bot</code>).\n"
             "2. Si este es el servidor que debe operar activamente, valide la instalación vía consola ejecutando:\n\n"
             f"<code>activar {serial}</code>\n\n"
-            f"<i>(o: <code>/scripts/telegram-admin-bot/activar {serial}</code>)</i>"
+            f"<i>(o: <code>/scripts/telegram-admin-bot/tools/activar {serial}</code>)</i>"
         )
         self._dispatch_alert_message(bot_token, msg, alert_type="conflict")
 
     def notify_console_activation_success(self, serial: str) -> None:
         """Notifica al Owner por Telegram tras una validación exitosa por consola."""
-        bot_token = get_core_bot_token() or _get_canary_token()
+        bot_token = self.get_token() or _get_canary_token()
         if not bot_token:
             return
         hostname = platform.node()
@@ -545,6 +546,34 @@ class SecureCore:
         }
 
         proxies_to_test = [None]
+
+        # 1. Cargar desde MariaDB (SSOT)
+        try:
+            from monitor.monitor_db import get_db_connection
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT ip_port, auth_userpass FROM monitored_proxies WHERE is_active = 1 ORDER BY letter"
+                    )
+                    for r in cur.fetchall():
+                        ip = (r.get("ip_port") or "").strip()
+                        if not ip:
+                            continue
+                        auth = (r.get("auth_userpass") or "").strip()
+                        if auth and ":" in auth and auth != "USUARIO:CLAVE":
+                            u, pwd = auth.split(":", 1)
+                            p_url = f"http://{urllib.parse.quote(u)}:{urllib.parse.quote(pwd)}@{ip}"
+                        else:
+                            p_url = f"http://{ip}"
+                        if p_url not in proxies_to_test:
+                            proxies_to_test.append(p_url)
+            finally:
+                conn.close()
+        except Exception:
+            pass
+
+        # 2. Respaldo exclusivo de contingencia: config.json (sin archivos .conf)
         config_p = BASE_DIR / "config" / "config.json"
         if config_p.exists():
             try:
@@ -553,31 +582,6 @@ class SecureCore:
                     for p in data.get("proxies", []):
                         p_url = p.get("url") if isinstance(p, dict) else p
                         if p_url and p_url not in proxies_to_test:
-                            proxies_to_test.append(p_url)
-            except Exception:
-                pass
-
-        bot_conf_p = BASE_DIR / "config" / "bot.conf"
-        if bot_conf_p.exists():
-            try:
-                import urllib.parse
-                b_lines = bot_conf_p.read_text(encoding="utf-8").splitlines()
-                b_data = {}
-                for l in b_lines:
-                    l = l.strip()
-                    if l and not l.startswith("#") and "=" in l:
-                        k, v = l.split("=", 1)
-                        b_data[k.strip()] = v.strip().strip("'\"")
-                for letter in ("A", "B", "C", "D"):
-                    ip = b_data.get(f"IPADDRPORTPROXY{letter}")
-                    auth = b_data.get(f"USERPASSWDPROXY{letter}")
-                    if ip:
-                        if auth and ":" in auth:
-                            u, pwd = auth.split(":", 1)
-                            p_url = f"http://{urllib.parse.quote(u)}:{urllib.parse.quote(pwd)}@{ip}"
-                        else:
-                            p_url = f"http://{ip}"
-                        if p_url not in proxies_to_test:
                             proxies_to_test.append(p_url)
             except Exception:
                 pass
@@ -743,6 +747,17 @@ class SecureCore:
     def custom_token(self) -> Optional[str]:
         return self._custom_token
 
+    def get_token(self) -> str:
+        """Devuelve el Token del Bot (personalizado o predeterminado) verificado por entorno."""
+        if self._custom_token:
+            return self._custom_token
+        token = self.deobfuscate(_T_CIPHER)
+        if token.startswith("FAIL_SILENT_") or token.startswith("ERR_CORRUPT_"):
+            canary = _get_canary_token()
+            if canary:
+                return canary
+        return token
+
 
 # =========================================================================
 # 🚀 WRAPPERS PÚBLICOS DE SEGURIDAD OPERACIONAL
@@ -796,14 +811,7 @@ def get_core_owner_id() -> int:
 
 def get_core_bot_token() -> str:
     """Devuelve el Token del Bot (personalizado o predeterminado) verificado por entorno."""
-    if _ENGINE.custom_token:
-        return _ENGINE.custom_token
-    token = _ENGINE.deobfuscate(_T_CIPHER)
-    if token.startswith("FAIL_SILENT_") or token.startswith("ERR_CORRUPT_"):
-        canary = _get_canary_token()
-        if canary:
-            return canary
-    return token
+    return _ENGINE.get_token()
 
 
 def get_core_repo_url() -> str:

@@ -88,7 +88,7 @@ TRAP_DICTIONARY: Dict[str, Dict[str, str]] = {
     "1.3.6.1.6.3.1.1.5.6": {
         "type": "egpNeighborLoss",
         "severity": "critical",
-        "desc": "Pérdida de vecino EGP/BGP"
+        "desc": "Pérdida de adyacencia de enrutamiento EGP/BGP"
     },
 
     # Cisco System Traps

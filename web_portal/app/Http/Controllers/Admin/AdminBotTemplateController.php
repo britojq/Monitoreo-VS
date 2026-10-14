@@ -61,7 +61,7 @@ class AdminBotTemplateController extends Controller
             'slogan' => ['nullable', 'string', 'max:255'],
         ], [
             'title.required' => 'El título de la plantilla es obligatorio.',
-            'header_text.required' => 'El encabezado institucional no puede estar vacío.',
+            'header_text.required' => 'El encabezado corporativo no puede estar vacío.',
         ]);
 
         /** @var \App\Models\User $user */
@@ -137,7 +137,7 @@ class AdminBotTemplateController extends Controller
             $previewText .= "━━━━━━━━━━━━\n<b>PISO 1 VALLE SECO</b>\n━━━━━━━━━━━━\n✅ - Enlace Principal\n✅ - Router de Borde\n\n";
             $previewText .= "━━━━━━━━━━━━\n<b>CIAU MORÓN</b>\n━━━━━━━━━━━━\n✅ - Enlace Datos CIAU\n✅ - Switch LAN Morón\n\n";
         } else {
-            $previewText .= "━━━━━━━━━━━━\n<b>Servicios Corporativos Verificados:</b>\n━━━━━━━━━━━━\n✅ - Servidor Correo Institucional\n✅ - Servidor Web Valle Seco\n\n";
+            $previewText .= "━━━━━━━━━━━━\n<b>Servicios Corporativos Verificados:</b>\n━━━━━━━━━━━━\n✅ - Servidor Correo Corporativo\n✅ - Servidor Web Valle Seco\n\n";
             $previewText .= "━━━━━━━━━━━━\n<b>Servicios Regionales – Carabobo Verificados:</b>\n━━━━━━━━━━━━\n✅ - Sistema Comercial Regional\n✅ - Base de Datos Operativa\n\n";
         }
 

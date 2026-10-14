@@ -222,18 +222,18 @@ class PermissionService
             ],
         ],
         'telegram' => [
-            'name' => 'Telegram y Reportes Oficiales',
+            'name' => 'Telegram & Reportes',
             'icon' => 'send',
-            'description' => 'Despacho de estatus y configuración del bot oficial.',
+            'description' => 'Despacho de estatus y configuración del asistente en Telegram.',
             'permissions' => [
                 'telegram.dispatch' => [
-                    'name' => 'Despachar Reporte Oficial',
-                    'description' => 'Enviar reportes consolidados manuales al grupo corporativo.',
+                    'name' => 'Despachar Reporte',
+                    'description' => 'Enviar reportes consolidados manuales a Telegram.',
                     'default_operator' => true,
                 ],
                 'telegram.templates' => [
                     'name' => 'Editar Plantillas de Mensajes',
-                    'description' => 'Modificar la redacción y formatos de los reportes oficiales.',
+                    'description' => 'Modificar la redacción y formatos de los reportes.',
                     'default_operator' => false,
                 ],
                 'telegram.commands' => [
@@ -293,18 +293,18 @@ class PermissionService
             ],
         ],
         'traps' => [
-            'name' => 'SNMP Traps (UDP 162)',
+            'name' => 'Alertas SNMP (Eventos UDP 162)',
             'icon' => 'forward_to_inbox',
-            'description' => 'Recepción asíncrona de eventos y alarmas por trampas SNMP push.',
+            'description' => 'Recepción asíncrona de eventos y alertas push de red por SNMP.',
             'permissions' => [
                 'traps.view' => [
-                    'name' => 'Consultar SNMP Traps',
-                    'description' => 'Visualizar registros de trampas SNMP capturadas y variables VarBinds.',
+                    'name' => 'Consultar Alertas SNMP',
+                    'description' => 'Visualizar registros de alertas SNMP capturadas y variables VarBinds.',
                     'default_operator' => true,
                 ],
                 'traps.process' => [
-                    'name' => 'Procesar SNMP Traps',
-                    'description' => 'Marcar eventos de trampa como atendidos o procesados.',
+                    'name' => 'Procesar Alertas SNMP',
+                    'description' => 'Marcar eventos de alertas SNMP como atendidos o procesados.',
                     'default_operator' => false,
                 ],
             ],
@@ -336,7 +336,7 @@ class PermissionService
         'topology' => [
             'name' => 'Topología de Red Visual',
             'icon' => 'hub',
-            'description' => 'Mapa dinámico de interconexión y vecindad de dispositivos.',
+            'description' => 'Mapa dinámico de interconexión y adyacencia de dispositivos.',
             'permissions' => [
                 'topology.view' => [
                     'name' => 'Consultar Topología',
@@ -344,8 +344,8 @@ class PermissionService
                     'default_operator' => true,
                 ],
                 'topology.rebuild' => [
-                    'name' => 'Re-escanear Vecinos (CDP/LLDP)',
-                    'description' => 'Forzar reconstrucción del grafo de topología consultando vecinos por protocolo.',
+                    'name' => 'Re-escanear Dispositivos (CDP/LLDP)',
+                    'description' => 'Forzar reconstrucción del grafo de topología consultando dispositivos interconectados por protocolo.',
                     'default_operator' => false,
                 ],
             ],
@@ -408,6 +408,72 @@ class PermissionService
                     'name' => 'Gestionar Fichas de Hardware',
                     'description' => 'Registrar, actualizar y eliminar fichas de garantía y vida útil de equipos.',
                     'default_operator' => false,
+                ],
+            ],
+        ],
+        'inventory' => [
+            'name' => 'Gestión de Activos de TI (ITAM)',
+            'icon' => 'devices',
+            'description' => 'Control de inventario, componentes, periféricos, asignaciones de equipos y actas.',
+            'permissions' => [
+                'inventory.view' => [
+                    'name' => 'Consultar Inventario ITAM',
+                    'description' => 'Ver catálogo de activos, componentes, periféricos y asignaciones.',
+                    'default_operator' => true,
+                ],
+                'inventory.manage' => [
+                    'name' => 'Gestionar Activos y Componentes',
+                    'description' => 'Crear, editar, desincorporar activos de TI y auditar cambios de hardware.',
+                    'default_operator' => false,
+                ],
+                'inventory.assign' => [
+                    'name' => 'Gestionar Asignaciones y Actas',
+                    'description' => 'Asignar equipos a Responsables y Funcionarios Receptores (LDAP), registrar movilizaciones y generar actas.',
+                    'default_operator' => false,
+                ],
+                'inventory.maintenance' => [
+                    'name' => 'Gestionar Mantenimiento de Activos',
+                    'description' => 'Programar y dar seguimiento a tickets de mantenimiento preventivo y correctivo.',
+                    'default_operator' => false,
+                ],
+                'inventory.deploy' => [
+                    'name' => 'Despliegue Remoto de Agentes GLPI',
+                    'description' => 'Ejecutar instalación desatendida y barridos de subred para despliegue de agentes.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'ipam' => [
+            'name' => 'Gestión IPAM & Subredes IPv4',
+            'icon' => 'grid_view',
+            'description' => 'Matriz interactiva de direccionamiento de 256 bloques, hosts activos, IPs libres y correlación ITAM.',
+            'permissions' => [
+                'ipam.view' => [
+                    'name' => 'Consultar Matriz IPAM',
+                    'description' => 'Ver cuadrícula interactiva de direccionamiento, estado de IPs y métricas de utilización.',
+                    'default_operator' => true,
+                ],
+                'ipam.manage' => [
+                    'name' => 'Gestionar Subredes IPAM',
+                    'description' => 'Configurar direccionamiento, rangos y reservas en la matriz de subredes.',
+                    'default_operator' => false,
+                ],
+            ],
+        ],
+        'reports' => [
+            'name' => 'Centro de Reportes & Exportación',
+            'icon' => 'summarize',
+            'description' => 'Generación de reportes consolidados NOC + ITAM en formato CSV y PDF.',
+            'permissions' => [
+                'reports.view' => [
+                    'name' => 'Consultar Centro de Reportes',
+                    'description' => 'Acceso al catálogo y generación de reportes consolidados.',
+                    'default_operator' => true,
+                ],
+                'reports.export' => [
+                    'name' => 'Exportar Reportes Consolidados',
+                    'description' => 'Descarga de reportes estructurados en CSV y PDF.',
+                    'default_operator' => true,
                 ],
             ],
         ],

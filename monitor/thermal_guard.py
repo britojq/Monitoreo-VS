@@ -32,7 +32,6 @@ import httpx
 # Constantes de Entorno y Rutas
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = BASE_DIR / "config" / "config.json"
-BOT_CONF_PATH = BASE_DIR / "config" / "bot.conf"
 AUDIT_DIR = BASE_DIR / "audit"
 LOGS_DIR = BASE_DIR / "logs"
 
@@ -105,6 +104,34 @@ def get_core_bot_token() -> str:
 def get_proxies_list() -> List[Optional[str]]:
     """Construye la lista de proxies corporativos con fallback a conexión directa."""
     proxies: List[Optional[str]] = [None]
+
+    # 1. Cargar desde MariaDB (SSOT)
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ip_port, auth_userpass FROM monitored_proxies WHERE is_active = 1 ORDER BY letter"
+                )
+                for r in cur.fetchall():
+                    ip = (r.get("ip_port") or "").strip()
+                    if not ip:
+                        continue
+                    auth = (r.get("auth_userpass") or "").strip()
+                    if auth and ":" in auth and auth != "USUARIO:CLAVE":
+                        u, pwd = auth.split(":", 1)
+                        p_url = f"http://{urllib.parse.quote(u)}:{urllib.parse.quote(pwd)}@{ip}"
+                    else:
+                        p_url = f"http://{ip}"
+                    if p_url not in proxies:
+                        proxies.append(p_url)
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    # 2. Respaldo exclusivo de contingencia: config.json (sin archivos .conf)
     if CONFIG_PATH.exists():
         try:
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -115,28 +142,6 @@ def get_proxies_list() -> List[Optional[str]]:
         except Exception:
             pass
 
-    if BOT_CONF_PATH.exists():
-        try:
-            b_lines = BOT_CONF_PATH.read_text(encoding="utf-8").splitlines()
-            b_data = {}
-            for l in b_lines:
-                l = l.strip()
-                if l and not l.startswith("#") and "=" in l:
-                    k, v = l.split("=", 1)
-                    b_data[k.strip()] = v.strip().strip("'\"")
-            for letter in ("A", "B", "C", "D"):
-                ip = b_data.get(f"IPADDRPORTPROXY{letter}")
-                auth = b_data.get(f"USERPASSWDPROXY{letter}")
-                if ip:
-                    if auth and ":" in auth:
-                        u, pwd = auth.split(":", 1)
-                        p_url = f"http://{urllib.parse.quote(u)}:{urllib.parse.quote(pwd)}@{ip}"
-                    else:
-                        p_url = f"http://{ip}"
-                    if p_url not in proxies:
-                        proxies.append(p_url)
-        except Exception:
-            pass
     return proxies
 
 

@@ -42,61 +42,66 @@
 </style>
 
 <div class="space-y-4">
-    <!-- PESTAÑAS RADAR & DESCUBRIMIENTO -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.discovery.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.discovery.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">radar</span>
-            <span>Auto-Discovery de Red</span>
-        </a>
-        @if(!auth()->user() || auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('netradar.view')))
-        <a href="{{ route('admin.netradar.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.netradar.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">troubleshoot</span>
-            <span>NET Radar (Tráfico & Hosts)</span>
-        </a>
-        @endif
-    </div>
-
     <!-- CABECERA PRINCIPAL -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <div class="flex items-center gap-2 mb-1.5">
-                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-xs font-mono font-semibold group shadow-xs">
-                    <span class="material-symbols-outlined text-sm group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
                     Dashboard
                 </a>
                 <span class="text-obsidian-border font-mono text-xs">/</span>
-                <span class="text-xs font-mono text-obsidian-muted">Análisis y Tráfico de Red</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Análisis y Tráfico de Red</span>
             </div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-obsidian-cyan">troubleshoot</span>
-                NET Radar & Monitoreo de Tráfico
-            </h2>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">troubleshoot</span>
+                NET Radar &amp; Monitoreo de Tráfico
+            </h1>
             <p class="text-xs font-mono text-obsidian-muted">Inspección pasiva de flujo de red, ancho de banda y detección especializada de actualizaciones (Windows Update / Repositorios Linux)</p>
         </div>
 
-        <div class="flex items-center gap-2.5">
-            <!-- BOTÓN AUTO-REFRESH -->
-            <button id="btnAutoRefresh" type="button" onclick="toggleAutoRefresh()" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border hover:border-obsidian-cyan/70 text-obsidian-muted hover:text-white text-xs font-mono font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer">
-                <span id="refreshDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span id="refreshText">Auto-Refresco: ON (10s)</span>
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- BOTÓN AUTO-REFRESH (SOLO ICONO CON TOOLTIP) -->
+            <button id="btnAutoRefresh" type="button" onclick="toggleAutoRefresh()" class="w-9 h-9 rounded-xl bg-obsidian-panel border border-obsidian-border hover:border-obsidian-cyan/70 text-obsidian-muted hover:text-white transition flex items-center justify-center shadow-xs cursor-pointer" title="Auto-Refresco: Activado (Cada 10s)">
+                <span id="refreshDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="refreshText" class="sr-only">Auto-Refresco: ON (10s)</span>
             </button>
 
             @if(Auth::user() && (Auth::user()->role === 'admin' || (method_exists(Auth::user(), 'hasPermission') && Auth::user()->hasPermission('netradar.scan'))))
-            <!-- BOTÓN ESCANEAR / CAPTURAR EN VIVO -->
-            <button type="button" id="btnScanNow" onclick="triggerScanNow()" class="px-3 py-1.5 rounded-lg bg-obsidian-cyan/15 hover:bg-obsidian-cyan/25 border border-obsidian-cyan/40 text-obsidian-cyan text-xs font-mono font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer">
-                <span id="scanIcon" class="material-symbols-outlined text-base">sensors</span>
-                <span id="scanText">Captura en Vivo</span>
+            <!-- BOTÓN ESCANEAR / CAPTURAR EN VIVO (SOLO ICONO CON TOOLTIP) -->
+            <button type="button" id="btnScanNow" onclick="triggerScanNow()" class="w-9 h-9 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 transition flex items-center justify-center shadow-xs cursor-pointer" title="Iniciar Captura en Vivo de Tráfico">
+                <span id="scanIcon" class="material-symbols-outlined text-lg">sensors</span>
+                <span id="scanText" class="sr-only">Captura en Vivo</span>
             </button>
             @endif
 
             @if(Auth::user() && (Auth::user()->role === 'admin' || (method_exists(Auth::user(), 'hasPermission') && Auth::user()->hasPermission('netradar.export'))))
-            <!-- BOTÓN EXPORTAR REPORTE MD -->
-            <a href="{{ route('admin.netradar.exportReport') }}" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border hover:border-obsidian-cyan/70 text-white text-xs font-mono font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer group">
-                <span class="material-symbols-outlined text-base text-cyan-400 group-hover:scale-110 transition-transform">download</span>
-                <span>Exportar Reporte (.md)</span>
+            <!-- BOTÓN EXPORTAR REPORTE MD (SOLO ICONO CON TOOLTIP) -->
+            <a href="{{ route('admin.netradar.exportReport') }}" class="w-9 h-9 rounded-xl bg-obsidian-panel border border-obsidian-border hover:border-cyan-500/50 text-obsidian-muted hover:text-white transition flex items-center justify-center shadow-xs cursor-pointer" title="Exportar Reporte (.md)">
+                <span class="material-symbols-outlined text-lg text-cyan-400">download</span>
             </a>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS RADAR & TELEMETRÍA DE RED (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.discovery.index', ['tab' => 'radar']) }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40" title="Auto-Discovery de Red y Detección Anti-Rogue">
+            <span class="material-symbols-outlined text-sm">radar</span>
+            <span>Auto-Discovery &amp; Anti-Rogue</span>
+        </a>
+        <a href="{{ route('admin.discovery.index', ['tab' => 'snmp']) }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40" title="Monitoreo y Telemetría SNMP">
+            <span class="material-symbols-outlined text-sm">sensors</span>
+            <span>Telemetría SNMP</span>
+        </a>
+        <a href="{{ route('admin.netradar.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer bg-cyan-500 text-black shadow-cyan-500/20" title="NET Radar (Tráfico y Hosts)">
+            <span class="material-symbols-outlined text-sm">troubleshoot</span>
+            <span>NET Radar (Tráfico &amp; Hosts)</span>
+        </a>
+        <a href="{{ route('admin.traps.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40" title="Alertas SNMP y Eventos UDP 162">
+            <span class="material-symbols-outlined text-sm">forward_to_inbox</span>
+            <span>Alertas SNMP (Eventos)</span>
+        </a>
     </div>
 
     <!-- NOTIFICACIÓN / ALERTA DE ACTUALIZACIONES ACTIVAS (SI EXISTEN) -->
@@ -248,8 +253,8 @@
                 <h3 class="text-xs font-bold text-white uppercase tracking-wider font-mono">
                     Inventario de Hosts y Tráfico en Vivo
                 </h3>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
-                    {{ $hosts->total() }} registros
+                <span class="w-6 h-6 rounded-md bg-obsidian-panel border border-obsidian-border text-obsidian-cyan inline-flex items-center justify-center cursor-help text-[11px] font-mono font-bold" title="{{ $hosts->total() }} registros totales">
+                    {{ $hosts->total() }}
                 </span>
             </div>
             <div class="text-[11px] font-mono text-obsidian-muted">
@@ -469,10 +474,10 @@
 </div>
 
 <!-- MODAL FORENSE DE DETALLE DE HOST -->
-<div id="hostModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-4">
-    <div class="bg-[#071321] border border-obsidian-border rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+<div id="hostModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-[#071321] border border-obsidian-border rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <!-- HEADER MODAL -->
-        <div class="p-4 border-b border-obsidian-border bg-obsidian-panel/50 flex items-center justify-between">
+        <div class="p-4 px-6 border-b border-obsidian-border bg-obsidian-panel/50 flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <span class="material-symbols-outlined text-obsidian-cyan text-xl">manage_search</span>
                 <div>
@@ -483,20 +488,20 @@
                     <div id="modalHostSubtitle" class="text-[11px] font-mono text-obsidian-muted">Cargando información...</div>
                 </div>
             </div>
-            <button type="button" onclick="closeHostModal()" class="p-1 rounded-lg hover:bg-obsidian-panel text-obsidian-muted hover:text-white transition">
+            <button type="button" onclick="closeHostModal()" class="p-1 rounded-lg hover:bg-obsidian-panel text-obsidian-muted hover:text-white transition cursor-pointer">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
 
         <!-- CONTENIDO MODAL -->
-        <div class="p-4 max-h-[60vh] overflow-y-auto space-y-3" id="modalEventsContainer">
+        <div class="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1 custom-scroll min-h-0" id="modalEventsContainer">
             <div class="flex items-center justify-center py-8">
                 <span class="material-symbols-outlined text-2xl text-obsidian-cyan animate-spin">progress_activity</span>
             </div>
         </div>
 
         <!-- FOOTER MODAL -->
-        <div class="p-3 border-t border-obsidian-border bg-obsidian-panel/30 flex justify-end">
+        <div class="p-3.5 px-6 border-t border-obsidian-border bg-obsidian-panel/30 flex justify-end shrink-0 bg-[#061527]">
             <button type="button" onclick="closeHostModal()" class="px-4 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono font-semibold hover:border-obsidian-cyan transition cursor-pointer">
                 Cerrar
             </button>
@@ -510,16 +515,19 @@
 
     function toggleAutoRefresh() {
         isAutoRefreshActive = !isAutoRefreshActive;
+        const btn = document.getElementById('btnAutoRefresh');
         const dot = document.getElementById('refreshDot');
         const text = document.getElementById('refreshText');
         
         if (isAutoRefreshActive) {
-            dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-            text.textContent = 'Auto-Refresco: ON (10s)';
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+            if (btn) btn.title = 'Auto-Refresco: Activado (Cada 10s)';
+            if (text) text.textContent = 'Auto-Refresco: ON (10s)';
             startPolling();
         } else {
-            dot.className = 'w-2 h-2 rounded-full bg-slate-500';
-            text.textContent = 'Auto-Refresco: OFF';
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+            if (btn) btn.title = 'Auto-Refresco: Desactivado';
+            if (text) text.textContent = 'Auto-Refresco: OFF';
             if (autoRefreshTimer) clearInterval(autoRefreshTimer);
         }
     }
@@ -554,11 +562,16 @@
         const icon = document.getElementById('scanIcon');
         const text = document.getElementById('scanText');
 
-        btn.disabled = true;
-        btn.classList.add('opacity-70');
-        icon.classList.add('animate-spin');
-        icon.textContent = 'sync';
-        text.textContent = 'Escaneando...';
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-70');
+            btn.title = 'Captura en curso...';
+        }
+        if (icon) {
+            icon.classList.add('animate-spin');
+            icon.textContent = 'sync';
+        }
+        if (text) text.textContent = 'Escaneando...';
 
         try {
             const resp = await fetch("{{ route('admin.netradar.scan') }}", {

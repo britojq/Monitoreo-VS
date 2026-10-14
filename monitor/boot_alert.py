@@ -41,6 +41,7 @@ if str(BASE_DIR) not in sys.path:
 CONFIG_PATH = BASE_DIR / "config" / "config.json"
 AUDIT_DIR = BASE_DIR / "audit"
 MARKER_FILE = AUDIT_DIR / ".clean_shutdown"
+OUTAGE_ALERT_MARKER = AUDIT_DIR / ".outage_group_alert_active"
 
 AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -191,11 +192,14 @@ async def handle_start() -> int:
     connected = await wait_for_network_and_telegram(token, proxies, max_wait_seconds=60)
 
     hostname = socket.gethostname()
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     local_ips = get_local_ips()
 
     # Evaluar archivo testigo de apagado limpio
-    if MARKER_FILE.exists():
+    is_clean = MARKER_FILE.exists()
+    had_group_outage = OUTAGE_ALERT_MARKER.exists()
+
+    if is_clean:
         estado_titulo = "🟢 <b>Reinicio Limpio o Apagado Controlado</b>"
         detalle_texto = "El equipo se apagó o reinició de manera controlada por el sistema."
         try:
@@ -216,10 +220,111 @@ async def handle_start() -> int:
         "<i>Sistema operando en Debian GNU/Linux • CENCARATIT</i>"
     )
 
-    # Exclusivo para el Owner
+    # Exclusivo para el Owner (Arranque de infraestructura)
     recipients = [owner_id]
     if connected:
         await send_telegram_alert(token, recipients, mensaje, proxies)
+
+        # Si el servidor encendió tras falla eléctrica y se había alertado al grupo (>45s en batería)
+        if not is_clean and had_group_outage:
+            node_role = str(config.get("node_role", "master")).lower()
+            is_non_prod = (
+                node_role == "slave"
+                or os.environ.get("TESTING") == "1"
+                or os.environ.get("APP_ENV") == "local"
+            )
+            groups = config.get("allowed_group_ids", [])
+            group_targets = [owner_id]
+            if groups and not is_non_prod:
+                group_targets.append(str(groups[0]))
+
+            msg_recovery_group = (
+                "✅ <b>RECUPERACIÓN DEL SERVICIO ELÉCTRICO</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "📍 <b>Ubicación:</b> <code>Sede Valle Seco (Rack Principal)</code>\n"
+                "🖥️ <b>Servidor de Monitoreo:</b> <code>EN LINEA</code> ✅\n"
+                f"🕒 <b>Hora de Encendido Servidor:</b> <code>{now_str}</code>\n"
+                "⚡ <b>Condición:</b> Servicio eléctrico restablecido al 100% .\n"
+                "🔄 <i>El servidor de monitoreo ha iniciado tras la falla eléctrica reportada.</i>\n\n"
+                "⏳ <i>Se ejecutara una verificación automática de servicios corporativos en 2 minutos (esperando estabilización de red)...</i>"
+            )
+
+            logger.info("📤 Despachando notificación de recuperación plena al grupo corporativo...")
+            await send_telegram_alert(token, group_targets, msg_recovery_group, proxies)
+
+            # Esperar estabilización física de Pfsense, switches y enlaces WAN (120 segundos)
+            is_testing = os.environ.get("TESTING") == "1"
+            stabilization_delay = 0 if is_testing else int(os.environ.get("POST_BOOT_STABILIZATION_SECONDS", "120"))
+            if stabilization_delay > 0:
+                logger.info(f"⏳ Esperando {stabilization_delay}s para estabilización de red post-recuperación...")
+                await asyncio.sleep(stabilization_delay)
+
+            # Ejecutar chequeo concurrente de servicios corporativos y enviar reporte técnico limpio
+            try:
+                logger.info("🔍 Ejecutando chequeo automático de servicios corporativos post-recuperación...")
+                from monitor.monitor_engine import run_services_check
+
+                _, vars_s, _, _ = await run_services_check(debug_mode=False)
+                corp_services = (vars_s.get("SERVICIOS_CORPORATIVOS") or "").strip()
+                reg_services = (vars_s.get("SERVICIOS_REGIONALES") or "").strip()
+                check_time_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+                body_parts = [
+                    "📋 <b>ESTADO DE SERVICIOS TRAS RESTABLECIMIENTO ELÉCTRICO</b>",
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                    f"🕒 <b>Verificación Ejecutada:</b> <code>{check_time_str}</code>",
+                ]
+                if corp_services:
+                    body_parts.extend([
+                        "\n<b>Servicios Corporativos:</b>",
+                        corp_services,
+                    ])
+                if reg_services:
+                    body_parts.extend([
+                        "\n<b>Servicios Regionales (Carabobo):</b>",
+                        reg_services,
+                    ])
+                body_parts.extend([
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                    "🛡️ <i>Chequeo automático completado tras estabilización de red.</i>",
+                ])
+
+                msg_status = "\n".join(body_parts)
+                await send_telegram_alert(token, group_targets, msg_status, proxies)
+            except Exception as e_srv:
+                logger.error(f"Aviso ejecutando chequeo de servicios en arranque: {e_srv}")
+
+            # Limpiar archivo marcador de corte y actualizar base de datos
+            try:
+                OUTAGE_ALERT_MARKER.unlink(missing_ok=True)
+                from monitor.monitor_db import get_db_connection
+                conn = get_db_connection()
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        UPDATE ups_power_events
+                        SET ended_at = NOW(),
+                            status = 'resolved',
+                            description = 'Servicio eléctrico y servidor central restablecidos tras apagón',
+                            updated_at = NOW()
+                        WHERE status = 'ongoing'
+                        """
+                    )
+                    cur.execute(
+                        """
+                        UPDATE ups_devices
+                        SET last_alert_state = 'NORMAL',
+                            group_alert_sent = 0,
+                            is_on_battery = 0,
+                            outage_since = NULL,
+                            updated_at = NOW()
+                        """
+                    )
+                conn.commit()
+                conn.close()
+            except Exception as e_db:
+                logger.warning(f"Aviso cerrando evento de corte en BD post-inicio: {e_db}")
+
     else:
         logger.warning("Red no disponible aún al inicio tras 60s. Delegando notificación a proceso en segundo plano...")
         try:
@@ -297,7 +402,7 @@ async def handle_stop() -> int:
 
     if token and owner_id:
         hostname = socket.gethostname()
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         mensaje = (
             "🛑 <b>Alerta: Servidor Apagándose / Reiniciando</b>\n\n"
             f"🖥️ <b>Host:</b> <code>{html.escape(hostname)}</code>\n"

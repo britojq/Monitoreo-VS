@@ -48,5 +48,10 @@ return [
         'base_dn' => env('LDAP_BASE_DN', 'dc=empresa,dc=gob,dc=ve'),
     ],
 
+    'websockify' => [
+        'tokens_file' => env('WEBSOCKIFY_TOKENS_FILE', '/etc/websockify/tokens.cfg'),
+        'max_tokens' => (int) env('WEBSOCKIFY_MAX_TOKENS', 100),
+    ],
+
 ];
 

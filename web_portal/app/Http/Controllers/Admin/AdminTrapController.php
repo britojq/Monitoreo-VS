@@ -92,13 +92,20 @@ class AdminTrapController extends Controller
 
         AuditLog::create([
             'user_id' => Auth::id(),
-            'action' => 'snmp_trap_processed',
-            'entity_type' => 'SnmpTrapReceived',
-            'entity_id' => $trap->id,
+            'user_name' => Auth::user()?->name ?? 'Sistema',
+            'user_email' => Auth::user()?->email,
+            'user_role' => Auth::user()?->role,
+            'event' => 'resolved',
+            'module' => 'traps',
+            'auditable_type' => SnmpTrapReceived::class,
+            'auditable_id' => $trap->id,
+            'entity_name' => "Alerta SNMP #{$trap->id}",
+            'entity_label' => $trap->source_ip,
+            'description' => "Alerta SNMP #{$trap->id} de {$trap->source_ip} ({$trap->trap_type}) marcada como atendida/procesada.",
             'ip_address' => request()->ip(),
-            'details' => "SNMP Trap #{$trap->id} de {$trap->source_ip} ({$trap->trap_type}) marcado como procesado.",
+            'user_agent' => request()->userAgent(),
         ]);
 
-        return back()->with('status', "Trap #{$trap->id} marcado como procesado.");
+        return back()->with('status', "Alerta SNMP #{$trap->id} marcada como procesada.");
     }
 }

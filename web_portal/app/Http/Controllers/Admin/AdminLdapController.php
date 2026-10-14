@@ -57,7 +57,7 @@ class AdminLdapController extends Controller
                 'success' => $ok,
                 'message' => $ok
                     ? 'Parámetros de autenticación LDAP actualizados correctamente.'
-                    : 'No se pudo guardar la configuración de LDAP en config.json.',
+                    : 'No se pudo guardar la configuración de LDAP en la base de datos central.',
                 'enabled' => $enabled,
             ]);
         }

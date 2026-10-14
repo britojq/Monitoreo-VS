@@ -1,18 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\RemoteAccess\WebsockifyTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class SshSessionController extends Controller
 {
+    public function __construct(
+        protected WebsockifyTokenService $tokenService
+    ) {
+    }
+
     /**
-     * Generar URL para iniciar sesión SSH en terminal web
+     * Generar URL para iniciar sesión SSH en terminal web y auditar en MariaDB
      */
     public function createSession(Request $request): JsonResponse
     {
@@ -44,15 +51,17 @@ class SshSessionController extends Controller
             'site' => $targetSite,
         ]);
 
-        Log::info(sprintf(
-            '[SSH] Sesión web solicitada por %s (%s) para equipo %s (%s:%d) en %s',
-            $user->name,
-            $user->role,
-            $targetName,
-            $targetIp,
-            $targetPort,
-            $targetSite
-        ));
+        // Registrar auditoría en MariaDB SSOT
+        $this->tokenService->auditSession(
+            protocol: 'ssh',
+            user: $user,
+            targetIp: $targetIp,
+            targetPort: $targetPort,
+            targetName: $targetName,
+            targetSite: $targetSite,
+            token: null,
+            request: $request
+        );
 
         return response()->json([
             'success' => true,
@@ -75,10 +84,10 @@ class SshSessionController extends Controller
             abort(403, 'Acceso denegado. No posee el permiso [remote.ssh] para abrir sesiones de consola SSH.');
         }
 
-        $ip = $request->query('ip', '0.0.0.0');
+        $ip = (string) $request->query('ip', '0.0.0.0');
         $port = (int) $request->query('port', 22);
-        $name = $request->query('name', 'Dispositivo SSH');
-        $site = $request->query('site', 'Red Corporativa');
+        $name = (string) $request->query('name', 'Dispositivo SSH');
+        $site = (string) $request->query('site', 'Red Corporativa');
 
         return view('admin.ssh.terminal', compact('ip', 'port', 'name', 'site'));
     }

@@ -129,7 +129,7 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SINCRONIZACIÓN Y ARCHIVOS (.conf) & SNAPSHOT                               -->
+    <!-- SINCRONIZACIÓN DEL SISTEMA & SNAPSHOT                                       -->
     <!-- ========================================================================= -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- SINCRONIZACIÓN DEL SISTEMA -->
@@ -212,19 +212,17 @@
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Envíos Programados a Telegram (Cron)
                         @if($cronConfig['enabled'] ?? true)
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                ACTIVO
+                            <span class="w-6 h-6 rounded-md bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 inline-flex items-center justify-center cursor-help" title="Cron Activo">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-950/80 text-red-400 border border-red-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-                                PAUSADO
+                            <span class="w-6 h-6 rounded-md bg-red-950/80 border border-red-500/40 text-red-400 inline-flex items-center justify-center cursor-help" title="Cron Pausado">
+                                <span class="w-2 h-2 rounded-full bg-red-400"></span>
                             </span>
                         @endif
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
-                        Control del envío desatendido de reportes de infraestructura a los canales oficiales y grupos autorizados.
+                        Control del envío desatendido de reportes de infraestructura a los canales corporativos y grupos autorizados.
                     </p>
                 </div>
             </div>
@@ -329,13 +327,12 @@
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Frecuencia de Chequeo Web & Telemetría
                         @if($isClusterSlave)
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-gray-900 text-gray-400 border border-gray-700">
+                            <span class="w-6 h-6 rounded-md bg-gray-900 border border-gray-700 text-gray-400 inline-flex items-center justify-center cursor-help" title="Desactivado en Esclavo (Solo Master)">
                                 <span class="material-symbols-outlined text-xs">lock</span>
-                                DESACTIVADO EN ESCLAVO (SOLO MASTER)
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
-                                CADA {{ $cronConfig['web_check_interval'] ?? 10 }} MINUTOS
+                            <span class="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 inline-flex items-center justify-center cursor-help" title="Intervalo: Cada {{ $cronConfig['web_check_interval'] ?? 10 }} Minutos">
+                                <span class="material-symbols-outlined text-xs">timer</span>
                             </span>
                         @endif
                     </h2>
@@ -361,7 +358,7 @@
                         <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">lock</span>
                         <div class="leading-relaxed">
                             <strong class="text-white block mb-0.5">Operación Desactivada en Servidor Esclavo:</strong>
-                            Este servidor no ejecuta escaneos de red ni chequeos a pfSense para prevenir colisiones de credenciales. La frecuencia oficial de escaneo de infraestructura se configura exclusivamente en el <strong class="text-cyan-300">Servidor Master</strong> (<code>{{ $clusterConfig['master_api_url'] }}</code>).
+                            Este servidor no ejecuta escaneos de red ni chequeos a pfSense para prevenir colisiones de credenciales. La frecuencia de escaneo de infraestructura se configura exclusivamente en el <strong class="text-cyan-300">Servidor Master</strong> (<code>{{ $clusterConfig['master_api_url'] }}</code>).
                         </div>
                     </div>
                 @endif
@@ -456,12 +453,12 @@
                 <div>
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Arquitectura de Clúster (Master / Slave)
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }}">
-                            {{ $isClusterSlave ? 'NODO RÉPLICA (SLAVE)' : 'NODO PRINCIPAL (MASTER)' }}
+                        <span class="w-6 h-6 rounded-md {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }} inline-flex items-center justify-center cursor-help" title="{{ $isClusterSlave ? 'Nodo Réplica (Slave)' : 'Nodo Principal (Master)' }}">
+                            <span class="material-symbols-outlined text-xs">{{ $isClusterSlave ? 'hub' : 'dns' }}</span>
                         </span>
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
-                        Define si este servidor actúa como nodo escaneador oficial (Master) o como nodo réplica de consulta (Slave) para prevenir colisiones en pfSense.
+                        Define si este servidor actúa como nodo escaneador principal (Master) o como nodo réplica de consulta (Slave) para prevenir colisiones en pfSense.
                     </p>
                 </div>
             </div>
@@ -484,7 +481,7 @@
                                     Servidor Maestro (Master)
                                 </div>
                                 <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
-                                    Realiza los escaneos de red cada 10 min, gestiona las configuraciones oficiales y sirve la API de telemetría hacia los esclavos.
+                                    Realiza los escaneos de red cada 10 min, gestiona las configuraciones maestras y sirve la API de telemetría hacia los esclavos.
                                 </p>
                             </div>
                         </label>
@@ -640,8 +637,8 @@
                 <div>
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Directorio Activo Corporativo & Autenticación LDAP
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold {{ ($ldapConfig['enabled'] ?? true) ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-300 border border-rose-500/40' }}">
-                            {{ ($ldapConfig['enabled'] ?? true) ? '● AUTENTICACIÓN LDAP HABILITADA' : '○ AUTENTICACIÓN LDAP DESHABILITADA' }}
+                        <span class="w-6 h-6 rounded-md {{ ($ldapConfig['enabled'] ?? true) ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-300 border border-rose-500/40' }} inline-flex items-center justify-center cursor-help" title="{{ ($ldapConfig['enabled'] ?? true) ? 'Autenticación LDAP Habilitada' : 'Autenticación LDAP Deshabilitada' }}">
+                            <span class="w-2 h-2 rounded-full {{ ($ldapConfig['enabled'] ?? true) ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400' }}"></span>
                         </span>
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
@@ -823,14 +820,12 @@
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         Asistente Virtual Corporativo de IA
                         @if($isAiEnabled ?? true)
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                HABILITADO
+                            <span class="w-6 h-6 rounded-md bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 inline-flex items-center justify-center cursor-help" title="Servicio Local de IA Habilitado">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-950/80 text-rose-400 border border-rose-500/40">
-                                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                DESACTIVADO POR ADMINISTRACIÓN
+                            <span class="w-6 h-6 rounded-md bg-rose-950/80 border border-rose-500/40 text-rose-400 inline-flex items-center justify-center cursor-help" title="Servicio Local de IA Desactivado">
+                                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
                             </span>
                         @endif
                     </h2>
@@ -870,7 +865,7 @@
                         @if($isAiEnabled ?? true)
                             El Asistente Virtual se encuentra <strong class="text-emerald-400">activo y operativo</strong>. Los usuarios autenticados con los permisos correspondientes pueden interactuar mediante el botón de la barra superior para soporte sobre servidores, redes y servicios corporativos.
                         @else
-                            El Asistente Virtual se encuentra <strong class="text-rose-400">desactivado administrativamente</strong>. El botón del menú superior se muestra atenuado y cualquier intento de interacción desplegará un aviso informativo institucional indicando que el servicio fue deshabilitado por la administración.
+                            El Asistente Virtual se encuentra <strong class="text-rose-400">desactivado administrativamente</strong>. El botón del menú superior se muestra atenuado y cualquier intento de interacción desplegará un aviso informativo corporativo indicando que el servicio fue deshabilitado por la administración.
                         @endif
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-[11px]">

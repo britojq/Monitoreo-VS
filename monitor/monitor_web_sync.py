@@ -239,29 +239,9 @@ async def check_web_service(url: str, timeout: float = 7.0) -> tuple[bool, int, 
 _KNOWN_PROXY_AUTH_CACHE = {}
 
 def get_known_proxy_auth(proxy_str: str) -> str:
-    """Recupera credenciales reales de proxies corporativos evitando placeholders 'USUARIO:CLAVE'."""
+    """Recupera credenciales reales de proxies corporativos directamente desde MariaDB (SSOT)."""
     global _KNOWN_PROXY_AUTH_CACHE
     if not _KNOWN_PROXY_AUTH_CACHE:
-        # 1. Intentar desde config/bot.conf
-        for candidate in [BASE_DIR / "config" / "bot.conf", BASE_DIR / "bot.conf"]:
-            if candidate.exists():
-                try:
-                    content = candidate.read_text(encoding="utf-8", errors="ignore")
-                    data = {}
-                    for l in content.splitlines():
-                        if "=" in l and not l.strip().startswith("#"):
-                            k, v = l.split("=", 1)
-                            data[k.strip()] = v.strip().strip("'\"")
-                    for letter in ("A", "B", "C", "D"):
-                        ip = data.get(f"IPADDRPORTPROXY{letter}")
-                        auth = data.get(f"USERPASSWDPROXY{letter}")
-                        if ip and auth and ":" in auth and auth != "USUARIO:CLAVE":
-                            _KNOWN_PROXY_AUTH_CACHE[ip.strip()] = auth.strip()
-                    break
-                except Exception:
-                    pass
-
-        # 2. Intentar desde monitored_proxies en MariaDB
         try:
             conn = get_db_connection()
             with conn.cursor() as cur:
@@ -298,15 +278,15 @@ async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_ur
     if not effective_auth or effective_auth == "USUARIO:CLAVE":
         effective_auth = get_known_proxy_auth(proxy_str)
 
-    # 1. Comprobar caché de corto plazo (60s) en memoria RAM compartida (/dev/shm)
+    # 1. Comprobar si existe resultado reciente EXITOSO en memoria RAM compartida (/dev/shm)
     cached = get_cached_proxy_result(proxy_str, target, max_age_seconds=60.0)
-    if cached:
+    if cached and cached.get("is_ok"):
         return cached["is_ok"], float(cached.get("latency_ms", 0.0))
 
-    # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar su resultado
+    # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar resultado exitoso
     guard = ProxyInflightGuard(proxy_str, target)
     waited_cached = await guard.acquire_or_wait(timeout=timeout)
-    if waited_cached:
+    if waited_cached and waited_cached.get("is_ok"):
         return waited_cached["is_ok"], float(waited_cached.get("latency_ms", 0.0))
 
     if effective_auth and ":" in effective_auth and effective_auth != "USUARIO:CLAVE":
@@ -323,10 +303,33 @@ async def check_proxy_service(proxy_str: str, auth_userpass: str = None, test_ur
             r = await client.get(target)
             elapsed = (time.perf_counter() - start) * 1000.0
             is_ok = (r.status_code in (200, 301, 302))
+            if not is_ok:
+                # Fallback de contingencia contra endpoint alternativo para mitigar falsos positivos
+                fb_target = "https://api.telegram.org" if "core.telegram" in target else "https://core.telegram.org/bots"
+                try:
+                    r_fb = await client.get(fb_target)
+                    if r_fb.status_code in (200, 301, 302):
+                        is_ok = True
+                        r = r_fb
+                        elapsed = (time.perf_counter() - start) * 1000.0
+                except Exception:
+                    pass
             detail = f"Proxy operativo (HTTP {r.status_code})" if is_ok else f"HTTP {r.status_code}"
             save_cached_proxy_result(proxy_str, target, is_ok, str(r.status_code), detail, elapsed, source="web_sync")
             return is_ok, round(elapsed, 1)
     except Exception:
+        # Reintento con endpoint alternativo antes de declarar caída del proxy
+        try:
+            fb_target = "https://api.telegram.org" if "core.telegram" in target else "https://core.telegram.org/bots"
+            async with httpx.AsyncClient(proxy=proxy_url, verify=SSL_PERMISSIVE_CTX, timeout=timeout) as client_fb:
+                r_fb = await client_fb.get(fb_target)
+                if r_fb.status_code in (200, 301, 302):
+                    elapsed = (time.perf_counter() - start) * 1000.0
+                    detail = f"Proxy operativo (HTTP {r_fb.status_code})"
+                    save_cached_proxy_result(proxy_str, target, True, str(r_fb.status_code), detail, elapsed, source="web_sync")
+                    return True, round(elapsed, 1)
+        except Exception:
+            pass
         elapsed = (time.perf_counter() - start) * 1000.0
         # No envenenar la memoria compartida si no se tenían credenciales válidas
         if effective_auth and effective_auth != "USUARIO:CLAVE":
@@ -469,200 +472,11 @@ async def evaluate_network_device(d: dict) -> dict:
     }
 
 def sync_conf_to_db():
-    """
-    Sincroniza automáticamente /config/monitoreo.conf y bot.conf con MySQL.
-    Permite que cualquier cambio manual en los archivos físicos .conf se refleje
-    de inmediato en la base de datos y en el sitio web en cada ciclo de escaneo.
-    """
-    conf_path = BASE_DIR / "config" / "monitoreo.conf"
-    bot_conf_path = BASE_DIR / "config" / "bot.conf"
-
-    if not conf_path.exists():
-        return
-
-    content = conf_path.read_text(encoding="utf-8", errors="ignore")
-    pattern = re.compile(r"^[ \t]*([A-Za-z0-9_]+)[ \t]*=[ \t]*(?:\"([^\"]*)\"|'([^']*)'|([^#\r\n]*))", re.MULTILINE)
-    data = {}
-    for m in pattern.finditer(content):
-        k = m.group(1).strip()
-        v = m.group(2) if m.group(2) is not None else (m.group(3) if m.group(3) is not None else m.group(4))
-        data[k] = (v or "").strip()
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # Si MariaDB ya contiene registros, actúa como Fuente Única de Verdad (SSOT)
-            # y no debe ser sobreescrita por monitoreo.conf
-            cursor.execute("SELECT COUNT(*) as cnt FROM monitored_services")
-            row = cursor.fetchone()
-            if row and row.get("cnt", 0) > 0:
-                return
-
-            # 1. SERVICIOS (A..Z)
-            for i, letter in enumerate([chr(c) for c in range(ord("A"), ord("Z") + 1)]):
-                name = data.get(f"NAMESERVICE{letter}")
-                if not name:
-                    continue
-                stype = data.get(f"TYPESERVICE{letter}", "WEB")
-                ip = data.get(f"IPSERVICE{letter}") or "0.0.0.0"
-                web = data.get(f"WEBSERVICE{letter}") or ""
-                cups = data.get(f"CUPSPORTIP{letter}") or ""
-                ldap = data.get(f"LDAPPORTIP{letter}") or ""
-                smtp = data.get(f"SMTPPORT{letter}") or ""
-                iface = data.get(f"NETINTERFACE{letter}") or "eno1"
-                dns = data.get(f"TESTHOSTDNS{letter}") or ""
-                proxy_auth = data.get(f"PROXYUSERPASSW{letter}") or ""
-                normal_msg = data.get(f"NORMALESTATEMSG{letter}") or ""
-                error_msg = data.get(f"ERRORESTATEMSG{letter}") or ""
-
-                if stype == "LDAP":
-                    port_val = int(ldap) if ldap and ldap.isdigit() else 389
-                elif stype == "SMTP":
-                    port_val = int(smtp) if smtp and smtp.isdigit() else 25
-                elif stype == "CUPS":
-                    port_val = int(cups.split(":")[1]) if (":" in cups and cups.split(":")[1].isdigit()) else (int(cups) if cups.isdigit() else 631)
-                elif stype == "DNS":
-                    port_val = 53
-                elif stype == "PROXY":
-                    proxy_cfg = data.get(f"PROXYIPPORT{letter}") or ""
-                    port_val = int(proxy_cfg.split(":")[1]) if (":" in proxy_cfg and proxy_cfg.split(":")[1].isdigit()) else 8080
-                else:
-                    port_val = None
-                
-                is_active = (
-                    "NO CONFIGURADO" not in name.upper() 
-                    and stype.upper() != "DESACTIVADO" 
-                    and (ip not in ("0.0.0.0", "127.0.0.1", "") or (web != "" and "127.0.0.1" not in web))
-                )
-
-                sql = """
-                    INSERT INTO monitored_services (letter, name, type, host_ip, web_url, port, credentials, check_interface, dns_test_domain, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    ON DUPLICATE KEY UPDATE
-                    name = VALUES(name), type = VALUES(type), host_ip = VALUES(host_ip), web_url = VALUES(web_url), port = VALUES(port),
-                    credentials = VALUES(credentials), check_interface = VALUES(check_interface), dns_test_domain = VALUES(dns_test_domain),
-                    normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
-                """
-                cursor.execute(sql, (letter, name, stype, ip, web, port_val, proxy_auth, iface, dns, normal_msg, error_msg, 1 if is_active else 0, i))
-
-            # 2. SEDES Y EQUIPOS (A..H)
-            for i, letter in enumerate(["A", "B", "C", "D", "E", "F", "G", "H"]):
-                name = data.get(f"NAMESITE{letter}")
-                if not name:
-                    continue
-                ip = data.get(f"IPSITE{letter}") or "0.0.0.0"
-                phones = [data.get(f"SITE{letter}TELEFONO{n}") or "" for n in range(1, 9)]
-                addr = data.get(f"SITE{letter}DIRECCION") or ""
-                normal_msg = data.get(f"NORMALSITE{letter}") or ""
-                error_msg = data.get(f"ERRORSITE{letter}") or ""
-
-                is_site_active = ("NO CONFIGURADO" not in name.upper() and ip not in ("0.0.0.0", "127.0.0.1", ""))
-
-                sql_site = """
-                    INSERT INTO monitored_sites (letter, name, ip, phone_1, phone_2, phone_3, phone_4, phone_5, phone_6, phone_7, phone_8, address, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    ON DUPLICATE KEY UPDATE
-                    name = VALUES(name), ip = VALUES(ip), phone_1 = VALUES(phone_1), phone_2 = VALUES(phone_2), phone_3 = VALUES(phone_3),
-                    phone_4 = VALUES(phone_4), phone_5 = VALUES(phone_5), phone_6 = VALUES(phone_6), phone_7 = VALUES(phone_7), phone_8 = VALUES(phone_8),
-                    address = VALUES(address), normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
-                """
-                cursor.execute(sql_site, (letter, name, ip, phones[0], phones[1], phones[2], phones[3], phones[4], phones[5], phones[6], phones[7], addr, normal_msg, error_msg, 1 if is_site_active else 0, i))
-                
-                cursor.execute("SELECT id FROM monitored_sites WHERE letter = %s", (letter,))
-                site_row = cursor.fetchone()
-                if site_row:
-                    site_id = site_row["id"]
-                    for dev_num in range(1, 9):
-                        dev_name = data.get(f"NAMESITE{letter}EQUIPO{dev_num}") or f"Equipo {dev_num}"
-                        dev_ip = data.get(f"IPSITE{letter}EQUIPO{dev_num}") or "0.0.0.0"
-                        dev_norm = data.get(f"NORMALSITE{letter}EQUIPO{dev_num}") or ""
-                        dev_err = data.get(f"ERRORSITE{letter}EQUIPO{dev_num}") or ""
-                        
-                        is_dev_active = (is_site_active and "NO CONFIGURADO" not in dev_name.upper() and dev_ip not in ("0.0.0.0", "127.0.0.1", ""))
-
-                        sql_dev = """
-                            INSERT INTO monitored_site_devices (monitored_site_id, device_number, name, ip, normal_state_msg, error_state_msg, is_active, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                            ON DUPLICATE KEY UPDATE
-                            name = VALUES(name), ip = VALUES(ip), normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), updated_at = NOW()
-                        """
-                        cursor.execute(sql_dev, (site_id, dev_num, dev_name, dev_ip, dev_norm, dev_err, 1 if is_dev_active else 0))
-
-            # 3. PROXIES (bot.conf)
-            if bot_conf_path.exists():
-                bot_content = bot_conf_path.read_text(encoding="utf-8", errors="ignore")
-                bdata = {}
-                for line in bot_content.splitlines():
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        bdata[k.strip()] = v.strip().strip("\"'").strip("'")
-
-                for letter in ["A", "B", "C", "D"]:
-                    pname = bdata.get(f"NAMEPROXY{letter}")
-                    pipport = bdata.get(f"IPADDRPORTPROXY{letter}")
-                    pauth = bdata.get(f"USERPASSWDPROXY{letter}")
-                    if pname and pipport:
-                        is_p_active = ("NO CONFIGURADO" not in pname.upper() and pipport != "")
-                        sql_p = """
-                            INSERT INTO monitored_proxies (letter, name, ip_port, auth_userpass, test_url, is_active, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-                            ON DUPLICATE KEY UPDATE
-                            name = VALUES(name), ip_port = VALUES(ip_port), auth_userpass = VALUES(auth_userpass), is_active = VALUES(is_active), updated_at = NOW()
-                        """
-                        cursor.execute(sql_p, (letter, pname, pipport, pauth, 'https://core.telegram.org/bots', 1 if is_p_active else 0))
-
-            # 4. DISPOSITIVOS SEDE VALLE SECO (monitoreo.conf DISPOSITIVO1..30)
-            for dev_num in range(1, 31):
-                dname = data.get(f"DISPOSITIVO{dev_num}_NAME")
-                dip = data.get(f"DISPOSITIVO{dev_num}_IP")
-                if not dname or not dip:
-                    continue
-                dmac = data.get(f"DISPOSITIVO{dev_num}_MAC") or ""
-                ddatos = data.get(f"DISPOSITIVO{dev_num}_DATOS") or ""
-                daccess = (data.get(f"DISPOSITIVO{dev_num}_ACCESS") or "SIN SOPORTE").upper()
-                dport_raw = data.get(f"DISPOSITIVO{dev_num}_PORT")
-                if dport_raw and str(dport_raw).strip().isdigit():
-                    dport = int(str(dport_raw).strip())
-                elif daccess == "TELNET":
-                    dport = 23
-                elif daccess == "WEB":
-                    dport = 80
-                elif daccess == "VNC":
-                    dport = 5900
-                else:
-                    dport = None
-
-                dmodelo = data.get(f"DISPOSITIVO{dev_num}_MODELO") or data.get(f"DISPOSITIVO{dev_num}_MODEL") or ""
-                dserial = data.get(f"DISPOSITIVO{dev_num}_SERIAL") or ""
-                dpuertos = data.get(f"DISPOSITIVO{dev_num}_PUERTOS") or data.get(f"DISPOSITIVO{dev_num}_PORTS") or ""
-                dnotas = data.get(f"DISPOSITIVO{dev_num}_NOTAS") or data.get(f"DISPOSITIVO{dev_num}_NOTA") or ""
-
-                dnorm = data.get(f"DISPOSITIVO{dev_num}_NORMAL") or ""
-                derr = data.get(f"DISPOSITIVO{dev_num}_ERROR") or ""
-
-                is_dev_active = ("NO CONFIGURADO" not in dname.upper() and dip not in ("0.0.0.0", "127.0.0.1", ""))
-
-                sql_net = """
-                    INSERT INTO monitored_network_devices (device_number, name, ip, mac, vendor_data, access_type, access_port, model, serial, ports, notes, normal_state_msg, error_state_msg, is_active, sort_order, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    ON DUPLICATE KEY UPDATE
-                    device_number = VALUES(device_number), name = VALUES(name), mac = VALUES(mac), vendor_data = VALUES(vendor_data),
-                    access_type = VALUES(access_type), access_port = VALUES(access_port),
-                    model = VALUES(model), serial = VALUES(serial), ports = VALUES(ports), notes = VALUES(notes),
-                    normal_state_msg = VALUES(normal_state_msg), error_state_msg = VALUES(error_state_msg), is_active = VALUES(is_active), sort_order = VALUES(sort_order), updated_at = NOW()
-                """
-                cursor.execute(sql_net, (dev_num, dname, dip, dmac, ddatos, daccess, dport, dmodelo, dserial, dpuertos, dnotas, dnorm, derr, 1 if is_dev_active else 0, dev_num))
-    finally:
-        conn.close()
+    """MariaDB es la única fuente de verdad (SSOT). Ya no se usan ni sincronizan archivos planos .conf."""
+    pass
 
 async def run_full_scan():
     start_time = time.perf_counter()
-    # Sincronizar archivos .conf físicos con MySQL automáticamente
-    try:
-        sync_conf_to_db()
-    except Exception as e:
-        print(f"⚠️ Error sincronizando conf a DB: {e}", file=sys.stderr)
 
     conn = get_db_connection()
     try:
@@ -1299,6 +1113,47 @@ async def sync_from_master() -> bool:
                             ))
                         if s_records:
                             cursor.executemany(subnet_sql, s_records)
+
+                    # 2.6.1 Sincronización de Dispositivos Descubiertos (discovered_devices)
+                    disc_devs = data.get("config", {}).get("discovered_devices", [])
+                    if disc_devs:
+                        dd_sql = """
+                            INSERT INTO discovered_devices 
+                            (id, mac_address, ip_address, hostname, vendor, oui_prefix, device_type, os_detected,
+                             open_ports, site_id, classification_status, classified_by, classified_at,
+                             linked_network_device_id, first_seen, last_seen, seen_count, is_active,
+                             discovery_method, is_authorized, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            ip_address=VALUES(ip_address), hostname=VALUES(hostname), vendor=VALUES(vendor),
+                            oui_prefix=VALUES(oui_prefix), device_type=VALUES(device_type), os_detected=VALUES(os_detected),
+                            open_ports=VALUES(open_ports), site_id=VALUES(site_id),
+                            classification_status=VALUES(classification_status), classified_by=VALUES(classified_by),
+                            classified_at=VALUES(classified_at), linked_network_device_id=VALUES(linked_network_device_id),
+                            last_seen=VALUES(last_seen), seen_count=VALUES(seen_count), is_active=VALUES(is_active),
+                            discovery_method=VALUES(discovery_method), is_authorized=VALUES(is_authorized),
+                            notes=VALUES(notes), updated_at=VALUES(updated_at)
+                        """
+                        dd_records = []
+                        for d in disc_devs:
+                            if "id" in d and "mac_address" in d and "ip_address" in d:
+                                ports = d.get("open_ports")
+                                if isinstance(ports, (dict, list)):
+                                    ports = json.dumps(ports)
+                                dd_records.append((
+                                    d["id"], d["mac_address"], d["ip_address"], d.get("hostname"),
+                                    d.get("vendor"), d.get("oui_prefix"), d.get("device_type", "unknown"),
+                                    d.get("os_detected"), ports, d.get("site_id"),
+                                    d.get("classification_status", "pendiente"), d.get("classified_by"),
+                                    _clean_mysql_dt(d.get("classified_at")), d.get("linked_network_device_id"),
+                                    _clean_mysql_dt(d.get("first_seen")), _clean_mysql_dt(d.get("last_seen")),
+                                    d.get("seen_count", 1), 1 if d.get("is_active", True) else 0,
+                                    d.get("discovery_method", "arp_sweep"), 1 if d.get("is_authorized") else 0,
+                                    d.get("notes"), _clean_mysql_dt(d.get("created_at")),
+                                    _clean_mysql_dt(d.get("updated_at") or d.get("created_at"))
+                                ))
+                        if dd_records:
+                            cursor.executemany(dd_sql, dd_records)
 
                     # 2.7 Sincronización SNMP (Fase 2)
                     # 2.7.1 OIDs estándar y de fabricantes
@@ -1981,6 +1836,237 @@ async def sync_from_master() -> bool:
                         ]
                         if ups_h_records:
                             cursor.executemany(ups_h_sql, ups_h_records)
+
+                    # 2.17 Sincronización de Gestión de Activos ITAM e Inventario (Fase 7 - Regla de Oro #3)
+                    # 2.17.1 Activos de Inventario (inventory_assets)
+                    inv_assets = data.get("config", {}).get("inventory_assets", [])
+                    if inv_assets:
+                        inv_asset_sql = """
+                            INSERT INTO inventory_assets
+                            (id, asset_tag, name, type, status, brand, model, serial_number, mac_address, ip_address,
+                             monitored_site_id, location_detail, monitored_network_device_id, current_user_id,
+                             custodian_name, custodian_id_number, custodian_department, operating_system, os_kernel,
+                             purchase_date, warranty_expiration, last_glpi_sync_at, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            asset_tag=VALUES(asset_tag), name=VALUES(name), type=VALUES(type), status=VALUES(status),
+                            brand=VALUES(brand), model=VALUES(model), serial_number=VALUES(serial_number),
+                            mac_address=VALUES(mac_address), ip_address=VALUES(ip_address),
+                            monitored_site_id=VALUES(monitored_site_id), location_detail=VALUES(location_detail),
+                            monitored_network_device_id=VALUES(monitored_network_device_id), current_user_id=VALUES(current_user_id),
+                            custodian_name=VALUES(custodian_name), custodian_id_number=VALUES(custodian_id_number),
+                            custodian_department=VALUES(custodian_department), operating_system=VALUES(operating_system),
+                            os_kernel=VALUES(os_kernel), purchase_date=VALUES(purchase_date),
+                            warranty_expiration=VALUES(warranty_expiration), last_glpi_sync_at=VALUES(last_glpi_sync_at),
+                            notes=VALUES(notes), updated_at=VALUES(updated_at)
+                        """
+                        inv_asset_records = [
+                            (
+                                ia["id"], ia.get("asset_tag"), ia["name"], ia.get("type", "desktop"),
+                                ia.get("status", "in_stock"), ia.get("brand"), ia.get("model"),
+                                ia.get("serial_number"), ia.get("mac_address"), ia.get("ip_address"),
+                                ia.get("monitored_site_id"), ia.get("location_detail"),
+                                ia.get("monitored_network_device_id"), ia.get("current_user_id"),
+                                ia.get("custodian_name"), ia.get("custodian_id_number"),
+                                ia.get("custodian_department"), ia.get("operating_system"),
+                                ia.get("os_kernel"), _clean_mysql_dt(ia.get("purchase_date"), date_only=True),
+                                _clean_mysql_dt(ia.get("warranty_expiration"), date_only=True),
+                                _clean_mysql_dt(ia.get("last_glpi_sync_at")), ia.get("notes"),
+                                _clean_mysql_dt(ia.get("created_at")),
+                                _clean_mysql_dt(ia.get("updated_at") or ia.get("created_at"))
+                            )
+                            for ia in inv_assets if "id" in ia and "name" in ia
+                        ]
+                        if inv_asset_records:
+                            cursor.executemany(inv_asset_sql, inv_asset_records)
+
+                    # 2.17.2 Componentes Internos de Activos (inventory_components)
+                    inv_comps = data.get("config", {}).get("inventory_components", [])
+                    if inv_comps:
+                        inv_comp_sql = """
+                            INSERT INTO inventory_components
+                            (id, inventory_asset_id, type, name, brand, model, capacity, serial_number, slot_or_bus, status, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            inventory_asset_id=VALUES(inventory_asset_id), type=VALUES(type), name=VALUES(name),
+                            brand=VALUES(brand), model=VALUES(model), capacity=VALUES(capacity),
+                            serial_number=VALUES(serial_number), slot_or_bus=VALUES(slot_or_bus),
+                            status=VALUES(status), updated_at=VALUES(updated_at)
+                        """
+                        inv_comp_records = [
+                            (
+                                ic["id"], ic["inventory_asset_id"], ic["type"], ic["name"],
+                                ic.get("brand"), ic.get("model"), ic.get("capacity"),
+                                ic.get("serial_number"), ic.get("slot_or_bus"),
+                                ic.get("status", "active"), _clean_mysql_dt(ic.get("created_at")),
+                                _clean_mysql_dt(ic.get("updated_at") or ic.get("created_at"))
+                            )
+                            for ic in inv_comps if "id" in ic and "inventory_asset_id" in ic
+                        ]
+                        if inv_comp_records:
+                            cursor.executemany(inv_comp_sql, inv_comp_records)
+
+                    # 2.17.3 Periféricos Independientes (inventory_peripherals)
+                    inv_periphs = data.get("config", {}).get("inventory_peripherals", [])
+                    if inv_periphs:
+                        inv_peri_sql = """
+                            INSERT INTO inventory_peripherals
+                            (id, asset_tag, type, brand, model, serial_number, status, monitored_site_id, current_asset_id, current_user_id, notes, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            asset_tag=VALUES(asset_tag), type=VALUES(type), brand=VALUES(brand),
+                            model=VALUES(model), serial_number=VALUES(serial_number), status=VALUES(status),
+                            monitored_site_id=VALUES(monitored_site_id), current_asset_id=VALUES(current_asset_id),
+                            current_user_id=VALUES(current_user_id), notes=VALUES(notes), updated_at=VALUES(updated_at)
+                        """
+                        inv_peri_records = [
+                            (
+                                ip["id"], ip.get("asset_tag"), ip["type"], ip.get("brand"),
+                                ip.get("model"), ip.get("serial_number"), ip.get("status", "in_stock"),
+                                ip.get("monitored_site_id"), ip.get("current_asset_id"),
+                                ip.get("current_user_id"), ip.get("notes"),
+                                _clean_mysql_dt(ip.get("created_at")),
+                                _clean_mysql_dt(ip.get("updated_at") or ip.get("created_at"))
+                            )
+                            for ip in inv_periphs if "id" in ip and "type" in ip
+                        ]
+                        if inv_peri_records:
+                            cursor.executemany(inv_peri_sql, inv_peri_records)
+
+                    # 2.17.4 Asignaciones y Actas de Movilización (inventory_assignments)
+                    inv_assigns = data.get("config", {}).get("inventory_assignments", [])
+                    if inv_assigns:
+                        inv_asg_sql = """
+                            INSERT INTO inventory_assignments
+                            (id, assignment_code, inventory_asset_id, user_id, custodian_name, custodian_id_number,
+                             custodian_department, custodian_role, phone_extension, monitored_site_id,
+                             checkpoint_name, gate_operator_name, departure_time, entry_time, control_number,
+                             movement_type, provenance, provenance_other, peripherals_json, hardware_specs,
+                             assigned_at, returned_at, document_pdf_path, status, delivered_by_user_id,
+                             observations, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            assignment_code=VALUES(assignment_code), inventory_asset_id=VALUES(inventory_asset_id),
+                            user_id=VALUES(user_id), custodian_name=VALUES(custodian_name),
+                            custodian_id_number=VALUES(custodian_id_number), custodian_department=VALUES(custodian_department),
+                            custodian_role=VALUES(custodian_role), phone_extension=VALUES(phone_extension),
+                            monitored_site_id=VALUES(monitored_site_id), checkpoint_name=VALUES(checkpoint_name),
+                            gate_operator_name=VALUES(gate_operator_name), departure_time=VALUES(departure_time),
+                            entry_time=VALUES(entry_time), control_number=VALUES(control_number),
+                            movement_type=VALUES(movement_type), provenance=VALUES(provenance),
+                            provenance_other=VALUES(provenance_other), peripherals_json=VALUES(peripherals_json),
+                            hardware_specs=VALUES(hardware_specs), assigned_at=VALUES(assigned_at),
+                            returned_at=VALUES(returned_at), document_pdf_path=VALUES(document_pdf_path),
+                            status=VALUES(status), delivered_by_user_id=VALUES(delivered_by_user_id),
+                            observations=VALUES(observations), updated_at=VALUES(updated_at)
+                        """
+                        inv_asg_records = [
+                            (
+                                ia["id"], ia["assignment_code"], ia["inventory_asset_id"],
+                                ia.get("user_id"), ia["custodian_name"], ia.get("custodian_id_number"),
+                                ia.get("custodian_department"), ia.get("custodian_role"),
+                                ia.get("phone_extension"), ia.get("monitored_site_id"),
+                                ia.get("checkpoint_name"), ia.get("gate_operator_name"),
+                                ia.get("departure_time"), ia.get("entry_time"), ia.get("control_number"),
+                                ia.get("movement_type", "assignment"), ia.get("provenance", "stock"),
+                                ia.get("provenance_other"),
+                                json.dumps(ia.get("peripherals_json")) if isinstance(ia.get("peripherals_json"), (list, dict)) else ia.get("peripherals_json"),
+                                json.dumps(ia.get("hardware_specs")) if isinstance(ia.get("hardware_specs"), (list, dict)) else ia.get("hardware_specs"),
+                                _clean_mysql_dt(ia.get("assigned_at")), _clean_mysql_dt(ia.get("returned_at")),
+                                ia.get("document_pdf_path"), ia.get("status", "active"),
+                                ia.get("delivered_by_user_id"), ia.get("observations"),
+                                _clean_mysql_dt(ia.get("created_at")),
+                                _clean_mysql_dt(ia.get("updated_at") or ia.get("created_at"))
+                            )
+                            for ia in inv_assigns if "id" in ia and "assignment_code" in ia
+                        ]
+                        if inv_asg_records:
+                            cursor.executemany(inv_asg_sql, inv_asg_records)
+
+                    # 2.17.5 Órdenes de Servicio Técnico (maintenance_tickets)
+                    inv_tickets = data.get("config", {}).get("maintenance_tickets", [])
+                    if inv_tickets:
+                        inv_tkt_sql = """
+                            INSERT INTO maintenance_tickets
+                            (id, ticket_code, inventory_asset_id, type, status, priority, title, description,
+                             scheduled_at, started_at, completed_at, technician_user_id, resolution_notes,
+                             parts_replaced_json, warranty_applied, cost, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            ticket_code=VALUES(ticket_code), inventory_asset_id=VALUES(inventory_asset_id),
+                            type=VALUES(type), status=VALUES(status), priority=VALUES(priority),
+                            title=VALUES(title), description=VALUES(description),
+                            scheduled_at=VALUES(scheduled_at), started_at=VALUES(started_at),
+                            completed_at=VALUES(completed_at), technician_user_id=VALUES(technician_user_id),
+                            resolution_notes=VALUES(resolution_notes), parts_replaced_json=VALUES(parts_replaced_json),
+                            warranty_applied=VALUES(warranty_applied), cost=VALUES(cost), updated_at=VALUES(updated_at)
+                        """
+                        inv_tkt_records = [
+                            (
+                                it["id"], it["ticket_code"], it["inventory_asset_id"],
+                                it.get("type", "preventive"), it.get("status", "scheduled"),
+                                it.get("priority", "medium"), it["title"], it.get("description"),
+                                _clean_mysql_dt(it.get("scheduled_at")), _clean_mysql_dt(it.get("started_at")),
+                                _clean_mysql_dt(it.get("completed_at")), it.get("technician_user_id"),
+                                it.get("resolution_notes"),
+                                json.dumps(it.get("parts_replaced_json")) if isinstance(it.get("parts_replaced_json"), (list, dict)) else it.get("parts_replaced_json"),
+                                1 if it.get("warranty_applied") else 0, float(it.get("cost", 0.0) or 0.0),
+                                _clean_mysql_dt(it.get("created_at")),
+                                _clean_mysql_dt(it.get("updated_at") or it.get("created_at"))
+                            )
+                            for it in inv_tickets if "id" in it and "ticket_code" in it
+                        ]
+                        if inv_tkt_records:
+                            cursor.executemany(inv_tkt_sql, inv_tkt_records)
+
+                    # 2.17.6 Historial Forense de Componentes (inventory_components_histories)
+                    inv_hist = data.get("inventory_components_histories", [])
+                    if inv_hist:
+                        inv_h_sql = """
+                            INSERT IGNORE INTO inventory_components_histories
+                            (id, inventory_asset_id, action, component_type, old_value, new_value, reason, registered_by_user_id, recorded_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        inv_h_records = [
+                            (
+                                ih["id"], ih["inventory_asset_id"], ih["action"], ih["component_type"],
+                                json.dumps(ih.get("old_value")) if isinstance(ih.get("old_value"), (list, dict)) else ih.get("old_value"),
+                                json.dumps(ih.get("new_value")) if isinstance(ih.get("new_value"), (list, dict)) else ih.get("new_value"),
+                                ih.get("reason"), ih.get("registered_by_user_id"),
+                                _clean_mysql_dt(ih.get("recorded_at"))
+                            )
+                            for ih in inv_hist if "id" in ih and "inventory_asset_id" in ih
+                        ]
+                        if inv_h_records:
+                            cursor.executemany(inv_h_sql, inv_h_records)
+
+                    # 2.18 Sincronización de Eventos Eléctricos UPS (ups_power_events)
+                    ups_p_events = data.get("ups_power_events", [])
+                    if ups_p_events:
+                        ups_pe_sql = """
+                            INSERT INTO ups_power_events
+                            (id, ups_device_id, event_type, started_at, ended_at, duration_seconds,
+                             input_voltage, status, notified_group, notified_target, description, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            ended_at=VALUES(ended_at), duration_seconds=VALUES(duration_seconds),
+                            event_type=VALUES(event_type), status=VALUES(status),
+                            description=VALUES(description), updated_at=VALUES(updated_at)
+                        """
+                        ups_pe_records = [
+                            (
+                                pe["id"], pe.get("ups_device_id", 1), pe.get("event_type", "fluctuation"),
+                                _clean_mysql_dt(pe.get("started_at")), _clean_mysql_dt(pe.get("ended_at")),
+                                pe.get("duration_seconds", 0), pe.get("input_voltage"),
+                                pe.get("status", "resolved"), 1 if pe.get("notified_group") else 0,
+                                pe.get("notified_target", "owner"), pe.get("description"),
+                                _clean_mysql_dt(pe.get("created_at")),
+                                _clean_mysql_dt(pe.get("updated_at") or pe.get("created_at"))
+                            )
+                            for pe in ups_p_events if "id" in pe and "started_at" in pe
+                        ]
+                        if ups_pe_records:
+                            cursor.executemany(ups_pe_sql, ups_pe_records)
 
                     cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
                 finally:

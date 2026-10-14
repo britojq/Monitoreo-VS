@@ -8,20 +8,28 @@
     <!-- CABECERA PRINCIPAL Y ACCIONES -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-obsidian-card p-3.5 rounded-xl border border-obsidian-border shadow-md">
         <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Alertas &amp; Respaldos</span>
+            </div>
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-2xl">settings_backup_restore</span>
                 <h1 class="text-lg font-bold text-white tracking-wide">Respaldos y Auditoría de Configuraciones</h1>
                 @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('cisco.backup_run'))
-                    <span class="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono flex items-center gap-1" title="Operador: Modo Consulta y Auditoría de Diffs">
-                        <span class="material-symbols-outlined text-xs">visibility</span> Modo Consulta
+                    <span class="w-6 h-6 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 inline-flex items-center justify-center cursor-help" title="Operador: Modo Consulta y Auditoría de Diffs">
+                        <span class="material-symbols-outlined text-xs">visibility</span>
                     </span>
                 @elseif(auth()->user()->isAdmin())
-                    <span class="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono flex items-center gap-1" title="Administrador con Control Total de Respaldos">
-                        <span class="material-symbols-outlined text-xs">admin_panel_settings</span> Control Total
+                    <span class="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 inline-flex items-center justify-center cursor-help" title="Administrador: Control Total de Respaldos">
+                        <span class="material-symbols-outlined text-xs">admin_panel_settings</span>
                     </span>
                 @else
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono flex items-center gap-1" title="Operador con Permiso de Ejecución de Respaldos">
-                        <span class="material-symbols-outlined text-xs">cloud_sync</span> Respaldos Habilitados
+                    <span class="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 inline-flex items-center justify-center cursor-help" title="Operador: Respaldos Habilitados">
+                        <span class="material-symbols-outlined text-xs">cloud_sync</span>
                     </span>
                 @endif
             </div>
@@ -32,28 +40,92 @@
 
         <!-- BOTONES DE ACCIÓN -->
         <div class="flex flex-wrap items-center gap-2">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Réplica)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')) && !$isClusterSlave)
-                <form action="{{ route('admin.configs.backup_all') }}" method="POST" class="inline">
-                    @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Ejecutar ciclo de respaldo y análisis diferencial para todos los equipos">
-                        <span class="material-symbols-outlined text-sm">cloud_sync</span> Respaldar Todo
+                <div class="relative group">
+                    <form action="{{ route('admin.configs.backup_all') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition shadow-xs cursor-pointer">
+                            <span class="material-symbols-outlined text-base">cloud_sync</span>
+                        </button>
+                    </form>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">cloud_sync</span>
+                            <span class="font-bold text-cyan-200">Respaldar Todo (GitOps)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="openBackupDeviceModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black transition text-xs font-mono font-bold shadow-md shadow-emerald-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">backup</span>
+                        <span class="font-bold text-sm leading-none">+</span>
                     </button>
-                </form>
-                <button onclick="openBackupDeviceModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Iniciar respaldo manual de un dispositivo específico">
-                    <span class="material-symbols-outlined text-sm">backup</span> Nuevo Respaldo
-                </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-emerald-500/50 shadow-xl shadow-emerald-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-emerald-400">backup</span>
+                            <span class="font-bold text-emerald-200">Nuevo Respaldo Manual</span>
+                        </div>
+                    </div>
+                </div>
             @elseif($isClusterSlave && (auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')))
-                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                    <span class="material-symbols-outlined text-xs">lock</span>
-                    <span>Solo Lectura (Modo Esclavo)</span>
-                </span>
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS HUB ALERTAS & RESPALDOS (PANEL DE NAVEGACIÓN UNIFICADO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.alerts.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Sistema Inteligente de Alertas y Correlación de Incidentes">
+            <span class="material-symbols-outlined text-sm">notifications_active</span>
+            <span>Alertas &amp; Correlación</span>
+        </a>
+        <a href="{{ route('admin.configs.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.configs.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Respaldos y Auditoría de Configuraciones de Red (GitOps)">
+            <span class="material-symbols-outlined text-sm">settings_backup_restore</span>
+            <span>Respaldos de Configuración</span>
+        </a>
+        <a href="{{ route('admin.predictive.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="IA Predictiva &amp; Salud de Enlaces">
+            <span class="material-symbols-outlined text-sm">psychology</span>
+            <span>IA Predictiva &amp; Salud de Enlaces</span>
+        </a>
     </div>
 
     <!-- TARJETAS HUD DE MÉTRICAS -->
@@ -446,10 +518,10 @@
 <!-- ============================================================================= -->
 <!-- MODAL 1: VISOR DE CONFIGURACIÓN COMPLETA                                       -->
 <!-- ============================================================================= -->
-<div id="configViewerModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-obsidian-card w-full max-w-4xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-        <!-- Cabecera Modal -->
-        <div class="p-3.5 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a]">
+<div id="configViewerModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card w-full max-w-4xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+        <!-- Cabecera Modal Fija -->
+        <div class="p-3.5 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a] shrink-0">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-xl">description</span>
                 <div>
@@ -462,21 +534,21 @@
                     <span class="material-symbols-outlined text-sm">content_copy</span>
                     <span id="copyBtnText">Copiar</span>
                 </button>
-                <button onclick="closeConfigModal()" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">
+                <button onclick="closeConfigModal()" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer" title="Cerrar ventana">
                     <span class="material-symbols-outlined text-lg">close</span>
                 </button>
             </div>
         </div>
 
-        <!-- Banner de Metadatos -->
-        <div id="cfgModalMeta" class="px-3.5 py-2 bg-[#081220] border-b border-obsidian-border/60 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-300 gap-2">
+        <!-- Banner de Metadatos Fijo -->
+        <div id="cfgModalMeta" class="px-3.5 py-2 bg-[#081220] border-b border-obsidian-border/60 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-300 gap-2 shrink-0">
             <div>Hash: <span id="cfgModalHash" class="text-cyan-400">...</span></div>
             <div>Líneas: <span id="cfgModalLines" class="text-white font-bold">0</span> | Tamaño: <span id="cfgModalSize" class="text-slate-400">0 KB</span></div>
             <div>Captura: <span id="cfgModalDate" class="text-slate-300">...</span></div>
         </div>
 
-        <!-- Contenedor de Código -->
-        <div class="p-3 flex-1 overflow-auto bg-[#040811]">
+        <!-- Contenedor de Código Deslizable -->
+        <div class="p-3 flex-1 min-h-0 overflow-auto bg-[#040811] custom-scroll">
             <pre id="cfgModalContent" class="text-[11px] font-mono text-slate-300 leading-relaxed select-text whitespace-pre overflow-x-auto p-2">Cargando contenido...</pre>
         </div>
     </div>
@@ -485,10 +557,10 @@
 <!-- ============================================================================= -->
 <!-- MODAL 2: VISOR DE DIFF UNIFICADO (CONTROL DIFERENCIAL GITOPS)                 -->
 <!-- ============================================================================= -->
-<div id="diffViewerModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-obsidian-card w-full max-w-5xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-        <!-- Cabecera Modal -->
-        <div class="p-3.5 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a]">
+<div id="diffViewerModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card w-full max-w-5xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+        <!-- Cabecera Modal Fija -->
+        <div class="p-3.5 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a] shrink-0">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-400 text-xl">compare_arrows</span>
                 <div>
@@ -497,14 +569,14 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="closeDiffModal()" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">
+                <button onclick="closeDiffModal()" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer" title="Cerrar ventana">
                     <span class="material-symbols-outlined text-lg">close</span>
                 </button>
             </div>
         </div>
 
-        <!-- Barra de Estadísticas Diff -->
-        <div class="px-3.5 py-2 bg-[#081220] border-b border-obsidian-border/60 flex flex-wrap items-center justify-between text-[11px] font-mono gap-2">
+        <!-- Barra de Estadísticas Diff Fija -->
+        <div class="px-3.5 py-2 bg-[#081220] border-b border-obsidian-border/60 flex flex-wrap items-center justify-between text-[11px] font-mono gap-2 shrink-0">
             <div class="flex items-center gap-2">
                 <span id="diffModalBadge" class="px-2 py-0.5 rounded-full text-[10px] border">Modificación</span>
                 <span id="diffModalSummary" class="text-slate-300">...</span>
@@ -515,8 +587,8 @@
             </div>
         </div>
 
-        <!-- Contenedor Diff con Colores Git -->
-        <div class="p-3 flex-1 overflow-auto bg-[#040811]">
+        <!-- Contenedor Diff Deslizable -->
+        <div class="p-3 flex-1 min-h-0 overflow-auto bg-[#040811] custom-scroll">
             <div id="diffLinesContainer" class="font-mono text-[11px] leading-relaxed select-text space-y-0.5">
                 <!-- Se pobla dinámicamente con JS -->
             </div>
@@ -528,21 +600,23 @@
 <!-- MODAL 3: NUEVO RESPALDO MANUAL (SOLO ADMINISTRADOR EN MASTER)                 -->
 <!-- ============================================================================= -->
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('cisco.backup_run')) && !$isClusterSlave)
-<div id="backupDeviceModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-obsidian-card w-full max-w-lg rounded-2xl border border-obsidian-border shadow-2xl overflow-hidden">
-        <form action="{{ route('admin.configs.backup_device') }}" method="POST">
+<div id="backupDeviceModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card w-full max-w-lg rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-sans">
+        <form action="{{ route('admin.configs.backup_device') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div class="p-4 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a]">
+            <!-- Cabecera Fija -->
+            <div class="p-4 border-b border-obsidian-border flex items-center justify-between bg-[#060e1a] shrink-0">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-emerald-400 text-xl">backup</span>
                     <h3 class="text-sm font-bold text-white font-mono">Ejecutar Respaldo Manual</h3>
                 </div>
-                <button type="button" onclick="closeBackupDeviceModal()" class="text-slate-400 hover:text-white">
+                <button type="button" onclick="closeBackupDeviceModal()" class="text-slate-400 hover:text-white transition p-1 cursor-pointer" title="Cerrar modal">
                     <span class="material-symbols-outlined text-lg">close</span>
                 </button>
             </div>
 
-            <div class="p-4 space-y-3 bg-obsidian-card">
+            <!-- Cuerpo Deslizable -->
+            <div class="p-4 space-y-3 bg-obsidian-card overflow-y-auto flex-1 custom-scroll">
                 <div>
                     <label class="block text-xs font-mono text-slate-300 mb-1">Seleccione el Dispositivo de Red</label>
                     <select name="device_target" required class="w-full px-3 py-2 rounded-lg bg-[#060e1a] border border-obsidian-border text-xs text-slate-200 font-mono focus:outline-hidden focus:border-obsidian-cyan">
@@ -571,8 +645,9 @@
                 </div>
             </div>
 
-            <div class="p-3.5 border-t border-obsidian-border bg-[#060e1a] flex items-center justify-end gap-2">
-                <button type="button" onclick="closeBackupDeviceModal()" class="px-3 py-1.5 rounded-lg border border-obsidian-border text-slate-300 hover:text-white text-xs font-mono transition">
+            <!-- Pie Fijo -->
+            <div class="p-3.5 border-t border-obsidian-border bg-[#060e1a] flex items-center justify-end gap-2 shrink-0">
+                <button type="button" onclick="closeBackupDeviceModal()" class="px-3 py-1.5 rounded-lg border border-obsidian-border text-slate-300 hover:text-white text-xs font-mono transition cursor-pointer">
                     Cancelar
                 </button>
                 <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">

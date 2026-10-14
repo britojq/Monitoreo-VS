@@ -277,10 +277,10 @@
                                                     $devDetails = !empty($deviceDetailParts) ? implode("\n", $deviceDetailParts) : 'Dispositivo interno vinculado a la red de ' . $site->name . '.';
                                                 @endphp
                                                 <div class="bg-obsidian-panel/90 hover:bg-obsidian-panel border border-obsidian-border rounded p-1.5 flex items-center justify-between text-[9px] font-mono cursor-pointer transition hover:border-obsidian-cyan/40"
-                                                     data-tech-title="{{ $site->name }} - {{ $dev->name }}"
+                                                     data-tech-title="{{ $site->name }} - {{ $dev->display_identity ?? $dev->name }}"
                                                      data-tech-type="EQUIPO SECUNDARIO"
                                                      data-tech-ip="{{ $dev->ip }}"
-                                                     data-tech-port="{{ $devAcc !== 'SIN SOPORTE' ? $devAcc . ':' . $devPort : 'Slot #' . $dev->device_number }}"
+                                                     data-tech-port="{{ $devAcc !== 'SIN SOPORTE' ? $devAcc . ':' . $devPort : 'Sin acceso remoto' }}"
                                                      data-tech-protocol="ICMP Echo Ping"
                                                      data-tech-latency="{{ $devUp ? '< 10 ms' : '--' }}"
                                                      data-tech-status="{{ $devUp ? 'ONLINE (Ping Respondido)' : 'OFFLINE (Inaccesible)' }}"
@@ -289,7 +289,7 @@
                                                      data-tech-kind="site">
                                                     <div class="flex items-center space-x-1.5 min-w-0 pr-1 truncate">
                                                         <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $devUp ? 'bg-emerald-400 glow-green' : 'bg-red-500' }}"></span>
-                                                        <span class="text-white truncate" title="{{ $dev->name }}">{{ $dev->name }}</span>
+                                                        <span class="text-white truncate" title="{{ $dev->display_identity ?? $dev->name }}">{{ $dev->display_identity ?? $dev->name }}</span>
                                                     </div>
 
                                                     <!-- BOTÓN DE ACCESO REMOTO SEGÚN PROTOCOLO (SSH / TELNET / WEB / VNC) -->
@@ -978,9 +978,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL AVISO DE INICIO DE SESIÓN PARA ASISTENTE IA                         -->
 <!-- ========================================================================= -->
-<div id="modal-ai-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-ai-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl border border-cyan-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-obsidian-cyan flex items-center justify-center shadow-lg shadow-cyan-950">
                     <span class="material-symbols-outlined text-xl">smart_toy</span>
@@ -993,7 +993,7 @@
             <button onclick="closeAiLoginPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px] space-y-1.5">
                 <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
                     <span class="material-symbols-outlined text-sm text-cyan-400">lock</span>
@@ -1011,7 +1011,7 @@
             </p>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
             <button type="button" onclick="closeAiLoginPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                 Cancelar
             </button>
@@ -1026,9 +1026,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL AVISO DE ASISTENTE IA DESACTIVADO POR ADMINISTRACIÓN                -->
 <!-- ========================================================================= -->
-<div id="modal-ai-disabled-notice" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-rose-500/40 shadow-2xl space-y-4 font-mono bg-[#040d1a]/95">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-ai-disabled-notice" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl border border-rose-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-400 flex items-center justify-center shadow-lg shadow-rose-950/40">
                     <span class="material-symbols-outlined text-xl">power_settings_new</span>
@@ -1041,7 +1041,7 @@
             <button onclick="closeAiDisabledNoticeModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-200 text-[11px] space-y-1.5">
                 <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
                     <span class="material-symbols-outlined text-sm text-rose-400">block</span>
@@ -1056,8 +1056,8 @@
             </p>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between gap-2">
-            @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->hasPermission('settings.manage')))
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between gap-2 shrink-0 bg-[#061527]">
+            @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->hasPermission('security.advanced')))
                 <a href="{{ route('admin.settings.advanced') }}#seccion-ia" class="px-3.5 py-2 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs flex items-center gap-1.5 transition">
                     <span class="material-symbols-outlined text-sm">tune</span>
                     <span>Gestionar en Ajustes</span>
@@ -1078,8 +1078,8 @@
 <div id="modal-ai-chat" class="fixed inset-0 z-[100000] bg-black/75 backdrop-blur-sm hidden items-center justify-center p-2 sm:p-4">
     <div class="glass-panel w-full max-w-2xl h-[90vh] max-h-[700px] rounded-2xl border border-obsidian-cyan/50 flex flex-col overflow-hidden shadow-2xl bg-[#040d1a]/95">
         
-        <!-- CABECERA DEL CHAT -->
-        <div class="p-3.5 px-5 border-b border-obsidian-border/80 flex items-center justify-between bg-[#061527]">
+        <!-- CABECERA DEL CHAT (FIJA) -->
+        <div class="p-3.5 px-5 border-b border-obsidian-border/80 flex items-center justify-between bg-[#061527] shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan shadow-md shadow-cyan-950">
                     <span class="material-symbols-outlined text-2xl">smart_toy</span>
@@ -1096,10 +1096,10 @@
                 </div>
             </div>
             <div class="flex items-center gap-1">
-                <button onclick="clearAiChatConversation()" title="Limpiar historial" class="p-2 rounded-lg text-obsidian-muted hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center">
+                <button onclick="clearAiChatConversation()" title="Limpiar historial" class="p-2 rounded-lg text-obsidian-muted hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center cursor-pointer">
                     <span class="material-symbols-outlined text-lg">delete_sweep</span>
                 </button>
-                <button onclick="closeAiChatModal()" title="Cerrar ventana" class="p-2 rounded-lg text-obsidian-muted hover:text-white hover:bg-white/5 transition flex items-center justify-center">
+                <button onclick="closeAiChatModal()" title="Cerrar ventana" class="p-2 rounded-lg text-obsidian-muted hover:text-white hover:bg-white/5 transition flex items-center justify-center cursor-pointer">
                     <span class="material-symbols-outlined text-xl">close</span>
                 </button>
             </div>
@@ -1137,14 +1137,14 @@
             </div>
         </div>
 
-        <!-- INDICADOR DE PROCESAMIENTO / PENSANDO -->
-        <div id="ai-chat-typing-indicator" class="hidden px-5 py-2 text-[11px] text-obsidian-cyan font-mono flex items-center gap-2 bg-[#061527]/70 border-t border-obsidian-border/50">
+        <!-- INDICADOR DE PROCESAMIENTO / PENSANDO (FIJO) -->
+        <div id="ai-chat-typing-indicator" class="hidden px-5 py-2 text-[11px] text-obsidian-cyan font-mono flex items-center gap-2 bg-[#061527]/70 border-t border-obsidian-border/50 shrink-0">
             <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
             <span>Monitor Valle Seco está pensando y redactando tu respuesta...</span>
         </div>
 
-        <!-- BARRA INFERIOR DE ENTRADA -->
-        <div class="p-3 sm:p-4 bg-[#061527] border-t border-obsidian-border/80">
+        <!-- BARRA INFERIOR DE ENTRADA (FIJA) -->
+        <div class="p-3 sm:p-4 bg-[#061527] border-t border-obsidian-border/80 shrink-0">
             <form id="ai-chat-form" onsubmit="submitAiChat(event)" class="flex items-center gap-2">
                 <div class="flex-1 relative">
                     <input type="text" id="ai-chat-input-text" placeholder="Escribe tu consulta técnica aquí..." autocomplete="off" class="w-full bg-[#040d1a] border border-obsidian-border rounded-xl pl-4 pr-3 py-2.5 text-xs text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan font-mono transition">
@@ -1165,9 +1165,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL AVISO DE AUTENTICACIÓN PARA VER DATOS DE SERVICIO O SEDE            -->
 <!-- ========================================================================= -->
-<div id="modal-item-auth-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target === this) closeItemAuthModal()">
-    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-item-auth-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeItemAuthModal()">
+    <div class="glass-panel max-w-md w-full rounded-2xl border border-amber-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
                     <span class="material-symbols-outlined text-xl">lock</span>
@@ -1180,7 +1180,7 @@
             <button type="button" onclick="closeItemAuthModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-2">
                 <p class="font-bold flex items-center gap-1.5 text-white">
                     <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
@@ -1195,7 +1195,7 @@
             </p>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
             <button type="button" onclick="closeItemAuthModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                 Cerrar
             </button>
@@ -1210,9 +1210,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL AVISO DE INICIO DE SESIÓN REQUERIDO (USUARIO NO LOGUEADO)           -->
 <!-- ========================================================================= -->
-<div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target === this) closeAccessPromptModal()">
-    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-access-login-prompt" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeAccessPromptModal()">
+    <div class="glass-panel max-w-md w-full rounded-2xl border border-amber-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950">
                     <span class="material-symbols-outlined text-xl">lock</span>
@@ -1225,7 +1225,7 @@
             <button onclick="closeAccessPromptModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] space-y-2">
                 <p class="font-bold flex items-center gap-1.5 text-white uppercase tracking-wide text-xs">
                     <span class="material-symbols-outlined text-sm text-amber-400">shield_person</span>
@@ -1243,7 +1243,7 @@
             </p>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
             <button type="button" onclick="closeAccessPromptModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                 Cancelar
             </button>
@@ -1258,9 +1258,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL LANZADOR DE SESIÓN VNC (USUARIO CON ROL ADMINISTRADOR U OPERADOR)   -->
 <!-- ========================================================================= -->
-<div id="modal-vnc-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-vnc-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-cyan-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
                     <span class="material-symbols-outlined text-xl">desktop_windows</span>
@@ -1273,7 +1273,7 @@
             <button onclick="closeVncSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
                 <div class="flex justify-between">
                     <span class="text-obsidian-muted">Equipo Destino:</span>
@@ -1304,7 +1304,7 @@
             </div>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <a id="vnc-native-link" href="#" class="text-[11px] text-obsidian-muted hover:text-cyan-300 transition flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">open_in_new</span>
                 <span>Visor Local (vnc://)</span>
@@ -1325,9 +1325,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL LANZADOR DE TERMINAL TELNET (USUARIO CON ROL ADMIN U OPERADOR)      -->
 <!-- ========================================================================= -->
-<div id="modal-telnet-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-telnet-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-cyan-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
                     <span class="material-symbols-outlined text-xl">terminal</span>
@@ -1340,7 +1340,7 @@
             <button onclick="closeTelnetSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
                 <div class="flex justify-between">
                     <span class="text-obsidian-muted">Equipo Destino:</span>
@@ -1371,7 +1371,7 @@
             </div>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-between">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <a id="telnet-native-link" href="#" class="text-[11px] text-obsidian-muted hover:text-cyan-300 transition flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">open_in_new</span>
                 <span>Cliente Local (telnet://)</span>
@@ -1392,9 +1392,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL LANZADOR DE PANEL WEB (USUARIO CON ROL ADMIN U OPERADOR)           -->
 <!-- ========================================================================= -->
-<div id="modal-web-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/40 shadow-2xl space-y-4 font-mono">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-web-session" class="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-cyan-500/40 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-mono bg-[#040d1a]/95">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-950">
                     <span class="material-symbols-outlined text-xl">language</span>
@@ -1407,7 +1407,7 @@
             <button onclick="closeWebSessionModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 custom-scroll min-h-0">
             <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-white text-[11px] space-y-1.5">
                 <div class="flex justify-between">
                     <span class="text-obsidian-muted">Equipo Destino:</span>
@@ -1442,7 +1442,7 @@
             </div>
         </div>
 
-        <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
             <button type="button" onclick="closeWebSessionModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs">
                 Cerrar
             </button>

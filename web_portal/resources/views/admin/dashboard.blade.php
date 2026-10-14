@@ -15,32 +15,96 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Telemetría en Vivo & Emisión Oficial
+                        Telemetría en Vivo & Emisión de Reportes
                     </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                    <span class="w-5 h-5 rounded-md bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 inline-flex items-center justify-center cursor-help" title="Telemetría en Vivo Activa">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        ACTIVO
                     </span>
                 </div>
                 <p class="text-[10px] font-mono text-obsidian-muted">
                     Operador en turno: <span class="text-cyan-300 font-semibold">{{ auth()->user()->full_title_name }}</span>
-                    @if(auth()->user()->hasCompleteAtitProfile())
-                        <span class="text-emerald-400 font-bold ml-1">✓ Ficha Lista</span>
-                    @else
+                    @if(!auth()->user()->hasCompleteAtitProfile())
                         <a href="{{ route('admin.profile.show') }}" class="text-amber-400 underline font-bold ml-1 hover:text-white">⚠ Ficha Incompleta</a>
                     @endif
                 </p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+        <!-- SECCIÓN DERECHA: BADGES DE ESTADO UPS + ACCIÓN TELEGRAM -->
+        <div class="flex items-center gap-2 self-start lg:self-auto flex-wrap shrink-0">
+            @php
+                $dashUps = $headerUpsDevice ?? \App\Models\UpsDevice::first();
+                $dashIsOnBat = $dashUps && $dashUps->is_on_battery;
+                $dashBatPct = $dashUps ? ($dashUps->battery_percent ?? 100) : 100;
+                $dashInV = $dashUps ? ($dashUps->input_voltage ?? 220.0) : 220.0;
+                $dashOutEquipos = $dashUps ? ($dashUps->output_voltage_equipos ?? 110.0) : 110.0;
+                $dashLoadPct = $dashUps ? ($dashUps->load_percent ?? 8) : 8;
+                $dashLoadWatts = round(($dashLoadPct / 100) * 6000);
+                $dashRuntimeMin = round(($dashBatPct / 100) * 135);
+            @endphp
+
+            @if($dashUps)
+            <!-- BADGE 1: VOLTAJE DE ENTRADA (220V) -->
+            <a href="{{ route('admin.ups.index') }}" 
+               id="dash-ups-mode-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer {{ $dashIsOnBat ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse shadow-red-500/20' : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:border-amber-400' }}"
+               title="Voltaje de Entrada AC: {{ $dashIsOnBat ? '0.0 VAC (CORTE ELÉCTRICO)' : number_format($dashInV, 1) . ' VAC (Línea Comercial Normal)' }} • Clic para ver cabina UPS">
+                <span class="material-symbols-outlined text-sm {{ $dashIsOnBat ? 'text-red-400 animate-pulse' : 'text-amber-400' }}" id="dash-ups-mode-icon">
+                    {{ $dashIsOnBat ? 'power_off' : 'bolt' }}
+                </span>
+                <span id="dash-ups-mode-text">{{ $dashIsOnBat ? 'CORTE 0V' : 'Entrada 220V' }}</span>
+            </a>
+
+            <!-- BADGE 2: VOLTAJE DE SALIDA A EQUIPOS (110V) -->
+            <a href="{{ route('admin.ups.index') }}" 
+               id="dash-ups-out-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-300 hover:border-blue-400 text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer"
+               title="Voltaje Regulado de Salida a Equipos: {{ number_format($dashOutEquipos, 1) }} VAC (Rack de Servidores) • Clic para ver cabina UPS">
+                <span class="material-symbols-outlined text-sm text-blue-400">electrical_services</span>
+                <span id="dash-ups-out-text">Salida 110V</span>
+            </a>
+
+            <!-- BADGE 3: NIVEL DE BATERÍA -->
+            <a href="{{ route('admin.ups.index') }}" 
+               id="dash-ups-bat-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer {{ $dashBatPct < 25 ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse' : ($dashBatPct < 60 ? 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:border-amber-400' : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:border-emerald-400') }}"
+               title="Nivel de Batería: {{ $dashBatPct }}% • Autonomía est.: ~{{ $dashRuntimeMin }} min • Clic para ver cabina UPS">
+                <span class="material-symbols-outlined text-sm {{ $dashBatPct < 25 ? 'text-red-400 animate-pulse' : ($dashBatPct < 60 ? 'text-amber-400' : 'text-emerald-400') }}" id="dash-ups-bat-icon">
+                    {{ $dashIsOnBat ? 'battery_alert' : ($dashBatPct >= 95 ? 'battery_charging_full' : 'battery_std') }}
+                </span>
+                <span id="dash-ups-bat-text">{{ $dashBatPct }}% Bat</span>
+            </a>
+
+            <!-- BADGE 4: CARGA / POTENCIA CONSUMIDA -->
+            <a href="{{ route('admin.ups.index') }}" 
+               id="dash-ups-load-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:border-purple-400 text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer"
+               title="Demanda de Carga del Rack: {{ $dashLoadPct }}% (~{{ $dashLoadWatts }} W a {{ number_format($dashOutEquipos, 1) }} VAC) • Clic para ver cabina UPS">
+                <span class="material-symbols-outlined text-sm text-purple-400">speed</span>
+                <span id="dash-ups-load-text">{{ $dashLoadPct }}% Carga</span>
+            </a>
+            @endif
+
             @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('telegram.dispatch')))
-            <!-- BOTÓN MODAL DESPACHAR REPORTE A TELEGRAM -->
-            <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-top"
-                class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-cyan-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-400/50 text-cyan-200 font-bold text-xs font-mono tracking-wide shadow-md shadow-cyan-950/30 hover:scale-[1.02] active:scale-[0.98] transition flex items-center gap-2 cursor-pointer">
-                <span class="material-symbols-outlined text-base text-cyan-400">send</span>
-                <span>Enviar Reporte a Telegram</span>
-            </button>
+            <!-- SEPARADOR DISCRETO -->
+            <span class="w-px h-6 bg-obsidian-border/80 hidden sm:inline-block"></span>
+
+            <!-- BOTÓN MODAL DESPACHAR REPORTE A TELEGRAM (ICONO LLAMATIVO + TOOLTIP) -->
+            <div class="relative group">
+                <button type="button" onclick="openTelegramDispatchModal()" id="btn-dispatch-telegram-top"
+                    class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/25 to-cyan-500/20 hover:from-cyan-500/35 hover:to-blue-500/35 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 hover:text-white transition-all duration-200 shadow-md shadow-cyan-950/30 hover:shadow-cyan-500/20 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+                    title="Enviar Reporte a Telegram">
+                    <span class="material-symbols-outlined text-xl text-cyan-400 group-hover:scale-110 group-hover:text-white transition-all duration-200">send</span>
+                </button>
+
+                <!-- TOOLTIP FLOTANTE HUD -->
+                <div class="absolute right-0 top-full mt-2 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                    <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs text-cyan-400">send</span>
+                        <span class="font-bold text-cyan-200">Enviar Reporte a Telegram</span>
+                    </div>
+                </div>
+            </div>
             @endif
         </div>
     </div>
@@ -50,26 +114,12 @@
     <!-- ========================================================================= -->
     @include('partials.monitoring_board', ['isDashboard' => true])
 
-    @if(auth()->user()->isAdmin())
-    <!-- ========================================================================= -->
-    <!-- ACCESO RÁPIDO A CONFIGURACIÓN AVANZADA DEL SISTEMA                        -->
-    <!-- ========================================================================= -->
-    <div class="pt-4 pb-2 border-t border-obsidian-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
-        <div class="flex items-center gap-2 text-obsidian-muted">
-            <span class="material-symbols-outlined text-base text-cyan-400">tune</span>
-            <span>Ajustes de infraestructura, clúster, LDAP y automatizaciones:</span>
-        </div>
-        <a href="{{ route('admin.settings.advanced') }}" class="px-3.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/30 text-cyan-300 hover:text-white hover:bg-cyan-950/50 flex items-center gap-1.5 transition">
-            <span>Configuración Avanzada del Sistema</span>
-            <span class="material-symbols-outlined text-sm">arrow_forward</span>
-        </a>
-    </div>
-    @endif
+
 </div>
 
-<!-- MODAL ENVIAR REPORTE OFICIAL A TELEGRAM -->
+<!-- MODAL ENVIAR REPORTE A TELEGRAM -->
 <div id="modal-telegram-dispatch" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
-    <div class="glass-panel max-w-2xl w-full rounded-2xl p-5 sm:p-6 border border-cyan-500/40 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+    <div class="glass-panel max-w-2xl w-full rounded-2xl p-5 sm:p-6 border border-cyan-500/40 shadow-2xl space-y-4 max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
         <!-- HEADER MODAL -->
         <div class="flex items-center justify-between pb-3 border-b border-obsidian-border shrink-0">
             <div class="flex items-center gap-2.5">
@@ -78,13 +128,13 @@
                 </div>
                 <div>
                     <h3 class="text-sm sm:text-base font-bold text-white uppercase font-mono tracking-wide flex items-center gap-2">
-                        Envío Oficial a Telegram
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                            ATIT • EN VIVO
+                        Despacho de Reporte a Telegram
+                        <span class="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 inline-flex items-center justify-center cursor-help" title="ATIT • Transmisión En Vivo">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                         </span>
                     </h3>
                     <p class="text-[11px] font-mono text-obsidian-muted">
-                        Emisión manual de reportes consolidados firmados con tu ficha institucional
+                        Emisión manual de reportes consolidados firmados con tu firma corporativa
                     </p>
                 </div>
             </div>
@@ -94,14 +144,14 @@
         <!-- CUERPO DEL MODAL (SCROLLABLE) -->
         <div class="flex-1 overflow-y-auto space-y-4 pr-1 custom-scroll" id="dispatch-modal-scroll-area">
             <!-- ALERTA DE RESPUESTA / RESULTADO (FEEDBACK INMEDIATO ARRIBA) -->
-            <div id="dispatch-feedback-alert" class="hidden p-3.5 rounded-xl border text-xs font-mono transition-all"></div>
+            <div id="dispatch-feedback-alert" class="hidden p-3.5 rounded-xl border text-xs font-mono transition-all max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-all block"></div>
 
             <!-- 1. EXPLICACIÓN DE PROPÓSITO ("Para qué es y qué hará") -->
             <div class="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/40 to-cyan-950/40 border border-cyan-500/30 text-xs font-mono text-cyan-200/90 leading-relaxed flex items-start gap-3">
                 <span class="material-symbols-outlined text-cyan-400 text-lg shrink-0 mt-0.5">info</span>
                 <div>
                     <strong class="text-white block mb-0.5">¿Qué realiza esta acción?</strong>
-                    Compila el estado de disponibilidad y latencia de la infraestructura y lo transmite de forma inmediata al canal institucional de Telegram. El reporte conservará la estructura oficial establecida e incluirá tus credenciales como operador en turno.
+                    Compila el estado de disponibilidad y latencia de la infraestructura y lo transmite de forma inmediata al canal de Telegram. El reporte conservará la estructura corporativa establecida e incluirá tus credenciales como operador en turno.
                 </div>
             </div>
 
@@ -118,7 +168,7 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-mono font-bold uppercase text-gray-300 flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm text-cyan-400">badge</span>
-                        Ficha Institucional del Operador
+                        Ficha del Operador
                     </span>
                     @if(auth()->user()->hasCompleteAtitProfile())
                         <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
@@ -135,8 +185,8 @@
                     <div class="p-3 rounded-lg bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs font-mono flex items-start gap-2.5">
                         <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
                         <div class="leading-relaxed">
-                            <strong>Datos Faltantes para Firma Institucional:</strong><br>
-                            Tu cuenta aún no tiene completos los campos requeridos (Nombre real, C.I., N° Personal o Teléfono). Debes completarlos en tu perfil para autorizar el envío de reportes oficiales.
+                            <strong>Datos Faltantes para Firma:</strong><br>
+                            Tu cuenta aún no tiene completos los campos requeridos (Nombre real, C.I., N° Personal o Teléfono). Debes completarlos en tu perfil para autorizar el envío de reportes.
                             <div class="pt-2">
                                 <a href="{{ route('admin.profile.show') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold hover:text-white transition">
                                     <span class="material-symbols-outlined text-sm">edit</span>
@@ -151,7 +201,7 @@
                         <div class="text-[10px] text-obsidian-muted uppercase tracking-wider mb-1 flex items-center justify-between">
                             <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs text-cyan-400">draw</span>
-                                Estructura de firma institucional al pie del reporte:
+                                Estructura de firma al pie del reporte:
                             </span>
                             <span id="dispatch-preview-obs-badge" class="hidden px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
                                 + Observaciones Anexadas
@@ -287,7 +337,7 @@ N° Personal: {{ auth()->user()->personal_number }}
                         </div>
                         <div>
                             <span class="text-xs font-bold text-white font-mono uppercase block">Grupo Corporativo (Sede Valle Seco)</span>
-                            <span class="text-[10px] font-mono text-obsidian-muted">Canal institucional oficial autorizado (<code>-1001383163558</code>)</span>
+                            <span class="text-[10px] font-mono text-obsidian-muted">Canal corporativo autorizado (<code>-1001383163558</code>)</span>
                         </div>
                     </div>
                     <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/40 shrink-0">
@@ -312,7 +362,7 @@ N° Personal: {{ auth()->user()->personal_number }}
                 </div>
 
                 <div id="dispatch_observations_container" class="hidden space-y-1.5 pt-1">
-                    <textarea id="dispatch_observations_text" maxlength="1000" rows="3" oninput="updateObservationsPreview()" placeholder="Escriba aquí cualquier novedad u observación operativa que se anexará antes de la firma institucional (ej. Mantenimiento preventivo en enlace microondas, contingencia eléctrica en subestación...)" class="w-full bg-[#020710] border border-obsidian-border rounded-xl p-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400 resize-y transition custom-scroll"></textarea>
+                    <textarea id="dispatch_observations_text" maxlength="1000" rows="3" oninput="updateObservationsPreview()" placeholder="Escriba aquí cualquier novedad u observación operativa que se anexará antes de la firma (ej. Mantenimiento preventivo en enlace microondas, contingencia eléctrica en subestación...)" class="w-full bg-[#020710] border border-obsidian-border rounded-xl p-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400 resize-y transition custom-scroll"></textarea>
                     <div class="flex items-center justify-between text-[10px] font-mono text-obsidian-muted">
                         <span>Se insertará inmediatamente antes de la firma de <strong>Personal de ATIT</strong>.</span>
                         <span id="dispatch_obs_counter">0 / 1000</span>
@@ -403,7 +453,7 @@ N° Personal: {{ auth()->user()->personal_number }}
 </div>
 
 <script>
-// --- GESTOR DE ENVÍO OFICIAL A TELEGRAM ---
+// --- GESTOR DE DESPACHO A TELEGRAM ---
 function toggleObservationsInput() {
     const toggle = document.getElementById('dispatch_toggle_observations');
     const container = document.getElementById('dispatch_observations_container');
@@ -580,7 +630,7 @@ function fetchLatestDispatchStatus() {
             }
             content.innerHTML = `<div><strong class="text-amber-300 block mb-0.5">⚠️ Aviso de Envío Reciente (${latest.diff_minutes} min):</strong>` +
                 `El operador <strong class="text-white">${latest.operator_name}</strong> envió un reporte de <strong class="text-cyan-300">${latest.report_type_label}</strong> ` +
-                `<span class="underline">${latest.time_ago}</span> (${latest.created_at}). Confirme si es indispensable emitir otra actualización para evitar duplicados en el canal institucional.</div>`;
+                `<span class="underline">${latest.time_ago}</span> (${latest.created_at}). Confirme si es indispensable emitir otra actualización para evitar duplicados en el canal corporativo.</div>`;
         } else if (latest) {
             alertBox.className = 'p-3.5 rounded-xl border text-xs font-mono flex items-start gap-3 bg-emerald-950/30 border-emerald-500/40 text-emerald-300 transition-all';
             if (icon) {
@@ -635,7 +685,7 @@ function submitTelegramDispatch() {
     if (feedback) {
         feedback.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/50', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/50', 'text-rose-300');
         feedback.classList.add('bg-cyan-950/40', 'border-cyan-500/50', 'text-cyan-300');
-        feedback.innerHTML = '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm animate-spin">sync</span> Compilando telemetría oficial y transmitiendo a Telegram...</div>';
+        feedback.innerHTML = '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm animate-spin">sync</span> Compilando telemetría y transmitiendo a Telegram...</div>';
     }
 
     fetch('{{ route('admin.telegram.dispatch') }}', {
@@ -662,18 +712,22 @@ function submitTelegramDispatch() {
                 feedback.innerHTML = `<div class="flex items-start gap-2.5">
                     <span class="material-symbols-outlined text-base text-emerald-400 shrink-0 mt-0.5">check_circle</span>
                     <div>
-                        <strong class="text-white block">¡Reporte Oficial Transmitido con Éxito!</strong>
+                        <strong class="text-white block">¡Reporte Transmitido con Éxito!</strong>
                         <span>${body.message}</span>
                         <div class="mt-1 text-[11px] text-cyan-300">Firmado por: <strong>${body.operator}</strong> • Hora: <strong>${body.dispatched_at}</strong></div>
                     </div>
                 </div>`;
                 fetchLatestDispatchStatus();
+                setTimeout(() => {
+                    closeTelegramDispatchModal();
+                    if (feedback) feedback.classList.add('hidden');
+                }, 1300);
             } else if (body.incomplete_profile) {
                 feedback.classList.add('bg-amber-950/40', 'border-amber-500/50', 'text-amber-200');
                 feedback.innerHTML = `<div class="flex items-start gap-2.5">
                     <span class="material-symbols-outlined text-base text-amber-400 shrink-0 mt-0.5">warning</span>
                     <div>
-                        <strong class="text-white block">Perfil Institucional Incompleto</strong>
+                        <strong class="text-white block">Perfil Incompleto</strong>
                         <span>${body.message}</span>
                         <div class="mt-1.5"><a href="${body.profile_url}" class="underline font-bold text-cyan-300 hover:text-white">Ir a Mi Perfil &rarr;</a></div>
                     </div>

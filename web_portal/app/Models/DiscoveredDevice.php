@@ -67,6 +67,27 @@ class DiscoveredDevice extends Model
         return $this->belongsTo(MonitoredNetworkDevice::class, 'linked_network_device_id');
     }
 
+    public function inventoryAsset(): BelongsTo
+    {
+        return $this->belongsTo(InventoryAsset::class, 'linked_network_device_id', 'id');
+    }
+
+    public function getAssetAttribute(): ?InventoryAsset
+    {
+        if ($this->relationLoaded('inventoryAsset') && $this->inventoryAsset) {
+            return $this->inventoryAsset;
+        }
+        if ($this->linked_network_device_id) {
+            return InventoryAsset::find($this->linked_network_device_id);
+        }
+        return InventoryAsset::where('ip_address', $this->ip_address)
+            ->orWhere(function ($q) {
+                if (!empty($this->mac_address) && !str_starts_with($this->mac_address, 'IP:')) {
+                    $q->where('mac_address', $this->mac_address);
+                }
+            })->first();
+    }
+
     public function history(): HasMany
     {
         return $this->hasMany(DiscoveredDeviceHistory::class, 'discovered_device_id')->orderByDesc('occurred_at');

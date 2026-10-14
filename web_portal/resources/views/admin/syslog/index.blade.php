@@ -4,54 +4,169 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS TRÁFICO & LOGS DE RED -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.netflow.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.netflow.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">swap_vert</span>
-            <span>NetFlow & Flujos</span>
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Tráfico &amp; Logs de Red</span>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">receipt_long</span>
+                Consola Syslog Centralizada (Live-Tail)
+                <span class="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 inline-flex items-center justify-center cursor-help" title="Escuchando en UDP 514 (RFC 3164 / RFC 5424)">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                </span>
+                @if(!auth()->user()->isAdmin())
+                    <span class="w-6 h-6 rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                        <span class="material-symbols-outlined text-xs">visibility</span>
+                    </span>
+                @endif
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Recepción push de bitácoras de switches, routers Cisco, servidores y cortafuegos en tiempo real</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- BOTÓN GUÍA DE INTEGRACIÓN -->
+            <button type="button" onclick="toggleSyslogGuide()" class="px-3 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/50 hover:text-white font-mono text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs" title="Ver Guía de Integración y Configuración de Equipos">
+                <span class="material-symbols-outlined text-base">help</span>
+                <span class="hidden sm:inline">Guía de Integración</span>
+            </button>
+
+            <!-- BOTÓN LIVE TAIL (AUTO-POLLING) -->
+            <button type="button" id="btn-live-tail" onclick="toggleLiveTail()" class="px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping" id="live-indicator"></span>
+                <span id="live-text">Live-Tail: ON</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS TRÁFICO & LOGS DE RED (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.netflow.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.netflow.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Análisis de Flujos NetFlow v5 &amp; Top Talkers">
+            <span class="material-symbols-outlined text-sm">swap_vert</span>
+            <span>NetFlow &amp; Flujos</span>
         </a>
-        <a href="{{ route('admin.syslog.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.syslog.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">receipt_long</span>
+        <a href="{{ route('admin.syslog.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.syslog.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Servidor Syslog en Vivo UDP 514">
+            <span class="material-symbols-outlined text-sm">receipt_long</span>
             <span>Syslog en Vivo (UDP 514)</span>
         </a>
     </div>
 
     <!-- ========================================================================= -->
-    <!-- ENCABEZADO Y ESTADO LIVE                                                  -->
+    <!-- GUÍA DE INTEGRACIÓN & ESTADO DEL COLECTOR UDP 514                         -->
     <!-- ========================================================================= -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/90 backdrop-blur-md shadow-md">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-                <span class="material-symbols-outlined text-lg">receipt_long</span>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Consola Syslog Centralizada (Live-Tail)
-                    </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40" title="Escuchando en UDP 514 (RFC 3164 / RFC 5424)">
-                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                        UDP 514
-                    </span>
-                    @if(!auth()->user()->isAdmin())
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
-                            <span class="material-symbols-outlined text-[11px]">visibility</span>
-                            MODO CONSULTA
-                        </span>
-                    @endif
+    <div id="panel-guia-syslog" class="p-4 rounded-2xl bg-obsidian-panel/90 border border-cyan-500/30 space-y-3.5 shadow-lg {{ $totalLogs > 0 ? 'hidden' : '' }}">
+        <div class="flex items-start justify-between gap-3 border-b border-obsidian-border/70 pb-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
+                    <span class="material-symbols-outlined text-xl">receipt_long</span>
                 </div>
-                <p class="text-[10px] font-mono text-obsidian-muted">
-                    Recepción push de bitácoras de switches, routers Cisco, servidores y firewalls en tiempo real.
-                </p>
+                <div>
+                    <h2 class="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
+                        Guía de Integración: ¿Cómo enviar eventos Syslog desde tus equipos?
+                    </h2>
+                    <p class="text-xs font-mono text-obsidian-muted mt-0.5">
+                        El servidor Syslog centralizado escucha eventos en tiempo real en el puerto UDP 514 estándar.
+                    </p>
+                </div>
+            </div>
+            @if($totalLogs > 0)
+            <button type="button" onclick="toggleSyslogGuide()" class="text-obsidian-muted hover:text-white transition p-1 cursor-pointer" title="Cerrar Guía">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+            @endif
+        </div>
+
+        <!-- ESTADO TÉCNICO DEL RECEPTOR -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+            <div class="p-2.5 rounded-xl bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                <span class="text-obsidian-muted text-[10px] uppercase block">Puerto de Escucha:</span>
+                <div class="font-bold text-cyan-300 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    UDP 514 (Activo en segundo plano)
+                </div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                <span class="text-obsidian-muted text-[10px] uppercase block">Estándares Soportados:</span>
+                <div class="font-bold text-white">
+                    RFC 3164 (BSD) &amp; RFC 5424 (IETF)
+                </div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                <span class="text-obsidian-muted text-[10px] uppercase block">Transmisión en Vivo:</span>
+                <div class="font-bold text-emerald-400">
+                    Live-Tail Asíncrono (Auto-Scroll)
+                </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <!-- BOTÓN LIVE TAIL (AUTO-POLLING) -->
-            <button type="button" id="btn-live-tail" onclick="toggleLiveTail()" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping" id="live-indicator"></span>
-                <span id="live-text">Live-Tail: ON</span>
-            </button>
+        <!-- PESTAÑAS DE COMANDOS SEGÚN FABRICANTE -->
+        <div class="space-y-2 pt-1 font-mono text-xs">
+            <div class="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">terminal</span>
+                Configuración en Equipos de Red:
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <!-- SWITCH / ROUTER CISCO -->
+                <div class="p-3 rounded-xl bg-[#030a14] border border-obsidian-border/80 space-y-2">
+                    <div class="font-bold text-white flex items-center gap-1.5 text-[11px]">
+                        <span class="material-symbols-outlined text-cyan-400 text-sm">router</span>
+                        Switch / Router Cisco (IOS)
+                    </div>
+                    <p class="text-obsidian-muted text-[10.5px]">Ejecuta en modo de configuración global:</p>
+                    <pre class="bg-black/60 p-2.5 rounded-lg border border-obsidian-border text-[10.5px] text-cyan-300 overflow-x-auto leading-relaxed"><code>configure terminal
+logging host &lt;IP_SERVIDOR_MONITOREO&gt;
+logging trap informational
+logging facility local7
+logging source-interface &lt;INTERFAZ&gt;
+service timestamps log datetime msec
+end
+write memory</code></pre>
+                </div>
+
+                <!-- CORTAFUEGOS PFSENSE / OPNSENSE -->
+                <div class="p-3 rounded-xl bg-[#030a14] border border-obsidian-border/80 space-y-2">
+                    <div class="font-bold text-white flex items-center gap-1.5 text-[11px]">
+                        <span class="material-symbols-outlined text-emerald-400 text-sm">shield</span>
+                        Cortafuegos pfSense / OPNsense
+                    </div>
+                    <p class="text-obsidian-muted text-[10.5px]">Desde la interfaz gráfica de administración:</p>
+                    <ol class="list-decimal list-inside text-obsidian-muted text-[10.5px] space-y-1 bg-black/60 p-2.5 rounded-lg border border-obsidian-border leading-relaxed">
+                        <li>Ve a: <span class="text-slate-200">Status ➔ System Logs ➔ Settings</span>.</li>
+                        <li>Marca: <b>Enable Remote Logging</b>.</li>
+                        <li><b>Remote Log Servers:</b> <code class="text-emerald-300">&lt;IP_SERVIDOR_MONITOREO&gt;:514</code></li>
+                        <li>Selecciona los eventos (Sistema, Firewall, DHCP).</li>
+                        <li>Haz clic en <b>Save</b>.</li>
+                    </ol>
+                </div>
+
+                <!-- SERVIDORES LINUX (RSYSLOG) -->
+                <div class="p-3 rounded-xl bg-[#030a14] border border-obsidian-border/80 space-y-2">
+                    <div class="font-bold text-white flex items-center gap-1.5 text-[11px]">
+                        <span class="material-symbols-outlined text-amber-400 text-sm">dns</span>
+                        Servidores GNU/Linux (rsyslog)
+                    </div>
+                    <p class="text-obsidian-muted text-[10.5px]">Añade al final de <code class="text-amber-300">/etc/rsyslog.conf</code>:</p>
+                    <pre class="bg-black/60 p-2.5 rounded-lg border border-obsidian-border text-[10.5px] text-amber-300 overflow-x-auto leading-relaxed"><code>*.* @&lt;IP_SERVIDOR_MONITOREO&gt;:514
+
+# Reinicia el servicio:
+sudo systemctl restart rsyslog
+
+# Prueba inmediata:
+logger -n &lt;IP_SERVIDOR_MONITOREO&gt; -P 514 "Prueba de evento Syslog"</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-2.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-obsidian-muted text-[11px] font-mono flex items-center gap-2">
+            <span class="material-symbols-outlined text-cyan-400 text-base shrink-0">info</span>
+            <span>Cualquier evento de caída de interfaz, cambio de configuración o autenticación se desplegará instantáneamente en la bitácora inferior gracias al receptor Live-Tail.</span>
         </div>
     </div>
 
@@ -204,9 +319,12 @@
                     </tr>
                     @empty
                     <tr id="empty-row">
-                        <td colspan="5" class="p-8 text-center text-obsidian-muted">
+                        <td colspan="5" class="p-8 text-center text-obsidian-muted font-mono">
                             <span class="material-symbols-outlined text-4xl block mb-2 text-cyan-500/40">receipt_long</span>
-                            No hay registros de eventos Syslog con los filtros aplicados.
+                            <span class="text-white font-bold block mb-1">A la espera de eventos Syslog en UDP 514</span>
+                            <span class="text-xs text-obsidian-muted block max-w-md mx-auto">
+                                El colector se encuentra activo en segundo plano. Configura el reenvío de logs en tus switches, routers o servidores para comenzar a recibir eventos.
+                            </span>
                         </td>
                     </tr>
                     @endforelse
@@ -226,6 +344,13 @@
 let liveTailActive = true;
 let pollTimer = null;
 let highestId = {{ $events->isNotEmpty() ? $events->first()->id : 0 }};
+
+function toggleSyslogGuide() {
+    const guide = document.getElementById('panel-guia-syslog');
+    if (guide) {
+        guide.classList.toggle('hidden');
+    }
+}
 
 function toggleLiveTail() {
     liveTailActive = !liveTailActive;

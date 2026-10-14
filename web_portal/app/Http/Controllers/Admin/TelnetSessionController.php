@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\RemoteAccess\WebsockifyTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +14,10 @@ use Illuminate\View\View;
 
 class TelnetSessionController extends Controller
 {
-    protected string $tokensFile = '/etc/websockify/tokens.cfg';
+    public function __construct(
+        protected WebsockifyTokenService $tokenService
+    ) {
+    }
 
     /**
      * Generar un token temporal y seguro para iniciar sesión Telnet en terminal web
@@ -40,11 +46,11 @@ class TelnetSessionController extends Controller
         $targetSite = $validated['site'] ?? 'Red Valle Seco';
 
         // Generar token único para sesión Telnet
-        $token = 'telnet_' . bin2hex(random_bytes(16));
+        $token = $this->tokenService->generateToken('telnet');
 
         // Registrar el token en el archivo de configuración de websockify
         try {
-            $this->registerToken($token, $targetIp, $targetPort);
+            $this->tokenService->registerToken($token, $targetIp, $targetPort);
         } catch (\Throwable $e) {
             Log::error('Error registrando token Telnet en websockify: ' . $e->getMessage());
             return response()->json([
@@ -53,6 +59,18 @@ class TelnetSessionController extends Controller
             ], 500);
         }
 
+        // Registrar auditoría en MariaDB SSOT
+        $this->tokenService->auditSession(
+            protocol: 'telnet',
+            user: $user,
+            targetIp: $targetIp,
+            targetPort: $targetPort,
+            targetName: $targetName,
+            targetSite: $targetSite,
+            token: $token,
+            request: $request
+        );
+
         $terminalUrl = route('admin.telnet.terminal', [
             'token' => $token,
             'ip' => $targetIp,
@@ -60,17 +78,6 @@ class TelnetSessionController extends Controller
             'name' => $targetName,
             'site' => $targetSite,
         ]);
-
-        Log::info(sprintf(
-            '[TELNET] Sesión iniciada por %s (%s) para equipo %s (%s:%d) en %s [Token: %s]',
-            $user->name,
-            $user->role,
-            $targetName,
-            $targetIp,
-            $targetPort,
-            $targetSite,
-            $token
-        ));
 
         return response()->json([
             'success' => true,
@@ -94,65 +101,16 @@ class TelnetSessionController extends Controller
             abort(403, 'Acceso denegado. No posee el permiso [remote.telnet] para abrir sesiones de consola de red.');
         }
 
-        $token = $request->query('token');
-        $ip = $request->query('ip', '0.0.0.0');
+        $token = (string) $request->query('token', '');
+        $ip = (string) $request->query('ip', '0.0.0.0');
         $port = (int) $request->query('port', 23);
-        $name = $request->query('name', 'Dispositivo');
-        $site = $request->query('site', 'Red Valle Seco');
+        $name = (string) $request->query('name', 'Dispositivo');
+        $site = (string) $request->query('site', 'Red Valle Seco');
 
-        if (!$token || !$this->isTokenValid($token)) {
+        if (empty($token) || !$this->tokenService->isTokenValid($token)) {
             abort(404, 'El token de conexión Telnet ha expirado o no es válido. Genere una nueva sesión desde el panel.');
         }
 
         return view('admin.telnet.terminal', compact('token', 'ip', 'port', 'name', 'site'));
-    }
-
-    /**
-     * Registrar token en /etc/websockify/tokens.cfg manteniendo el archivo podado
-     */
-    protected function registerToken(string $token, string $ip, int $port = 23): void
-    {
-        $dir = dirname($this->tokensFile);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $existingLines = [];
-        if (file_exists($this->tokensFile)) {
-            $rawLines = file($this->tokensFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            if ($rawLines !== false) {
-                $existingLines = array_slice($rawLines, -100);
-            }
-        }
-
-        $newLine = "{$token}: {$ip}:{$port}";
-        $existingLines[] = $newLine;
-
-        $content = implode("\n", $existingLines) . "\n";
-        file_put_contents($this->tokensFile, $content, LOCK_EX);
-    }
-
-    /**
-     * Verificar si el token existe en el archivo
-     */
-    protected function isTokenValid(string $token): bool
-    {
-        if (!file_exists($this->tokensFile)) {
-            return false;
-        }
-
-        $lines = file($this->tokensFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if ($lines === false) {
-            return false;
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (str_starts_with($line, $token . ':')) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

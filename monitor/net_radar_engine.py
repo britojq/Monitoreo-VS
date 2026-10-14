@@ -169,7 +169,7 @@ def get_kernel_arp_table() -> Dict[str, str]:
 
 
 def lookup_oui_vendor(mac: str, conn) -> str:
-    """Resuelve el fabricante del dispositivo a partir del prefijo OUI de la MAC."""
+    """Resuelve el fabricante del dispositivo a partir del prefijo OUI de la MAC consultando MariaDB (SSOT)."""
     if not mac or len(mac) < 8:
         return "Desconocido"
 
@@ -180,21 +180,8 @@ def lookup_oui_vendor(mac: str, conn) -> str:
             row = cur.fetchone()
             if row and row.get("vendor_name"):
                 return row["vendor_name"]
-    except Exception:
-        pass
-
-    # Fallback al archivo oui.txt
-    oui_path = BASE_DIR / "config" / "oui.txt"
-    if oui_path.exists():
-        try:
-            clean_mac = prefix.replace(":", "").lower()
-            for line in oui_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-                if "\t" in line and not line.startswith("#"):
-                    p, v = line.split("\t", 1)
-                    if p.strip().lower() == clean_mac:
-                        return v.strip()
-        except Exception:
-            pass
+    except Exception as e:
+        logger.debug(f"Aviso consultando OUI en MariaDB: {e}")
 
     return "Fabricante Desconocido"
 
@@ -204,21 +191,42 @@ def infer_os_and_hostname(ip: str, mac: str, vendor: str, conn) -> Tuple[str, st
     hostname = ""
     os_detected = "Desconocido"
 
-    # 1. Chequear si ya está registrado en discovered_devices
+    # 1. Chequear si ya está registrado en inventory_assets o discovered_devices
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT hostname, device_type FROM discovered_devices WHERE ip_address = %s LIMIT 1", (ip,))
-            row = cur.fetchone()
-            if row:
-                if row.get("hostname"):
-                    hostname = row["hostname"]
-                dev_t = row.get("device_type", "")
-                if dev_t in ("switch", "router"):
-                    os_detected = f"Equipo de Red ({dev_t.capitalize()})"
-                elif dev_t == "printer":
-                    os_detected = "Impresora de Red"
-                elif dev_t == "server":
+            cur.execute("""
+                SELECT name, brand, model, type, os 
+                FROM inventory_assets 
+                WHERE ip_address = %s OR (mac_address = %s AND mac_address != '') 
+                LIMIT 1
+            """, (ip, mac))
+            asset_row = cur.fetchone()
+            if asset_row:
+                if asset_row.get("name"):
+                    hostname = asset_row["name"]
+                if asset_row.get("os"):
+                    os_detected = asset_row["os"]
+                elif asset_row.get("type") in ("switch", "router"):
+                    os_detected = f"Equipo de Red ({asset_row['type'].capitalize()})"
+                elif asset_row.get("type") == "server":
                     os_detected = "Servidor Linux"
+                elif asset_row.get("type") in ("desktop", "laptop"):
+                    os_detected = "Estación de Trabajo"
+
+            if not hostname:
+                cur.execute("SELECT hostname, device_type FROM discovered_devices WHERE ip_address = %s LIMIT 1", (ip,))
+                row = cur.fetchone()
+                if row:
+                    if row.get("hostname"):
+                        hostname = row["hostname"]
+                    dev_t = row.get("device_type", "")
+                    if os_detected == "Desconocido":
+                        if dev_t in ("switch", "router"):
+                            os_detected = f"Equipo de Red ({dev_t.capitalize()})"
+                        elif dev_t == "printer":
+                            os_detected = "Impresora de Red"
+                        elif dev_t == "server":
+                            os_detected = "Servidor Linux"
     except Exception:
         pass
 
@@ -714,7 +722,7 @@ def generate_markdown_report_from_db() -> Tuple[str, Path, str]:
     md_content.append(f"**Sede:** Central Valle Seco  \n\n")
     md_content.append("---\n\n")
 
-    md_content.append("## 📊 1. Resumen Ejecutivo de Tráfico\n\n")
+    md_content.append("## 📊 1. Resumen Consolidado de Tráfico\n\n")
     md_content.append("| Métrica | Valor |\n")
     md_content.append("| :--- | :--- |\n")
     md_content.append(f"| **Total Dispositivos Registrados** | `{total_hosts}` |\n")

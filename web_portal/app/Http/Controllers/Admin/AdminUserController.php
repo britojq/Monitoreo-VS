@@ -36,7 +36,12 @@ class AdminUserController extends Controller
             ]);
         }
 
-        $results = $ldapService->searchUsers($q);
+        $results = [];
+        try {
+            $results = $ldapService->searchUsers($q);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Fallo al consultar LDAP para término [{$q}]: " . $e->getMessage());
+        }
 
         // Enriquecer cada resultado con su estado actual en la BD local
         $existingUsers = User::whereIn('username', array_column($results, 'uid'))
@@ -51,6 +56,9 @@ class AdminUserController extends Controller
                 $r['current_role'] = $existing->role;
                 $r['is_active'] = $existing->is_active;
                 $r['user_id'] = $existing->id;
+                if (!empty($existing->cedula)) {
+                    $r['cedula'] = $existing->cedula;
+                }
             } else {
                 $r['already_authorized'] = false;
                 $r['current_role'] = null;
@@ -59,6 +67,41 @@ class AdminUserController extends Controller
             }
         }
         unset($r);
+
+        // Fallback / complementación con usuarios registrados localmente en MariaDB
+        if (empty($results)) {
+            $cleanQ = preg_replace('/[^0-9]/', '', $q);
+            $localMatches = User::where(function ($query) use ($q, $cleanQ) {
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('username', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%");
+                if (!empty($cleanQ)) {
+                    $query->orWhere('cedula', 'like', "%{$cleanQ}%")
+                          ->orWhere('cedula', 'like', "%{$q}%");
+                }
+            })->take(10)->get();
+
+            foreach ($localMatches as $u) {
+                $results[] = [
+                    'uid' => strtoupper($u->username),
+                    'name' => $u->name,
+                    'email' => strtolower($u->email),
+                    'cedula' => $u->cedula ?? '',
+                    'description' => $u->academic_title ?? 'Usuario Registrado',
+                    'department' => 'ATIT Carabobo',
+                    'role' => $u->role === 'admin' ? 'Administrador de Sistemas' : 'Operador de Monitoreo',
+                    'phone' => $u->phone ?? '',
+                    'sede' => 'Sede Valle Seco',
+                    'state' => 'Carabobo',
+                    'is_default_area' => true,
+                    'already_authorized' => true,
+                    'current_role' => $u->role,
+                    'is_active' => $u->is_active,
+                    'user_id' => $u->id,
+                    'source' => 'local',
+                ];
+            }
+        }
 
         return response()->json([
             'success' => true,

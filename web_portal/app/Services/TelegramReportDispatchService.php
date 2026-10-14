@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\BotMessageTemplate;
+use App\Models\BotSetting;
+use App\Models\MonitoredProxy;
 use App\Models\MonitoringSnapshot;
 use App\Models\TelegramDispatch;
 use App\Models\User;
@@ -60,7 +62,7 @@ class TelegramReportDispatchService
         if (!$user->hasCompleteAtitProfile()) {
             return [
                 'success' => false,
-                'message' => 'Ficha incompleta. Debe registrar su Cédula, N° de Personal y Teléfono en su perfil antes de enviar reportes oficiales.',
+                'message' => 'Ficha incompleta. Debe registrar su Cédula, N° de Personal y Teléfono en su perfil antes de enviar reportes.',
                 'dispatch' => null,
             ];
         }
@@ -144,7 +146,7 @@ class TelegramReportDispatchService
                     'parse_mode' => 'HTML',
                 ], $proxies);
 
-                // B. Si existe la captura de pantalla HD, transmitirla con pie de foto institucional
+                // B. Si existe la captura de pantalla HD, transmitirla con pie de foto corporativo
                 if ($screenshotPath && file_exists($screenshotPath)) {
                     $caption = "📸 <b>Captura en Tiempo Real</b>\n" .
                                "🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n" .
@@ -175,7 +177,7 @@ class TelegramReportDispatchService
                 ? "Reporte enviado exitosamente a {$destLabel}." . ($screenshotPath ? " Con captura HD adjunta." : "") . (!empty($cleanObservations) ? " Con observaciones." : "")
                 : "Fallo en la entrega a Telegram (" . implode(', ', $failedChats) . "). Verifique conectividad y proxies.";
 
-            // 7. Registrar en la tabla de auditoría institucional
+            // 7. Registrar en la tabla de auditoría de despacho
             $dispatch = TelegramDispatch::create([
                 'user_id' => $user->id,
                 'report_type' => $reportType,
@@ -198,7 +200,7 @@ class TelegramReportDispatchService
 
             return [
                 'success' => true,
-                'message' => "Reporte oficial transmitido exitosamente a {$destLabel}.",
+                'message' => "Reporte transmitido exitosamente a {$destLabel}.",
                 'dispatch' => $dispatch,
                 'has_screenshot' => !empty($screenshotPath),
                 'has_observations' => !empty($cleanObservations),
@@ -215,67 +217,52 @@ class TelegramReportDispatchService
     }
 
     /**
-     * Carga configuración de tokens, proxies e identificadores desde config.json y bot.conf.
+     * Carga configuración de tokens, proxies e identificadores directamente desde MariaDB (SSOT).
      */
     protected function loadBotConfig(): array
     {
-        $jsonPath = '/scripts/telegram-admin-bot/config/config.json';
-        $botConfPath = '/scripts/telegram-admin-bot/config/bot.conf';
-
-        $token = null;
-        $ownerId = '38914901';
-        $groupId = '-1001383163558';
+        $token = (string) (BotSetting::get('bot_token') ?: '');
+        $ownerId = (string) (BotSetting::get('owner_id') ?: '38914901');
+        $allowedGroups = BotSetting::get('allowed_group_ids');
+        $groupId = (!empty($allowedGroups) && is_array($allowedGroups)) ? (string)$allowedGroups[0] : '-1001383163558';
         $proxies = [];
 
-        if (file_exists($jsonPath)) {
-            $json = json_decode(@file_get_contents($jsonPath), true);
-            if (is_array($json)) {
-                $token = $json['bot_token'] ?? null;
-                if (!empty($json['owner_id'])) {
-                    $ownerId = (string)$json['owner_id'];
-                }
-                if (!empty($json['allowed_group_ids'][0])) {
-                    $groupId = (string)$json['allowed_group_ids'][0];
+        // Si la base de datos estuviera vacía en el primer arranque, contingencia transparente a config.json
+        if (empty($token)) {
+            $jsonPath = file_exists('/scripts/telegram-admin-bot/config/config.json')
+                ? '/scripts/telegram-admin-bot/config/config.json'
+                : base_path('../config/config.json');
+            if (file_exists($jsonPath)) {
+                $json = json_decode(@file_get_contents($jsonPath), true);
+                if (is_array($json)) {
+                    $token = $json['bot_token'] ?? null;
+                    if (!empty($json['owner_id'])) {
+                        $ownerId = (string)$json['owner_id'];
+                    }
+                    if (!empty($json['allowed_group_ids'][0])) {
+                        $groupId = (string)$json['allowed_group_ids'][0];
+                    }
                 }
             }
         }
 
-        if (file_exists($botConfPath)) {
-            $confContent = @file_get_contents($botConfPath);
-            if ($confContent) {
-                $lines = explode("\n", $confContent);
-                $conf = [];
-                foreach ($lines as $line) {
-                    $line = trim($line);
-                    if (!empty($line) && !str_starts_with($line, '#') && str_contains($line, '=')) {
-                        [$k, $v] = explode('=', $line, 2);
-                        $conf[trim($k)] = trim($v, " \t\n\r\0\x0B\"'");
-                    }
-                }
-
-                if (empty($token) && !empty($conf['TOKENA'])) {
-                    $token = $conf['TOKENA'];
-                }
-                if (!empty($conf['IDC'])) {
-                    $ownerId = (string)$conf['IDC'];
-                }
-                if (!empty($conf['IDA']) && str_starts_with($conf['IDA'], '-')) {
-                    $groupId = (string)$conf['IDA'];
-                }
-
-                foreach (['A', 'B', 'C', 'D'] as $letter) {
-                    $ip = $conf["IPADDRPORTPROXY{$letter}"] ?? null;
-                    $auth = $conf["USERPASSWDPROXY{$letter}"] ?? null;
-                    if ($ip) {
-                        if ($auth && str_contains($auth, ':')) {
-                            [$u, $p] = explode(':', $auth, 2);
-                            $proxies[] = 'http://' . urlencode($u) . ':' . urlencode($p) . '@' . $ip;
-                        } else {
-                            $proxies[] = 'http://' . $ip;
-                        }
+        // Cargar proxies activos directamente desde MariaDB centralizada
+        try {
+            $dbProxies = MonitoredProxy::where('is_active', true)->orderBy('letter')->get();
+            foreach ($dbProxies as $p) {
+                $ip = trim($p->ip_port ?? '');
+                $auth = trim($p->auth_userpass ?? '');
+                if (!empty($ip)) {
+                    if (!empty($auth) && str_contains($auth, ':') && $auth !== 'USUARIO:CLAVE') {
+                        [$u, $pwd] = explode(':', $auth, 2);
+                        $proxies[] = 'http://' . urlencode($u) . ':' . urlencode($pwd) . '@' . $ip;
+                    } else {
+                        $proxies[] = 'http://' . $ip;
                     }
                 }
             }
+        } catch (\Throwable $e) {
+            Log::debug("No se pudieron cargar proxies de MariaDB en TelegramReportDispatchService: " . $e->getMessage());
         }
 
         return [
@@ -351,7 +338,7 @@ class TelegramReportDispatchService
 
         // 1. Conexión directa
         try {
-            $req = Http::timeout(20);
+            $req = Http::timeout(10);
             if ($filePath && file_exists($filePath)) {
                 $req = $req->attach($fileField, file_get_contents($filePath), basename($filePath));
                 $response = $req->post($url, $payload);
@@ -370,7 +357,7 @@ class TelegramReportDispatchService
         // 2. Conexión a través de proxies configurados
         foreach ($proxies as $proxyUrl) {
             try {
-                $req = Http::withOptions(['proxy' => $proxyUrl])->timeout(20);
+                $req = Http::withOptions(['proxy' => $proxyUrl])->timeout(10);
                 if ($filePath && file_exists($filePath)) {
                     $req = $req->attach($fileField, file_get_contents($filePath), basename($filePath));
                     $response = $req->post($url, $payload);
@@ -474,7 +461,7 @@ class TelegramReportDispatchService
             ? $tmpl->slogan
             : "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
 
-        // Bloque de observaciones antes de la firma institucional
+        // Bloque de observaciones antes de la firma del operador
         $obsBlock = !empty($observations)
             ? "\n\n━━━━━━━━━━━━\n📝 <b>OBSERVACIONES:</b>\n" . htmlspecialchars($observations) . "\n━━━━━━━━━━━━"
             : "";
@@ -552,7 +539,7 @@ class TelegramReportDispatchService
             ? $tmpl->slogan
             : "<b>⚡️ATIT Somos la Voz, Comando y Control de SEN, Nadie se Cansa ⚡️</b>";
 
-        // Bloque de observaciones antes de la firma institucional
+        // Bloque de observaciones antes de la firma del operador
         $obsBlock = !empty($observations)
             ? "\n\n━━━━━━━━━━━━\n📝 <b>OBSERVACIONES:</b>\n" . htmlspecialchars($observations) . "\n━━━━━━━━━━━━"
             : "";
@@ -610,7 +597,7 @@ class TelegramReportDispatchService
     }
 
     /**
-     * Formatea la firma institucional del operador con salto de línea en 📱Tlf
+     * Formatea la firma corporativa del operador con salto de línea en 📱Tlf
      */
     protected function formatOperatorSignature(User $user): string
     {

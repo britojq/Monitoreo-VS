@@ -286,7 +286,7 @@ class AdminNetRadarController extends Controller
             fwrite($out, "**Módulo:** NET Radar & Inspección de Tráfico (Inspirado en darkstat)  \n\n");
             fwrite($out, "---\n\n");
 
-            // Resumen Ejecutivo
+            // Resumen Consolidado
             $totalHosts = NetRadarHost::count();
             $activeHosts = NetRadarHost::where('last_seen_at', '>=', now()->subMinutes(15))->count();
             $winHosts = NetRadarHost::where('last_update_type', 'windows_update')->whereIn('update_status', ['checking', 'downloading'])->count();
@@ -294,7 +294,7 @@ class AdminNetRadarController extends Controller
             $totalRx = NetRadarSnapshot::formatBytes(NetRadarHost::sum('bytes_in') ?? 0);
             $totalTx = NetRadarSnapshot::formatBytes(NetRadarHost::sum('bytes_out') ?? 0);
 
-            fwrite($out, "## 📊 Resumen Ejecutivo\n\n");
+            fwrite($out, "## 📊 Resumen Consolidado\n\n");
             fwrite($out, "| Métrica | Valor |\n");
             fwrite($out, "| :--- | :--- |\n");
             fwrite($out, "| **Total Hosts Detectados** | `{$totalHosts}` |\n");
@@ -317,7 +317,7 @@ class AdminNetRadarController extends Controller
                 fwrite($out, "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n");
                 foreach ($updatingHosts as $uh) {
                     $uType = $uh->last_update_type === 'windows_update' ? '🪟 Windows Update' : '🐧 Linux Repo';
-                    $uTarget = $uh->last_update_target ?: 'Dominio Oficial';
+                    $uTarget = $uh->last_update_target ?: 'Repositorio / Dominio';
                     $uTraffic = $uh->formatted_update_bytes;
                     $uDate = $uh->last_update_at ? $uh->last_update_at->format('Y-m-d H:i:s') : 'N/A';
                     $uVendor = $uh->vendor ?: 'Desconocido';

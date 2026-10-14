@@ -230,7 +230,7 @@ def main():
         print(json.dumps(summary, indent=2))
     else:
         print("\n============================================================")
-        print("📦 RESUMEN EJECUTIVO DE CICLO DE VIDA (VALLE SECO)")
+        print("📦 RESUMEN CONSOLIDADO DE CICLO DE VIDA (VALLE SECO)")
         print("============================================================")
         print(f"• Total Activos Registrados:     {summary['total_tracked']}")
         print(f"• Garantías Vigentes:            {summary['warranty_valid']}")

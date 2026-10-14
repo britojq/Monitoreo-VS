@@ -60,7 +60,7 @@ class ProfileController extends Controller
             return redirect()->route('admin.profile.show')->with('info', 'No se realizaron cambios en la foto de perfil.');
         }
 
-        // 2. Actualización de Ficha Institucional ATIT (válida para usuarios LDAP y Locales)
+        // 2. Actualización de Ficha ATIT (válida para usuarios LDAP y Locales)
         if ($request->has('atit_profile_only')) {
             $validated = $request->validate([
                 'academic_title' => ['nullable', 'string', 'max:50'],
@@ -80,7 +80,7 @@ class ProfileController extends Controller
             $user->phone = $validated['phone'] ?? null;
             $user->save();
 
-            return redirect()->route('admin.profile.show')->with('success', 'Ficha Institucional ATIT actualizada exitosamente.');
+            return redirect()->route('admin.profile.show')->with('success', 'Ficha ATIT actualizada exitosamente.');
         }
 
         // 3. Actualización de Cuenta Local Completa

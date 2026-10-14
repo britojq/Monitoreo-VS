@@ -875,8 +875,8 @@ async def execute_git_update(
                     except Exception:
                         pass
 
-            # 7.8 Hook de post-actualización mayor del sistema (post_update.py)
-            post_update_script = BASE_DIR / "post_update.py"
+            # 7.8 Hook de post-actualización mayor del sistema (tools/post_update.py)
+            post_update_script = BASE_DIR / "tools" / "post_update.py"
             if post_update_script.exists():
                 try:
                     p_post = await asyncio.create_subprocess_exec(

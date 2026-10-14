@@ -11,7 +11,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Contracts\NotifierInterface::class, \App\Services\Notification\TelegramTransport::class);
+        $this->app->singleton(\App\Contracts\CommandRunnerInterface::class, \App\Services\System\SystemCommandRunner::class);
+        $this->app->singleton(\App\Contracts\HardwareInspectorInterface::class, \App\Services\Hardware\LinuxHardwareInspector::class);
+        $this->app->singleton(\App\Contracts\ClusterVerifierInterface::class, \App\Services\Cluster\ClusterVerifierService::class);
+        $this->app->singleton(\App\Contracts\ClusterAuditLoggerInterface::class, \App\Services\Cluster\ClusterAuditLoggerService::class);
+        $this->app->singleton(\App\Contracts\HardwareDriftDetectorInterface::class, \App\Services\Glpi\HardwareDriftDetectorService::class);
+        $this->app->singleton(\App\Contracts\GlpiAgentTriggerInterface::class, \App\Services\Glpi\GlpiAgentTriggerService::class);
+        $this->app->singleton(\App\Contracts\IpamGridInterface::class, \App\Services\Ipam\IpamGridService::class);
+        $this->app->singleton(\App\Contracts\QrCodeGeneratorInterface::class, \App\Services\Qr\QrCodeGeneratorService::class);
+        $this->app->singleton(\App\Contracts\ActaVerificationInterface::class, \App\Services\Inventory\ActaVerificationService::class);
+        $this->app->singleton(\App\Contracts\NetworkTopologyInterface::class, \App\Services\Topology\NetworkTopologyService::class);
+        $this->app->singleton(\App\Contracts\AssetTimelineInterface::class, \App\Services\Inventory\AssetTimelineService::class);
+        $this->app->singleton(\App\Contracts\ExecutiveReportInterface::class, \App\Services\Reports\ExecutiveReportService::class);
     }
 
     /**
@@ -54,5 +66,12 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('headerUpsHistories', collect());
             }
         });
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Console\Commands\HousekeepingTelemetryCommand::class,
+                \App\Console\Commands\SyncInventoryFromExcelCommand::class,
+            ]);
+        }
     }
 }

@@ -49,4 +49,34 @@ class MonitoredSiteDevice extends Model
     {
         return $this->belongsTo(MonitoredSite::class, 'monitored_site_id');
     }
+
+    /**
+     * Identidad operativa principal (Nombre Etiqueta)
+     */
+    public function getDisplayIdentityAttribute(): string
+    {
+        if (!empty($this->normal_state_msg)) {
+            $clean = trim(preg_replace('/^[✅❌⚠️\s\-]+/u', '', $this->normal_state_msg));
+            if (!empty($clean)) {
+                return $clean;
+            }
+        }
+        return $this->name;
+    }
+
+    /**
+     * Subtítulo técnico (Nombre de Equipo / Hostname)
+     */
+    public function getTechnicalSubtitleAttribute(): ?string
+    {
+        $display = $this->display_identity;
+        if (!empty($this->notes) && preg_match('/(?:Hostname|NetBIOS):\s*([^\s\|]+)/i', $this->notes, $matches)) {
+            return $matches[1];
+        }
+        if (!empty($this->name) && $this->name !== $display) {
+            return $this->name;
+        }
+        return null;
+    }
 }
+

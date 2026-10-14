@@ -8,6 +8,10 @@ use App\Models\DiscoveredDeviceHistory;
 use App\Models\DiscoveryScan;
 use App\Models\DiscoverySubnet;
 use App\Models\MonitoredSite;
+use App\Models\SnmpActivationLog;
+use App\Models\SnmpDevice;
+use App\Models\SnmpInterface;
+use App\Models\SnmpOid;
 use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,59 +21,131 @@ use Illuminate\View\View;
 class AdminDiscoveryController extends Controller
 {
     /**
-     * Muestra el panel de Auto-Discovery y Detección Anti-Rogue.
+     * Muestra el panel unificado de Radar, Auto-Discovery y Telemetría SNMP.
      */
-    public function index(Request $request): View
-    {
-        $statusFilter = $request->query('status');
-        $siteFilter = $request->query('site_id');
-        $search = $request->query('search');
+     public function index(Request $request): View
+     {
+         $activeTab = $request->query('tab', 'radar');
+         $statusFilter = $request->query('status');
+         $siteFilter = $request->query('site_id');
+         $typeFilter = $request->query('device_type');
+         $search = $request->query('search');
 
-        $query = DiscoveredDevice::with(['site', 'classifiedBy', 'linkedNetworkDevice'])
-            ->orderByDesc('last_seen');
+         // Métricas globales para los badges de las pestañas
+         $radarPendingDevices = DiscoveredDevice::where('classification_status', 'pendiente')->count();
+         $snmpTotalDevices = SnmpDevice::count();
 
-        if (!empty($statusFilter)) {
-            $query->where('classification_status', $statusFilter);
-        }
+         $sites = MonitoredSite::where('is_active', true)->orderBy('sort_order')->get();
 
-        if (!empty($siteFilter)) {
-            $query->where('site_id', $siteFilter);
-        }
+         if ($activeTab === 'snmp') {
+             $query = SnmpDevice::with(['site', 'networkDevice', 'interfaces'])
+                 ->orderByDesc('is_active')
+                 ->orderBy('name');
 
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('ip_address', 'like', "%{$search}%")
-                  ->orWhere('mac_address', 'like', "%{$search}%")
-                  ->orWhere('hostname', 'like', "%{$search}%")
-                  ->orWhere('vendor', 'like', "%{$search}%");
-            });
-        }
+             if (!empty($statusFilter)) {
+                 $query->where('last_poll_status', $statusFilter);
+             }
 
-        // Métricas HUD
-        $totalDevices = DiscoveredDevice::count();
-        $pendingDevices = DiscoveredDevice::where('classification_status', 'pendiente')->count();
-        $authorizedDevices = DiscoveredDevice::where('is_authorized', true)->count();
-        $rogueDevices = DiscoveredDevice::where('classification_status', 'rogue')->count();
+             if (!empty($typeFilter)) {
+                 $query->where('device_type', $typeFilter);
+             }
 
-        $devices = $query->paginate(15)->withQueryString();
-        $sites = MonitoredSite::where('is_active', true)->orderBy('sort_order')->get();
-        $subnets = DiscoverySubnet::with('site')->orderBy('subnet')->get();
-        $recentScans = DiscoveryScan::recent(5)->get();
+             if (!empty($siteFilter)) {
+                 $query->where('site_id', $siteFilter);
+             }
 
-        return view('admin.discovery.index', compact(
-            'devices',
-            'sites',
-            'subnets',
-            'recentScans',
-            'totalDevices',
-            'pendingDevices',
-            'authorizedDevices',
-            'rogueDevices',
-            'statusFilter',
-            'siteFilter',
-            'search'
-        ));
-    }
+             if (!empty($search)) {
+                 $query->where(function ($q) use ($search) {
+                     $q->where('name', 'like', "%{$search}%")
+                       ->orWhere('ip_address', 'like', "%{$search}%")
+                       ->orWhere('vendor', 'like', "%{$search}%")
+                       ->orWhere('model', 'like', "%{$search}%")
+                       ->orWhere('sys_name', 'like', "%{$search}%");
+                 });
+             }
+
+             // Métricas HUD SNMP
+             $onlineDevices = SnmpDevice::where('last_poll_status', 'success')->count();
+             $failingDevices = SnmpDevice::where('consecutive_failures', '>', 0)->count();
+             $totalInterfaces = SnmpInterface::count();
+             $monitoredInterfaces = SnmpInterface::where('is_monitored', true)->count();
+             $oidsCount = SnmpOid::where('is_active', true)->count();
+             $recentLogs = SnmpActivationLog::latest('executed_at')->take(5)->get();
+
+             $devices = $query->paginate(15)->withQueryString();
+
+             return view('admin.discovery.index', compact(
+                 'activeTab',
+                 'devices',
+                 'sites',
+                 'recentLogs',
+                 'snmpTotalDevices',
+                 'onlineDevices',
+                 'failingDevices',
+                 'totalInterfaces',
+                 'monitoredInterfaces',
+                 'oidsCount',
+                 'radarPendingDevices',
+                 'statusFilter',
+                 'typeFilter',
+                 'siteFilter',
+                 'search'
+             ));
+         }
+
+         // Pestaña por Defecto: Auto-Discovery & Anti-Rogue
+         $query = DiscoveredDevice::with(['site', 'classifiedBy', 'linkedNetworkDevice', 'inventoryAsset'])
+             ->orderByDesc('last_seen');
+
+         if (!empty($statusFilter)) {
+             $query->where('classification_status', $statusFilter);
+         }
+
+         if (!empty($siteFilter)) {
+             $query->where('site_id', $siteFilter);
+         }
+
+         if (!empty($search)) {
+             $query->where(function ($q) use ($search) {
+                 $q->where('ip_address', 'like', "%{$search}%")
+                   ->orWhere('mac_address', 'like', "%{$search}%")
+                   ->orWhere('hostname', 'like', "%{$search}%")
+                   ->orWhere('vendor', 'like', "%{$search}%")
+                   ->orWhereHas('inventoryAsset', function ($aq) use ($search) {
+                       $aq->where('name', 'like', "%{$search}%")
+                          ->orWhere('brand', 'like', "%{$search}%")
+                          ->orWhere('model', 'like', "%{$search}%");
+                   });
+             });
+         }
+
+         // Métricas HUD Auto-Discovery
+         $totalDevices = DiscoveredDevice::count();
+         $pendingDevices = $radarPendingDevices;
+         $authorizedDevices = DiscoveredDevice::where('is_authorized', true)->count();
+         $rogueDevices = DiscoveredDevice::where('classification_status', 'rogue')->count();
+
+         $devices = $query->paginate(15)->withQueryString();
+         $subnets = DiscoverySubnet::with('site')->orderBy('subnet')->get();
+         $recentScans = DiscoveryScan::recent(5)->get();
+
+         return view('admin.discovery.index', compact(
+             'activeTab',
+             'devices',
+             'sites',
+             'subnets',
+             'recentScans',
+             'totalDevices',
+             'pendingDevices',
+             'authorizedDevices',
+             'rogueDevices',
+             'radarPendingDevices',
+             'snmpTotalDevices',
+             'statusFilter',
+             'siteFilter',
+             'search'
+         ));
+     }
 
     /**
      * Autoriza y clasifica un dispositivo descubierto como legítimo.
@@ -121,7 +197,7 @@ class AdminDiscoveryController extends Controller
         $device = DiscoveredDevice::findOrFail($id);
 
         $validated = $request->validate([
-            'device_type' => ['required', 'string', 'in:router,switch,firewall,server,workstation,printer,ap,camera,ups,unknown'],
+            'device_type' => ['required', 'string', 'in:router,switch,firewall,server,workstation,printer,ap,camera,ups,phone,unknown'],
             'classification_status' => ['required', 'string', 'in:pendiente,clasificado,ignorado,rogue,byod'],
             'is_authorized' => ['nullable', 'boolean'],
             'hostname' => ['nullable', 'string', 'max:255'],

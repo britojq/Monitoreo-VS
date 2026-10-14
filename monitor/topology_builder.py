@@ -68,7 +68,7 @@ class TopologyBuilder:
     def discover_and_build_links(self) -> int:
         """
         Descubre e infiere enlaces de topología entre dispositivos de infraestructura.
-        Analiza interfaces, vecinos CDP/LLDP y jerarquía Core -> Distribución -> Acceso.
+        Analiza interfaces, dispositivos interconectados CDP/LLDP y jerarquía Core -> Distribución -> Acceso.
         """
         with self.db.cursor() as cur:
             # 1. Obtener dispositivos SNMP registrados

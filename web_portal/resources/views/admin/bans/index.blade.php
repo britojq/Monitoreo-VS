@@ -23,14 +23,12 @@
         </div>
         <div class="flex items-center gap-2">
             @if(!empty($fail2banStatus['is_running']))
-                <span class="px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs">
+                <span class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shadow-xs cursor-help" title="Fail2ban Activo ({{ $fail2banStatus['jail_count'] ?? 0 }} Jails)">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Fail2ban Activo ({{ $fail2banStatus['jail_count'] ?? 0 }} Jails)
                 </span>
             @else
-                <span class="px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-400 text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs">
+                <span class="w-8 h-8 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-400 flex items-center justify-center shadow-xs cursor-help" title="Fail2ban Inactivo">
                     <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                    Fail2ban Inactivo
                 </span>
             @endif
 

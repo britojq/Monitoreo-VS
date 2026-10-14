@@ -3,52 +3,90 @@
 @section('page_title', 'Configuración de Servicios')
 
 @section('admin_content')
-<div class="space-y-6">
-    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.services.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">dns</span>
-            <span>Servicios Principales</span>
-        </a>
-        <a href="{{ route('admin.proxies.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">public</span>
-            <span>Proxies & Pasarelas</span>
-        </a>
-        <a href="{{ route('admin.ssl.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">lock</span>
-            <span>Certificados SSL/TLS</span>
-        </a>
-    </div>
-
+<div class="space-y-4">
     <!-- CABECERA -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <div class="flex items-center gap-2 mb-1.5">
-                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-xs font-mono font-semibold group shadow-sm">
-                    <span class="material-symbols-outlined text-sm group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
                     Dashboard
                 </a>
                 <span class="text-obsidian-border font-mono text-xs">/</span>
-                <span class="text-xs font-mono text-obsidian-muted">Servicios Monitoreados</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Servicios Monitoreados</span>
             </div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-cyan-400">cloud_done</span>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">cloud_done</span>
                 Servicios y Plataformas de Red Monitoreados
-            </h2>
+            </h1>
             <p class="text-xs font-mono text-obsidian-muted">Gestión de plataformas web, DNS, autenticación LDAP, proxies de salida y telemetría de red</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <div class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center gap-1.5 shadow-sm">
-                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </div>
-            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !$isClusterSlave)
-                <button type="button" onclick="openCreateServiceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-cyan hover:bg-white text-black font-bold font-mono text-xs transition shadow-sm cursor-pointer">
-                    <span class="material-symbols-outlined text-sm">add_circle</span>
-                    <span>+ Agregar Servicio</span>
-                </button>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Réplica)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !($isClusterSlave ?? false))
+                <div class="relative group">
+                    <button type="button" onclick="openCreateServiceModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">cloud_done</span>
+                        <span class="font-bold text-sm leading-none">+</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">cloud_done</span>
+                            <span class="font-bold text-cyan-200">Agregar Servicio</span>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS SERVICIOS & CONECTIVIDAD (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.services.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.services.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Servicios Principales Monitoreados">
+            <span class="material-symbols-outlined text-sm">dns</span>
+            <span>Servicios Principales</span>
+        </a>
+        <a href="{{ route('admin.proxies.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.proxies.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Proxies Corporativos & Pasarelas">
+            <span class="material-symbols-outlined text-sm">public</span>
+            <span>Proxies & Pasarelas</span>
+        </a>
+        <a href="{{ route('admin.ssl.index') }}" 
+           class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ssl.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" 
+           title="Certificados de Seguridad SSL/TLS">
+            <span class="material-symbols-outlined text-sm">lock</span>
+            <span>Certificados SSL/TLS</span>
+        </a>
     </div>
 
     @php
@@ -161,14 +199,11 @@
                             <span class="material-symbols-outlined text-xl">corporate_fare</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
-                                <span>Servicios y Plataformas Corporativas</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-obsidian-cyan">
-                                    {{ $corporateServices->where('is_active', true)->count() }} Activos de {{ $corporateServices->count() }}
-                                </span>
+                            <h3 class="text-base font-bold text-white font-sans">
+                                Servicios y Plataformas Corporativas
                             </h3>
                             <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
-                                <span>Sistemas corporativos centrales, autenticación institucional y plataformas web</span>
+                                <span>Sistemas corporativos centrales, autenticación central y plataformas web</span>
                             </p>
                         </div>
                     </div>
@@ -198,11 +233,8 @@
                             <span class="material-symbols-outlined text-xl">hub</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
-                                <span>Servicios Regionales de Infraestructura</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-obsidian-panel border border-obsidian-border text-purple-300">
-                                    {{ $regionalServices->where('is_active', true)->count() }} Activos de {{ $regionalServices->count() }}
-                                </span>
+                            <h3 class="text-base font-bold text-white font-sans">
+                                Servicios Regionales de Infraestructura
                             </h3>
                             <p class="text-xs font-mono text-obsidian-muted flex items-center gap-2 mt-0.5">
                                 <span>Servidores DNS locales, proxies Pfsense, servidores SMTP y DHCP regional</span>
@@ -252,96 +284,98 @@
 
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_services')) && !$isClusterSlave)
 <!-- MODAL CREAR NUEVO SERVICIO (Solo Administrador) -->
-<div id="modal-create-service" onclick="if(event.target === this) closeModal('modal-create-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-create-service" onclick="if(event.target === this) closeModal('modal-create-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 shrink-0 bg-[#061220]">
             <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-base">add_circle</span>
                 Agregar Nuevo Servicio Monitoreado
             </h3>
             <button type="button" onclick="closeModal('modal-create-service')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-create-service" action="{{ route('admin.services.store') }}" method="POST" class="space-y-4 font-mono text-xs">
+        <form id="form-create-service" action="{{ route('admin.services.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug (opcional):</label>
-                    <input type="text" name="letter" maxlength="10" placeholder="Auto" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
-                    <select name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
-                        <option value="WEB">WEB (HTTP/S)</option>
-                        <option value="PING">PING (ICMP)</option>
-                        <option value="DNS">DNS</option>
-                        <option value="SMTP">SMTP</option>
-                        <option value="DHCP">DHCP</option>
-                        <option value="LDAP">LDAP</option>
-                        <option value="PROXY">PROXY</option>
-                        <option value="CUPS">CUPS</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
-                    <select name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
-                        <option value="corporativo">Corporativo</option>
-                        <option value="regional">Regional</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
-                <input type="text" name="name" required placeholder="ej. Sistema SIGECOM" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
-                    <input type="text" name="host_ip" placeholder="ej. 10.20.0.50" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
-                    <input type="number" name="port" placeholder="ej. 80, 443, 389" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
-                <input type="text" name="web_url" placeholder="http://10.20.0.50/login" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
-                <input type="text" name="credentials" placeholder="usuario:clave" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <!-- NOTIFICACIONES TELEGRAM -->
-            <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
-                        <label for="create-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
-                            Notificar caídas y recuperaciones por Telegram
-                        </label>
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug (opcional):</label>
+                        <input type="text" name="letter" maxlength="10" placeholder="Auto" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                     </div>
-                    <input type="checkbox" id="create-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
+                        <select name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
+                            <option value="WEB">WEB (HTTP/S)</option>
+                            <option value="PING">PING (ICMP)</option>
+                            <option value="DNS">DNS</option>
+                            <option value="SMTP">SMTP</option>
+                            <option value="DHCP">DHCP</option>
+                            <option value="LDAP">LDAP</option>
+                            <option value="PROXY">PROXY</option>
+                            <option value="CUPS">CUPS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
+                        <select name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
+                            <option value="corporativo">Corporativo</option>
+                            <option value="regional">Regional</option>
+                        </select>
+                    </div>
                 </div>
-                <div id="create-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
-                    <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
-                    <select name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
-                        <option value="owner">👤 Administrador (Chat Privado)</option>
-                        <option value="group">👥 Grupo Corporativo</option>
-                    </select>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
+                    <input type="text" name="name" required placeholder="ej. Sistema SIGECOM" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
+                        <input type="text" name="host_ip" placeholder="ej. 10.20.0.50" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
+                        <input type="number" name="port" placeholder="ej. 80, 443, 389" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
+                    <input type="text" name="web_url" placeholder="http://10.20.0.50/login" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
+                    <input type="text" name="credentials" placeholder="usuario:clave" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <!-- NOTIFICACIONES TELEGRAM -->
+                <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                            <label for="create-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
+                                Notificar caídas y recuperaciones por Telegram
+                            </label>
+                        </div>
+                        <input type="checkbox" id="create-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                    </div>
+                    <div id="create-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
+                        <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
+                        <select name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
+                            <option value="owner">👤 Administrador (Chat Privado)</option>
+                            <option value="group">👥 Grupo Corporativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="create-service-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="create-service-active" class="text-obsidian-muted cursor-pointer select-none">Activar monitoreo inmediatamente</label>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 pt-1">
-                <input type="checkbox" id="create-service-active" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="create-service-active" class="text-obsidian-muted cursor-pointer select-none">Activar monitoreo inmediatamente</label>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+            <div class="flex justify-end gap-2 p-3.5 border-t border-obsidian-border shrink-0 bg-[#061220]">
                 <button type="button" onclick="closeModal('modal-create-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold flex items-center gap-1 cursor-pointer">
                     <span class="material-symbols-outlined text-sm">save</span>
@@ -353,97 +387,99 @@
 </div>
 
 <!-- MODAL EDITAR SERVICIO (Solo Administrador) -->
-<div id="modal-edit-service" onclick="if(event.target === this) closeModal('modal-edit-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-obsidian-border shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-obsidian-border pb-3">
+<div id="modal-edit-service" onclick="if(event.target === this) closeModal('modal-edit-service')" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+        <div class="flex items-center justify-between border-b border-obsidian-border p-4 shrink-0 bg-[#061220]">
             <h3 class="text-sm font-bold text-white uppercase font-mono flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-base">edit</span>
                 Editar Parámetros de Servicio
             </h3>
             <button type="button" onclick="closeModal('modal-edit-service')" class="text-obsidian-muted hover:text-white text-xl p-1 rounded hover:bg-obsidian-panel leading-none">&times;</button>
         </div>
-        <form id="form-edit-service" method="POST" class="space-y-4 font-mono text-xs">
+        <form id="form-edit-service" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
             @method('PUT')
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug:</label>
-                    <input type="text" id="edit-service-letter" name="letter" maxlength="10" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
-                    <select id="edit-service-type" name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
-                        <option value="WEB">WEB (HTTP/S)</option>
-                        <option value="PING">PING (ICMP)</option>
-                        <option value="DNS">DNS</option>
-                        <option value="SMTP">SMTP</option>
-                        <option value="DHCP">DHCP</option>
-                        <option value="LDAP">LDAP</option>
-                        <option value="PROXY">PROXY</option>
-                        <option value="CUPS">CUPS</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
-                    <select id="edit-service-scope" name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
-                        <option value="corporativo">Corporativo</option>
-                        <option value="regional">Regional</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
-                <input type="text" id="edit-service-name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
-                    <input type="text" id="edit-service-host" name="host_ip" placeholder="ej. 10.0.0.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                </div>
-                <div>
-                    <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
-                    <input type="number" id="edit-service-port" name="port" placeholder="ej. 80, 443" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
-                <input type="text" id="edit-service-url" name="web_url" placeholder="https://ejemplo.com/salud" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <div>
-                <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
-                <input type="text" id="edit-service-credentials" name="credentials" placeholder="user:pass o token" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
-            </div>
-
-            <!-- NOTIFICACIONES TELEGRAM -->
-            <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
-                        <label for="edit-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
-                            Notificar caídas y recuperaciones por Telegram
-                        </label>
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">ID / Slug:</label>
+                        <input type="text" id="edit-service-letter" name="letter" maxlength="10" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-bold"/>
                     </div>
-                    <input type="checkbox" id="edit-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Tipo de Servicio:</label>
+                        <select id="edit-service-type" name="type" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white">
+                            <option value="WEB">WEB (HTTP/S)</option>
+                            <option value="PING">PING (ICMP)</option>
+                            <option value="DNS">DNS</option>
+                            <option value="SMTP">SMTP</option>
+                            <option value="DHCP">DHCP</option>
+                            <option value="LDAP">LDAP</option>
+                            <option value="PROXY">PROXY</option>
+                            <option value="CUPS">CUPS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Ámbito:</label>
+                        <select id="edit-service-scope" name="scope" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white font-semibold">
+                            <option value="corporativo">Corporativo</option>
+                            <option value="regional">Regional</option>
+                        </select>
+                    </div>
                 </div>
-                <div id="edit-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
-                    <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
-                    <select id="edit-service-telegram-target" name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
-                        <option value="owner">👤 Administrador (Chat Privado)</option>
-                        <option value="group">👥 Grupo Corporativo</option>
-                    </select>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Nombre Descriptivo:</label>
+                    <input type="text" id="edit-service-name" name="name" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
+                        <input type="text" id="edit-service-host" name="host_ip" placeholder="ej. 10.0.0.1" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                    <div>
+                        <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
+                        <input type="number" id="edit-service-port" name="port" placeholder="ej. 80, 443" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
+                    <input type="text" id="edit-service-url" name="web_url" placeholder="https://ejemplo.com/salud" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <div>
+                    <label class="block text-obsidian-muted mb-1 text-[11px]">Credenciales / Token (Opcional):</label>
+                    <input type="text" id="edit-service-credentials" name="credentials" placeholder="user:pass o token" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                </div>
+
+                <!-- NOTIFICACIONES TELEGRAM -->
+                <div class="p-3 rounded-xl bg-obsidian-bg/80 border border-obsidian-border space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-cyan-400">notifications_active</span>
+                            <label for="edit-service-telegram-alert" class="text-white text-[11px] font-semibold cursor-pointer select-none">
+                                Notificar caídas y recuperaciones por Telegram
+                            </label>
+                        </div>
+                        <input type="checkbox" id="edit-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
+                    </div>
+                    <div id="edit-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
+                        <label class="block text-obsidian-muted mb-1 text-[10px] uppercase font-bold">Destino de Notificación:</label>
+                        <select id="edit-service-telegram-target" name="telegram_alert_target" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white text-xs">
+                            <option value="owner">👤 Administrador (Chat Privado)</option>
+                            <option value="group">👥 Grupo Corporativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="edit-service-active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
+                    <label for="edit-service-active" class="text-obsidian-muted cursor-pointer select-none">Servicio activo en monitoreo</label>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 pt-1">
-                <input type="checkbox" id="edit-service-active" name="is_active" value="1" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan"/>
-                <label for="edit-service-active" class="text-obsidian-muted cursor-pointer select-none">Servicio activo en monitoreo</label>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2 border-t border-obsidian-border">
+            <div class="flex justify-end gap-2 p-3.5 border-t border-obsidian-border shrink-0 bg-[#061220]">
                 <button type="button" onclick="closeModal('modal-edit-service')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white cursor-pointer">Cancelar</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-obsidian-cyan text-black font-bold cursor-pointer">Actualizar Servicio</button>
             </div>
@@ -454,9 +490,9 @@
 
 <!-- MODAL HISTÓRICO Y TELEMETRÍA (CHART.JS) -->
 <div id="modal-service-history" onclick="if(event.target === this) closeServiceHistoryModal()" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6">
-    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl space-y-4 max-h-[95vh] overflow-y-auto custom-scroll p-5 sm:p-6 bg-[#07172b]/95">
-        <!-- CABECERA DEL HISTÓRICO -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 pb-4">
+    <div class="glass-panel max-w-4xl w-full rounded-2xl border border-obsidian-border/90 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#07172b]/95">
+        <!-- CABECERA DEL HISTÓRICO (FIJA) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border/80 p-4 sm:p-5 shrink-0 bg-[#061527]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-obsidian-cyan/10 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan">
                     <span class="material-symbols-outlined text-xl">show_chart</span>
@@ -483,8 +519,10 @@
             </div>
         </div>
 
-        <!-- 4 TARJETAS DE MÉTRICAS KPI -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <!-- CUERPO DESLIZABLE INDEPENDIENTE -->
+        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+            <!-- 4 TARJETAS DE MÉTRICAS KPI -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="glass-card rounded-xl p-3 border border-obsidian-border bg-obsidian-panel/40">
                 <div class="flex items-center justify-between text-obsidian-muted text-[10px] font-mono uppercase">
                     <span>Disponibilidad</span>
@@ -585,6 +623,7 @@
                     </tbody>
                 </table>
             </div>
+        </div>
         </div>
     </div>
 </div>

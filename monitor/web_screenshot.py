@@ -81,6 +81,16 @@ async def capture_web_dashboard(mode: str = "full", timeout: float = 12.0) -> Op
         if (now - cache_time) < CACHE_TTL_SECONDS and cache_file.exists():
             return cache_file
 
+    # Comprobar caché en disco (soporte para llamadas separadas vía CLI/PHP)
+    for disk_file in sorted(CACHE_DIR.glob(f"capture_{mode}_*.png"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            mtime = disk_file.stat().st_mtime
+            if (now - mtime) < CACHE_TTL_SECONDS and disk_file.stat().st_size > 1024:
+                _SCREENSHOT_CACHE[mode] = (mtime, disk_file)
+                return disk_file
+        except Exception:
+            pass
+
     target_file = CACHE_DIR / f"capture_{mode}_{int(now)}.png"
 
     try:

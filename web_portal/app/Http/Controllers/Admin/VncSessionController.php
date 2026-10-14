@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\InventoryAsset;
+use App\Services\RemoteAccess\WebsockifyTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +15,10 @@ use Illuminate\View\View;
 
 class VncSessionController extends Controller
 {
-    protected string $tokensFile = '/etc/websockify/tokens.cfg';
+    public function __construct(
+        protected WebsockifyTokenService $tokenService
+    ) {
+    }
 
     /**
      * Generar un token temporal y seguro para iniciar sesión VNC
@@ -29,6 +36,7 @@ class VncSessionController extends Controller
 
         $validated = $request->validate([
             'ip' => ['required', 'ip'],
+            'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'name' => ['nullable', 'string', 'max:100'],
             'site' => ['nullable', 'string', 'max:100'],
         ]);
@@ -37,12 +45,15 @@ class VncSessionController extends Controller
         $targetName = $validated['name'] ?? 'Estación de Trabajo';
         $targetSite = $validated['site'] ?? 'Sede Regional';
 
+        $asset = InventoryAsset::where('ip_address', $targetIp)->first();
+        $targetPort = (int) ($validated['port'] ?? ($asset?->vnc_port ?: 5900));
+
         // Generar un token aleatorio criptográficamente seguro
-        $token = 'vnc_' . bin2hex(random_bytes(16));
+        $token = $this->tokenService->generateToken('vnc');
 
         // Registrar el token en el archivo de configuración de websockify
         try {
-            $this->registerToken($token, $targetIp, 5900);
+            $this->tokenService->registerToken($token, $targetIp, $targetPort);
         } catch (\Throwable $e) {
             Log::error('Error registrando token VNC en websockify: ' . $e->getMessage());
             return response()->json([
@@ -50,6 +61,18 @@ class VncSessionController extends Controller
                 'message' => 'Error de infraestructura al inicializar proxy VNC: ' . $e->getMessage(),
             ], 500);
         }
+
+        // Registrar auditoría en MariaDB SSOT
+        $this->tokenService->auditSession(
+            protocol: 'vnc',
+            user: $user,
+            targetIp: $targetIp,
+            targetPort: $targetPort,
+            targetName: $targetName,
+            targetSite: $targetSite,
+            token: $token,
+            request: $request
+        );
 
         $viewerUrl = route('admin.vnc.viewer', [
             'token' => $token,
@@ -59,23 +82,14 @@ class VncSessionController extends Controller
         ]);
 
         $novncPath = 'websockify?token=' . $token;
-        $novncDirectUrl = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode($novncPath);
-
-        Log::info(sprintf(
-            '[VNC] Sesión creada por %s (%s) para equipo %s (%s) en %s [Token: %s]',
-            $user->name,
-            $user->role,
-            $targetName,
-            $targetIp,
-            $targetSite,
-            $token
-        ));
+        $passwordParam = ($asset && !empty($asset->vnc_password_encrypted)) ? ('&password=' . urlencode($asset->vnc_password_encrypted)) : '';
+        $novncDirectUrl = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode($novncPath) . $passwordParam;
 
         return response()->json([
             'success' => true,
             'token' => $token,
             'ip' => $targetIp,
-            'port' => 5900,
+            'port' => $targetPort,
             'name' => $targetName,
             'site' => $targetSite,
             'viewer_url' => $viewerUrl,
@@ -94,67 +108,19 @@ class VncSessionController extends Controller
             abort(403, 'Acceso denegado. No posee el permiso [remote.vnc] para visualizar escritorios remotos.');
         }
 
-        $token = $request->query('token');
-        $ip = $request->query('ip', '0.0.0.0');
-        $name = $request->query('name', 'Estación Remota');
-        $site = $request->query('site', 'Sede Regional');
+        $token = (string) $request->query('token', '');
+        $ip = (string) $request->query('ip', '0.0.0.0');
+        $name = (string) $request->query('name', 'Estación Remota');
+        $site = (string) $request->query('site', 'Sede Regional');
 
-        if (!$token || !$this->isTokenValid($token)) {
+        if (empty($token) || !$this->tokenService->isTokenValid($token)) {
             abort(404, 'El token de conexión VNC ha expirado o no es válido. Genere una nueva sesión desde el panel de monitoreo.');
         }
 
-        $novncSrc = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode('websockify?token=' . $token);
+        $asset = InventoryAsset::where('ip_address', $ip)->first();
+        $passwordParam = ($asset && !empty($asset->vnc_password_encrypted)) ? ('&password=' . urlencode($asset->vnc_password_encrypted)) : '';
+        $novncSrc = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode('websockify?token=' . $token) . $passwordParam;
 
         return view('admin.vnc.viewer', compact('token', 'ip', 'name', 'site', 'novncSrc'));
-    }
-
-    /**
-     * Registrar token en /etc/websockify/tokens.cfg manteniendo el archivo podado
-     */
-    protected function registerToken(string $token, string $ip, int $port = 5900): void
-    {
-        $dir = dirname($this->tokensFile);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $existingLines = [];
-        if (file_exists($this->tokensFile)) {
-            $rawLines = file($this->tokensFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            if ($rawLines !== false) {
-                // Conservar como máximo los últimos 100 registros para evitar crecimiento indefinido
-                $existingLines = array_slice($rawLines, -100);
-            }
-        }
-
-        $newLine = "{$token}: {$ip}:{$port}";
-        $existingLines[] = $newLine;
-
-        $content = implode("\n", $existingLines) . "\n";
-        file_put_contents($this->tokensFile, $content, LOCK_EX);
-    }
-
-    /**
-     * Verificar si el token existe en el archivo
-     */
-    protected function isTokenValid(string $token): bool
-    {
-        if (!file_exists($this->tokensFile)) {
-            return false;
-        }
-
-        $lines = file($this->tokensFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if ($lines === false) {
-            return false;
-        }
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (str_starts_with($line, $token . ':')) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

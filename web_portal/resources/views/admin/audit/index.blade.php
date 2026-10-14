@@ -156,6 +156,9 @@
                         <option value="toggled" {{ request('event') == 'toggled' ? 'selected' : '' }}>Cambios de Estado</option>
                         <option value="deleted" {{ request('event') == 'deleted' ? 'selected' : '' }}>Eliminaciones</option>
                         <option value="login_failed" {{ request('event') == 'login_failed' ? 'selected' : '' }}>Accesos Fallidos</option>
+                        <option value="vnc_session" {{ request('event') == 'vnc_session' ? 'selected' : '' }}>Escritorio Remoto VNC</option>
+                        <option value="ssh_session" {{ request('event') == 'ssh_session' ? 'selected' : '' }}>Consola Web SSH</option>
+                        <option value="telnet_session" {{ request('event') == 'telnet_session' ? 'selected' : '' }}>Terminal Web Telnet</option>
                     </select>
                 </div>
 
@@ -164,6 +167,7 @@
                     <select name="module" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg px-2.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-obsidian-cyan transition">
                         <option value="all" {{ request('module') == 'all' ? 'selected' : '' }}>Todos los Módulos</option>
                         <option value="auth" {{ request('module') == 'auth' ? 'selected' : '' }}>Seguridad & Acceso</option>
+                        <option value="remote" {{ request('module') == 'remote' ? 'selected' : '' }}>Acceso Remoto</option>
                         <option value="services" {{ request('module') == 'services' ? 'selected' : '' }}>Servicios</option>
                         <option value="sites" {{ request('module') == 'sites' ? 'selected' : '' }}>Sedes & Enlaces</option>
                         <option value="devices" {{ request('module') == 'devices' ? 'selected' : '' }}>Equipos de Red</option>
@@ -419,10 +423,10 @@
 </div>
 
 <!-- MODAL DE DETALLE Y DIFERENCIAS (DIFFS) -->
-<div id="auditDiffModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
-    <div class="glass-card rounded-2xl border border-obsidian-border max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <!-- MODAL HEADER -->
-        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
+<div id="auditDiffModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="glass-card rounded-2xl border border-obsidian-border max-w-3xl w-full max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <!-- MODAL HEADER FIJO -->
+        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
                 <div id="modalEventBadge" class="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase inline-flex items-center gap-1">
                     <span id="modalEventIcon" class="material-symbols-outlined text-sm">history</span>
@@ -436,13 +440,13 @@
                     <p id="modalAuditTimestamp" class="text-[11px] font-mono text-obsidian-muted">Fecha y Hora</p>
                 </div>
             </div>
-            <button onclick="closeAuditModal()" class="w-8 h-8 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white hover:border-red-500/50 flex items-center justify-center transition">
+            <button onclick="closeAuditModal()" class="w-8 h-8 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white hover:border-red-500/50 flex items-center justify-center transition cursor-pointer" title="Cerrar modal">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
 
-        <!-- MODAL BODY -->
-        <div class="p-6 overflow-y-auto space-y-5 font-mono text-xs">
+        <!-- MODAL BODY DESLIZABLE -->
+        <div class="p-6 overflow-y-auto flex-1 custom-scroll space-y-5 font-mono text-xs">
             <!-- TARJETA DE RESUMEN -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-obsidian-panel/60 border border-obsidian-border text-xs">
                 <div>
@@ -501,9 +505,9 @@
             </div>
         </div>
 
-        <!-- MODAL FOOTER -->
-        <div class="px-6 py-3.5 bg-obsidian-panel border-t border-obsidian-border flex justify-end">
-            <button onclick="closeAuditModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white hover:bg-obsidian-border transition text-xs font-mono font-semibold">
+        <!-- MODAL FOOTER FIJO -->
+        <div class="px-6 py-3.5 bg-obsidian-panel border-t border-obsidian-border flex justify-end shrink-0">
+            <button onclick="closeAuditModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white hover:bg-obsidian-border transition text-xs font-mono font-semibold cursor-pointer">
                 Cerrar
             </button>
         </div>

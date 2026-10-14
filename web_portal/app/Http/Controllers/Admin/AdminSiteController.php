@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\InventoryAsset;
 use App\Models\MonitoredSite;
 use App\Models\MonitoredSiteDevice;
 use App\Models\MonitoredNetworkDevice;
 use App\Models\MonitoringSnapshot;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,11 +24,32 @@ class AdminSiteController extends Controller
         $snapshotDevices = ($latestSnapshot && isset($latestSnapshot->payload_json['network_devices']))
             ? collect($latestSnapshot->payload_json['network_devices'])->keyBy('ip')
             : collect();
+        $unlinkedAssets = InventoryAsset::orderBy('name')->get();
 
-        return view('admin.sites.index', compact('sites', 'networkDevices', 'snapshotDevices'));
+        return view('admin.sites.index', compact('sites', 'networkDevices', 'snapshotDevices', 'unlinkedAssets'));
     }
 
-    public function store(Request $request): RedirectResponse
+    /**
+     * Reordena la posición de las sedes (Drag & Drop) y persiste en MariaDB.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:monitored_sites,id'],
+        ]);
+
+        foreach ($validated['order'] as $index => $siteId) {
+            MonitoredSite::where('id', $siteId)->update(['sort_order' => $index + 1]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Orden de sedes actualizado exitosamente en el sistema.',
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'letter' => ['nullable', 'string', 'max:10'],
@@ -56,9 +79,22 @@ class AdminSiteController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['sort_order'] = $validated['sort_order'] ?? MonitoredSite::count();
 
-        MonitoredSite::create($validated);
+        $site = MonitoredSite::create($validated);
 
         app(SyncController::class)->exportToConfigFiles();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sede creada exitosamente.',
+                'site' => [
+                    'id' => $site->id,
+                    'name' => $site->name,
+                    'ip' => $site->ip,
+                    'letter' => $site->letter,
+                ],
+            ]);
+        }
 
         return redirect()->route('admin.sites.index')->with('success', 'Sede creada exitosamente.');
     }
@@ -170,7 +206,7 @@ class AdminSiteController extends Controller
                             'is_active' => $isActive,
                         ]);
 
-                        \App\Models\MonitoredNetworkDevice::updateOrCreate(
+                        $netDev = \App\Models\MonitoredNetworkDevice::updateOrCreate(
                             ['ip' => $newDev->ip],
                             [
                                 'monitored_site_id' => $site->id,
@@ -188,6 +224,50 @@ class AdminSiteController extends Controller
                                 'is_active' => $newDev->is_active,
                             ]
                         );
+
+                        // Sincronizar o crear en Inventario ITAM
+                        $existingAsset = InventoryAsset::where('ip_address', $newDev->ip)
+                            ->orWhere('monitored_network_device_id', $netDev->id)
+                            ->first();
+
+                        if ($existingAsset) {
+                            $existingAsset->update([
+                                'monitored_network_device_id' => $netDev->id,
+                                'monitored_site_id' => $site->id,
+                                'name' => $newDev->name,
+                                'model' => $newDev->model ?: $existingAsset->model,
+                                'brand' => $newDev->vendor_data ?: $existingAsset->brand,
+                                'mac_address' => $newDev->mac ?: $existingAsset->mac_address,
+                            ]);
+                        } else {
+                            $type = 'desktop';
+                            $upper = strtoupper($newDev->name . ' ' . ($newDev->model ?? ''));
+                            if (preg_match('/\bROUTER\b/i', $upper)) {
+                                $type = 'router';
+                            } elseif (preg_match('/\b(SWITCH|CONMUTADOR)\b/i', $upper) || preg_match('/\bSW\d+\b/i', $upper)) {
+                                $type = 'switch';
+                            } elseif (preg_match('/\b(IMPRESORA|PRINTER)\b/i', $upper)) {
+                                $type = 'printer';
+                            } elseif (preg_match('/\b(SERVIDOR|SERVER)\b/i', $upper)) {
+                                $type = 'server';
+                            }
+
+                            InventoryAsset::create([
+                                'asset_tag' => 'NET-' . str_pad((string)$netDev->id, 5, '0', STR_PAD_LEFT),
+                                'name' => $newDev->name,
+                                'type' => $type,
+                                'status' => 'assigned',
+                                'brand' => $newDev->vendor_data,
+                                'model' => $newDev->model,
+                                'serial_number' => ($newDev->serial && $newDev->serial !== '00000000' && !str_starts_with($newDev->serial, 'SN-NET-')) ? $newDev->serial : null,
+                                'mac_address' => $newDev->mac,
+                                'ip_address' => $newDev->ip,
+                                'monitored_site_id' => $site->id,
+                                'monitored_network_device_id' => $netDev->id,
+                                'location_detail' => $site->name,
+                                'notes' => $newDev->notes ?: "Dispositivo registrado en monitoreo ({$site->name})",
+                            ]);
+                        }
                     }
                 }
             }
@@ -214,6 +294,11 @@ class AdminSiteController extends Controller
             'is_active' => ['boolean'],
             'telegram_alert_enabled' => ['nullable', 'boolean'],
             'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
+            'sync_inventory' => ['nullable', 'boolean'],
+            'inventory_action' => ['nullable', 'string', Rule::in(['create', 'link', 'none'])],
+            'asset_type' => ['nullable', 'string', Rule::in(['desktop', 'switch', 'router', 'server', 'printer', 'network'])],
+            'asset_status' => ['nullable', 'string', Rule::in(['assigned', 'in_stock', 'maintenance', 'decommissioned'])],
+            'existing_asset_id' => ['nullable', 'integer'],
         ]);
 
         $validated['access_type'] = strtoupper(trim($validated['access_type'] ?? 'SIN SOPORTE'));
@@ -240,7 +325,7 @@ class AdminSiteController extends Controller
         $siteDevice = $site->devices()->create($validated);
 
         // Espejo en MonitoredNetworkDevice
-        \App\Models\MonitoredNetworkDevice::updateOrCreate(
+        $netDev = \App\Models\MonitoredNetworkDevice::updateOrCreate(
             ['ip' => $validated['ip']],
             [
                 'monitored_site_id' => $site->id,
@@ -260,9 +345,76 @@ class AdminSiteController extends Controller
             ]
         );
 
+        // Integración con Inventario de Activos (ITAM)
+        $syncInventory = $request->boolean('sync_inventory', true);
+        $inventoryAction = $request->input('inventory_action', 'create');
+        $assetType = $request->input('asset_type', 'desktop');
+        $assetStatus = $request->input('asset_status', 'assigned');
+        $linkAssetId = $request->input('existing_asset_id');
+
+        if ($syncInventory && $inventoryAction !== 'none') {
+            $valMac = $validated['mac'] ?? null;
+            $valModel = $validated['model'] ?? null;
+            $valVendor = $validated['vendor_data'] ?? null;
+            $valSerial = $validated['serial'] ?? null;
+            $valNotes = $validated['notes'] ?? null;
+
+            if ($inventoryAction === 'link' && $linkAssetId) {
+                $existingAsset = InventoryAsset::find($linkAssetId);
+                if ($existingAsset) {
+                    $existingAsset->update([
+                        'monitored_network_device_id' => $netDev->id,
+                        'monitored_site_id' => $site->id,
+                        'ip_address' => $validated['ip'],
+                        'mac_address' => $valMac ?: $existingAsset->mac_address,
+                        'model' => $valModel ?: $existingAsset->model,
+                        'brand' => $valVendor ?: $existingAsset->brand,
+                        'serial_number' => ($valSerial && $valSerial !== '00000000') ? $valSerial : $existingAsset->serial_number,
+                    ]);
+                }
+            } else {
+                // Modo crear nuevo activo (o actualizar si ya existe por IP)
+                $existingByIp = InventoryAsset::where('ip_address', $validated['ip'])->first();
+                if ($existingByIp) {
+                    $existingByIp->update([
+                        'name' => $validated['name'],
+                        'type' => $assetType,
+                        'brand' => $valVendor ?: $existingByIp->brand,
+                        'model' => $valModel ?: $existingByIp->model,
+                        'serial_number' => ($valSerial && $valSerial !== '00000000') ? $valSerial : $existingByIp->serial_number,
+                        'mac_address' => $valMac ?: $existingByIp->mac_address,
+                        'monitored_site_id' => $site->id,
+                        'monitored_network_device_id' => $netDev->id,
+                        'location_detail' => $site->name,
+                        'notes' => $valNotes ?: $existingByIp->notes,
+                    ]);
+                } else {
+                    $serial = ($valSerial && $valSerial !== '00000000')
+                        ? $valSerial
+                        : ('SN-NET-' . str_pad($netDev->id, 5, '0', STR_PAD_LEFT));
+
+                    InventoryAsset::create([
+                        'asset_tag' => 'NET-' . str_pad($netDev->id, 5, '0', STR_PAD_LEFT),
+                        'name' => $validated['name'],
+                        'type' => $assetType,
+                        'status' => $assetStatus,
+                        'brand' => $valVendor ?: null,
+                        'model' => $valModel ?: null,
+                        'serial_number' => $serial,
+                        'mac_address' => $valMac ?: null,
+                        'ip_address' => $validated['ip'],
+                        'monitored_site_id' => $site->id,
+                        'monitored_network_device_id' => $netDev->id,
+                        'location_detail' => $site->name,
+                        'notes' => $valNotes ?: "Dispositivo registrado desde Monitoreo ({$site->name})",
+                    ]);
+                }
+            }
+        }
+
         app(SyncController::class)->exportToConfigFiles();
 
-        return back()->with('success', "Dispositivo agregado a [{$site->name}] exitosamente.");
+        return back()->with('success', "Dispositivo agregado a [{$site->name}] y sincronizado con inventario exitosamente.");
     }
 
     public function deleteDevice(MonitoredSiteDevice $device): RedirectResponse
@@ -271,8 +423,13 @@ class AdminSiteController extends Controller
         $deviceName = $device->name;
         $ip = $device->ip;
 
-        // Eliminar también de MonitoredNetworkDevice
-        \App\Models\MonitoredNetworkDevice::where('ip', $ip)->delete();
+        // Desvincular otros activos de inventario asociados sin eliminar el activo físico
+        InventoryAsset::where('id', '!=', $device->id)
+            ->where(function ($q) use ($device, $ip) {
+                $q->where('monitored_network_device_id', $device->id)
+                  ->orWhere('ip_address', $ip);
+            })
+            ->update(['monitored_network_device_id' => null]);
 
         $device->delete();
 

@@ -100,6 +100,16 @@ class OuiVendorsSeeder extends Seeder
             // Huawei
             ['oui_prefix' => '00:18:82', 'vendor_name' => 'Huawei Technologies Co., Ltd.', 'country' => 'CN'],
             ['oui_prefix' => '00:25:9E', 'vendor_name' => 'Huawei Technologies Co., Ltd.', 'country' => 'CN'],
+
+            // Adicionales detectados en infraestructura de red
+            ['oui_prefix' => 'BC:F1:F2', 'vendor_name' => 'Cisco Systems, Inc.', 'country' => 'US'],
+            ['oui_prefix' => '6C:3C:7C', 'vendor_name' => 'Canon Inc.', 'country' => 'JP'],
+            ['oui_prefix' => '00:1B:4F', 'vendor_name' => 'Avaya Inc.', 'country' => 'US'],
+            ['oui_prefix' => 'E8:48:B8', 'vendor_name' => 'TP-Link Technologies Co., Ltd.', 'country' => 'CN'],
+            ['oui_prefix' => '8C:DC:D4', 'vendor_name' => 'HP Inc.', 'country' => 'US'],
+            ['oui_prefix' => '00:D8:61', 'vendor_name' => 'Micro-Star INTL CO., LTD.', 'country' => 'TW'],
+            ['oui_prefix' => '30:9C:23', 'vendor_name' => 'Micro-Star INTL CO., LTD.', 'country' => 'TW'],
+            ['oui_prefix' => 'F4:93:9F', 'vendor_name' => 'Hon Hai Precision Industry (Foxconn)', 'country' => 'TW'],
         ];
 
         foreach ($vendors as $v) {

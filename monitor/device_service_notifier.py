@@ -54,7 +54,19 @@ def get_notification_target(target_type: str) -> str:
 
     if target_type == "group":
         # REGLA DE ORO #1: En modo esclavo/desarrollo o testing, JAMÁS despachar al grupo corporativo
-        if node_role == "slave" or os.environ.get("TESTING") == "1" or os.environ.get("APP_ENV") == "local":
+        is_non_prod = (
+            node_role == "slave"
+            or os.environ.get("TESTING") == "1"
+            or os.environ.get("APP_ENV") == "local"
+        )
+        if not is_non_prod:
+            env_file = BASE_DIR / "web_portal" / ".env"
+            if env_file.exists():
+                txt = env_file.read_text(encoding="utf-8", errors="ignore")
+                if "APP_ENV=local" in txt or "CLUSTER_NODE_MODE=slave" in txt:
+                    is_non_prod = True
+
+        if is_non_prod:
             logger.warning(
                 f"🚨 REGLA DE ORO #1: Despacho a grupo redirigido a Owner ({owner_id}) "
                 f"debido al entorno no productivo (rol: {node_role})."

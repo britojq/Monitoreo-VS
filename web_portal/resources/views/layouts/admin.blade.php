@@ -50,65 +50,90 @@
                 <span class="text-[9px] font-mono text-obsidian-muted/60 lowercase">operación</span>
             </div>
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('topology.view'))
             <!-- TOPOLOGÍA DE RED -->
             <a href="{{ route('admin.topology.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.topology.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Diagrama y mapa interactivo de topología">
                 <span class="material-symbols-outlined text-lg">hub</span>
                 Topología de Red
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.view') || auth()->user()->hasPermission('ssl.view'))
             <!-- SERVICIOS & CONECTIVIDAD -->
             <a href="{{ route('admin.services.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.services.*', 'admin.proxies.*', 'admin.ssl.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Servicios, Proxies y Certificados SSL/TLS">
                 <span class="material-symbols-outlined text-lg">dns</span>
                 Servicios & Conectividad
             </a>
+            @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.view'))
             <!-- SEDES & ENLACES -->
             <a href="{{ route('admin.sites.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.sites.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Sedes remotas y enlaces de fibra/radio">
                 <span class="material-symbols-outlined text-lg">domain</span>
                 Sedes & Enlaces
             </a>
+            @endif
 
-            <!-- EQUIPOS & HARDWARE -->
-            <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*', 'admin.lifecycle.*', 'admin.wol.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Switches, Routers, Ciclo de Vida y WoL">
-                <span class="material-symbols-outlined text-lg">router</span>
-                Equipos & Hardware
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.view') || auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.deploy'))
+            <!-- EQUIPOS & ACTIVOS (NOC + ITAM) -->
+            <a href="{{ route('admin.devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.devices.*', 'admin.wol.*', 'admin.inventory.peripherals.*', 'admin.inventory.deploy*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Control centralizado de Switches, Routers, Servidores, PCs y Gestión de Activos">
+                <span class="material-symbols-outlined text-lg">devices</span>
+                Equipos & Activos
             </a>
+            @endif
 
-            <!-- RADAR & DESCUBRIMIENTO -->
-            <a href="{{ route('admin.discovery.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.discovery.*', 'admin.netradar.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Auto-Discovery y NET Radar de tráfico">
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('discovery.view') || auth()->user()->hasPermission('snmp.view') || auth()->user()->hasPermission('netradar.view') || auth()->user()->hasPermission('traps.view'))
+            <!-- RADAR & TELEMETRÍA SNMP (UNIFICADO) -->
+            <a href="{{ route('admin.discovery.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.discovery.*', 'admin.snmp.*', 'admin.netradar.*', 'admin.traps.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Auto-Discovery Anti-Rogue, Telemetría SNMP, NET Radar y Alertas SNMP">
                 <span class="material-symbols-outlined text-lg">radar</span>
-                Radar & Descubrimiento
+                Radar & Telemetría SNMP
             </a>
+            @endif
 
-            <!-- CONSOLA SNMP 360° -->
-            <a href="{{ route('admin.snmp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.snmp.*', 'admin.traps.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Telemetría SNMP, OIDs y Trampas Push (UDP 162)">
-                <span class="material-symbols-outlined text-lg">sensors</span>
-                Consola SNMP 360°
-            </a>
-
-            <!-- TRÁFICO & LOGS DE RED -->
+            {{-- MÓDULO TRÁFICO & LOGS DE RED (Desactivado temporalmente - sin exportadores activos de NetFlow/Syslog en la red)
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('netflow.view') || auth()->user()->hasPermission('syslog.view'))
             <a href="{{ route('admin.netflow.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.netflow.*', 'admin.syslog.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="NetFlow v5/v9 y Syslog en vivo">
                 <span class="material-symbols-outlined text-lg">swap_vert</span>
                 Tráfico & Logs de Red
             </a>
+            @endif
+            --}}
 
-            <!-- CENTRO DE ALERTAS & IA -->
-            <a href="{{ route('admin.alerts.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.alerts.*', 'admin.predictive.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Correlación de incidentes e IA predictiva">
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.view') || auth()->user()->hasPermission('cisco.view') || auth()->user()->hasPermission('predictive.view'))
+            <!-- ALERTAS Y RESPALDOS (UNIFICADO) -->
+            <a href="{{ route('admin.alerts.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.alerts.*', 'admin.configs.*', 'admin.predictive.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Sistema unificado de alertas, correlación de incidentes y respaldos de configuración (GitOps)">
                 <span class="material-symbols-outlined text-lg">notifications_active</span>
-                Centro de Alertas & IA
+                Alertas y Respaldos
             </a>
+            @endif
 
-            <!-- RESPALDOS Y CONFIGS (NCM) -->
-            <a href="{{ route('admin.configs.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.configs.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Gestión de configuraciones (NCM) y respaldos">
-                <span class="material-symbols-outlined text-lg">settings_backup_restore</span>
-                Respaldos y Configs
-            </a>
-
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('ups.view'))
             <!-- ENERGÍA & UPS -->
             <a href="{{ route('admin.ups.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.ups.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Supervisión de energía, respaldo eléctrico y telemetría de UPS">
                 <span class="material-symbols-outlined text-lg">battery_charging_full</span>
                 Energía & UPS
             </a>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.view'))
+            <!-- AUDITORÍA & TRAZABILIDAD ITAM -->
+            <a href="{{ route('admin.inventory.audit.index') }}" class="flex items-center justify-between px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.inventory.audit.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Trazabilidad cronológica de cambios, asignaciones, mantenimientos y drifts de hardware">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-lg">history_edu</span>
+                    <span>Trazabilidad ITAM</span>
+                </div>
+            </a>
+            @endif
+
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('reports.view') || auth()->user()->hasPermission('inventory.view'))
+            <!-- CENTRO DE REPORTES & EXPORTACIÓN -->
+            <a href="{{ route('admin.reports.index') }}" class="flex items-center justify-between px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.reports.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Centro unificado de reportes en CSV, Excel y PDF">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-lg">summarize</span>
+                    <span>Reportes & Exportación</span>
+                </div>
+            </a>
+            @endif
 
             @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('security.audit') || auth()->user()->hasPermission('telegram.templates') || auth()->user()->hasPermission('telegram.commands'))
             <!-- ============================================================= -->
@@ -207,20 +232,20 @@
         @endphp
         <!-- TOPBAR ADMINISTRATIVA UNIFICADA -->
         <header class="h-14 glass-panel border-b border-obsidian-border sticky top-0 z-30 px-3 sm:px-5 flex items-center justify-between shadow-md gap-2 sm:gap-4">
-            <!-- SECCIÓN IZQUIERDA: BOTÓN TOGGLE & MARCA INSTITUCIONAL -->
+            <!-- SECCIÓN IZQUIERDA: BOTÓN TOGGLE & MARCA CORPORATIVA -->
             <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
                 <!-- BOTÓN REFERENCIAL TOGGLE PARA DESPLEGAR EL MENÚ LATERAL (SOLO ÍCONO) -->
                 <button type="button" onclick="toggleAdminSidebar()" id="btn-toggle-sidebar" class="w-9 h-9 rounded-xl bg-obsidian-cyan/15 border border-obsidian-cyan/50 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition flex items-center justify-center font-mono shadow-lg shadow-cyan-500/10 cursor-pointer shrink-0" title="Desplegar Menú Lateral">
                     <span class="material-symbols-outlined text-lg" id="icon-toggle-sidebar">menu</span>
                 </button>
 
-                <!-- LOGO INSTITUCIONAL -->
+                <!-- LOGO CORPORATIVO -->
                 <a href="{{ route('admin.dashboard') }}" class="w-8 h-8 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-1 shadow-md hover:scale-105 transition" title="Ir al Dashboard Principal">
                     <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
                     <span class="material-symbols-outlined text-lg text-obsidian-cyan hidden">monitoring</span>
                 </a>
 
-                <!-- TÍTULO INSTITUCIONAL (EN DASHBOARD) O BREADCRUMB CON BOTÓN DE REGRESO (EN OTRAS VISTAS) -->
+                <!-- TÍTULO CORPORATIVO (EN DASHBOARD) O BREADCRUMB CON BOTÓN DE REGRESO (EN OTRAS VISTAS) -->
                 @if(request()->routeIs('admin.dashboard'))
                     <div class="hidden lg:block">
                         <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -267,7 +292,7 @@
                 <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (SOLO ICONO CON TOOLTIP HUD) -->
                 <div class="relative group">
                     <div class="flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20' }}"
-                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ')' : 'MODO MAESTRO (MASTER): Ejecuta escaneos oficiales y sirve API de telemetría' }}">
+                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ')' : 'MODO MAESTRO (MASTER): Ejecuta escaneos programados y sirve API de telemetría' }}">
                         <span class="material-symbols-outlined text-base {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">
                             {{ $isClusterSlave ? 'cloud_sync' : 'dns' }}
                         </span>
@@ -283,7 +308,7 @@
                             @if($isClusterSlave)
                                 Este servidor sincroniza su telemetría web desde el Master (<code class="text-amber-300">{{ $clusterConfig['master_api_url'] }}</code>). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.
                             @else
-                                Este servidor ejecuta los escaneos periódicos oficiales a la red y al firewall pfSense. Gestiona las configuraciones oficiales y sirve la API interna hacia los nodos réplica.
+                                Este servidor ejecuta los escaneos periódicos a la red y al firewall pfSense. Gestiona las configuraciones activas y sirve la API interna hacia los nodos réplica.
                             @endif
                         </p>
                         <div class="mt-2.5 pt-2 border-t border-obsidian-border/60 flex items-center justify-between text-[10px] text-obsidian-muted">
@@ -352,7 +377,7 @@
                     <a href="{{ route('admin.ups.index') }}" 
                        id="topbar-ups-btn"
                        class="relative flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $hIsOnBat ? 'bg-red-950/80 text-red-400 border-red-500/60 animate-pulse shadow-md shadow-red-500/30' : ($hBatPct < 25 ? 'bg-amber-950/80 text-amber-400 border-amber-500/60 shadow-md shadow-amber-500/30' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 hover:text-white shadow-sm shadow-cyan-500/20') }}"
-                       title="UPS ZTG LV6KL: {{ $hIsOnBat ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : 'RED NORMAL (' . $hBatPct . '%)' }}">
+                       title="{{ $hUps ? $hUps->name : 'Monitoreo UPS' }}: {{ $hIsOnBat ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : 'RED NORMAL (' . $hBatPct . '%)' }}">
                         <span id="topbar-ups-icon" class="material-symbols-outlined text-base {{ $hIsOnBat ? 'text-red-400' : 'text-cyan-400' }}">
                             {{ $hIsOnBat ? 'battery_alert' : ($hBatPct >= 95 ? 'battery_charging_full' : 'battery_std') }}
                         </span>
@@ -375,8 +400,7 @@
                                     </span>
                                     <div>
                                         <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                                            <span>UPS ZTG LV6KL</span>
-                                            <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40">6 kVA</span>
+                                            <span>{{ $hUps ? $hUps->name : 'Monitoreo UPS' }}</span>
                                         </div>
                                         <div class="text-[9px] text-obsidian-muted">Sede Valle Seco • Rack Principal</div>
                                     </div>
@@ -619,7 +643,7 @@
                 </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && (is_object($errors) ? (method_exists($errors, 'any') && $errors->any()) : !empty($errors)))
                 <div class="flash-alert p-4 rounded-xl bg-red-950/60 border border-red-500/50 text-red-400 text-xs font-mono space-y-1 transition-all duration-500 shadow-lg shadow-red-950/30" data-autohide="10000">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2 font-bold">
@@ -628,8 +652,13 @@
                         </div>
                         <button type="button" onclick="dismissFlashAlert(this.closest('.flash-alert'))" class="text-red-400 hover:text-white text-lg leading-none p-1 transition" title="Cerrar">&times;</button>
                     </div>
-                    @foreach($errors->all() as $err)
-                        <p class="pl-6 text-red-300">• {{ $err }}</p>
+                    @php
+                        $alertErrors = (is_object($errors) && method_exists($errors, 'all')) ? $errors->all() : (is_array($errors) ? $errors : []);
+                    @endphp
+                    @foreach($alertErrors as $err)
+                        @if(is_string($err))
+                            <p class="pl-6 text-red-300">• {{ $err }}</p>
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -745,7 +774,7 @@
 <!-- MODAL OBLIGATORIO: ACEPTACIÓN DE TÉRMINOS DE USO & ADVERTENCIA LEGAL -->
 <!-- ========================================================================= -->
 <div id="mandatory-terms-modal" class="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
-    <div class="w-full max-w-2xl glass-panel rounded-2xl border-2 border-cyan-500/50 bg-[#061426]/98 p-5 sm:p-7 shadow-[0_0_50px_rgba(34,211,238,0.25)] relative text-left space-y-5 animate-in fade-in zoom-in-95 duration-300 max-h-[95vh] flex flex-col">
+    <div class="w-full max-w-2xl glass-panel rounded-2xl border-2 border-cyan-500/50 bg-[#061426]/98 p-5 sm:p-7 shadow-[0_0_50px_rgba(34,211,238,0.25)] relative text-left space-y-5 animate-in fade-in zoom-in-95 duration-300 max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
         
         <!-- CABECERA DE IMPACTO VISUAL -->
         <div class="flex items-center gap-3 pb-3 border-b border-obsidian-border shrink-0">
@@ -764,7 +793,7 @@
                     LINEAMIENTOS DE SEGURIDAD & MARCO LEGAL
                 </h2>
                 <p class="text-[11px] font-mono text-obsidian-muted">
-                    Custodia de registros y políticas de confidencialidad institucional
+                    Resguardo de registros y políticas de confidencialidad corporativa
                 </p>
             </div>
         </div>
@@ -779,10 +808,10 @@
                     <span>ADVERTENCIA DE SEGURIDAD</span>
                 </div>
                 <p class="text-amber-100 font-semibold text-xs leading-relaxed">
-                    Este BOT y Sistema de Monitoreo están protegidos por un <span class="text-amber-300 underline font-bold">Custodio de Registros</span>.
+                    Este BOT y Sistema de Monitoreo están protegidos por un <span class="text-amber-300 underline font-bold">Protocolo de Resguardo de Registros</span>.
                 </p>
                 <p class="text-amber-200/90 text-[11px] leading-relaxed">
-                    Toda la información contenida y procesada por este bot y plataforma es de carácter <b>Estrictamente Confidencial</b> y se encuentra amparada bajo rigurosos protocolos de privacidad y protección de datos institucionales.
+                    Toda la información contenida y procesada por este bot y plataforma es de carácter <b>Estrictamente Confidencial</b> y se encuentra amparada bajo rigurosos protocolos de privacidad y protección de datos corporativos.
                 </p>
             </div>
 
@@ -819,11 +848,14 @@
 
         <!-- PIE DEL MODAL: CHECKBOX Y BOTONES -->
         <div class="shrink-0 pt-3 border-t border-obsidian-border space-y-3">
+            <!-- BLOQUE DE ERROR DESLIZABLE -->
+            <div id="mandatory-terms-error" class="hidden p-2.5 rounded-xl bg-red-950/60 border border-red-500/50 text-red-300 text-xs max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-all block"></div>
+
             <!-- CHECKBOX DE CONFIRMACIÓN -->
             <label class="flex items-start gap-3 p-3 rounded-xl bg-obsidian-panel/80 border border-cyan-500/30 hover:border-cyan-400 transition cursor-pointer select-none">
                 <input type="checkbox" id="chk-accept-terms" onchange="toggleAcceptButtonState()" class="mt-0.5 w-4 h-4 rounded border-cyan-500 text-obsidian-cyan focus:ring-obsidian-cyan bg-[#040c17] cursor-pointer">
                 <span class="text-xs text-cyan-200 font-mono leading-relaxed">
-                    He leído íntegramente, comprendo y acepto formalmente los <b>Lineamientos de Seguridad</b>, la <b>Custodia de Registros</b> y el <b>Aviso Legal</b> expuestos.
+                    He leído íntegramente, comprendo y acepto formalmente los <b>Lineamientos de Seguridad</b>, el <b>Resguardo de Registros</b> y el <b>Aviso Legal</b> expuestos.
                 </span>
             </label>
 
@@ -864,6 +896,12 @@
         const icon = document.getElementById('icon-submit-terms');
         const txt = document.getElementById('text-submit-terms');
         const modal = document.getElementById('mandatory-terms-modal');
+        const errDiv = document.getElementById('mandatory-terms-error');
+
+        if (errDiv) {
+            errDiv.classList.add('hidden');
+            errDiv.innerText = '';
+        }
 
         btn.disabled = true;
         icon.innerText = 'progress_activity';
@@ -888,14 +926,26 @@
                     modal.remove();
                 }, 300);
             } else {
-                alert('⚠️ Error al registrar consentimiento: ' + (data.message || 'Error desconocido'));
+                const errMsg = '⚠️ Error al registrar consentimiento: ' + (data.message || 'Error desconocido');
+                if (errDiv) {
+                    errDiv.innerText = errMsg;
+                    errDiv.classList.remove('hidden');
+                } else {
+                    alert(errMsg);
+                }
                 btn.disabled = false;
                 icon.innerText = 'verified';
                 icon.classList.remove('animate-spin');
                 txt.innerText = 'ACEPTAR LINEAMIENTOS Y CONTINUAR';
             }
         } catch (error) {
-            alert('Error de red al registrar aceptación: ' + error);
+            const errMsg = 'Error de red al registrar aceptación: ' + error;
+            if (errDiv) {
+                errDiv.innerText = errMsg;
+                errDiv.classList.remove('hidden');
+            } else {
+                alert(errMsg);
+            }
             btn.disabled = false;
             icon.innerText = 'verified';
             icon.classList.remove('animate-spin');
@@ -909,10 +959,10 @@
 <!-- MODAL: ACERCA DEL SISTEMA                                                  -->
 <!-- ========================================================================= -->
 <div id="about-system-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md transition-all duration-300">
-    <div class="w-full max-w-4xl lg:max-w-5xl glass-panel rounded-2xl border border-obsidian-border bg-[#07172b]/98 p-5 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.85)] relative text-left space-y-4 animate-in fade-in zoom-in-95 duration-200">
+    <div class="w-full max-w-4xl lg:max-w-5xl glass-panel rounded-2xl border border-obsidian-border bg-[#07172b]/98 flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.85)] relative text-left animate-in fade-in zoom-in-95 duration-200">
         
         <!-- CABECERA -->
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border shrink-0">
+        <div class="p-4 sm:p-5 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <div class="flex items-center gap-3">
                 <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-obsidian-cyan/20 to-purple-500/30 border border-obsidian-cyan/50 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-2 shadow-lg shadow-cyan-500/20">
                     <img src="{{ asset('img/logo.png') }}" alt="Logo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
@@ -921,10 +971,10 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
-                            v3.0.0
+                            v3.4.0
                         </span>
-                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ config('monitoring.cluster.role') === 'master' ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : 'bg-blue-950/80 text-blue-300 border border-blue-500/40' }}">
-                            MODO {{ strtoupper(config('monitoring.cluster.role', 'slave')) }}
+                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
+                            {{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)' }}
                         </span>
                     </div>
                     <h2 class="text-base sm:text-lg font-bold text-white tracking-tight leading-tight mt-0.5">
@@ -938,135 +988,165 @@
             <button type="button" onclick="closeAboutSystemModal()" class="text-obsidian-muted hover:text-white text-2xl leading-none p-1 transition cursor-pointer" title="Cerrar">&times;</button>
         </div>
 
-        <!-- CUERPO HORIZONTAL EN 2 COLUMNAS (TODO VISIBLE SIN DESPLAZAMIENTO) -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono text-xs">
-            <!-- COLUMNA IZQUIERDA: DATOS INSTITUCIONALES (5 cols) -->
-            <div class="lg:col-span-5 flex flex-col justify-between space-y-3">
-                <!-- TARJETA DE CRÉDITOS Y DESARROLLO -->
-                <div class="p-3.5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border space-y-2.5">
-                    <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold pb-1 border-b border-obsidian-border/40 flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-sm">engineering</span>
-                        Desarrollo & Créditos
+        <!-- CUERPO CON SCROLL INDEPENDIENTE -->
+        <div class="p-4 sm:p-5 overflow-y-auto flex-1 custom-scroll min-h-0">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono text-xs">
+                <!-- COLUMNA IZQUIERDA: DATOS CORPORATIVOS (5 cols) -->
+                <div class="lg:col-span-5 flex flex-col justify-between space-y-3">
+                    <!-- TARJETA DE CRÉDITOS Y DESARROLLO -->
+                    <div class="p-3.5 rounded-xl bg-obsidian-panel/80 border border-obsidian-border space-y-2.5">
+                        <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold pb-1 border-b border-obsidian-border/40 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm">engineering</span>
+                            Desarrollo & Créditos
+                        </div>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Desarrollado por:</span>
+                                <span class="text-white font-bold">Operador ATIT</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Usuario GitHub:</span>
+                                <a href="https://github.com/britojab" target="_blank" class="text-obsidian-cyan hover:underline font-bold">@britojab</a>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Organización:</span>
+                                <span class="text-white font-semibold">ATIT Valle Seco</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Período de Desarrollo:</span>
+                                <span class="text-amber-300 font-bold">2018 – 2026</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Versión del Sistema:</span>
+                                <span class="text-obsidian-cyan font-bold">v3.4.0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Módulos de la Plataforma:</span>
+                                <span class="inline-flex items-center gap-1 font-bold text-slate-200">
+                                    <span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[10px]">3 / 5</span>
+                                    <span>Activos</span>
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Módulos Activos:</span>
+                                <span class="text-white font-bold text-right text-[10.5px]">NOC • ITAM • Asistente & Bot</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-obsidian-muted">Licencia:</span>
+                                <span class="text-emerald-400 font-semibold">GNU AGPLv3</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="space-y-1.5 text-[11px]">
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Desarrollado por:</span>
-                            <span class="text-white font-bold">Operador ATIT</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Usuario GitHub:</span>
-                            <a href="https://github.com/britojab" target="_blank" class="text-obsidian-cyan hover:underline font-bold">@britojab</a>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Organización:</span>
-                            <span class="text-white font-semibold">ATIT Valle Seco</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Período de Desarrollo:</span>
-                            <span class="text-amber-300 font-bold">2018 – 2026</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Versión del Sistema:</span>
-                            <span class="text-obsidian-cyan font-bold">v3.0.0</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Módulos de la Plataforma:</span>
-                            <span class="inline-flex items-center gap-1 font-bold text-slate-200">
-                                <span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 text-[10px]">1 / 5</span>
-                                <span>Activo</span>
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Módulo Actual:</span>
-                            <span class="text-white font-bold">Sistema de Monitoreo</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-obsidian-muted">Licencia:</span>
-                            <span class="text-emerald-400 font-semibold">GNU AGPLv3</span>
-                        </div>
+
+                    <!-- AVISO CORPORATIVO -->
+                    <div class="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-[10px] text-cyan-200 leading-relaxed font-mono flex items-start gap-2">
+                        <span class="material-symbols-outlined text-base text-obsidian-cyan shrink-0 mt-0.5">verified_user</span>
+                        <span>Módulos integrados y optimizados para supervisar la continuidad operativa, infraestructura de red y parque de activos corporativos.</span>
                     </div>
                 </div>
 
-                <!-- AVISO INSTITUCIONAL -->
-                <div class="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-[10px] text-cyan-200 leading-relaxed font-mono flex items-start gap-2">
-                    <span class="material-symbols-outlined text-base text-obsidian-cyan shrink-0 mt-0.5">verified_user</span>
-                    <span>Módulo concebido y optimizado para supervisar la continuidad operativa e infraestructura crítica de la red corporativa.</span>
-                </div>
-            </div>
-
-            <!-- COLUMNA DERECHA: FUNCIONES PRINCIPALES (7 cols) -->
-            <div class="lg:col-span-7 space-y-2">
-                <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-sm">hub</span>
-                    Funciones Principales del Sistema
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-cyan-400">monitoring</span>
-                            Telemetría & Conectividad
-                        </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Monitoreo 24/7 de servicios web, DNS, ICMP, sedes remotas y proxies Squid.
-                        </p>
+                <!-- COLUMNA DERECHA: FUNCIONES PRINCIPALES (7 cols) -->
+                <div class="lg:col-span-7 space-y-2">
+                    <div class="text-[10px] font-mono uppercase tracking-wider text-obsidian-cyan font-bold flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">hub</span>
+                        Funciones Principales del Sistema
                     </div>
-
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-purple-400">hub</span>
-                            Topología & Descubrimiento
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <!-- 1. TELEMETRÍA & CONECTIVIDAD -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-cyan-400">monitoring</span>
+                                Telemetría & Conectividad
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Monitoreo 24/7 de servicios web, DNS, ICMP, sedes remotas y proxies Squid.
+                            </p>
                         </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Mapeo interactivo de enlaces, detección de anomalías ARP y equipos no autorizados.
-                        </p>
-                    </div>
 
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-amber-400">power_settings_new</span>
-                            Energía & Control Remoto
+                        <!-- 2. GESTIÓN DE DISPOSITIVOS & ITAM -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-amber-400">devices</span>
+                                Gestión de Dispositivos & ITAM
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Censo de puestos de trabajo, stock de periféricos, agentes GLPI y actas UINF-4.05.
+                            </p>
                         </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Despacho de paquetes Wake-on-LAN (WoL) y terminales web seguras SSH, Telnet y VNC.
-                        </p>
-                    </div>
 
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-emerald-400">psychology</span>
-                            Motor Local de IA
+                        <!-- 3. TOPOLOGÍA & DESCUBRIMIENTO -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-purple-400">hub</span>
+                                Topología & Descubrimiento
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Mapeo interactivo de enlaces, detección de anomalías ARP y auto-clasificación en ITAM.
+                            </p>
                         </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Asistencia diagnóstica, análisis predictivo de saturación y consultas en lenguaje natural.
-                        </p>
-                    </div>
 
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-blue-400">dns</span>
-                            SNMP 360° & NCM
+                        <!-- 4. SUPERVISIÓN ELÉCTRICA & UPS -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-emerald-400">battery_charging_full</span>
+                                Supervisión Eléctrica & UPS
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Telemetría de voltaje, frecuencia y batería en tiempo real con alertas de cortes.
+                            </p>
                         </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Recolección de métricas por interfaces, recepción de trampas UDP 162 y respaldos de configuración.
-                        </p>
-                    </div>
 
-                    <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
-                        <div class="font-bold text-white flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm text-red-400">security</span>
-                            Blindaje & Clúster
+                        <!-- 5. CONTROL REMOTO & ENERGÍA -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-yellow-400">power_settings_new</span>
+                                Control Remoto & Energía
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Despacho de paquetes Wake-on-LAN (WoL) y terminales web seguras SSH, Telnet y VNC.
+                            </p>
                         </div>
-                        <p class="text-obsidian-muted text-[10px] leading-tight">
-                            Replicación Master/Slave, trazabilidad forense, alertas PAM y autenticación LDAP.
-                        </p>
+
+                        <!-- 6. TELEMETRÍA SNMP & NCM -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-blue-400">dns</span>
+                                Telemetría SNMP & NCM
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Recolección de métricas por interfaces, recepción de alertas SNMP (eventos UDP 162) y respaldos de configuración.
+                            </p>
+                        </div>
+
+                        <!-- 7. MOTOR LOCAL DE IA -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-cyan-300">psychology</span>
+                                Motor Local de IA
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Asistencia diagnóstica, análisis predictivo de saturación y consultas en lenguaje natural.
+                            </p>
+                        </div>
+
+                        <!-- 8. SEGURIDAD, BLINDAJE & CLÚSTER -->
+                        <div class="p-2.5 rounded-lg bg-obsidian-card/60 border border-obsidian-border/60 space-y-1">
+                            <div class="font-bold text-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm text-red-400">security</span>
+                                Seguridad, Blindaje & Clúster
+                            </div>
+                            <p class="text-obsidian-muted text-[10px] leading-tight">
+                                Replicación Master/Slave, trazabilidad forense, alertas PAM y autenticación LDAP.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- PIE DEL MODAL -->
-        <div class="shrink-0 pt-3 border-t border-obsidian-border flex items-center justify-between">
+        <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <a href="{{ route('admin.help.index') }}" class="text-xs font-mono text-obsidian-cyan hover:underline flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">menu_book</span>
                 <span>Ir al Manual de Ayuda</span>

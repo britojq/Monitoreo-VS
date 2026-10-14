@@ -4,26 +4,6 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS EQUIPOS & HARDWARE -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.devices.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">router</span>
-            <span>Dispositivos de Red</span>
-        </a>
-        <a href="{{ route('admin.lifecycle.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.lifecycle.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">inventory_2</span>
-            <span>Ciclo de Vida & Inventario</span>
-        </a>
-        <a href="{{ route('admin.wol.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">power</span>
-            <span>Wake-on-LAN (WoL)</span>
-        </a>
-        <a href="{{ route('admin.ups.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">battery_charging_full</span>
-            <span>Monitoreo UPS ZTG</span>
-        </a>
-    </div>
-
     <!-- ========================================================================= -->
     <!-- ENCABEZADO Y ACCIONES                                                     -->
     <!-- ========================================================================= -->
@@ -37,14 +17,12 @@
                     <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
                         Encendido Remoto Wake-on-LAN (Magic Packet)
                     </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
+                    <span class="w-6 h-6 rounded-md bg-amber-950/80 border border-amber-500/40 text-amber-300 inline-flex items-center justify-center cursor-help" title="Capa 2 / UDP 9 Broadcast">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                        UDP 9 / Broadcast
                     </span>
                     @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('wol.wake') && !auth()->user()->hasPermission('wol.manage'))
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
-                            <span class="material-symbols-outlined text-[11px]">visibility</span>
-                            MODO CONSULTA
+                        <span class="w-6 h-6 rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                            <span class="material-symbols-outlined text-xs">visibility</span>
                         </span>
                     @endif
                 </div>
@@ -55,27 +33,97 @@
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Réplica)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.manage'))) && !$isClusterSlave)
-                <button type="button" onclick="openWolModal()" class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                    <span class="material-symbols-outlined text-sm">add_circle</span>
-                    <span>Registrar Equipo</span>
-                </button>
+                <div class="relative group">
+                    <button type="button" onclick="openWolModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black transition text-xs font-mono font-bold shadow-md shadow-amber-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">power</span>
+                        <span class="font-bold text-sm leading-none">+</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">power</span>
+                            <span class="font-bold text-amber-200">Registrar Equipo WoL</span>
+                        </div>
+                    </div>
+                </div>
             @elseif($isClusterSlave)
-                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                    <span class="material-symbols-outlined text-xs">lock</span>
-                    <span>Solo Lectura (Modo Esclavo)</span>
-                </span>
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
             @endif
-            <a href="{{ route('admin.wol.index') }}" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                <span>Refrescar</span>
-            </a>
+
+            <div class="relative group">
+                <a href="{{ route('admin.wol.index') }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition shadow-xs cursor-pointer">
+                    <span class="material-symbols-outlined text-base">refresh</span>
+                </a>
+                <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                    <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs text-cyan-400">refresh</span>
+                        <span class="font-bold text-cyan-200">Refrescar Estados</span>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- PESTAÑAS EQUIPOS & HARDWARE (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.devices.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Equipos y Activos de Red Monitoreados">
+            <span class="material-symbols-outlined text-sm">devices</span>
+            <span>Equipos &amp; Activos</span>
+        </a>
+        <a href="{{ route('admin.inventory.peripherals.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.inventory.peripherals.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Inventario de Periféricos y Stock de Repuestos">
+            <span class="material-symbols-outlined text-sm">keyboard</span>
+            <span>Periféricos &amp; Stock</span>
+        </a>
+        <a href="{{ route('admin.inventory.deploy') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.inventory.deploy*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Despliegue Remoto Agente GLPI">
+            <span class="material-symbols-outlined text-sm">send_to_mobile</span>
+            <span>Despliegue GLPI</span>
+        </a>
+        <a href="{{ route('admin.wol.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Encendido Remoto Wake-on-LAN">
+            <span class="material-symbols-outlined text-sm">power</span>
+            <span>Wake-on-LAN (WoL)</span>
+        </a>
+        <a href="{{ route('admin.ups.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Monitoreo Serial de Energía & UPS">
+            <span class="material-symbols-outlined text-sm">battery_charging_full</span>
+            <span>Monitoreo UPS</span>
+        </a>
     </div>
 
     <!-- ========================================================================= -->
@@ -228,55 +276,60 @@
 
 @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('wol.manage'))) && !$isClusterSlave)
 <!-- MODAL REGISTRO DE DISPOSITIVO WOL -->
-<div id="wolModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-obsidian-panel border border-obsidian-border rounded-xl w-full max-w-md p-5 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="wolModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-panel border border-obsidian-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden font-sans">
+        <!-- CABECERA FIJA -->
+        <div class="p-4 px-5 flex items-center justify-between border-b border-obsidian-border shrink-0 bg-obsidian-panel/90">
             <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-400 text-sm">add_circle</span>
                 Registrar Equipo Wake-on-LAN
             </h3>
-            <button type="button" onclick="closeWolModal()" class="text-obsidian-muted hover:text-white">&times;</button>
+            <button type="button" onclick="closeWolModal()" class="text-obsidian-muted hover:text-white transition p-1 cursor-pointer" title="Cerrar modal">&times;</button>
         </div>
 
-        <form action="{{ route('admin.wol.store') }}" method="POST" class="space-y-3 font-mono text-xs">
+        <form action="{{ route('admin.wol.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Nombre o Hostname *</label>
-                <input type="text" name="name" required placeholder="ej. Servidor Respaldo SAN" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
-            </div>
-
-            <div>
-                <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Dirección MAC *</label>
-                <input type="text" name="mac_address" required placeholder="00:11:22:33:44:55" pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$|^[0-9A-Fa-f]{12}$" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
-                <span class="text-[9px] text-obsidian-muted">Acepta formatos 00:11:22:33:44:55 o 001122334455</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
+            <!-- FORMULARIO DESLIZABLE -->
+            <div class="p-5 space-y-3 font-mono text-xs overflow-y-auto flex-1 custom-scroll">
                 <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">IP Asignada (Opcional)</label>
-                    <input type="text" name="ip_address" placeholder="10.20.23.X" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Nombre o Hostname *</label>
+                    <input type="text" name="name" required placeholder="ej. Servidor Respaldo SAN" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
                 </div>
+
                 <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Broadcast</label>
-                    <input type="text" name="broadcast_address" value="255.255.255.255" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Dirección MAC *</label>
+                    <input type="text" name="mac_address" required placeholder="00:11:22:33:44:55" pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$|^[0-9A-Fa-f]{12}$" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                    <span class="text-[9px] text-obsidian-muted">Acepta formatos 00:11:22:33:44:55 o 001122334455</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">IP Asignada (Opcional)</label>
+                        <input type="text" name="ip_address" placeholder="10.20.23.X" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Broadcast</label>
+                        <input type="text" name="broadcast_address" value="255.255.255.255" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Sede / Ubicación</label>
+                    <select name="site_id" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                        <option value="">Valle Seco (General)</option>
+                        @foreach($sites as $st)
+                            <option value="{{ $st->id }}">{{ $st->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 
-            <div>
-                <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Sede / Ubicación</label>
-                <select name="site_id" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
-                    <option value="">Valle Seco (General)</option>
-                    @foreach($sites as $st)
-                        <option value="{{ $st->id }}">{{ $st->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
-                <button type="button" onclick="closeWolModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+            <!-- PIE FIJO -->
+            <div class="p-3.5 px-5 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-obsidian-panel/80">
+                <button type="button" onclick="closeWolModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-xs font-mono cursor-pointer">
                     Cancelar
                 </button>
-                <button type="submit" class="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 transition cursor-pointer">
+                <button type="submit" class="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 transition cursor-pointer text-xs font-mono">
                     Guardar Equipo
                 </button>
             </div>

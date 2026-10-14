@@ -21,6 +21,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+import xml.etree.ElementTree as ET
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
@@ -53,6 +54,29 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger("discovery")
+
+
+def get_local_interfaces_map() -> Dict[str, str]:
+    """
+    Retorna un diccionario {ip: mac_normalizada} de las interfaces locales del propio servidor.
+    Esto previene que la propia máquina (ej. 10.20.23.221) se registre con MAC sintética 'IP:10.20.23.221'.
+    """
+    local_map: Dict[str, str] = {}
+    try:
+        res = subprocess.run(["ip", "-j", "addr"], capture_output=True, text=True, timeout=3)
+        if res.returncode == 0 and res.stdout.strip():
+            data = json.loads(res.stdout)
+            for iface in data:
+                mac = (iface.get("address") or "").strip().upper()
+                if not mac or mac == "00:00:00:00:00:00":
+                    continue
+                for addr in iface.get("addr_info", []):
+                    ip = addr.get("local")
+                    if ip and not ip.startswith("127."):
+                        local_map[ip] = mac
+    except Exception as e:
+        logger.debug(f"Aviso leyendo ip -j addr: {e}")
+    return local_map
 
 
 def get_kernel_arp_table() -> Dict[str, str]:
@@ -126,18 +150,37 @@ def lookup_oui_vendor(mac: str, conn) -> Tuple[Optional[str], Optional[str]]:
     return ("Fabricante Desconocido", prefix)
 
 
-def infer_device_type(vendor: str, hostname: str) -> str:
+def infer_device_type(
+    vendor: Optional[str],
+    hostname: str,
+    asset_type: Optional[str] = None,
+    inferred_type: Optional[str] = None
+) -> str:
     """
-    Clasifica de forma heurística preliminar el tipo de dispositivo según el fabricante y hostname.
+    Clasifica el tipo de dispositivo de acuerdo con las categorías autorizadas:
+    router, switch, firewall, server, workstation, printer, ap, camera, ups, phone, unknown.
+    Si se proporciona un tipo directo del inventario ITAM o inferido por puertos, lo respeta y normaliza.
     """
-    text = f"{vendor} {hostname}".lower()
-    if any(k in text for k in ["cisco", "catalyst", "switch", "sw-", "sw_"]):
+    if asset_type:
+        asset_clean = asset_type.lower().strip()
+        if asset_clean in ["router", "switch", "firewall", "server", "printer", "ap", "camera", "ups", "phone"]:
+            return asset_clean
+        if asset_clean in ["desktop", "laptop", "pc", "workstation"]:
+            return "workstation"
+        if asset_clean in ["ip_phone"]:
+            return "phone"
+
+    if inferred_type and inferred_type in ["router", "switch", "firewall", "server", "printer", "ap", "camera", "ups", "phone", "workstation"]:
+        return inferred_type
+
+    text = f"{vendor or ''} {hostname}".lower()
+    if any(k in text for k in ["switch", "c2960", "c3750", "catalyst", "procurve", "edgeswitch", "sw-", "sw_"]):
         return "switch"
     if any(k in text for k in ["router", "mikrotik", "pfsense", "fortinet", "gateway", "gw-"]):
         return "router"
     if any(k in text for k in ["vmware", "kvm", "qemu", "server", "srv", "poweredge", "proliant", "debian", "ubuntu", "linux"]):
         return "server"
-    if any(k in text for k in ["printer", "laserjet", "epson", "xerox", "canon", "hp inc"]):
+    if any(k in text for k in ["printer", "laserjet", "epson", "xerox", "canon"]):
         return "printer"
     if any(k in text for k in ["ap-", "unifi", "ubiquiti", "wireless", "access point", "tp-link"]):
         return "ap"
@@ -145,10 +188,132 @@ def infer_device_type(vendor: str, hostname: str) -> str:
         return "camera"
     if any(k in text for k in ["apc", "schneider", "ups"]):
         return "ups"
-    if any(k in text for k in ["hp prodesk", "dell inc", "intel", "workstation", "desktop", "laptop", "pc-"]):
+    if any(k in text for k in ["avaya", "grandstream", "yealink", "polycom", "voip", "phone", "telefono", "teléfono"]):
+        return "phone"
+    if any(k in text for k in ["hp prodesk", "hp inc", "dell inc", "intel", "lenovo", "micro-star", "msi", "foxconn", "hon hai", "workstation", "desktop", "laptop", "pc-", "windows"]):
         return "workstation"
 
     return "unknown"
+
+
+def deep_fingerprint_hosts(ip_list: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    Realiza una inspección dirigida y rápida sobre los hosts activos detectados:
+    - Escanea puertos clave: 135, 139, 445, 22, 80, 443, 3389, 5800, 5900, 9100.
+    - Ejecuta scripts NetBIOS y SMB para extraer hostname y OS exacto de Windows.
+    - Aplica sondeo de TTL para inferir Linux en hosts sin puertos abiertos.
+    Retorna un diccionario {ip: {'hostname': ..., 'os_detected': ..., 'open_ports': [...], 'inferred_type': ...}}.
+    """
+    if not ip_list:
+        return {}
+
+    fp_results: Dict[str, Dict[str, Any]] = {}
+    nmap_path = "/usr/bin/nmap"
+    if not os.path.exists(nmap_path):
+        return fp_results
+
+    try:
+        cmd = [
+            nmap_path, "-Pn", "-sT",
+            "-p", "22,80,135,139,443,445,3389,5800,5900,9100",
+            "--script", "smb-os-discovery,nbstat",
+            "-T4", "-oX", "-"
+        ] + ip_list
+
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if proc.returncode == 0 and proc.stdout.strip():
+            root = ET.fromstring(proc.stdout)
+            for host in root.findall("host"):
+                ip = None
+                hostname = None
+                os_name = None
+                open_ports: List[int] = []
+
+                for addr in host.findall("address"):
+                    if addr.get("addrtype") == "ipv4":
+                        ip = addr.get("addr")
+
+                if not ip:
+                    continue
+
+                hostnames_elem = host.find("hostnames")
+                if hostnames_elem is not None:
+                    hn = hostnames_elem.find("hostname")
+                    if hn is not None and hn.get("name"):
+                        hostname = hn.get("name")
+
+                ports_elem = host.find("ports")
+                if ports_elem is not None:
+                    for p in ports_elem.findall("port"):
+                        state_elem = p.find("state")
+                        if state_elem is not None and state_elem.get("state") == "open":
+                            try:
+                                open_ports.append(int(p.get("portid")))
+                            except (ValueError, TypeError):
+                                pass
+
+                hostscript = host.find("hostscript")
+                if hostscript is not None:
+                    for script in hostscript.findall("script"):
+                        sid = script.get("id")
+                        if sid == "smb-os-discovery":
+                            out = script.get("output", "")
+                            for line in out.splitlines():
+                                if "OS:" in line:
+                                    os_name = line.split("OS:", 1)[1].strip()
+                                elif "Computer name:" in line and not hostname:
+                                    hostname = line.split("Computer name:", 1)[1].strip()
+                        elif sid == "nbstat":
+                            out = script.get("output", "")
+                            for line in out.splitlines():
+                                if "NetBIOS name:" in line and not hostname:
+                                    hostname = line.split("NetBIOS name:", 1)[1].split(",")[0].strip()
+
+                # Deducción refinada de Sistema Operativo si no vino de SMB
+                if not os_name:
+                    if 22 in open_ports and 135 not in open_ports:
+                        os_name = "Linux / Unix (SSH)"
+                    elif 135 in open_ports or 445 in open_ports or 3389 in open_ports:
+                        os_name = "Windows (MSRPC / SMB)"
+                    elif 9100 in open_ports:
+                        os_name = "Impresora de Red"
+
+                inferred_type = None
+                if 9100 in open_ports:
+                    inferred_type = "printer"
+                elif 135 in open_ports or 445 in open_ports or 3389 in open_ports or 5900 in open_ports or 22 in open_ports:
+                    inferred_type = "workstation"
+
+                fp_results[ip] = {
+                    "hostname": hostname,
+                    "os_detected": os_name,
+                    "open_ports": open_ports,
+                    "inferred_type": inferred_type,
+                }
+    except Exception as e:
+        logger.warning(f"Aviso en deep_fingerprint_hosts: {e}")
+
+    # Chequeo rápido de TTL para hosts sin puertos abiertos o sin SO detectado
+    for ip in ip_list:
+        if ip not in fp_results:
+            fp_results[ip] = {"hostname": None, "os_detected": None, "open_ports": [], "inferred_type": None}
+        if not fp_results[ip].get("os_detected"):
+            try:
+                p_res = subprocess.run(["ping", "-c", "1", "-W", "1", ip], capture_output=True, text=True, timeout=2)
+                if p_res.returncode == 0:
+                    ttl_match = re.search(r"ttl=(\d+)", p_res.stdout.lower())
+                    if ttl_match:
+                        ttl_val = int(ttl_match.group(1))
+                        if ttl_val <= 64:
+                            fp_results[ip]["os_detected"] = "Linux / Unix"
+                            fp_results[ip]["inferred_type"] = "workstation"
+                        elif ttl_val <= 128:
+                            fp_results[ip]["os_detected"] = "Windows"
+                            fp_results[ip]["inferred_type"] = "workstation"
+            except Exception:
+                pass
+
+    return fp_results
 
 
 async def sweep_subnet_async(subnet_str: str, rate_limit_pps: int = 150) -> List[Dict[str, Any]]:
@@ -164,12 +329,12 @@ async def sweep_subnet_async(subnet_str: str, rate_limit_pps: int = 150) -> List
         logger.error(f"Subred inválida {subnet_str}: {e}")
         return live_hosts
 
-    # Si nmap está disponible, usar nmap -sn para velocidad óptima
+    # Si nmap está disponible, usar nmap con TCP SYN a puertos Windows (135, 445) y Web (80, 443) para superar bloqueo de ICMP
     nmap_path = "/usr/bin/nmap"
     if os.path.exists(nmap_path):
         logger.info(f"Ejecutando descubrimiento acelerado con Nmap en {subnet_str}...")
         try:
-            cmd = [nmap_path, "-sn", "-T4", "--min-rate", str(rate_limit_pps), str(net)]
+            cmd = [nmap_path, "-sn", "-PS135,445,80,443", "-PA80,443", "-T4", "--min-rate", str(rate_limit_pps), str(net)]
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -262,10 +427,11 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
         # 2. Ejecutar escaneo activo para refrescar ARP
         live_hosts = asyncio.run(sweep_subnet_async(subnet_str))
 
-        # 3. Leer tabla ARP actualizada del kernel
+        # 3. Leer tabla ARP actualizada del kernel e interfaces locales
         arp_table = get_kernel_arp_table()
+        local_interfaces = get_local_interfaces_map()
 
-        # 4. Obtener catálogo existente de dispositivos de red para auto-vinculación
+        # 4. Obtener catálogo existente de dispositivos de red y de inventario ITAM para auto-vinculación
         known_network_devices: Dict[str, int] = {}
         with conn.cursor() as cur:
             cur.execute("SELECT id, ip, mac FROM monitored_network_devices WHERE is_active = 1")
@@ -275,48 +441,150 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
                 if row.get("ip"):
                     known_network_devices[row["ip"]] = row["id"]
 
+        known_assets: Dict[str, Dict[str, Any]] = {}
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, type, brand, model, ip_address, mac_address, monitored_site_id, monitored_network_device_id 
+                FROM inventory_assets
+            """)
+            for row in cur.fetchall():
+                mac_val = (row.get("mac_address") or "").strip().upper()
+                ip_val = (row.get("ip_address") or "").strip()
+                if mac_val and mac_val != "00:00:00:00:00:00" and not mac_val.startswith("IP:"):
+                    known_assets[mac_val] = row
+                if ip_val:
+                    known_assets[ip_val] = row
+
+        # Consolidar todos los hosts detectados: tanto los que respondieron al escaneo
+        # como los que respondieron a nivel de enlace (ARP) en la subred analizada
+        hosts_map: Dict[str, Dict[str, Any]] = {h["ip"]: h for h in live_hosts}
+        try:
+            target_network = ipaddress.ip_network(subnet_str, strict=False)
+        except ValueError:
+            target_network = None
+
+        if target_network:
+            for arp_ip, arp_mac in arp_table.items():
+                try:
+                    if ipaddress.ip_address(arp_ip) in target_network:
+                        if arp_ip not in hosts_map:
+                            rev_host = None
+                            try:
+                                rev_host = socket.gethostbyaddr(arp_ip)[0]
+                            except Exception:
+                                pass
+                            hosts_map[arp_ip] = {"ip": arp_ip, "hostname": rev_host}
+                except ValueError:
+                    continue
+
+        all_detected_hosts = list(hosts_map.values())
+        detected_ips_set = set(hosts_map.keys())
         devices_found = 0
         new_devices_count = 0
 
-        # Procesar cada host detectado
-        for host_info in live_hosts:
-            ip = host_info["ip"]
-            hostname = host_info.get("hostname")
-            mac = arp_table.get(ip)
+        # 4.1 Marcar como inactivos los dispositivos de esta subred que no respondieron en este barrido
+        if target_network:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, ip_address, mac_address, is_active FROM discovered_devices
+                    WHERE is_active = 1
+                """)
+                for dev in cur.fetchall():
+                    dev_ip = dev.get("ip_address")
+                    if dev_ip:
+                        try:
+                            if ipaddress.ip_address(dev_ip) in target_network and dev_ip not in detected_ips_set:
+                                cur.execute("UPDATE discovered_devices SET is_active = 0 WHERE id = %s", (dev["id"],))
+                                cur.execute("""
+                                    INSERT INTO discovered_device_history 
+                                    (discovered_device_id, event_type, previous_value, new_value, occurred_at)
+                                    VALUES (%s, 'went_offline', 'activo', 'inactivo', NOW())
+                                """, (dev["id"],))
+                                logger.info(f"💤 [DISPOSITIVO INACTIVO/APAGADO] ID: {dev['id']} | IP: {dev_ip} | MAC: {dev.get('mac_address')}")
+                        except ValueError:
+                            pass
+                conn.commit()
 
-            # Si no tenemos MAC directa en la tabla ARP (ej. enrutamiento a otra sede),
-            # creamos un identificador sintético basado en IP para no perder el registro
+        # 4.2 Ejecutar huella digital profunda sobre todos los hosts detectados
+        logger.info(f"🔍 Ejecutando huella digital profunda sobre {len(detected_ips_set)} hosts activos...")
+        fp_map = deep_fingerprint_hosts(list(detected_ips_set))
+
+        # Procesar cada host detectado
+        for host_info in all_detected_hosts:
+            ip = host_info["ip"]
+            fp = fp_map.get(ip, {})
+            hostname = fp.get("hostname") or host_info.get("hostname")
+            os_detected = fp.get("os_detected")
+            open_ports_list = fp.get("open_ports", [])
+            json_ports = json.dumps(open_ports_list) if open_ports_list else None
+            inferred_type = fp.get("inferred_type")
+            mac = arp_table.get(ip) or local_interfaces.get(ip)
+
+            # Cotejar contra el inventario ITAM
+            asset_match = known_assets.get(mac) if mac else None
+            if not asset_match:
+                asset_match = known_assets.get(ip)
+
+            # Si no hay MAC en ARP ni local, pero el activo ITAM tiene MAC física registrada, usarla
+            if not mac and asset_match and asset_match.get("mac_address"):
+                cand_mac = asset_match["mac_address"].strip().upper()
+                if cand_mac and not cand_mac.startswith("IP:"):
+                    mac = cand_mac
+
+            # Fallback sintético sólo si no se dispone de ninguna MAC física
             if not mac:
                 mac = f"IP:{ip}"
 
             devices_found += 1
             vendor, oui_prefix = lookup_oui_vendor(mac, conn)
-            device_type = infer_device_type(vendor, hostname or "")
+
+            # Si el OUI fue desconocido pero en inventario tenemos la marca oficial, adoptarla
+            if (not vendor or vendor == "Fabricante Desconocido") and asset_match and asset_match.get("brand"):
+                vendor = asset_match["brand"]
+
+            device_type = infer_device_type(
+                vendor,
+                hostname or "",
+                asset_match.get("type") if asset_match else None,
+                inferred_type
+            )
 
             with conn.cursor() as cur:
-                # Verificar si ya existe este dispositivo
-                cur.execute("SELECT * FROM discovered_devices WHERE mac_address = %s LIMIT 1", (mac,))
+                # Verificar si ya existe este dispositivo (por MAC física o por IP si era sintética)
+                cur.execute("""
+                    SELECT * FROM discovered_devices 
+                    WHERE mac_address = %s OR (ip_address = %s AND mac_address LIKE 'IP:%%')
+                    ORDER BY id ASC LIMIT 1
+                """, (mac, ip))
                 existing = cur.fetchone()
 
-                # Verificar si coincide con un equipo de infraestructura ya inventariado
+                # Resolver vinculación con dispositivo de red y sede
                 linked_id = known_network_devices.get(mac) or known_network_devices.get(ip)
+                if not linked_id and asset_match and asset_match.get("monitored_network_device_id"):
+                    linked_id = asset_match["monitored_network_device_id"]
+
+                effective_site_id = site_id
+                if asset_match and asset_match.get("monitored_site_id"):
+                    effective_site_id = asset_match["monitored_site_id"]
+
+                is_auth = 1 if (linked_id or asset_match) else 0
+                status = "clasificado" if (linked_id or asset_match) else "pendiente"
 
                 if not existing:
                     # Dispositivo nuevo detectado
                     new_devices_count += 1
-                    is_auth = 1 if linked_id else 0
-                    status = "clasificado" if linked_id else "pendiente"
-
                     cur.execute("""
                         INSERT INTO discovered_devices 
                         (mac_address, ip_address, hostname, vendor, oui_prefix, device_type,
+                         os_detected, open_ports,
                          site_id, classification_status, linked_network_device_id, first_seen,
                          last_seen, seen_count, is_active, discovery_method, is_authorized, notes)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), 1, 1, 'arp_sweep', %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), 1, 1, 'nmap_scan', %s, %s)
                     """, (
                         mac, ip, hostname, vendor, oui_prefix, device_type,
-                        site_id, status, linked_id, is_auth,
-                        "Descubierto automáticamente por escaneo de red"
+                        os_detected, json_ports,
+                        effective_site_id, status, linked_id, is_auth,
+                        "Conciliado automáticamente con Inventario ITAM" if asset_match else "Descubierto automáticamente por escaneo de red"
                     ))
                     dev_id = cur.lastrowid
 
@@ -332,6 +600,7 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
                     # Dispositivo existente: actualizar telemetría
                     dev_id = existing["id"]
                     old_ip = existing.get("ip_address")
+                    old_status = existing.get("classification_status")
 
                     # Si cambió de IP, auditar el cambio
                     if old_ip and old_ip != ip:
@@ -350,22 +619,33 @@ def scan_subnet(subnet_str: str, site_id: Optional[int] = None, executed_by: str
                             VALUES (%s, 'came_online', 'inactivo', 'activo', NOW())
                         """, (dev_id,))
 
+                    # Si antes estaba pendiente y ahora coincide con inventario, auto-promover a clasificado y autorizado
+                    new_status = "clasificado" if (is_auth or old_status == "clasificado") else old_status
+                    new_auth = 1 if (is_auth or existing.get("is_authorized")) else 0
+
                     cur.execute("""
                         UPDATE discovered_devices 
                         SET ip_address = %s,
+                            mac_address = %s,
                             hostname = COALESCE(%s, hostname),
                             vendor = COALESCE(%s, vendor),
                             oui_prefix = COALESCE(%s, oui_prefix),
+                            device_type = CASE WHEN device_type = 'unknown' OR device_type = 'workstation' THEN %s ELSE device_type END,
+                            os_detected = COALESCE(%s, os_detected),
+                            open_ports = COALESCE(%s, open_ports),
                             last_seen = NOW(),
                             seen_count = seen_count + 1,
                             is_active = 1,
-                            linked_network_device_id = COALESCE(%s, linked_network_device_id)
+                            is_authorized = %s,
+                            classification_status = %s,
+                            linked_network_device_id = COALESCE(%s, linked_network_device_id),
+                            site_id = COALESCE(site_id, %s)
                         WHERE id = %s
-                    """, (ip, hostname, vendor, oui_prefix, linked_id, dev_id))
-
-                    # Si el dispositivo no tiene sede asignada pero la subred tiene una definida, poblarla
-                    if not existing.get("site_id") and site_id is not None:
-                        cur.execute("UPDATE discovered_devices SET site_id = %s WHERE id = %s", (site_id, dev_id))
+                    """, (
+                        ip, mac, hostname, vendor, oui_prefix, device_type,
+                        os_detected, json_ports,
+                        new_auth, new_status, linked_id, effective_site_id, dev_id
+                    ))
 
         duration = round(time.time() - start_time, 2)
 

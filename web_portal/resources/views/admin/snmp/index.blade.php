@@ -28,18 +28,6 @@
 </style>
 
 <div class="space-y-4">
-    <!-- PESTAÑAS CONSOLA SNMP 360° -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.snmp.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.snmp.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">sensors</span>
-            <span>Dispositivos & Métricas SNMP</span>
-        </a>
-        <a href="{{ route('admin.traps.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.traps.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">forward_to_inbox</span>
-            <span>SNMP Traps (UDP 162)</span>
-        </a>
-    </div>
-
     <!-- CABECERA -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -51,48 +39,112 @@
                 <span class="text-obsidian-border font-mono text-xs">/</span>
                 <span class="text-[10.5px] font-mono text-obsidian-muted">Telemetría de Red</span>
             </div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-cyan-400 text-xl">router</span>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">sensors</span>
                 Monitoreo y Telemetría SNMP Integral
-            </h2>
+            </h1>
             <p class="text-xs font-mono text-obsidian-muted">Supervisión de métricas OID, estados operacionales de puertos y ancho de banda en switches, routers y firewalls</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Solo Lectura)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
-            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) && !$isClusterSlave)
-            <button type="button" onclick="openRemoteActivationModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
-                <span class="material-symbols-outlined text-sm">bolt</span>
-                <span>⚡ Activación Remota</span>
-            </button>
-            <button type="button" onclick="openNewDeviceModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
-                <span class="material-symbols-outlined text-sm">add_circle</span>
-                <span>+ Dispositivo SNMP</span>
-            </button>
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) && !($isClusterSlave ?? false))
+                <div class="relative group">
+                    <button type="button" onclick="openRemoteActivationModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-base">bolt</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">bolt</span>
+                            <span class="font-bold text-amber-200">Activación Remota SNMP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button type="button" onclick="openNewDeviceModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-base">sensors</span>
+                        <span class="font-bold text-sm leading-none">+</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-purple-500/50 shadow-xl shadow-purple-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-purple-400">sensors</span>
+                            <span class="font-bold text-purple-200">Agregar Dispositivo SNMP</span>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.poll'))
-            <button type="button" onclick="pollAllDevices()" id="btn-poll-all" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
-                <span class="material-symbols-outlined text-sm">sync</span>
-                <span>Sondear Todo</span>
-            </button>
+                <div class="relative group">
+                    <button type="button" onclick="pollAllDevices()" id="btn-poll-all" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">sync</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">sync</span>
+                            <span class="font-bold text-cyan-200">Sondear Todo Ahora</span>
+                        </div>
+                    </div>
+                </div>
             @endif
 
-            @if($isClusterSlave)
-            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                <span class="material-symbols-outlined text-xs">lock</span>
-                <span>Solo Lectura (Modo Esclavo)</span>
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
             @elseif(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('snmp.manage') && !auth()->user()->hasPermission('snmp.poll'))
-            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono">
-                <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
-                <span>Modo Consulta</span>
-            </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-muted text-xs font-mono" title="Modo Consulta">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">visibility</span>
+                    <span>Modo Consulta</span>
+                </span>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS RADAR & TELEMETRÍA DE RED (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.snmp.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.snmp.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Dispositivos &amp; Métricas SNMP">
+            <span class="material-symbols-outlined text-sm">sensors</span>
+            <span>Dispositivos SNMP</span>
+        </a>
+        <a href="{{ route('admin.traps.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.traps.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="SNMP Traps y Eventos UDP 162">
+            <span class="material-symbols-outlined text-sm">forward_to_inbox</span>
+            <span>SNMP Traps (UDP 162)</span>
+        </a>
     </div>
 
     <!-- NOTIFICACIONES FLASH -->
@@ -435,10 +487,10 @@
 <!-- ========================================================================= -->
 <!-- MODAL DE INTERFACES Y GRÁFICO DE TRÁFICO (CHART.JS) -->
 <!-- ========================================================================= -->
-<div id="interfacesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
-    <div class="w-full max-w-5xl rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+<div id="interfacesModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs hidden">
+    <div class="glass-panel w-full max-w-5xl rounded-2xl border border-obsidian-border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[88vh] bg-[#040d1a]/95">
         <!-- CABECERA MODAL -->
-        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between shrink-0">
+        <div class="px-6 py-4 bg-[#061527] border-b border-obsidian-border flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
                     <span class="material-symbols-outlined text-xl">cable</span>
@@ -457,7 +509,7 @@
         </div>
 
         <!-- CUERPO MODAL CON SCROLL -->
-        <div class="p-6 overflow-y-auto space-y-6 custom-scroll">
+        <div class="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 custom-scroll">
             <!-- SECCIÓN GRÁFICO DE TRÁFICO CHART.JS -->
             <div id="trafficChartCard" class="glass-card p-4 rounded-xl border border-obsidian-border/80 bg-obsidian-panel/60 relative">
                 <div class="flex items-center justify-between mb-3">
@@ -522,8 +574,8 @@
         </div>
 
         <!-- PIE MODAL -->
-        <div class="px-6 py-3 bg-obsidian-panel border-t border-obsidian-border flex items-center justify-end shrink-0">
-            <button type="button" onclick="closeInterfacesModal()" class="px-4 py-1.5 rounded-lg bg-obsidian-panel hover:bg-obsidian-bg border border-obsidian-border text-white transition text-xs font-mono cursor-pointer">
+        <div class="px-6 py-3.5 bg-[#061527] border-t border-obsidian-border flex items-center justify-end shrink-0">
+            <button type="button" onclick="closeInterfacesModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel hover:bg-obsidian-bg border border-obsidian-border text-white transition text-xs font-mono cursor-pointer">
                 Cerrar
             </button>
         </div>
@@ -534,73 +586,75 @@
 <!-- MODAL NUEVO DISPOSITIVO SNMP (ADMIN) -->
 <!-- ========================================================================= -->
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('snmp.manage')) && !$isClusterSlave)
-<div id="newDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
-    <div class="w-full max-w-lg rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
+<div id="newDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs hidden">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="px-6 py-4 bg-[#061527] border-b border-obsidian-border flex items-center justify-between shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-purple-400 text-lg">add_circle</span>
                 Registrar Nuevo Dispositivo SNMP
             </h3>
-            <button type="button" onclick="closeNewDeviceModal()" class="text-obsidian-muted hover:text-white text-xl leading-none">&times;</button>
+            <button type="button" onclick="closeNewDeviceModal()" class="text-obsidian-muted hover:text-white text-xl leading-none cursor-pointer">&times;</button>
         </div>
-        <form method="POST" action="{{ route('admin.snmp.store') }}" class="p-6 space-y-4">
+        <form method="POST" action="{{ route('admin.snmp.store') }}" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
-            <div>
-                <label class="block text-xs font-mono text-obsidian-muted mb-1">Nombre Identificador *</label>
-                <input type="text" name="name" required placeholder="Ej. Switch-Core-C3750" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+            <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div>
+                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Nombre Identificador *</label>
+                    <input type="text" name="name" required placeholder="Ej. Switch-Core-C3750" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
+                        <input type="text" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Versión SNMP *</label>
+                        <select name="snmp_version" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="v2c">v2c (Recomendado)</option>
+                            <option value="v3">v3 (Cifrado USM)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Comunidad SNMP *</label>
+                        <input type="text" name="community" value="public" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Tipo de Equipo *</label>
+                        <select name="device_type" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="switch">Switch</option>
+                            <option value="router">Router</option>
+                            <option value="firewall">Firewall</option>
+                            <option value="server">Servidor</option>
+                            <option value="ups">UPS</option>
+                            <option value="unknown">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Sede Asignada</label>
+                        <select name="site_id" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <option value="">Valle Seco (Principal)</option>
+                            @foreach($sites as $site)
+                            <option value="{{ $site->id }}">{{ $site->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Intervalo de Sondeo (seg)</label>
+                        <input type="number" name="poll_interval_seconds" value="60" min="10" max="3600" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Notas u Observaciones</label>
+                    <textarea name="notes" rows="2" placeholder="Detalles de ubicación de rack, VLANs..." class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none"></textarea>
+                </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
-                    <input type="text" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Versión SNMP *</label>
-                    <select name="snmp_version" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        <option value="v2c">v2c (Recomendado)</option>
-                        <option value="v3">v3 (Cifrado USM)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Comunidad SNMP *</label>
-                    <input type="text" name="community" value="public" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Tipo de Equipo *</label>
-                    <select name="device_type" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        <option value="switch">Switch</option>
-                        <option value="router">Router</option>
-                        <option value="firewall">Firewall</option>
-                        <option value="server">Servidor</option>
-                        <option value="ups">UPS</option>
-                        <option value="unknown">Otro</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Sede Asignada</label>
-                    <select name="site_id" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        <option value="">Valle Seco (Principal)</option>
-                        @foreach($sites as $site)
-                        <option value="{{ $site->id }}">{{ $site->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted mb-1">Intervalo de Sondeo (seg)</label>
-                    <input type="number" name="poll_interval_seconds" value="60" min="10" max="3600" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                </div>
-            </div>
-            <div>
-                <label class="block text-xs font-mono text-obsidian-muted mb-1">Notas u Observaciones</label>
-                <textarea name="notes" rows="2" placeholder="Detalles de ubicación de rack, VLANs..." class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none"></textarea>
-            </div>
-            <div class="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onclick="closeNewDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg">Cancelar</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold">Guardar Dispositivo</button>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeNewDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg cursor-pointer">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold cursor-pointer">Guardar Dispositivo</button>
             </div>
         </form>
     </div>
@@ -609,9 +663,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL EDITAR DISPOSITIVO SNMP (ADMIN) -->
 <!-- ========================================================================= -->
-<div id="editDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
-    <div class="w-full max-w-lg rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
+<div id="editDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs hidden">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="px-6 py-4 bg-[#061527] border-b border-obsidian-border flex items-center justify-between shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-cyan-400 text-lg">edit</span>
                 <span>Editar Dispositivo SNMP</span>
@@ -619,7 +673,7 @@
             </h3>
             <button type="button" onclick="closeEditDeviceModal()" class="text-obsidian-muted hover:text-white text-xl leading-none cursor-pointer">&times;</button>
         </div>
-        <form id="editDeviceForm" method="POST" action="" class="p-6 space-y-4">
+        <form id="editDeviceForm" method="POST" action="" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
             @csrf
             @method('PUT')
             
@@ -630,7 +684,7 @@
                 </div>
             </div>
 
-            <div id="editModalFields" class="space-y-4">
+            <div id="editModalFields" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
                 <div>
                     <label class="block text-xs font-mono text-obsidian-muted mb-1">Nombre Identificador *</label>
                     <input type="text" id="edit_name" name="name" required placeholder="Ej. Switch-Core-C3750" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
@@ -696,13 +750,13 @@
                     <label class="block text-xs font-mono text-obsidian-muted mb-1">Notas u Observaciones</label>
                     <textarea id="edit_notes" name="notes" rows="2" placeholder="Detalles de ubicación de rack, VLANs..." class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none"></textarea>
                 </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeEditDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg cursor-pointer">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-sm">save</span>
-                        <span>Actualizar Cambios</span>
-                    </button>
-                </div>
+            </div>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeEditDeviceModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg cursor-pointer">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">save</span>
+                    <span>Actualizar Cambios</span>
+                </button>
             </div>
         </form>
     </div>
@@ -711,70 +765,72 @@
 <!-- ========================================================================= -->
 <!-- MODAL ACTIVACIÓN REMOTA SNMP (SSH / TELNET CISCO & PFSENSE API) -->
 <!-- ========================================================================= -->
-<div id="remoteActivationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs hidden">
-    <div class="w-full max-w-xl rounded-2xl bg-obsidian-card border border-obsidian-border shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 bg-obsidian-panel border-b border-obsidian-border flex items-center justify-between">
+<div id="remoteActivationModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs hidden">
+    <div class="glass-panel w-full max-w-xl rounded-2xl border border-obsidian-border shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden bg-[#040d1a]/95">
+        <div class="px-6 py-4 bg-[#061527] border-b border-obsidian-border flex items-center justify-between shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-400 text-lg">bolt</span>
                 Habilitación Remota de SNMP (Cisco & pfSense)
             </h3>
-            <button type="button" onclick="closeRemoteActivationModal()" class="text-obsidian-muted hover:text-white text-xl leading-none">&times;</button>
+            <button type="button" onclick="closeRemoteActivationModal()" class="text-obsidian-muted hover:text-white text-xl leading-none cursor-pointer">&times;</button>
         </div>
-        <div class="p-6 space-y-4">
-            <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-start gap-2">
-                <span class="material-symbols-outlined text-base shrink-0 mt-0.5">security</span>
-                <span>Configura automáticamente <code class="text-white">snmp-server community RO</code> y habilita traps mediante sesión autenticada con registro estricto en auditoría.</span>
+        <form id="remoteActivationForm" onsubmit="submitRemoteActivation(event)" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
+            <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scroll">
+                <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-start gap-2">
+                    <span class="material-symbols-outlined text-base shrink-0 mt-0.5">security</span>
+                    <span>Configura automáticamente <code class="text-white">snmp-server community RO</code> y habilita traps mediante sesión autenticada con registro estricto en auditoría.</span>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP Destino *</label>
+                            <input type="text" id="act-ip" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Método de Conexión *</label>
+                            <select id="act-method" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                                <option value="ssh">Cisco IOS (SSH)</option>
+                                <option value="telnet">Cisco IOS Legacy (Telnet)</option>
+                                <option value="pfsense">pfSense Firewall (API REST)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Usuario / API Key *</label>
+                            <input type="text" id="act-user" required placeholder="admin" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Contraseña / API Secret *</label>
+                            <input type="password" id="act-pass" required placeholder="••••••••" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Enable Secret (Cisco)</label>
+                            <input type="password" id="act-secret" placeholder="Opcional" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-obsidian-muted mb-1">Comunidad a Establecer *</label>
+                            <input type="text" id="act-comm" value="public" required class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div id="activation-result" class="hidden p-3 rounded-lg border text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap break-words select-all block"></div>
+                </div>
             </div>
 
-            <form id="remoteActivationForm" onsubmit="submitRemoteActivation(event)" class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP Destino *</label>
-                        <input type="text" id="act-ip" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Método de Conexión *</label>
-                        <select id="act-method" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                            <option value="ssh">Cisco IOS (SSH)</option>
-                            <option value="telnet">Cisco IOS Legacy (Telnet)</option>
-                            <option value="pfsense">pfSense Firewall (API REST)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Usuario / API Key *</label>
-                        <input type="text" id="act-user" required placeholder="admin" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Contraseña / API Secret *</label>
-                        <input type="password" id="act-pass" required placeholder="••••••••" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Enable Secret (Cisco)</label>
-                        <input type="password" id="act-secret" placeholder="Opcional" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Comunidad a Establecer *</label>
-                        <input type="text" id="act-comm" value="public" required class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                    </div>
-                </div>
-
-                <div id="activation-result" class="hidden p-3 rounded-lg border text-xs font-mono max-h-40 overflow-y-auto whitespace-pre-wrap"></div>
-
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeRemoteActivationModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg">Cerrar</button>
-                    <button type="submit" id="btn-submit-activation" class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">bolt</span>
-                        <span>Ejecutar Activación</span>
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
+                <button type="button" onclick="closeRemoteActivationModal()" class="px-4 py-2 rounded-lg bg-obsidian-panel border border-obsidian-border text-white text-xs font-mono hover:bg-obsidian-bg cursor-pointer">Cerrar</button>
+                <button type="submit" id="btn-submit-activation" class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">bolt</span>
+                    <span>Ejecutar Activación</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 @endif
@@ -1134,10 +1190,10 @@
             btn.innerHTML = `<span class="material-symbols-outlined text-sm">bolt</span><span>Ejecutar Activación</span>`;
             resDiv.classList.remove('hidden');
             if (data.success) {
-                resDiv.className = 'p-3 rounded-lg border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-xs font-mono max-h-40 overflow-y-auto whitespace-pre-wrap';
+                resDiv.className = 'p-3 rounded-lg border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap break-words select-all block';
                 resDiv.innerText = `✅ ÉXITO: ${data.message}\n\n${data.output || ''}`;
             } else {
-                resDiv.className = 'p-3 rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 text-xs font-mono max-h-40 overflow-y-auto whitespace-pre-wrap';
+                resDiv.className = 'p-3 rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap break-words select-all block';
                 resDiv.innerText = `❌ ERROR: ${data.message}\n${data.error || ''}\n\n${data.output || ''}`;
             }
         })
@@ -1145,7 +1201,7 @@
             btn.disabled = false;
             btn.innerHTML = `<span class="material-symbols-outlined text-sm">bolt</span><span>Ejecutar Activación</span>`;
             resDiv.classList.remove('hidden');
-            resDiv.className = 'p-3 rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 text-xs font-mono max-h-40 overflow-y-auto whitespace-pre-wrap';
+            resDiv.className = 'p-3 rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap break-words select-all block';
             resDiv.innerText = `❌ Error de red o servidor: ${err.message}`;
         });
     }

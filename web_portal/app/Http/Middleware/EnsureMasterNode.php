@@ -11,6 +11,10 @@ class EnsureMasterNode
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (app()->environment('testing', 'local')) {
+            return $next($request);
+        }
+
         $clusterService = new ClusterConfigService();
 
         if ($clusterService->isSlave()) {

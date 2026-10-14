@@ -57,7 +57,7 @@ class HousekeepingTelemetryCommand extends Command
         'snmp_traps_received' => [
             'days' => 90,
             'date_col' => 'received_at',
-            'desc' => 'Trampas SNMP recibidas por eventos de red',
+            'desc' => 'Alertas SNMP recibidas por eventos de red',
         ],
         'service_check_histories' => [
             'days' => 60,
@@ -189,15 +189,22 @@ class HousekeepingTelemetryCommand extends Command
             try {
                 AuditLog::create([
                     'user_id' => null,
-                    'action' => 'telemetry_housekeeping',
-                    'entity_type' => 'system',
-                    'entity_id' => 0,
-                    'details' => json_encode([
+                    'user_name' => 'Sistema (CLI)',
+                    'user_email' => null,
+                    'user_role' => 'system',
+                    'event' => 'deleted',
+                    'module' => 'telemetry',
+                    'auditable_type' => null,
+                    'auditable_id' => null,
+                    'entity_name' => 'Mantenimiento de Telemetría',
+                    'entity_label' => 'Housekeeping',
+                    'description' => "Depuración de telemetría: {$totalPurged} registros depurados y {$rollupsGenerated} rollups generados en {$elapsed}s.",
+                    'new_values' => [
                         'purged_records' => $totalPurged,
                         'rollups_generated' => $rollupsGenerated,
                         'duration_seconds' => $elapsed,
                         'timestamp' => date('Y-m-d H:i:s'),
-                    ]),
+                    ],
                     'ip_address' => '127.0.0.1',
                     'user_agent' => 'Console/Artisan',
                 ]);

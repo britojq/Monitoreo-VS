@@ -70,7 +70,7 @@ class AuditService
 
     public static function logLogin(User $user, Request $request, string $authType = 'local'): AuditLog
     {
-        $typeLabel = $authType === 'ldap' ? 'LDAP Institucional' : 'Local Administrativo';
+        $typeLabel = $authType === 'ldap' ? 'LDAP Corporativo' : 'Local Administrativo';
         
         return AuditLog::create([
             'user_id' => $user->id,

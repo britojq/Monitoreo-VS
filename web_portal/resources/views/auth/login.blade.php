@@ -30,13 +30,14 @@
         @endif
 
         <!-- MENSAJE DE ERROR -->
-        @if ($errors->any())
+        @if(isset($errors) && (is_object($errors) ? (method_exists($errors, 'any') && $errors->any()) : !empty($errors)))
             <div class="mt-6 p-4 rounded-xl bg-red-950/60 border border-red-500/50 text-red-400 text-xs font-mono space-y-1">
                 <div class="flex items-center gap-2 font-bold">
                     <span class="material-symbols-outlined text-sm">error</span>
                     <span>Error de Autenticación</span>
                 </div>
-                @foreach ($errors->all() as $error)
+                @php $allErrors = (is_object($errors) && method_exists($errors, 'all')) ? $errors->all() : (is_array($errors) ? $errors : []); @endphp
+                @foreach ($allErrors as $error)
                     <p>{{ $error }}</p>
                 @endforeach
             </div>

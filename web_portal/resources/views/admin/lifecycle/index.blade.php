@@ -4,23 +4,103 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS EQUIPOS & HARDWARE -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.devices.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">router</span>
-            <span>Dispositivos de Red</span>
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Garantías &amp; Ciclo de Vida</span>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">history_toggle_off</span>
+                Ciclo de Vida de Hardware &amp; Garantías
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Control de contratos de soporte, fin de vida (EOL/EOS), reemplazo de baterías UPS y salud SMART de discos</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Solo Lectura)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage'))) && !($isClusterSlave ?? false))
+                <div class="relative group">
+                    <button type="button" onclick="openLifecycleModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black transition text-xs font-mono font-bold shadow-md shadow-cyan-500/20 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">add_circle</span>
+                        <span class="font-bold text-sm leading-none">+</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">add_circle</span>
+                            <span class="font-bold text-cyan-200">Registrar Activo</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <div class="relative group">
+                <a href="{{ route('admin.lifecycle.index') }}" class="p-2 rounded-xl bg-obsidian-panel border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/50 transition cursor-pointer shadow-xs inline-flex items-center">
+                    <span class="material-symbols-outlined text-base">refresh</span>
+                </a>
+                <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                    <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs text-cyan-400">refresh</span>
+                        <span class="font-bold text-cyan-200">Refrescar</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS EQUIPOS & HARDWARE (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.devices.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.devices.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Equipos y Activos de Red Monitoreados">
+            <span class="material-symbols-outlined text-sm">devices</span>
+            <span>Equipos &amp; Activos</span>
         </a>
-        <a href="{{ route('admin.lifecycle.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.lifecycle.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">inventory_2</span>
-            <span>Ciclo de Vida & Inventario</span>
+        <a href="{{ route('admin.inventory.deploy') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.inventory.deploy*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Despliegue Remoto Agente GLPI">
+            <span class="material-symbols-outlined text-sm">send_to_mobile</span>
+            <span>Despliegue GLPI</span>
         </a>
-        <a href="{{ route('admin.wol.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">power</span>
+        <a href="{{ route('admin.lifecycle.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.lifecycle.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Ciclo de Vida de Hardware & Garantías">
+            <span class="material-symbols-outlined text-sm">history_toggle_off</span>
+            <span>Ciclo de Vida &amp; Garantías</span>
+        </a>
+        <a href="{{ route('admin.wol.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.wol.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Encendido Remoto Wake-on-LAN">
+            <span class="material-symbols-outlined text-sm">power</span>
             <span>Wake-on-LAN (WoL)</span>
         </a>
-        <a href="{{ route('admin.ups.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">battery_charging_full</span>
-            <span>Monitoreo UPS ZTG</span>
+        <a href="{{ route('admin.ups.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.ups.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Monitoreo Serial de Energía & UPS">
+            <span class="material-symbols-outlined text-sm">battery_charging_full</span>
+            <span>Monitoreo UPS</span>
         </a>
     </div>
 
@@ -30,54 +110,6 @@
             <span>{{ session('status') }}</span>
         </div>
     @endif
-
-    <!-- ========================================================================= -->
-    <!-- ENCABEZADO Y GESTIÓN DE ACTIVOS                                           -->
-    <!-- ========================================================================= -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/90 backdrop-blur-md shadow-md">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-emerald-950/70 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-                <span class="material-symbols-outlined text-lg">inventory_2</span>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Ciclo de Vida de Hardware & Garantías
-                    </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Gestión ITIL
-                    </span>
-                </div>
-                <p class="text-[10px] font-mono text-obsidian-muted">
-                    Control de contratos de soporte, fin de vida (EOL/EOS), reemplazo de baterías UPS y salud SMART de discos.
-                </p>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
-
-            @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage'))) && !$isClusterSlave)
-                <button type="button" onclick="openLifecycleModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                    <span class="material-symbols-outlined text-sm">add_circle</span>
-                    <span>Registrar Activo</span>
-                </button>
-            @elseif($isClusterSlave)
-                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                    <span class="material-symbols-outlined text-xs">lock</span>
-                    <span>Solo Lectura (Modo Esclavo)</span>
-                </span>
-            @endif
-            <a href="{{ route('admin.lifecycle.index') }}" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                <span>Refrescar</span>
-            </a>
-        </div>
-    </div>
 
     <!-- ========================================================================= -->
     <!-- HUD: TARJETAS MÉTRICAS                                                    -->
@@ -268,81 +300,83 @@
 
 @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('lifecycle.manage'))) && !$isClusterSlave)
 <!-- MODAL REGISTRO / EDICIÓN DE CICLO DE VIDA -->
-<div id="lifecycleModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-obsidian-panel border border-obsidian-border rounded-xl w-full max-w-lg p-5 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="lifecycleModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-panel border border-obsidian-border rounded-2xl w-full max-w-lg flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden shadow-2xl">
+        <div class="p-4 px-6 border-b border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
             <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
                 <span class="material-symbols-outlined text-emerald-400 text-sm" id="modal_title_icon">add_circle</span>
                 <span id="modal_title_text">Ficha de Ciclo de Vida y Garantía</span>
             </h3>
-            <button type="button" onclick="closeLifecycleModal()" class="text-obsidian-muted hover:text-white cursor-pointer">&times;</button>
+            <button type="button" onclick="closeLifecycleModal()" class="text-obsidian-muted hover:text-white transition p-1 cursor-pointer">&times;</button>
         </div>
 
-        <form action="{{ route('admin.lifecycle.store') }}" method="POST" class="space-y-3 font-mono text-xs">
+        <form action="{{ route('admin.lifecycle.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs m-0">
             @csrf
-            <input type="hidden" name="id" id="modal_lifecycle_id" value="">
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Tipo de Activo *</label>
-                    <select name="entity_type" id="modal_entity_type" onchange="updateEntityOptions(this.value)" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                        <option value="snmp_device">Dispositivo SNMP</option>
-                        <option value="network_device">Equipo de Red</option>
-                    </select>
+            <div class="p-5 space-y-3 overflow-y-auto flex-1 custom-scroll">
+                <input type="hidden" name="id" id="modal_lifecycle_id" value="">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Tipo de Activo *</label>
+                        <select name="entity_type" id="modal_entity_type" onchange="updateEntityOptions(this.value)" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                            <option value="snmp_device">Dispositivo SNMP</option>
+                            <option value="network_device">Equipo de Red</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Dispositivo *</label>
+                        <select name="entity_id" id="modal_entity_id" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                            @foreach($availableSnmpDevices as $sd)
+                                <option value="{{ $sd->id }}">{{ $sd->name }} ({{ $sd->ip_address }})</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Número de Serie (S/N)</label>
+                        <input type="text" name="serial_number" id="modal_serial_number" placeholder="ej. FOC1842W0AB" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Versión de Firmware</label>
+                        <input type="text" name="firmware_version" id="modal_firmware_version" placeholder="ej. 15.0(2)SE11" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Fecha de Compra</label>
+                        <input type="date" name="purchase_date" id="modal_purchase_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Vencimiento de Garantía</label>
+                        <input type="date" name="warranty_end_date" id="modal_warranty_end_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Fin de Vida (EOL)</label>
+                        <input type="date" name="eol_date" id="modal_eol_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Salud SMART Discos</label>
+                        <select name="disk_health_status" id="modal_disk_health_status" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
+                            <option value="ok">Saludable / OK</option>
+                            <option value="warning">Advertencia (Sectores Reasignados)</option>
+                            <option value="failing">Fallo Inminente / Crítico</option>
+                            <option value="unknown">Desconocido / Sin SMART</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Dispositivo *</label>
-                    <select name="entity_id" id="modal_entity_id" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                        @foreach($availableSnmpDevices as $sd)
-                            <option value="{{ $sd->id }}">{{ $sd->name }} ({{ $sd->ip_address }})</option>
-                        @endforeach
-                    </select>
+                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Notas / Observaciones</label>
+                    <textarea name="notes" id="modal_notes" rows="2" placeholder="Observaciones de soporte técnico, proveedor o recambio..." class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500"></textarea>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Número de Serie (S/N)</label>
-                    <input type="text" name="serial_number" id="modal_serial_number" placeholder="ej. FOC1842W0AB" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Versión de Firmware</label>
-                    <input type="text" name="firmware_version" id="modal_firmware_version" placeholder="ej. 15.0(2)SE11" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Fecha de Compra</label>
-                    <input type="date" name="purchase_date" id="modal_purchase_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Vencimiento de Garantía</label>
-                    <input type="date" name="warranty_end_date" id="modal_warranty_end_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Fin de Vida (EOL)</label>
-                    <input type="date" name="eol_date" id="modal_eol_date" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                    <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Salud SMART Discos</label>
-                    <select name="disk_health_status" id="modal_disk_health_status" class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500">
-                        <option value="ok">Saludable / OK</option>
-                        <option value="warning">Advertencia (Sectores Reasignados)</option>
-                        <option value="failing">Fallo Inminente / Crítico</option>
-                        <option value="unknown">Desconocido / Sin SMART</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Notas / Observaciones</label>
-                <textarea name="notes" id="modal_notes" rows="2" placeholder="Observaciones de soporte técnico, proveedor o recambio..." class="w-full px-2.5 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-emerald-500"></textarea>
-            </div>
-
-            <div class="pt-3 border-t border-obsidian-border flex items-center justify-end gap-2">
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0 bg-[#061527]">
                 <button type="button" onclick="closeLifecycleModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
                     Cancelar
                 </button>

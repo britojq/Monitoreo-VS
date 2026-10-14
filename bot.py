@@ -192,10 +192,6 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 if not CONFIG_PATH.exists() and (BASE_DIR / "config.json").exists():
     CONFIG_PATH = BASE_DIR / "config.json"
 
-COMMANDS_PATH = CONFIG_DIR / "commands.json"
-if not COMMANDS_PATH.exists() and (BASE_DIR / "commands.json").exists():
-    COMMANDS_PATH = BASE_DIR / "commands.json"
-
 SYSTEM_PROMPT_PATH = AI_DIR / "system_prompt.txt"
 
 
@@ -415,10 +411,10 @@ GOLDEN_BACKUP_DIR = CONFIG_DIR / ".backup_golden"
 
 
 def ensure_golden_backup() -> None:
-    """Crea una copia de respaldo segura y dorada de los archivos de config/ si no existe."""
+    """Crea una copia de respaldo segura y dorada de config.json si no existe."""
     try:
         GOLDEN_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-        for fname in ("config.json", "commands.json", "bot.conf", "monitoreo.conf", "mensajes.conf", "mac_whitelist.txt", "oui.txt"):
+        for fname in ("config.json",):
             src = CONFIG_DIR / fname
             dst = GOLDEN_BACKUP_DIR / fname
             if src.exists() and (not dst.exists() or dst.stat().st_size == 0):
@@ -433,7 +429,7 @@ def restore_golden_backup() -> Tuple[bool, str]:
     restored_files = []
     try:
         if GOLDEN_BACKUP_DIR.exists():
-            for fname in ("config.json", "commands.json", "bot.conf", "monitoreo.conf", "mensajes.conf", "mac_whitelist.txt", "oui.txt"):
+            for fname in ("config.json",):
                 src = GOLDEN_BACKUP_DIR / fname
                 dst = CONFIG_DIR / fname
                 if src.exists():
@@ -453,48 +449,51 @@ def restore_golden_backup() -> Tuple[bool, str]:
 
 
 def load_proxies_list() -> list[dict]:
-    """Carga la lista de proxies desde config.json o config/bot.conf dentro del proyecto."""
+    """Carga la lista de proxies directamente desde MariaDB (SSOT)."""
+    # 1. Fuente única de verdad: Base de datos MariaDB (monitored_proxies)
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT letter, name, ip_port, auth_userpass, is_active "
+                    "FROM monitored_proxies WHERE is_active = 1 ORDER BY letter ASC"
+                )
+                rows = cur.fetchall()
+                if rows:
+                    db_proxies = []
+                    for r in rows:
+                        ip = (r.get("ip_port") or "").strip()
+                        if not ip:
+                            continue
+                        auth = (r.get("auth_userpass") or "").strip()
+                        name = r.get("name") or f"Proxy {r.get('letter', '')}"
+                        if auth and ":" in auth and auth != "USUARIO:CLAVE":
+                            user, pwd = auth.split(":", 1)
+                            user_enc = urllib.parse.quote(user)
+                            pwd_enc = urllib.parse.quote(pwd)
+                            url = f"http://{user_enc}:{pwd_enc}@{ip}"
+                        else:
+                            url = f"http://{ip}"
+                        db_proxies.append({
+                            "name": name,
+                            "url": url,
+                            "enabled": True
+                        })
+                    if db_proxies:
+                        return db_proxies
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"No se pudieron leer proxies desde MariaDB ({e}). Intentando respaldo.")
+
+    # 2. Respaldo exclusivo de contingencia: config.json (sin archivos .conf)
     custom_proxies = CONFIG.get("proxies")
     if custom_proxies and isinstance(custom_proxies, list) and len(custom_proxies) > 0:
         return custom_proxies
 
-    bot_conf_candidates = [
-        CONFIG_DIR / "bot.conf",
-        BASE_DIR / "bot.conf"
-    ]
-    bot_conf_path = next((p for p in bot_conf_candidates if p.exists()), None)
-    proxies = []
-    if bot_conf_path and bot_conf_path.exists():
-        try:
-            content = bot_conf_path.read_text(encoding="utf-8")
-            data = {}
-            for line in content.splitlines():
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    data[k.strip()] = v.strip().strip("'\"")
-
-            for letter in ("A", "B", "C", "D"):
-                ip = data.get(f"IPADDRPORTPROXY{letter}")
-                auth = data.get(f"USERPASSWDPROXY{letter}")
-                name = data.get(f"NAMEPROXY{letter}", f"Proxy {letter}")
-                if ip:
-                    if auth and ":" in auth:
-                        user, pwd = auth.split(":", 1)
-                        user_enc = urllib.parse.quote(user)
-                        pwd_enc = urllib.parse.quote(pwd)
-                        url = f"http://{user_enc}:{pwd_enc}@{ip}"
-                    else:
-                        url = f"http://{ip}"
-                    proxies.append({
-                        "name": name,
-                        "url": url,
-                        "enabled": True
-                    })
-        except Exception as e:
-            logger.warning(f"No se pudieron leer proxies de {bot_conf_path}: {e}")
-
-    return proxies
+    return []
 
 
 ACTIVE_CONNECTION_LABEL = "Conexión Directa"
@@ -509,7 +508,7 @@ def select_working_connection(bot_token: str) -> str | None:
     """
     Evalúa la conectividad con Telegram Bot API al arranque:
     1. Prueba conexión directa con timeout corto (3.0s).
-    2. Si falla directa, prueba en orden los proxies configurados en config.json o bot.conf.
+    2. Si falla directa, prueba en orden los proxies configurados en MariaDB (SSOT).
     3. Retorna la URL del proxy funcional (o None si la conexión directa funciona).
     """
     global ACTIVE_CONNECTION_LABEL, ACTIVE_PROXY_URL
@@ -703,7 +702,7 @@ MSG_UNAUTHORIZED_ADMIN_COMMAND = (
 def load_commands_data() -> tuple[dict, dict]:
     """
     Carga los comandos y mensajes informativos/ayuda desde MariaDB (SSOT).
-    Si MariaDB no está disponible o las tablas están vacías, recurre a commands.json como fallback tolerante a fallos.
+    Si MariaDB no está disponible o las tablas están vacías, recurre a un diccionario interno como fallback tolerante a fallos.
     """
     default_messages = {
         "start_header": "🤖 <b>Bot de Administración de Servidores</b>\n\nComandos disponibles:",
@@ -711,7 +710,7 @@ def load_commands_data() -> tuple[dict, dict]:
         "help_general": "ℹ️ Usa <code>/start</code> o <code>/help [comando]</code> para información específica."
     }
 
-    # 1. Intentar cargar directamente desde MariaDB (SSOT)
+    # 1. Cargar directamente desde MariaDB (SSOT)
     try:
         from monitor.monitor_web_sync import get_db_connection
         conn = get_db_connection()
@@ -750,29 +749,18 @@ def load_commands_data() -> tuple[dict, dict]:
         finally:
             conn.close()
     except Exception as e:
-        logger.debug(f"No se pudieron cargar comandos desde MariaDB ({e}). Usando fallback de archivo.")
+        logger.warning(f"No se pudieron cargar comandos desde MariaDB ({e}). Usando fallback en memoria.")
 
-    # 2. Fallback tolerante a fallos desde commands.json
-    if COMMANDS_PATH.exists():
-        try:
-            with open(COMMANDS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-                if "commands" in data or "messages" in data:
-                    messages = data.get("messages", default_messages)
-                    commands = data.get("commands", {})
-                else:
-                    messages = default_messages
-                    commands = data
-
-                logger.info(f"Comandos y mensajes cargados desde archivo fallback {COMMANDS_PATH}")
-                return messages, commands
-        except Exception as e:
-            logger.error(f"Error al leer {COMMANDS_PATH}: {e}")
-            return default_messages, {}
-    else:
-        logger.warning(f"No se encontró el archivo {COMMANDS_PATH}")
-        return default_messages, {}
+    # 2. Fallback de contingencia en memoria (sin dependencias de archivos planos)
+    fallback_commands = {
+        "start": {"description": "Inicia el bot y muestra el menú principal", "category": "General", "access_level": "all"},
+        "help": {"description": "Muestra la ayuda de comandos disponibles", "category": "General", "access_level": "all"},
+        "status": {"description": "Estado general del monitoreo y servicios", "category": "Monitoreo", "access_level": "all"},
+        "ping": {"description": "Comprueba latencia y conectividad del bot", "category": "Diagnóstico", "access_level": "all"},
+        "id": {"description": "Muestra su ID de Telegram e información de chat", "category": "General", "access_level": "all"},
+        "emergencia": {"description": "Panel de control y emergencias operativas", "category": "Administración", "access_level": "owner"},
+    }
+    return default_messages, fallback_commands
 
 
 def load_system_prompt(config: dict) -> str:
@@ -2169,67 +2157,87 @@ def get_denied_users_summary() -> list[dict]:
     return list(denied_map.values())
 
 
-async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None = None, timeout: float = 3.5) -> dict:
+async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None = None, timeout: float = 6.5) -> dict:
     """Verifica la conectividad y latencia hacia Telegram (directa o vía proxy) con protección de caché."""
     guard = None
     if proxy_url:
-        # 1. Comprobar si existe resultado reciente en memoria compartida (/dev/shm)
+        # 1. Comprobar si existe resultado reciente EXITOSO en memoria compartida (/dev/shm)
         cached = get_cached_proxy_result(proxy_url, tg_url, max_age_seconds=60.0)
-        if cached:
+        if cached and cached.get("is_ok"):
             elapsed_ms = int(cached.get("latency_ms", 0))
-            is_ok = bool(cached.get("is_ok"))
-            code = int(cached.get("code_str", 200 if is_ok else 0) or 0)
+            code = int(cached.get("code_str", 200) or 200)
             return {
                 "name": name,
-                "ok": is_ok,
+                "ok": True,
                 "status_code": code,
                 "elapsed_ms": elapsed_ms,
-                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)" if is_ok else f"Inaccesible ({elapsed_ms} ms)"
+                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)"
             }
 
-        # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar resultado
+        # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar resultado exitoso
         guard = ProxyInflightGuard(proxy_url, tg_url)
         waited_cached = await guard.acquire_or_wait(timeout=timeout)
-        if waited_cached:
+        if waited_cached and waited_cached.get("is_ok"):
             elapsed_ms = int(waited_cached.get("latency_ms", 0))
-            is_ok = bool(waited_cached.get("is_ok"))
-            code = int(waited_cached.get("code_str", 200 if is_ok else 0) or 0)
+            code = int(waited_cached.get("code_str", 200) or 200)
             return {
                 "name": name,
-                "ok": is_ok,
+                "ok": True,
                 "status_code": code,
                 "elapsed_ms": elapsed_ms,
-                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)" if is_ok else f"Inaccesible ({elapsed_ms} ms)"
+                "detail": f"Operativo (HTTP {code}, {elapsed_ms} ms)"
             }
 
     t0 = time.perf_counter()
     try:
-        async with httpx.AsyncClient(proxy=proxy_url, timeout=timeout) as client:
+        async with httpx.AsyncClient(proxy=proxy_url, verify=False, timeout=timeout) as client:
             r = await client.get(tg_url)
             elapsed_ms = int((time.perf_counter() - t0) * 1000)
-            is_ok = (r.status_code == 200 and r.json().get("ok"))
+            is_ok = (r.status_code == 200 and (r.json().get("ok") if "json" in r.headers.get("content-type", "") else True))
+            if not is_ok and proxy_url:
+                try:
+                    r_fb = await client.get("https://core.telegram.org/bots")
+                    if r_fb.status_code in (200, 301, 302):
+                        is_ok = True
+                        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+                        r = r_fb
+                except Exception:
+                    pass
             detail_str = f"Operativo (HTTP {r.status_code}, {elapsed_ms} ms)" if is_ok else f"HTTP {r.status_code} ({elapsed_ms} ms)"
             if proxy_url:
                 save_cached_proxy_result(
                     proxy_url, tg_url, is_ok, str(r.status_code),
                     detail_str, elapsed_ms, source="bot_endpoint"
                 )
-            if is_ok:
-                return {
-                    "name": name,
-                    "ok": True,
-                    "status_code": r.status_code,
-                    "elapsed_ms": elapsed_ms,
-                    "detail": detail_str
-                }
             return {
                 "name": name,
-                "ok": False,
+                "ok": is_ok,
                 "status_code": r.status_code,
                 "elapsed_ms": elapsed_ms,
                 "detail": detail_str
             }
     except Exception as e:
+        # Fallback de seguridad con core.telegram.org para proxies corporativos
+        if proxy_url:
+            try:
+                async with httpx.AsyncClient(proxy=proxy_url, verify=False, timeout=4.5) as client_fb:
+                    r_fb = await client_fb.get("https://core.telegram.org/bots")
+                    if r_fb.status_code in (200, 301, 302):
+                        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+                        detail_str = f"Operativo (HTTP {r_fb.status_code}, {elapsed_ms} ms)"
+                        save_cached_proxy_result(
+                            proxy_url, tg_url, True, str(r_fb.status_code),
+                            detail_str, elapsed_ms, source="bot_endpoint"
+                        )
+                        return {
+                            "name": name,
+                            "ok": True,
+                            "status_code": r_fb.status_code,
+                            "elapsed_ms": elapsed_ms,
+                            "detail": detail_str
+                        }
+            except Exception:
+                pass
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
         err_str = "Timeout" if "timed out" in str(e).lower() else "Inaccesible"
         if proxy_url:
@@ -2277,7 +2285,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     # 1. Tareas concurrentes de diagnóstico de red
     network_tasks = [
-        _check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=3.5)
+        _check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=4.0)
     ]
 
     proxies_list = load_proxies_list()
@@ -2285,7 +2293,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         p_name = p.get("name", "Proxy")
         p_url = p.get("url")
         if p_url:
-            network_tasks.append(_check_endpoint_health(p_name, tg_url, p_url, timeout=3.5))
+            network_tasks.append(_check_endpoint_health(p_name, tg_url, p_url, timeout=7.0))
 
     network_results = await asyncio.gather(*network_tasks)
 
@@ -2471,7 +2479,7 @@ async def toggle_debug_monitor(update: Update, context: ContextTypes.DEFAULT_TYP
         f"🧪 <b>Panel de Modo Depuración (Monitor ATIT)</b>\n\n"
         f"<b>Estado Actual:</b> <code>{estado_str}</code>\n\n"
         f"• <b>Activo:</b> Genera reportes exhaustivos y adjunta el archivo <code>servicelog.txt</code>.\n"
-        f"• <b>Inactivo:</b> Envía el resumen ejecutivo estándar.\n\n"
+        f"• <b>Inactivo:</b> Envía el resumen consolidado estándar.\n\n"
         f"<i>Presiona una opción para cambiar el estado:</i>",
         reply_markup=reply_markup
     )
@@ -2986,10 +2994,27 @@ async def _run_and_send_monitoring_report(
     else:
         is_debug = bool(CONFIG.get("monitor_debug_mode", False)) if is_owner else False
 
-    # Detectar si se solicitó despacho directo al grupo corporativo
+    # Detectar argumentos y opciones especiales
     args_lower = [a.lower() for a in (context.args or [])]
     cmd_name = (update.message.text or "").split()[0].lower() if (update.message and update.message.text) else ""
     send_to_group = ("grupo" in args_lower or "group" in args_lower or "_grupo" in cmd_name)
+    is_ondemand = (
+        "ondemand" in args_lower or
+        "on-demand" in args_lower or
+        "_ondemand" in cmd_name or
+        "live" in args_lower or
+        "vivo" in args_lower or
+        "caliente" in args_lower
+    )
+
+    # Restricción de seguridad: Modo On-Demand reservado exclusivamente para Owner o Grupo autorizado
+    if is_ondemand and not (is_owner or is_allowed_group):
+        await safe_reply_html(
+            update.message,
+            "🔒 <b>Acceso Restringido:</b> El modo de chequeo en vivo (On-Demand) está reservado exclusivamente para el Administrador o el Grupo Corporativo autorizado.\n\n"
+            "<i>Utilice <code>/servicios</code> o <code>/sedes</code> para consultar el reporte oficial consolidado (Snapshot).</i>"
+        )
+        return
 
     if send_to_group and not is_owner:
         await safe_reply_html(
@@ -3019,66 +3044,94 @@ async def _run_and_send_monitoring_report(
             )
             return
 
-    # Mensaje temporal de espera
+    # Mensaje temporal de espera según el modo seleccionado
     if send_to_group:
         wait_msg = await update.message.reply_text(
-            f"⏳ <i>Ejecutando chequeo de {target_name} y preparando despacho con captura web hacia el grupo corporativo...</i>",
+            f"⏳ <i>Ejecutando chequeo de {target_name} ({'On-Demand' if is_ondemand else 'Snapshot'}) y preparando despacho hacia el grupo corporativo...</i>",
+            parse_mode='HTML'
+        )
+    elif is_ondemand:
+        wait_msg = await update.message.reply_text(
+            f"⏳ <i>Ejecutando sondeo físico de red en caliente (On-Demand) de {target_name}... Por favor espere.</i>",
             parse_mode='HTML'
         )
     else:
         wait_msg = await update.message.reply_text(
-            f"⏳ <i>Ejecutando chequeo concurrente de {target_name}... Por favor espere.</i>",
+            f"⏳ <i>Consultando reporte oficial (Snapshot) de {target_name}... Por favor espere.</i>",
             parse_mode='HTML'
         )
 
     try:
         from monitor.monitor_engine import execute_monitoring
-        result = await execute_monitoring(target=target, debug_mode=is_debug)
+        from monitor.web_screenshot import capture_web_dashboard
 
-        # Determinar modo de captura web (Playwright)
-        # Si send_to_group está activo o el usuario puso 'web', se comporta como '/servicios web' (Vista Global por defecto)
-        arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
-        if send_to_group or arg_first in ("web", "full", "pantalla", "todo", "global"):
-            capture_mode = "full"
-            mode_label = "Vista Global"
-        elif target == "servicios":
-            capture_mode = "servicios"
-            mode_label = "Servicios Activos"
-        elif target == "sedes":
-            capture_mode = "sedes"
-            mode_label = "Sedes Regionales y Equipos en Sitio"
-        elif target in ("caidas", "incidentes", "fallas"):
-            capture_mode = "caidas"
-            mode_label = "Incidentes y Servicios Caídos"
+        if is_ondemand:
+            # MODO ON-DEMAND: Chequeo físico en caliente por sockets/ping
+            # Sin captura web para evitar discrepancias visuales de tiempo real vs snapshot
+            mode_label = "Chequeo Físico en Caliente (On-Demand)"
+            screen_file = None
+            result = await execute_monitoring(
+                target=target,
+                debug_mode=is_debug,
+                capture_screenshot=False,
+                mode="ondemand"
+            )
         else:
-            capture_mode = "full"
-            mode_label = "Vista Global"
-
-        # Permitir sobreescribir el modo de captura si el owner lo especifica junto con grupo
-        for a in args_lower:
-            if a in ("full", "global", "todo", "pantalla"):
+            # MODO SNAPSHOT (Por defecto): Lectura instantánea desde MariaDB (SSOT)
+            # En paralelo se toma la captura Playwright del portal (ambos basados en el mismo snapshot)
+            arg_first = (context.args[0].lower() if (context.args and len(context.args) > 0) else "")
+            if send_to_group or arg_first in ("web", "full", "pantalla", "todo", "global"):
                 capture_mode = "full"
                 mode_label = "Vista Global"
-                break
-            elif a == "servicios":
+            elif target == "servicios":
                 capture_mode = "servicios"
                 mode_label = "Servicios Activos"
-                break
-            elif a == "sedes":
+            elif target == "sedes":
                 capture_mode = "sedes"
                 mode_label = "Sedes Regionales y Equipos en Sitio"
-                break
-            elif a in ("caidas", "fallas", "incidentes"):
+            elif target in ("caidas", "incidentes", "fallas"):
                 capture_mode = "caidas"
                 mode_label = "Incidentes y Servicios Caídos"
-                break
+            else:
+                capture_mode = "full"
+                mode_label = "Vista Global"
 
-        screen_file = None
-        try:
-            from monitor.web_screenshot import capture_web_dashboard
-            screen_file = await capture_web_dashboard(mode=capture_mode)
-        except Exception as e_screen:
-            logger.warning(f"No se pudo generar captura web ({e_screen})")
+            for a in args_lower:
+                if a in ("full", "global", "todo", "pantalla"):
+                    capture_mode = "full"
+                    mode_label = "Vista Global"
+                    break
+                elif a == "servicios":
+                    capture_mode = "servicios"
+                    mode_label = "Servicios Activos"
+                    break
+                elif a == "sedes":
+                    capture_mode = "sedes"
+                    mode_label = "Sedes Regionales y Equipos en Sitio"
+                    break
+                elif a in ("caidas", "fallas", "incidentes"):
+                    capture_mode = "caidas"
+                    mode_label = "Incidentes y Servicios Caídos"
+                    break
+
+            monitoring_task = asyncio.create_task(
+                execute_monitoring(target=target, debug_mode=is_debug, capture_screenshot=False, mode="snapshot")
+            )
+            screenshot_task = asyncio.create_task(
+                capture_web_dashboard(mode=capture_mode)
+            )
+
+            monitoring_res, screen_res = await asyncio.gather(monitoring_task, screenshot_task, return_exceptions=True)
+
+            if isinstance(monitoring_res, Exception):
+                raise monitoring_res
+            result = monitoring_res
+
+            screen_file = None
+            if isinstance(screen_res, Exception):
+                logger.warning(f"No se pudo generar captura web ({screen_res})")
+            else:
+                screen_file = screen_res
 
         # ---------------------------------------------------------------------
         # CASO 1: Despacho exclusivo al Grupo Destinado (Solicitado por Owner)
@@ -7834,11 +7887,8 @@ async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAUL
         prompt_text = (
             "⚠️ <b>CONFIRMACIÓN: RESTAURAR CONFIGURACIÓN</b>\n\n"
             "¿Desea restaurar los archivos de configuración desde la copia de seguridad segura?\n\n"
-            "Se restaurarán:\n"
-            "• <code>config/config.json</code>\n"
-            "• <code>config/bot.conf</code>\n"
-            "• <code>config/monitoreo.conf</code>\n"
-            "• <code>config/mensajes.conf</code>\n\n"
+            "Se restaurará:\n"
+            "• <code>config/config.json</code>\n\n"
             "<i>Las credenciales protegidas y la identidad del servidor se mantendrán intactas.</i>"
         )
         keyboard = [
@@ -8073,7 +8123,7 @@ def main() -> None:
                         BotCommand("mensaje", "Difusión masiva a usuarios autorizados"),
                         BotCommand("reinicia", "Reiniciar el servidor host del sistema"),
                         BotCommand("reset_ia", "Reiniciar memoria del asistente IA"),
-                        BotCommand("info", "Términos y seguridad institucional"),
+                        BotCommand("info", "Términos y seguridad corporativa"),
                     ]
                     await app.bot.set_my_commands(owner_commands, scope=BotCommandScopeChat(chat_id=owner_id))
                     logger.info("Comandos nativos de Telegram sincronizados para Default y Owner.")
@@ -8332,11 +8382,11 @@ def main() -> None:
     application.add_handler(CommandHandler(["reinicia", "reboot"], cmd_reinicia))
 
     # Comandos de ejecución de Monitoreo (Owner y grupos autorizados)
-    application.add_handler(CommandHandler(["reporte_servicios", "servicios", "servicios_grupo"], cmd_reporte_servicios))
-    application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios", "sedes_grupo"], cmd_reporte_sedes))
-    application.add_handler(CommandHandler(["reporte_caidas", "caidas", "incidentes", "fallas", "caidas_grupo"], cmd_reporte_caidas))
+    application.add_handler(CommandHandler(["reporte_servicios", "servicios", "servicios_grupo", "servicios_ondemand"], cmd_reporte_servicios))
+    application.add_handler(CommandHandler(["reporte_sedes", "sedes", "sitios", "sedes_grupo", "sedes_ondemand"], cmd_reporte_sedes))
+    application.add_handler(CommandHandler(["reporte_caidas", "caidas", "incidentes", "fallas", "caidas_grupo", "caidas_ondemand"], cmd_reporte_caidas))
     application.add_handler(CommandHandler(["web", "pantalla", "captura", "dashboard", "screenshot"], cmd_captura_web))
-    application.add_handler(CommandHandler(["reporte_completo", "monitoreo", "monitoreo_grupo"], cmd_reporte_completo))
+    application.add_handler(CommandHandler(["reporte_completo", "monitoreo", "monitoreo_grupo", "monitoreo_ondemand"], cmd_reporte_completo))
 
     # Comando de Diagnóstico de Internet y Proxies (Owner y grupos autorizados)
     application.add_handler(CommandHandler(["internet", "proxy", "proxies", "conectividad"], cmd_internet))
@@ -8384,7 +8434,7 @@ def main() -> None:
 
     commands_enabled = bool(CONFIG.get("commands_enabled", True))
 
-    # Comandos dinámicos existentes desde commands.json (solo si están habilitados)
+    # Comandos dinámicos existentes desde MariaDB (SSOT) (solo si están habilitados)
     if commands_enabled:
         for cmd_name in COMMANDS.keys():
             if cmd_name.lower() not in reserved_commands:

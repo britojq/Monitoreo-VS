@@ -31,6 +31,10 @@ class TestWanQualityAndConfigsIntegration(unittest.TestCase):
 
     def tearDown(self):
         try:
+            with self.db.cursor() as cur:
+                cur.execute("DELETE FROM config_change_logs WHERE device_configuration_id IN (SELECT id FROM device_configurations WHERE device_name = 'TEST-ROUTER');")
+                cur.execute("DELETE FROM device_configurations WHERE device_name = 'TEST-ROUTER';")
+                self.db.commit()
             self.db.close()
         except Exception:
             pass

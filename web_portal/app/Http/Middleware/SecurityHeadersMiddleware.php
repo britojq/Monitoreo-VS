@@ -33,9 +33,12 @@ class SecurityHeadersMiddleware
         // Restricción de APIs del navegador no requeridas en el portal
         $response->headers->set('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=()');
 
-        // HSTS si la conexión es HTTPS
-        if ($request->isSecure()) {
+        // HSTS solo si se habilita explícitamente en .env para dominios con SSL público
+        if (env('ENABLE_HSTS', false) && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        } else {
+            // max-age=0 purga de inmediato cualquier HSTS previo recordado por el navegador para permitir HTTP fluido
+            $response->headers->set('Strict-Transport-Security', 'max-age=0');
         }
 
         return $response;

@@ -1,68 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
+use App\Models\BotSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AdminCronController extends Controller
 {
-    protected string $configPath = '/scripts/telegram-admin-bot/config/config.json';
-
     /**
-     * Obtiene la configuración de cron de forma estructurada.
+     * Obtiene la configuración de cron de forma estructurada directamente desde MariaDB (SSOT).
      */
     public function getCronConfig(): array
     {
         $default = [
-            'enabled' => true,
-            'schedules' => ['07:30', '16:00'],
-            'updated_at' => '',
-            'updated_by' => 'Sistema',
+            'enabled' => (bool) BotSetting::get('cron_reports_enabled', false),
+            'schedules' => BotSetting::get('cron_schedules', ['07:30', '16:00']),
+            'updated_at' => (string) BotSetting::get('cron_reports_updated_at', ''),
+            'updated_by' => (string) BotSetting::get('cron_reports_updated_by', 'Sistema'),
             'next_schedule' => null,
             'next_day' => 'hoy',
-            'web_check_interval' => 10,
-            'web_check_interval_updated_at' => '',
-            'web_check_interval_updated_by' => 'Sistema',
+            'web_check_interval' => (int) BotSetting::get('web_check_interval_minutes', 60),
+            'web_check_interval_updated_at' => (string) BotSetting::get('web_check_interval_updated_at', ''),
+            'web_check_interval_updated_by' => (string) BotSetting::get('web_check_interval_updated_by', 'Sistema'),
         ];
 
-        if (file_exists($this->configPath)) {
-            try {
-                $content = @file_get_contents($this->configPath);
-                $data = json_decode($content, true) ?: [];
+        if (is_array($default['schedules'])) {
+            sort($default['schedules']);
+            $default['schedules'] = array_values(array_unique($default['schedules']));
+        } else {
+            $default['schedules'] = ['07:30', '16:00'];
+        }
 
-                $default['enabled'] = (bool) ($data['cron_reports_enabled'] ?? true);
-                $schedules = $data['cron_schedules'] ?? ['07:30', '16:00'];
-                if (is_array($schedules)) {
-                    sort($schedules);
-                    $default['schedules'] = array_values(array_unique($schedules));
-                }
-                $default['updated_at'] = $data['cron_reports_updated_at'] ?? '';
-                $default['updated_by'] = $data['cron_reports_updated_by'] ?? 'Sistema';
-                $default['web_check_interval'] = (int) ($data['web_check_interval_minutes'] ?? 10);
-                $default['web_check_interval_updated_at'] = $data['web_check_interval_updated_at'] ?? '';
-                $default['web_check_interval_updated_by'] = $data['web_check_interval_updated_by'] ?? 'Sistema';
-
-                // Calcular próximo envío
-                $nowHm = date('H:i');
-                foreach ($default['schedules'] as $sch) {
-                    if ($sch > $nowHm) {
-                        $default['next_schedule'] = $sch;
-                        $default['next_day'] = 'hoy';
-                        break;
-                    }
-                }
-                if (!$default['next_schedule'] && !empty($default['schedules'])) {
-                    $default['next_schedule'] = $default['schedules'][0];
-                    $default['next_day'] = 'mañana';
-                }
-
-            } catch (\Throwable $e) {
-                Log::error('Error leyendo config.json para cron: ' . $e->getMessage());
+        // Calcular próximo envío
+        $nowHm = date('H:i');
+        foreach ($default['schedules'] as $sch) {
+            if ($sch > $nowHm) {
+                $default['next_schedule'] = $sch;
+                $default['next_day'] = 'hoy';
+                break;
             }
+        }
+        if (!$default['next_schedule'] && !empty($default['schedules'])) {
+            $default['next_schedule'] = $default['schedules'][0];
+            $default['next_day'] = 'mañana';
         }
 
         return $default;
@@ -78,23 +63,23 @@ class AdminCronController extends Controller
         $nowStr = date('Y-m-d H:i:s');
 
         try {
-            $data = $this->readRawConfig();
-            $currentState = (bool) ($data['cron_reports_enabled'] ?? true);
+            $currentState = (bool) BotSetting::get('cron_reports_enabled', false);
             $newState = !$currentState;
 
-            $data['cron_reports_enabled'] = $newState;
-            $data['cron_reports_updated_at'] = $nowStr;
-            $data['cron_reports_updated_by'] = $adminName;
+            BotSetting::set('cron_reports_enabled', $newState, 'cron', 'Envíos Automáticos de Reportes Programados', 'boolean');
+            BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
+            BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
 
-            $this->writeRawConfig($data);
+            // Exportación unidireccional para demonios en Python
+            BotSetting::syncToFile();
 
             $msg = $newState 
-                ? 'Envíos programados por cron ACTIVADOS correctamente.' 
-                : 'Envíos programados por cron PAUSADOS correctamente.';
+                ? 'Envíos programados por cron ACTIVADOS correctamente en la base de datos central.' 
+                : 'Envíos programados por cron PAUSADOS correctamente en la base de datos central.';
 
             return back()->with('success', $msg);
         } catch (\Throwable $e) {
-            Log::error('Error alternando estado de cron: ' . $e->getMessage());
+            Log::error('Error alternando estado de cron en MariaDB: ' . $e->getMessage());
             return back()->with('error', 'No fue posible actualizar el estado de los envíos programados.');
         }
     }
@@ -110,31 +95,34 @@ class AdminCronController extends Controller
             'time.regex' => 'El horario debe tener formato válido de 24 horas (HH:MM).',
         ]);
 
-        $newTime = trim($validated['time']);
+        $newTime = trim((string) $validated['time']);
         $user = $request->user();
         $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
         $nowStr = date('Y-m-d H:i:s');
 
         try {
-            $data = $this->readRawConfig();
-            $schedules = $data['cron_schedules'] ?? ['07:30', '16:00'];
+            $schedules = BotSetting::get('cron_schedules', ['07:30', '16:00']);
             if (!is_array($schedules)) {
                 $schedules = ['07:30', '16:00'];
             }
 
-            if (!in_array($newTime, $schedules)) {
+            if (!in_array($newTime, $schedules, true)) {
                 $schedules[] = $newTime;
                 sort($schedules);
-                $data['cron_schedules'] = array_values(array_unique($schedules));
-                $data['cron_reports_updated_at'] = $nowStr;
-                $data['cron_reports_updated_by'] = $adminName;
-                $this->writeRawConfig($data);
+                $cleanSchedules = array_values(array_unique($schedules));
+
+                BotSetting::set('cron_schedules', $cleanSchedules, 'cron', 'Horarios de Envío de Reportes', 'json');
+                BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
+                BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
+
+                BotSetting::syncToFile();
+
                 return back()->with('success', "Horario {$newTime} agregado exitosamente a la programación.");
             }
 
             return back()->with('info', "El horario {$newTime} ya se encuentra programado.");
         } catch (\Throwable $e) {
-            Log::error('Error añadiendo horario cron: ' . $e->getMessage());
+            Log::error('Error añadiendo horario cron en MariaDB: ' . $e->getMessage());
             return back()->with('error', 'Error al guardar el nuevo horario.');
         }
     }
@@ -148,32 +136,35 @@ class AdminCronController extends Controller
             'time' => ['required', 'string'],
         ]);
 
-        $timeToRemove = trim($validated['time']);
+        $timeToRemove = trim((string) $validated['time']);
         $user = $request->user();
         $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
         $nowStr = date('Y-m-d H:i:s');
 
         try {
-            $data = $this->readRawConfig();
-            $schedules = $data['cron_schedules'] ?? ['07:30', '16:00'];
+            $schedules = BotSetting::get('cron_schedules', ['07:30', '16:00']);
             if (!is_array($schedules)) {
                 $schedules = ['07:30', '16:00'];
             }
 
-            $key = array_search($timeToRemove, $schedules);
+            $key = array_search($timeToRemove, $schedules, true);
             if ($key !== false) {
                 unset($schedules[$key]);
                 sort($schedules);
-                $data['cron_schedules'] = array_values($schedules);
-                $data['cron_reports_updated_at'] = $nowStr;
-                $data['cron_reports_updated_by'] = $adminName;
-                $this->writeRawConfig($data);
+                $cleanSchedules = array_values($schedules);
+
+                BotSetting::set('cron_schedules', $cleanSchedules, 'cron', 'Horarios de Envío de Reportes', 'json');
+                BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
+                BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
+
+                BotSetting::syncToFile();
+
                 return back()->with('success', "Horario {$timeToRemove} eliminado de la programación.");
             }
 
             return back()->with('warning', "El horario {$timeToRemove} no fue encontrado.");
         } catch (\Throwable $e) {
-            Log::error('Error eliminando horario cron: ' . $e->getMessage());
+            Log::error('Error eliminando horario cron en MariaDB: ' . $e->getMessage());
             return back()->with('error', 'Error al eliminar el horario.');
         }
     }
@@ -198,31 +189,16 @@ class AdminCronController extends Controller
         $nowStr = date('Y-m-d H:i:s');
 
         try {
-            $data = $this->readRawConfig();
-            $data['web_check_interval_minutes'] = $interval;
-            $data['web_check_interval_updated_at'] = $nowStr;
-            $data['web_check_interval_updated_by'] = $adminName;
-            $this->writeRawConfig($data);
+            BotSetting::set('web_check_interval_minutes', $interval, 'cron', 'Intervalo de Sondeo Web (minutos)', 'integer');
+            BotSetting::set('web_check_interval_updated_at', $nowStr, 'cron', 'Última Actualización de Intervalo Web', 'text');
+            BotSetting::set('web_check_interval_updated_by', $adminName, 'cron', 'Usuario que Actualizó Intervalo Web', 'text');
+
+            BotSetting::syncToFile();
 
             return back()->with('success', "Frecuencia de monitoreo y actualización web configurada a {$interval} minutos exitosamente.");
         } catch (\Throwable $e) {
-            Log::error('Error actualizando intervalo de monitoreo web: ' . $e->getMessage());
+            Log::error('Error actualizando intervalo de monitoreo web en MariaDB: ' . $e->getMessage());
             return back()->with('error', 'Error al guardar el nuevo intervalo de monitoreo web.');
         }
-    }
-
-    protected function readRawConfig(): array
-    {
-        if (!file_exists($this->configPath)) {
-            return [];
-        }
-        $raw = @file_get_contents($this->configPath);
-        return json_decode($raw, true) ?: [];
-    }
-
-    protected function writeRawConfig(array $data): void
-    {
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        @file_put_contents($this->configPath, $json . "\n");
     }
 }

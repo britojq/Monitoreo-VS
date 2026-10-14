@@ -61,7 +61,7 @@ def parse_bash_templates(filepath: Path) -> Dict[str, str]:
 def load_templates_from_mariadb() -> Dict[str, str]:
     """Carga las plantillas de mensajes oficiales directamente desde MariaDB (SSOT)."""
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -206,7 +206,7 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
     raw_monitoreo: Dict[str, str] = {}
     raw_bot: Dict[str, str] = {}
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -275,7 +275,7 @@ def load_raw_configs_from_mariadb() -> Tuple[Dict[str, str], Dict[str, str]]:
 def load_services_from_mariadb() -> List[ServiceConfig]:
     """Extrae la lista de servicios activos directamente desde MariaDB (SSOT)."""
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -343,7 +343,7 @@ def load_services_from_mariadb() -> List[ServiceConfig]:
 def load_sites_from_mariadb() -> List[SiteConfig]:
     """Extrae la lista de sedes y sus equipos de comunicación activos desde MariaDB (SSOT)."""
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -416,7 +416,7 @@ def load_sites_from_mariadb() -> List[SiteConfig]:
 def load_proxies_from_mariadb() -> List[ProxyConfig]:
     """Extrae la lista de proxies configurados directamente desde MariaDB (SSOT)."""
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -489,123 +489,21 @@ class MonitorConfigLoader:
     """Cargador estructurado de configuraciones de monitoreo con MariaDB como SSOT."""
 
     def __init__(self):
-        self.monitoreo_path = get_config_path("monitoreo.conf")
-        self.mensajes_path = get_config_path("mensajes.conf")
-        self.bot_path = get_config_path("bot.conf")
-
-        self.raw_monitoreo = parse_bash_config(self.monitoreo_path)
-        self.raw_bot = parse_bash_config(self.bot_path)
-        self.templates = parse_bash_templates(self.mensajes_path)
-
-        # 1. Overlay dinámico de MariaDB para variables bash
+        # MariaDB es la única fuente de verdad (SSOT).
         db_raw_monitoreo, db_raw_bot = load_raw_configs_from_mariadb()
-        if db_raw_monitoreo:
-            self.raw_monitoreo.update(db_raw_monitoreo)
-        if db_raw_bot:
-            self.raw_bot.update(db_raw_bot)
-
-        # 2. Overlay dinámico de MariaDB para plantillas de mensajes
-        db_templates = load_templates_from_mariadb()
-        if db_templates:
-            self.templates.update(db_templates)
+        self.raw_monitoreo = db_raw_monitoreo or {}
+        self.raw_bot = db_raw_bot or {}
+        self.templates = load_templates_from_mariadb() or {}
 
     def get_services(self) -> List[ServiceConfig]:
-        """Extrae la lista de servicios configurados (primero MariaDB, fallback monitoreo.conf)."""
-        db_services = load_services_from_mariadb()
-        if db_services:
-            return db_services
-
-        # Fallback histórico a monitoreo.conf
-        services: List[ServiceConfig] = []
-        for code in range(ord('A'), ord('Z') + 1):
-            letter = chr(code)
-            stype = self.raw_monitoreo.get(f"TYPESERVICE{letter}")
-            name = self.raw_monitoreo.get(f"NAMESERVICE{letter}")
-            if not stype or not name or name.strip().upper() in ("NO CONFIGURADO", "SIN CONFIGURAR", "") or stype.strip().upper() in ("DESACTIVADO", "INACTIVO"):
-                continue
-
-            svc = ServiceConfig(
-                letter=letter,
-                service_type=stype.strip().upper(),
-                name=name.strip(),
-                web_url=self.raw_monitoreo.get(f"WEBSERVICE{letter}", "").strip(),
-                ip_host=self.raw_monitoreo.get(f"IPSERVICE{letter}", "").strip(),
-                cups_port_ip=self.raw_monitoreo.get(f"CUPSPORTIP{letter}", "").strip(),
-                ldap_port_ip=self.raw_monitoreo.get(f"LDAPPORTIP{letter}", "").strip(),
-                smtp_port=self.raw_monitoreo.get(f"SMTPPORT{letter}", "").strip(),
-                net_interface=self.raw_monitoreo.get(f"NETINTERFACE{letter}", "").strip(),
-                dns_test_host=self.raw_monitoreo.get(f"TESTHOSTDNS{letter}", "").strip(),
-                proxy_user_pass=self.raw_monitoreo.get(f"PROXYUSERPASSW{letter}", "").strip(),
-                proxy_ip_port=self.raw_monitoreo.get(f"PROXYIPPORT{letter}", "").strip(),
-                url_test_site=self.raw_monitoreo.get(f"URLTESTSITE{letter}", "").strip(),
-                msg_normal=self.raw_monitoreo.get(f"NORMALESTATEMSG{letter}", f"✅ {name}: Operativo").strip(),
-                msg_error=self.raw_monitoreo.get(f"ERRORESTATEMSG{letter}", f"❌ {name}: Falla").strip()
-            )
-            services.append(svc)
-        return services
+        """Extrae la lista de servicios configurados directamente desde MariaDB (SSOT)."""
+        return load_services_from_mariadb()
 
     def get_sites(self) -> List[SiteConfig]:
-        """Extrae la lista de sedes y equipos de comunicación (primero MariaDB, fallback monitoreo.conf)."""
-        db_sites = load_sites_from_mariadb()
-        if db_sites:
-            return db_sites
-
-        # Fallback histórico a monitoreo.conf
-        sites: List[SiteConfig] = []
-        for code in range(ord('A'), ord('H') + 1):
-            letter = chr(code)
-            site_name = self.raw_monitoreo.get(f"NAMESITE{letter}")
-            site_ip = self.raw_monitoreo.get(f"IPSITE{letter}")
-            if not site_name or not site_ip or site_name.strip().upper() in ("NO CONFIGURADO", "SIN CONFIGURAR", ""):
-                continue
-
-            site = SiteConfig(
-                letter=letter,
-                name=site_name.strip(),
-                ip_host=site_ip.strip(),
-                msg_normal=self.raw_monitoreo.get(f"NORMALSITE{letter}", f"✅ {site_name}: Operativo").strip(),
-                msg_error=self.raw_monitoreo.get(f"ERRORSITE{letter}", f"❌ {site_name}: Falla").strip(),
-                equipment=[]
-            )
-
-            for num in range(1, 9):
-                eq_name = self.raw_monitoreo.get(f"NAMESITE{letter}EQUIPO{num}")
-                eq_ip = self.raw_monitoreo.get(f"IPSITE{letter}EQUIPO{num}")
-                if not eq_name or not eq_ip or eq_name.strip().upper() in ("NO CONFIGURADO", "SIN CONFIGURAR", ""):
-                    continue
-
-                eq = EquipmentConfig(
-                    site_letter=letter,
-                    num=num,
-                    name=eq_name.strip(),
-                    ip_host=eq_ip.strip(),
-                    msg_normal=self.raw_monitoreo.get(f"NORMALSITE{letter}EQUIPO{num}", f"✅ {eq_name}: Operativo").strip(),
-                    msg_error=self.raw_monitoreo.get(f"ERRORSITE{letter}EQUIPO{num}", f"❌ {eq_name}: Falla").strip()
-                )
-                site.equipment.append(eq)
-
-            sites.append(site)
-        return sites
+        """Extrae la lista de sedes y equipos de comunicación directamente desde MariaDB (SSOT)."""
+        return load_sites_from_mariadb()
 
     def get_proxies(self) -> List[ProxyConfig]:
-        """Extrae la lista de proxies (primero MariaDB, fallback bot.conf / monitoreo.conf)."""
-        db_proxies = load_proxies_from_mariadb()
-        if db_proxies:
-            return db_proxies
+        """Extrae la lista de proxies configurados directamente desde MariaDB (SSOT)."""
+        return load_proxies_from_mariadb()
 
-        # Fallback histórico
-        proxies: List[ProxyConfig] = []
-        for letter in ("A", "B", "C", "D"):
-            ip = self.raw_bot.get(f"IPADDRPORTPROXY{letter}") or self.raw_monitoreo.get(f"DEFAULTPROXY{letter}")
-            auth = self.raw_bot.get(f"USERPASSWDPROXY{letter}") or self.raw_monitoreo.get(f"USUARIOCLAVEDEFAULT{letter}", "")
-            name = self.raw_bot.get(f"NAMEPROXY{letter}", f"Proxy {letter}")
-            if ip:
-                if auth and ":" in auth:
-                    u, p = auth.split(":", 1)
-                    u_enc = urllib.parse.quote(u)
-                    p_enc = urllib.parse.quote(p)
-                    url = f"http://{u_enc}:{p_enc}@{ip}"
-                else:
-                    url = f"http://{ip}"
-                proxies.append(ProxyConfig(letter=letter, name=name, ip_port=ip, user_pass=auth, url=url))
-        return proxies

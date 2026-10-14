@@ -27,6 +27,7 @@ if str(BASE_DIR) not in sys.path:
 
 from monitor.monitor_engine import execute_monitoring, get_default_telegram_chats
 from monitor.telegram_dispatcher import TelegramDispatcher
+from monitor.web_screenshot import capture_web_dashboard
 
 LOG_DIR = Path("/tmp/monitor")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -115,18 +116,29 @@ async def run_scheduled_dispatch(force: bool = False) -> bool:
 
         DEBOUNCE_FILE.write_text(current_stamp, encoding="utf-8")
 
-    logger.info(f"⏰ [DISPARO PROGRAMADO] Iniciando escaneo y despacho para las {current_time_str}...")
+    logger.info(f"⏰ [DISPARO PROGRAMADO] Iniciando compilación de reporte oficial (Snapshot) y captura web para las {current_time_str}...")
 
-    # Ejecutar verificación de certificados SSL/TLS en paralelo
-    try:
-        from monitor.ssl_checker import run_all_ssl_checks
-        await asyncio.to_thread(run_all_ssl_checks, True, 3.0)
-    except Exception as e_ssl:
-        logger.warning(f"Aviso en verificación SSL durante cron: {e_ssl}")
+    # Compilación desde MariaDB (Snapshot) y captura gráfica Playwright en paralelo (Zero sondeo en caliente)
+    monitoring_task = asyncio.create_task(
+        execute_monitoring(target="servicios", debug_mode=False, capture_screenshot=False, mode="snapshot")
+    )
+    screenshot_task = asyncio.create_task(
+        capture_web_dashboard(mode="servicios")
+    )
 
-    # Ejecutar monitoreo de servicios corporativos
-    result = await execute_monitoring(target="servicios", debug_mode=False)
+    monitoring_res, screen_res = await asyncio.gather(monitoring_task, screenshot_task, return_exceptions=True)
 
+    if isinstance(monitoring_res, Exception):
+        logger.error(f"❌ Error compilando reporte desde MariaDB: {monitoring_res}")
+        result = {}
+    else:
+        result = monitoring_res or {}
+
+    screenshot_file: Optional[Path] = None
+    if isinstance(screen_res, Exception):
+        logger.warning(f"⚠️ Aviso generando captura web con Playwright: {screen_res}")
+    elif screen_res and Path(screen_res).exists():
+        screenshot_file = Path(screen_res)
 
     dispatcher = TelegramDispatcher()
     target_chats = get_default_telegram_chats()
@@ -138,13 +150,13 @@ async def run_scheduled_dispatch(force: bool = False) -> bool:
             if result.get("report_servicios"):
                 await dispatcher.send_text(chat_id, result["report_servicios"])
 
-            if result.get("screenshot_file") and Path(result["screenshot_file"]).exists():
+            if screenshot_file and screenshot_file.exists():
                 caption = (
                     "📸 <b>Captura en Tiempo Real</b>\n"
                     "🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
-                    "📌 <i>Vista Global de Infraestructura</i>"
+                    "📌 <i>Servicios Corporativos</i>"
                 )
-                await dispatcher.send_photo(chat_id, result["screenshot_file"], caption=caption)
+                await dispatcher.send_photo(chat_id, screenshot_file, caption=caption)
 
             logger.info(f"✅ Despachado exitosamente a chat_id: {chat_id}")
         except Exception as e:

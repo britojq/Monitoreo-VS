@@ -82,40 +82,69 @@ def get_interface_ip_and_mask(interface: str) -> Tuple[str, str]:
 
 
 def load_mac_whitelist() -> Set[str]:
-    """Carga la lista blanca de direcciones MAC autorizadas."""
-    whitelist_path = CONFIG_DIR / "mac_whitelist.txt"
-    if not whitelist_path.exists():
-        whitelist_path.write_text(
-            "# Lista blanca de direcciones MAC autorizadas (una por linea)\n# 00:11:22:33:44:55\n",
-            encoding="utf-8"
-        )
-        return set()
-
-    macs = set()
+    """Carga la lista blanca de direcciones MAC autorizadas directamente desde MariaDB (SSOT)."""
+    macs: Set[str] = set()
     try:
-        for line in whitelist_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip().lower()
-            if line and not line.startswith("#") and re.match(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$", line):
-                macs.add(line)
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 1. MACs registradas en inventario oficial
+                cur.execute(
+                    "SELECT DISTINCT LOWER(mac_address) AS mac FROM inventory_assets "
+                    "WHERE mac_address IS NOT NULL AND mac_address != ''"
+                )
+                for r in cur.fetchall():
+                    m = (r.get("mac") or "").strip().lower()
+                    if re.match(r"^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$", m):
+                        macs.add(m.replace("-", ":"))
+
+                # 2. MACs de dispositivos de red monitoreados
+                cur.execute(
+                    "SELECT DISTINCT LOWER(mac) AS mac FROM monitored_network_devices "
+                    "WHERE mac IS NOT NULL AND mac != ''"
+                )
+                for r in cur.fetchall():
+                    m = (r.get("mac") or "").strip().lower()
+                    if re.match(r"^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$", m):
+                        macs.add(m.replace("-", ":"))
+
+                # 3. Dispositivos descubiertos y expresamente autorizados
+                cur.execute(
+                    "SELECT DISTINCT LOWER(mac_address) AS mac FROM discovered_devices "
+                    "WHERE is_authorized = 1 AND mac_address IS NOT NULL AND mac_address != ''"
+                )
+                for r in cur.fetchall():
+                    m = (r.get("mac") or "").strip().lower()
+                    if re.match(r"^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$", m):
+                        macs.add(m.replace("-", ":"))
+        finally:
+            conn.close()
+        logger.debug(f"Lista blanca de MACs autorizadas cargada desde MariaDB ({len(macs)} registradas)")
     except Exception as e:
-        logger.error(f"Error al leer {whitelist_path}: {e}")
+        logger.warning(f"No se pudo cargar la lista de MACs desde MariaDB: {e}")
     return macs
 
 
 def load_oui_database() -> Dict[str, str]:
-    """Carga o construye la base de datos de fabricantes OUI."""
+    """Carga la base de datos de fabricantes OUI directamente desde MariaDB (SSOT)."""
     oui_dict: Dict[str, str] = {}
-    oui_path = CONFIG_DIR / "oui.txt"
-    if oui_path.exists():
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
         try:
-            for line in oui_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-                line = line.strip()
-                if line and not line.startswith("#") and "\t" in line:
-                    parts = line.split("\t", 1)
-                    prefix = parts[0].strip().lower().replace(":", "")
-                    oui_dict[prefix] = parts[1].strip()
-        except Exception as e:
-            logger.error(f"Error al leer {oui_path}: {e}")
+            with conn.cursor() as cur:
+                cur.execute("SELECT oui_prefix, vendor_name FROM oui_vendors WHERE oui_prefix IS NOT NULL")
+                for r in cur.fetchall():
+                    prefix = (r.get("oui_prefix") or "").strip().lower().replace(":", "").replace("-", "")
+                    vendor = (r.get("vendor_name") or "").strip()
+                    if prefix and vendor:
+                        oui_dict[prefix] = vendor
+        finally:
+            conn.close()
+        logger.debug(f"Base de datos OUI cargada desde MariaDB ({len(oui_dict)} fabricantes)")
+    except Exception as e:
+        logger.warning(f"No se pudo cargar la base OUI desde MariaDB: {e}")
     return oui_dict
 
 
@@ -430,7 +459,7 @@ def build_txt_and_html_reports(
     storm_alert = (broadcast_count > 200 or multicast_v4 > 300 or multicast_v6 > 300)
 
     # -------------------------------------------------------------
-    # 1. RESUMEN EJECUTIVO PARA TELEGRAM (HTML SEGURO)
+    # 1. RESUMEN CONSOLIDADO PARA TELEGRAM (HTML SEGURO)
     # -------------------------------------------------------------
     sum_lines = [
         "🔍 <b>REPORTE DE ANÁLISIS DE RED (Debian)</b>",

@@ -4,9 +4,9 @@
 
 @section('content')
 <div class="h-screen flex flex-col overflow-hidden bg-[#020617] text-white">
-    <!-- TOP NAVIGATION BAR (HEADER INSTITUCIONAL) -->
+    <!-- TOP NAVIGATION BAR (HEADER CORPORATIVO) -->
     <header class="h-16 shrink-0 glass-panel border-b border-obsidian-border flex items-center justify-between px-4 sm:px-6 z-30 shadow-2xl">
-        <!-- MARCA & TÍTULO INSTITUCIONAL -->
+        <!-- MARCA & TÍTULO CORPORATIVO -->
         <div class="flex items-center space-x-3.5">
             <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-obsidian-cyan/20 to-obsidian-purple/30 border border-obsidian-cyan/40 flex items-center justify-center text-obsidian-cyan glow-cyan shrink-0 p-1.5 overflow-hidden shadow-lg shadow-cyan-500/20">
                 <img src="{{ asset('img/logo.png') }}" alt="Logo Corporativo" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">

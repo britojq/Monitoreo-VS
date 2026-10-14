@@ -13,11 +13,11 @@
                     Dashboard
                 </a>
                 <span class="text-obsidian-border font-mono text-xs">/</span>
-                <span class="text-xs font-mono text-obsidian-muted">Seguridad Institucional</span>
+                <span class="text-xs font-mono text-obsidian-muted">Seguridad Corporativa</span>
             </div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan">verified_user</span>
-                Aceptación de Términos de Uso & Custodia de Registros
+                Aceptación de Términos de Uso & Resguardo de Registros
             </h2>
             <p class="text-xs font-mono text-obsidian-muted">Supervisión, auditoría y control de consentimiento legal para usuarios del Portal y Bot de Monitoreo</p>
         </div>
@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <!-- TARJETA INFORMATIVA / AVISO DE CUSTODIO DE REGISTROS -->
+    <!-- TARJETA INFORMATIVA / AVISO DE RESGUARDO DE REGISTROS -->
     <div class="glass-panel rounded-2xl p-5 border border-cyan-500/30 bg-[#061426]/90 relative overflow-hidden shadow-lg">
         <div class="absolute -right-8 -bottom-8 w-44 h-44 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -107,7 +107,7 @@
                         <span class="px-2 py-0.5 rounded-full text-[9px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 font-bold">VIGENTE v1.0</span>
                     </div>
                     <p class="text-xs text-obsidian-muted font-mono mt-1 leading-relaxed">
-                        Todo usuario que inicia sesión (vía base de datos local o Directorio Activo LDAP) debe confirmar de manera obligatoria la lectura y acatamiento de la custodia de registros y el aviso legal antes de interactuar con el sistema.
+                        Todo usuario que inicia sesión (vía base de datos local o Directorio Activo LDAP) debe confirmar de manera obligatoria la lectura y acatamiento del resguardo de registros y el aviso legal antes de interactuar con el sistema.
                     </p>
                 </div>
             </div>
@@ -172,7 +172,7 @@
                 <thead class="bg-[#051424]/90 text-obsidian-muted uppercase text-[10px] tracking-wider border-b border-obsidian-border">
                     <tr>
                         <th class="px-5 py-3.5">Usuario / Personal</th>
-                        <th class="px-4 py-3.5">Rol Institucional</th>
+                        <th class="px-4 py-3.5">Rol Asignado</th>
                         <th class="px-4 py-3.5">Estado de Consentimiento</th>
                         <th class="px-4 py-3.5">Fecha y Hora de Firma</th>
                         <th class="px-4 py-3.5">IP de Confirmación</th>
@@ -294,26 +294,27 @@
 <!-- ========================================================================= -->
 <div id="terms-preview-modal" class="fixed inset-0 z-50 hidden transition-opacity duration-300">
     <div onclick="toggleTermsPreviewModal(false)" class="fixed inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"></div>
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
-        <div class="w-full max-w-2xl glass-panel rounded-2xl border border-cyan-500/40 bg-[#07172b]/98 p-6 shadow-2xl relative text-left space-y-5 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto custom-scroll max-h-[90vh] overflow-y-auto">
-            <!-- Botón Cerrar -->
-            <button type="button" onclick="toggleTermsPreviewModal(false)" class="absolute top-4 right-4 text-obsidian-muted hover:text-white transition text-xl leading-none cursor-pointer" title="Cerrar ventana">
-                &times;
-            </button>
-
-            <!-- Cabecera -->
-            <div class="flex items-center gap-3 border-b border-obsidian-border pb-4">
-                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 glow-cyan">
-                    <span class="material-symbols-outlined text-2xl">gavel</span>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 pointer-events-none">
+        <div class="w-full max-w-2xl glass-panel rounded-2xl border border-cyan-500/40 bg-[#07172b]/98 shadow-2xl relative text-left animate-in fade-in zoom-in-95 duration-200 pointer-events-auto flex flex-col max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+            <!-- Cabecera fija -->
+            <div class="flex items-center justify-between p-4 px-6 border-b border-obsidian-border shrink-0 bg-[#061527]">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 glow-cyan shrink-0">
+                        <span class="material-symbols-outlined text-2xl">gavel</span>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white tracking-tight">TEXTO DE LINEAMIENTOS Y MARCO JURÍDICO</h3>
+                        <p class="text-xs font-mono text-obsidian-cyan">SISTEMA DE MONITOREO & ASISTENTE VIRTUAL • ATIT VALLE SECO</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-base font-bold text-white tracking-tight">TEXTO OFICIAL DE LINEAMIENTOS Y MARCO JURÍDICO</h3>
-                    <p class="text-xs font-mono text-obsidian-cyan">SISTEMA DE MONITOREO & ASISTENTE VIRTUAL • ATIT VALLE SECO</p>
-                </div>
+                <!-- Botón Cerrar -->
+                <button type="button" onclick="toggleTermsPreviewModal(false)" class="text-obsidian-muted hover:text-white transition text-xl leading-none cursor-pointer" title="Cerrar ventana">
+                    &times;
+                </button>
             </div>
 
-            <!-- Cuerpo del texto legal -->
-            <div class="space-y-4 font-mono text-xs leading-relaxed text-gray-200">
+            <!-- Cuerpo del texto legal con scroll independiente -->
+            <div class="p-4 sm:p-6 space-y-4 font-mono text-xs leading-relaxed text-gray-200 overflow-y-auto flex-1 custom-scroll">
                 <!-- ADVERTENCIA DE SEGURIDAD -->
                 <div class="p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 space-y-2">
                     <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
@@ -321,10 +322,10 @@
                         <span>ADVERTENCIA DE SEGURIDAD</span>
                     </div>
                     <p class="text-amber-200/90">
-                        Este Sistema y su Asistente/Bot están protegidos por un <b>Custodio de Registros</b>.
+                        Este Sistema y su Asistente/Bot están protegidos por un <b>Responsable de Registros</b>.
                     </p>
                     <p class="text-amber-200/90">
-                        Toda la información contenida y procesada por este sistema es de carácter <b>Confidencial</b> y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos institucionales.
+                        Toda la información contenida y procesada por este sistema es de carácter <b>Confidencial</b> y se encuentra amparada bajo estrictos protocolos de privacidad y protección de datos corporativos.
                     </p>
                 </div>
 
@@ -335,7 +336,7 @@
                         <span>AVISO LEGAL & RESPONSABILIDAD PENAL</span>
                     </div>
                     <p class="text-gray-200">
-                        Se registran y almacenan de forma continua los datos (<b>ID de Usuario, Nombre, Dirección IP de Origen, Fecha, Hora, Acciones y Mensajes enviados</b>) en nuestros servidores para fines de auditoría, trazabilidad y seguridad institucional.
+                        Se registran y almacenan de forma continua los datos (<b>ID de Usuario, Nombre, Dirección IP de Origen, Fecha, Hora, Acciones y Mensajes enviados</b>) en nuestros servidores para fines de auditoría, trazabilidad y seguridad de la sede.
                     </p>
                     <p class="text-gray-200 bg-[#030914] p-3 rounded-lg border border-red-500/30">
                         ⚖️ Cualquier <b>ACCESO NO AUTORIZADO</b>, intento de intrusión, interceptación, vulneración de contraseñas o uso indebido de la información será sancionado conforme a lo establecido en la <b>Ley Contra los Delitos Informáticos</b> (Capítulos I y II, artículos 6, 7, 8, 9, 10, 11 y 13).
@@ -349,7 +350,7 @@
                 </div>
             </div>
 
-            <div class="pt-2 border-t border-obsidian-border flex justify-end">
+            <div class="p-3.5 px-6 border-t border-obsidian-border flex justify-end shrink-0 bg-[#061527]">
                 <button type="button" onclick="toggleTermsPreviewModal(false)" class="px-5 py-2 rounded-xl bg-obsidian-cyan text-black font-bold font-mono text-xs hover:bg-cyan-300 transition cursor-pointer">
                     Entendido / Cerrar Previsualización
                 </button>

@@ -4,68 +4,132 @@
 
 @section('admin_content')
 <div class="space-y-4">
-    <!-- PESTAÑAS CENTRO DE ALERTAS & IA -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.alerts.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">notifications_active</span>
-            <span>Alertas & Correlación</span>
-        </a>
-        <a href="{{ route('admin.predictive.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">psychology</span>
-            <span>IA Predictiva & Salud de Enlaces</span>
-        </a>
-    </div>
-
-    <!-- CABECERA Y HUD DE ESTADO -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-obsidian-card p-3.5 rounded-xl border border-obsidian-border shadow-md">
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-obsidian-cyan text-2xl">notifications_active</span>
-                <h1 class="text-lg font-bold text-white tracking-wide">Sistema Inteligente de Alertas y Correlación</h1>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Alertas &amp; Respaldos</span>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">notifications_active</span>
+                Sistema Inteligente de Alertas y Correlación
                 @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('alerts.rules') && !auth()->user()->hasPermission('alerts.maintenance'))
-                    <span class="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono flex items-center gap-1" title="Operador: Modo Consulta y Reconocimiento de Incidentes">
-                        <span class="material-symbols-outlined text-xs">visibility</span> Modo Consulta
+                    <span class="w-6 h-6 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                        <span class="material-symbols-outlined text-xs">visibility</span>
                     </span>
                 @endif
-            </div>
-            <p class="text-xs text-obsidian-muted mt-0.5">
-                Monitoreo proactivo, supresión de tormentas, correlación topológica padre-hijo y escalación jerárquica.
-            </p>
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Monitoreo proactivo, supresión de tormentas, correlación topológica padre-hijo y escalación jerárquica</p>
         </div>
 
-        <!-- ACCIONES RÁPIDAS CABECERA -->
         <div class="flex flex-wrap items-center gap-2">
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10.5px] font-mono flex items-center gap-1.5 shadow-xs">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                Fuente: SERVIDOR MAESTRO
-            </span>
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Solo Lectura)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.ack'))
-                <form action="{{ route('admin.alerts.evaluate_now') }}" method="POST" class="inline">
-                    @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-cyan/10 border border-obsidian-cyan/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Evaluar todas las reglas y procesar escalaciones inmediatamente">
-                        <span class="material-symbols-outlined text-sm">bolt</span> Evaluar Ahora
+                <div class="relative group">
+                    <form action="{{ route('admin.alerts.evaluate_now') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition text-xs font-mono font-bold shadow-xs cursor-pointer">
+                            <span class="material-symbols-outlined text-base">bolt</span>
+                        </button>
+                    </form>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">bolt</span>
+                            <span class="font-bold text-cyan-200">Evaluar Reglas Ahora</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.rules')) && !($isClusterSlave ?? false))
+                <div class="relative group">
+                    <button onclick="openNewRuleModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black transition text-xs font-mono font-bold shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-base">add_alert</span>
+                        <span class="font-bold text-sm leading-none">+</span>
                     </button>
-                </form>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-emerald-500/50 shadow-xl shadow-emerald-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-emerald-400">add_alert</span>
+                            <span class="font-bold text-emerald-200">Nueva Regla de Alerta</span>
+                        </div>
+                    </div>
+                </div>
             @endif
 
-            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.rules')) && !$isClusterSlave)
-                <button onclick="openNewRuleModal()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Configurar una nueva regla con umbrales y escalación">
-                    <span class="material-symbols-outlined text-sm">add_alert</span> Nueva Regla
-                </button>
-            @endif
-
-            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.maintenance')) && !$isClusterSlave)
-                <button onclick="openMaintenanceModal()" class="px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-white font-mono text-[11px] font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Programar ventana de mantenimiento preventivo">
-                    <span class="material-symbols-outlined text-sm">build_circle</span> Mantenimiento
-                </button>
-            @elseif($isClusterSlave && (auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.rules') || auth()->user()->hasPermission('alerts.maintenance')))
-                <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                    <span class="material-symbols-outlined text-xs">lock</span>
-                    <span>Solo Lectura (Modo Esclavo)</span>
-                </span>
+            @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.maintenance')) && !($isClusterSlave ?? false))
+                <div class="relative group">
+                    <button onclick="openMaintenanceModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white transition text-xs font-mono font-bold shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-base">build_circle</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-purple-500/50 shadow-xl shadow-purple-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-purple-400">build_circle</span>
+                            <span class="font-bold text-purple-200">Ventana de Mantenimiento</span>
+                        </div>
+                    </div>
+                </div>
+            @elseif(($isClusterSlave ?? false) && (auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.rules') || auth()->user()->hasPermission('alerts.maintenance')))
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
+    </div>
+
+    <!-- PESTAÑAS HUB ALERTAS & RESPALDOS (PANEL DE NAVEGACIÓN UNIFICADO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.alerts.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.alerts.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Sistema Inteligente de Alertas y Correlación de Incidentes">
+            <span class="material-symbols-outlined text-sm">notifications_active</span>
+            <span>Alertas &amp; Correlación</span>
+        </a>
+        <a href="{{ route('admin.configs.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.configs.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Respaldos y Auditoría de Configuraciones de Red (GitOps)">
+            <span class="material-symbols-outlined text-sm">settings_backup_restore</span>
+            <span>Respaldos de Configuración</span>
+        </a>
+        <a href="{{ route('admin.predictive.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.predictive.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="IA Predictiva &amp; Salud de Enlaces">
+            <span class="material-symbols-outlined text-sm">psychology</span>
+            <span>IA Predictiva &amp; Salud de Enlaces</span>
+        </a>
     </div>
 
     <!-- TARJETAS HUD METRICAS -->
@@ -759,9 +823,9 @@
 <!-- ========================================================================= -->
 
 <!-- 1. MODAL: DETALLE Y LÍNEA DE TIEMPO DE ALERTA -->
-<div id="modal-alert-details" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
-        <div class="p-3.5 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60">
+<div id="modal-alert-details" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-2xl max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-obsidian-cyan text-xl">timeline</span>
                 <h3 class="text-sm font-bold text-white tracking-wide" id="modal-alert-title">Detalle del Incidente</h3>
@@ -770,34 +834,36 @@
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <div class="p-4 overflow-y-auto space-y-4 text-xs font-mono" id="modal-alert-content">
+        <div class="p-4 overflow-y-auto flex-1 custom-scroll space-y-4 text-xs font-mono min-h-0" id="modal-alert-content">
             <div class="text-center py-6 text-slate-400">Cargando telemetría...</div>
         </div>
     </div>
 </div>
 
 <!-- 2. MODAL: RECONOCER ALERTA (ACK) -->
-<div id="modal-ack" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-md p-4 shadow-2xl animate-fadeIn">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="modal-ack" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-md max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-sky-400">check_circle</span> Reconocer Incidente (ACK)
             </h3>
-            <button onclick="closeModal('modal-ack')" class="text-slate-400 hover:text-white">
+            <button onclick="closeModal('modal-ack')" class="text-slate-400 hover:text-white transition p-1">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <form id="form-ack" method="POST" class="mt-3 space-y-3">
+        <form id="form-ack" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad:</label>
-                <div id="ack-entity-name" class="p-2 rounded bg-obsidian-panel border border-obsidian-border text-white font-bold text-xs"></div>
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll text-xs">
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad:</label>
+                    <div id="ack-entity-name" class="p-2 rounded bg-obsidian-panel border border-obsidian-border text-white font-bold text-xs"></div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Notas de atención / diagnóstico:</label>
+                    <textarea name="notes" rows="3" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-sky-400 font-mono" placeholder="Ej: Atendiendo incidente, reiniciando interfaz..."></textarea>
+                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Notas de atención / diagnóstico:</label>
-                <textarea name="notes" rows="3" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-sky-400 font-mono" placeholder="Ej: Atendiendo incidente, reiniciando interfaz..."></textarea>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
+            <div class="p-3 px-4 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-slate-900/40">
                 <button type="button" onclick="closeModal('modal-ack')" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono">Cancelar</button>
                 <button type="submit" class="px-4 py-1.5 rounded bg-sky-500 text-black font-bold hover:bg-sky-400 text-xs font-mono">Confirmar Reconocimiento</button>
             </div>
@@ -806,34 +872,36 @@
 </div>
 
 <!-- 3. MODAL: SILENCIAR ALERTA (SILENCE) -->
-<div id="modal-silence" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-md p-4 shadow-2xl animate-fadeIn">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="modal-silence" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-md max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-purple-400">notifications_off</span> Silenciar Alerta
             </h3>
-            <button onclick="closeModal('modal-silence')" class="text-slate-400 hover:text-white">
+            <button onclick="closeModal('modal-silence')" class="text-slate-400 hover:text-white transition p-1">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <form id="form-silence" method="POST" class="mt-3 space-y-3">
+        <form id="form-silence" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad:</label>
-                <div id="silence-entity-name" class="p-2 rounded bg-obsidian-panel border border-obsidian-border text-white font-bold text-xs"></div>
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll text-xs">
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad:</label>
+                    <div id="silence-entity-name" class="p-2 rounded bg-obsidian-panel border border-obsidian-border text-white font-bold text-xs"></div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Duración del silencio:</label>
+                    <select name="minutes" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                        <option value="15">15 Minutos</option>
+                        <option value="30">30 Minutos</option>
+                        <option value="60" selected>1 Hora (60 min)</option>
+                        <option value="120">2 Horas (120 min)</option>
+                        <option value="240">4 Horas (240 min)</option>
+                        <option value="1440">24 Horas (1 día)</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Duración del silencio:</label>
-                <select name="minutes" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
-                    <option value="15">15 Minutos</option>
-                    <option value="30">30 Minutos</option>
-                    <option value="60" selected>1 Hora (60 min)</option>
-                    <option value="120">2 Horas (120 min)</option>
-                    <option value="240">4 Horas (240 min)</option>
-                    <option value="1440">24 Horas (1 día)</option>
-                </select>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
+            <div class="p-3 px-4 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-slate-900/40">
                 <button type="button" onclick="closeModal('modal-silence')" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono">Cancelar</button>
                 <button type="submit" class="px-4 py-1.5 rounded bg-purple-500 text-white font-bold hover:bg-purple-400 text-xs font-mono">Silenciar Incidente</button>
             </div>
@@ -843,100 +911,102 @@
 
 <!-- 4. MODAL: NUEVA REGLA (ADMIN ONLY) -->
 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('alerts.rules') || auth()->user()->hasPermission('alerts.maintenance')) && !$isClusterSlave)
-<div id="modal-new-rule" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-lg p-4 shadow-2xl animate-fadeIn max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="modal-new-rule" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-emerald-400">add_alert</span> Nueva Regla de Alerta
             </h3>
-            <button onclick="closeModal('modal-new-rule')" class="text-slate-400 hover:text-white">
+            <button onclick="closeModal('modal-new-rule')" class="text-slate-400 hover:text-white transition p-1">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <form action="{{ route('admin.alerts.rules.store') }}" method="POST" class="mt-3 space-y-3 text-xs">
+        <form action="{{ route('admin.alerts.rules.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Nombre de la Regla:</label>
-                <input type="text" name="name" required placeholder="Ej: Latencia Crítica en Base de Datos" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll text-xs">
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Nombre de la Regla:</label>
+                    <input type="text" name="name" required placeholder="Ej: Latencia Crítica en Base de Datos" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción Técnica:</label>
+                    <input type="text" name="description" placeholder="Explicación del criterio de disparo..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Tipo de Entidad:</label>
+                        <select name="entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                            <option value="service">Servicio Web/TCP</option>
+                            <option value="site">Sede WAN</option>
+                            <option value="snmp_device">Dispositivo SNMP</option>
+                            <option value="interface">Interfaz de Red</option>
+                            <option value="ssl_certificate">Certificado SSL/TLS</option>
+                            <option value="discovered_device">Dispositivo Descubierto</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Condición:</label>
+                        <select name="condition_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                            <option value="is_down">Caído / Inalcanzable (is_down)</option>
+                            <option value="latency_high">Latencia Alta</option>
+                            <option value="packet_loss_high">Pérdida de Paquetes</option>
+                            <option value="cpu_high">Uso de CPU Alto</option>
+                            <option value="memory_high">Memoria RAM Alta</option>
+                            <option value="temperature_high">Temperatura Elevada</option>
+                            <option value="cert_expiring">Certificado por Vencer</option>
+                            <option value="cert_expired">Certificado Vencido</option>
+                            <option value="interface_down">Interfaz Caída</option>
+                            <option value="new_device">Dispositivo no Autorizado (Rogue)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Comparador:</label>
+                        <select name="comparison" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                            <option value="gt">&gt; Mayor que</option>
+                            <option value="gte">&gt;= Mayor o igual</option>
+                            <option value="lt">&lt; Menor que</option>
+                            <option value="lte">&lt;= Menor o igual</option>
+                            <option value="eq">= Igual a</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Umbral:</label>
+                        <input type="number" step="0.01" name="threshold_value" placeholder="Ej: 500" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Severidad:</label>
+                        <select name="severity" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                            <option value="info">ℹ️ Información</option>
+                            <option value="warning" selected>⚠️ Advertencia</option>
+                            <option value="critical">🚨 Crítica</option>
+                            <option value="emergency">🆘 Emergencia</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Cooldown (Minutos):</label>
+                        <input type="number" name="cooldown_minutes" value="30" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Max Alertas / Hora:</label>
+                        <input type="number" name="max_alerts_per_hour" value="5" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 pt-1">
+                    <label class="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+                        <input type="checkbox" name="auto_resolve" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-emerald-500">
+                        Auto-resolver al normalizar
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+                        <input type="checkbox" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-emerald-500">
+                        Regla Activa
+                    </label>
+                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción Técnica:</label>
-                <input type="text" name="description" placeholder="Explicación del criterio de disparo..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Tipo de Entidad:</label>
-                    <select name="entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                        <option value="service">Servicio Web/TCP</option>
-                        <option value="site">Sede WAN</option>
-                        <option value="snmp_device">Dispositivo SNMP</option>
-                        <option value="interface">Interfaz de Red</option>
-                        <option value="ssl_certificate">Certificado SSL/TLS</option>
-                        <option value="discovered_device">Dispositivo Descubierto</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Condición:</label>
-                    <select name="condition_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                        <option value="is_down">Caído / Inalcanzable (is_down)</option>
-                        <option value="latency_high">Latencia Alta</option>
-                        <option value="packet_loss_high">Pérdida de Paquetes</option>
-                        <option value="cpu_high">Uso de CPU Alto</option>
-                        <option value="memory_high">Memoria RAM Alta</option>
-                        <option value="temperature_high">Temperatura Elevada</option>
-                        <option value="cert_expiring">Certificado por Vencer</option>
-                        <option value="cert_expired">Certificado Vencido</option>
-                        <option value="interface_down">Interfaz Caída</option>
-                        <option value="new_device">Dispositivo no Autorizado (Rogue)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Comparador:</label>
-                    <select name="comparison" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                        <option value="gt">&gt; Mayor que</option>
-                        <option value="gte">&gt;= Mayor o igual</option>
-                        <option value="lt">&lt; Menor que</option>
-                        <option value="lte">&lt;= Menor o igual</option>
-                        <option value="eq">= Igual a</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Umbral:</label>
-                    <input type="number" step="0.01" name="threshold_value" placeholder="Ej: 500" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Severidad:</label>
-                    <select name="severity" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                        <option value="info">ℹ️ Información</option>
-                        <option value="warning" selected>⚠️ Advertencia</option>
-                        <option value="critical">🚨 Crítica</option>
-                        <option value="emergency">🆘 Emergencia</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Cooldown (Minutos):</label>
-                    <input type="number" name="cooldown_minutes" value="30" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Max Alertas / Hora:</label>
-                    <input type="number" name="max_alerts_per_hour" value="5" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-emerald-400 font-mono">
-                </div>
-            </div>
-            <div class="flex items-center gap-4 pt-1">
-                <label class="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
-                    <input type="checkbox" name="auto_resolve" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-emerald-500">
-                    Auto-resolver al normalizar
-                </label>
-                <label class="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
-                    <input type="checkbox" name="is_active" value="1" checked class="rounded bg-obsidian-panel border-obsidian-border text-emerald-500">
-                    Regla Activa
-                </label>
-            </div>
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+            <div class="p-3 px-4 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-slate-900/40">
                 <button type="button" onclick="closeModal('modal-new-rule')" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono">Cancelar</button>
                 <button type="submit" class="px-4 py-1.5 rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 text-xs font-mono">Guardar Regla</button>
             </div>
@@ -945,46 +1015,48 @@
 </div>
 
 <!-- 5. MODAL: PROGRAMAR MANTENIMIENTO -->
-<div id="modal-new-maintenance" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-lg p-4 shadow-2xl animate-fadeIn">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="modal-new-maintenance" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-purple-400">construction</span> Programar Mantenimiento
             </h3>
-            <button onclick="closeModal('modal-new-maintenance')" class="text-slate-400 hover:text-white">
+            <button onclick="closeModal('modal-new-maintenance')" class="text-slate-400 hover:text-white transition p-1">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <form action="{{ route('admin.alerts.maintenance.store') }}" method="POST" class="mt-3 space-y-3 text-xs">
+        <form action="{{ route('admin.alerts.maintenance.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Título de la Ventana:</label>
-                <input type="text" name="title" required placeholder="Ej: Mantenimiento Enlace Fibra Óptica" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
-            </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción:</label>
-                <input type="text" name="description" placeholder="Detalle de las labores..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
-            </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad Afectada:</label>
-                <select name="entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
-                    <option value="all">Todas las entidades (Mantenimiento Global)</option>
-                    <option value="site">Sedes WAN</option>
-                    <option value="service">Servicios</option>
-                    <option value="snmp_device">Dispositivos SNMP</option>
-                </select>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll text-xs">
                 <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Fecha y Hora de Inicio:</label>
-                    <input type="datetime-local" name="starts_at" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Título de la Ventana:</label>
+                    <input type="text" name="title" required placeholder="Ej: Mantenimiento Enlace Fibra Óptica" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Fecha y Hora de Fin:</label>
-                    <input type="datetime-local" name="ends_at" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción:</label>
+                    <input type="text" name="description" placeholder="Detalle de las labores..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Entidad Afectada:</label>
+                    <select name="entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                        <option value="all">Todas las entidades (Mantenimiento Global)</option>
+                        <option value="site">Sedes WAN</option>
+                        <option value="service">Servicios</option>
+                        <option value="snmp_device">Dispositivos SNMP</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Fecha y Hora de Inicio:</label>
+                        <input type="datetime-local" name="starts_at" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Fecha y Hora de Fin:</label>
+                        <input type="datetime-local" name="ends_at" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-purple-400 font-mono">
+                    </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+            <div class="p-3 px-4 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-slate-900/40">
                 <button type="button" onclick="closeModal('modal-new-maintenance')" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono">Cancelar</button>
                 <button type="submit" class="px-4 py-1.5 rounded bg-purple-500 text-white font-bold hover:bg-purple-400 text-xs font-mono">Guardar Ventana</button>
             </div>
@@ -993,48 +1065,50 @@
 </div>
 
 <!-- 6. MODAL: NUEVA CORRELACIÓN TOPOLÓGICA -->
-<div id="modal-new-correlation" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-obsidian-card border border-obsidian-border rounded-xl w-full max-w-lg p-4 shadow-2xl animate-fadeIn">
-        <div class="flex items-center justify-between pb-3 border-b border-obsidian-border">
+<div id="modal-new-correlation" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-card border border-obsidian-border rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+        <div class="p-3.5 px-4 border-b border-obsidian-border flex items-center justify-between bg-slate-900/60 shrink-0">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-cyan-400">account_tree</span> Nuevo Grupo de Correlación
             </h3>
-            <button onclick="closeModal('modal-new-correlation')" class="text-slate-400 hover:text-white">
+            <button onclick="closeModal('modal-new-correlation')" class="text-slate-400 hover:text-white transition p-1">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
-        <form action="{{ route('admin.alerts.correlation.store') }}" method="POST" class="mt-3 space-y-3 text-xs">
+        <form action="{{ route('admin.alerts.correlation.store') }}" method="POST" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0">
             @csrf
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Nombre del Grupo:</label>
-                <input type="text" name="name" required placeholder="Ej: Router Core -> Servicios Locales" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
-            </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción:</label>
-                <input type="text" name="description" placeholder="Detalles de topología..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll text-xs">
                 <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Tipo de Entidad Padre:</label>
-                    <select name="parent_entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
-                        <option value="site">Sede WAN</option>
-                        <option value="snmp_device">Dispositivo SNMP</option>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Nombre del Grupo:</label>
+                    <input type="text" name="name" required placeholder="Ej: Router Core -> Servicios Locales" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Descripción:</label>
+                    <input type="text" name="description" placeholder="Detalles de topología..." class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">Tipo de Entidad Padre:</label>
+                        <select name="parent_entity_type" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+                            <option value="site">Sede WAN</option>
+                            <option value="snmp_device">Dispositivo SNMP</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-mono text-slate-400 mb-1">ID Entidad Padre:</label>
+                        <input type="number" name="parent_entity_id" required placeholder="Ej: 1" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono text-slate-400 mb-1">Estrategia de Supresión:</label>
+                    <select name="suppression_strategy" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+                        <option value="suppress_if_parent_down">Suprimir alertas hijas si padre está caído</option>
+                        <option value="reduce_severity">Reducir severidad de hijas</option>
+                        <option value="suppress_all">Suprimir todas las hijas</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-mono text-slate-400 mb-1">ID Entidad Padre:</label>
-                    <input type="number" name="parent_entity_id" required placeholder="Ej: 1" class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
-                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">Estrategia de Supresión:</label>
-                <select name="suppression_strategy" required class="w-full p-2 rounded bg-obsidian-panel border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
-                    <option value="suppress_if_parent_down">Suprimir alertas hijas si padre está caído</option>
-                    <option value="reduce_severity">Reducir severidad de hijas</option>
-                    <option value="suppress_all">Suprimir todas las hijas</option>
-                </select>
-            </div>
-            <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-border">
+            <div class="p-3 px-4 border-t border-obsidian-border flex justify-end gap-2 shrink-0 bg-slate-900/40">
                 <button type="button" onclick="closeModal('modal-new-correlation')" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-mono">Cancelar</button>
                 <button type="submit" class="px-4 py-1.5 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 text-xs font-mono">Guardar Correlación</button>
             </div>

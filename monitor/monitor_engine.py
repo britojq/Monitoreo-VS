@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.config_parser import get_formatted_datetime
+from monitor.config_parser import get_formatted_datetime, MonitorConfigLoader, render_template
 from monitor.core_shield import IMMUTABLE_OWNER_ID, IMMUTABLE_BOT_TOKEN
 from monitor.monitor_servicios import run_services_check
 from monitor.monitor_sedes import run_sedes_check
@@ -81,9 +81,166 @@ def write_consolidated_log(logs: List[str]) -> Path:
 LOCK_FILE = Path("/tmp/monitor_engine.lock")
 
 
+def get_latest_snapshot() -> Tuple[Optional[dict], Optional[str]]:
+    """Recupera el último payload_json y la fecha de creación del snapshot en MariaDB."""
+    try:
+        from monitor.monitor_web_sync import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT payload_json, created_at FROM monitoring_snapshots ORDER BY id DESC LIMIT 1")
+                row = cursor.fetchone()
+                if row:
+                    payload = row["payload_json"]
+                    if isinstance(payload, str):
+                        payload = json.loads(payload)
+                    created_at = row["created_at"]
+                    dt_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(created_at, "strftime") else str(created_at)
+                    return payload, dt_str
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Error cargando último snapshot de MariaDB: {e}")
+    return None, None
+
+
+def compile_services_from_snapshot(snapshot: dict, snapshot_dt: str, debug_mode: bool = False) -> Tuple[str, Dict[str, str], List[str]]:
+    """Compila el reporte oficial de Servicios a partir del snapshot consolidado en MariaDB."""
+    loader = MonitorConfigLoader()
+    services_data = snapshot.get("services", [])
+
+    fecha_str, hora_str = get_formatted_datetime()
+    variables: Dict[str, str] = {
+        "fecha": fecha_str,
+        "hora": hora_str
+    }
+    logs: List[str] = []
+
+    # Inicializar A..Z
+    for code in range(ord('A'), ord('Z') + 1):
+        letter = chr(code)
+        variables[f"NAMESERVICE{letter}"] = loader.raw_monitoreo.get(f"NAMESERVICE{letter}", "")
+        variables[f"STHOST{letter}"] = ""
+        variables[f"STATESERVICE{letter}"] = "NO_CONFIGURADO"
+
+    corp_lines: List[str] = []
+    reg_lines: List[str] = []
+
+    for s in services_data:
+        letter = s.get("letter", "")
+        name = s.get("name", "Servicio")
+        is_up = bool(s.get("is_up", False))
+
+        variables[f"NAMESERVICE{letter}"] = name
+        line_item = f"✅ - {name}" if is_up else f"❌ - {name}"
+        variables[f"STHOST{letter}"] = line_item
+        variables[f"STATESERVICE{letter}"] = "ACTIVO" if is_up else "APAGADO"
+        logs.append(f"SERVICIO: [{letter}] {name} | ESTADO: {'ACTIVO' if is_up else 'APAGADO'}")
+
+        scope = s.get("scope", "corporativo")
+        if scope == "regional":
+            reg_lines.append(line_item)
+        else:
+            corp_lines.append(line_item)
+
+    variables["SERVICIOS_CORPORATIVOS"] = "\n".join(corp_lines)
+    variables["SERVICIOS_REGIONALES"] = "\n".join(reg_lines)
+
+    template_key = "MENSAJEDEBUGA" if debug_mode else "MENSAJEA"
+    template_str = loader.templates.get(template_key, "")
+
+    if not template_str:
+        lines = [f"📊 *REPORTE DE SERVICIOS CORPORATIVOS*", f"Fecha: {fecha_str} {hora_str}", f"🕒 Snapshot: {snapshot_dt}", ""]
+        if corp_lines:
+            lines.append("━━━━━━━━━━━━\n**Servicios Corporativos Verificados:**\n━━━━━━━━━━━━")
+            lines.extend(corp_lines)
+            lines.append("")
+        if reg_lines:
+            lines.append("━━━━━━━━━━━━\n**Servicios Regionales – Carabobo Verificados:**\n━━━━━━━━━━━━")
+            lines.extend(reg_lines)
+        report = "\n".join(lines)
+    else:
+        report = render_template(template_str, variables)
+
+    return report.strip(), variables, logs
+
+
+def compile_sedes_from_snapshot(snapshot: dict, snapshot_dt: str, debug_mode: bool = False) -> Tuple[str, Dict[str, str], List[str]]:
+    """Compila el reporte oficial de Sedes y Equipos a partir del snapshot consolidado en MariaDB."""
+    loader = MonitorConfigLoader()
+    sites_data = snapshot.get("sites", [])
+
+    fecha_str, hora_str = get_formatted_datetime()
+    variables: Dict[str, str] = {
+        "fecha": fecha_str,
+        "hora": hora_str
+    }
+    logs: List[str] = []
+
+    # Inicializar sedes A..H y equipos 1..8
+    for code in range(ord('A'), ord('H') + 1):
+        letter = chr(code)
+        variables[f"NAMESITE{letter}"] = loader.raw_monitoreo.get(f"NAMESITE{letter}", "")
+        variables[f"STSITE{letter}"] = ""
+        variables[f"ESTATSITE{letter}"] = "NO_CONFIGURADO"
+        for num in range(1, 9):
+            variables[f"NAMESITE{letter}EQUIPO{num}"] = loader.raw_monitoreo.get(f"NAMESITE{letter}EQUIPO{num}", "")
+            variables[f"STSITE{letter}EQUIPO{num}"] = ""
+            variables[f"ESTATSITE{letter}EQUIPO{num}"] = "NO_CONFIGURADO"
+
+    site_blocks: List[str] = []
+
+    for st in sites_data:
+        letter = st.get("letter", "")
+        name = st.get("name", "Sede")
+        is_up = bool(st.get("is_up", False))
+        site_line = f"✅ - {name}" if is_up else f"❌ - {name}"
+
+        variables[f"NAMESITE{letter}"] = name
+        variables[f"STSITE{letter}"] = site_line
+        variables[f"ESTATSITE{letter}"] = "ACTIVO" if is_up else "APAGADO"
+
+        block_lines = [
+            "━━━━━━━━━━━━",
+            f"**{name}**",
+            "━━━━━━━━━━━━",
+            site_line,
+        ]
+
+        devices = st.get("devices", [])
+        for num, dev in enumerate(devices, start=1):
+            dev_name = dev.get("name", f"Equipo {num}")
+            dev_up = bool(dev.get("is_up", False))
+            dev_line = f"✅ - {dev_name}" if dev_up else f"❌ - {dev_name}"
+
+            variables[f"NAMESITE{letter}EQUIPO{num}"] = dev_name
+            variables[f"STSITE{letter}EQUIPO{num}"] = dev_line
+            variables[f"ESTATSITE{letter}EQUIPO{num}"] = "ACTIVO" if dev_up else "APAGADO"
+
+            block_lines.append(dev_line)
+
+        site_blocks.append("\n".join(block_lines))
+
+    variables["SEDES_Y_ENLACES"] = "\n\n".join(site_blocks)
+
+    template_key = "MENSAJEDEBUGB" if debug_mode else "MENSAJEC"
+    template_str = loader.templates.get(template_key, "")
+
+    if not template_str:
+        lines = [f"🏢 *REPORTE DE SEDES Y ENLACES*", f"Fecha: {fecha_str} {hora_str}", f"🕒 Snapshot: {snapshot_dt}", ""]
+        lines.append(variables["SEDES_Y_ENLACES"])
+        report = "\n".join(lines)
+    else:
+        report = render_template(template_str, variables)
+
+    return report.strip(), variables, logs
+
+
 async def execute_monitoring(
     target: str = "completo",
-    debug_mode: bool = False
+    debug_mode: bool = False,
+    capture_screenshot: bool = False,
+    mode: str = "snapshot"
 ) -> Dict[str, any]:
     """
     Ejecuta el chequeo según el objetivo indicado:
@@ -92,6 +249,9 @@ async def execute_monitoring(
     - 'completo' o 'monitoreo': Ambos componentes
     - 'analisis_red': Análisis profundo de tráfico LAN (.pcap, tshark, arp-scan)
     - 'limpiar': Limpieza de temporales y logs antiguos
+    Modo:
+    - 'snapshot': Lectura instantánea desde MariaDB (SSOT), cero discrepancias visuales.
+    - 'ondemand': Sondeo físico de red en caliente (exclusivo para Owner / Grupo).
     """
     # Protección Anti-Concurrencia: Evitar ejecuciones simultáneas
     if LOCK_FILE.exists():
@@ -130,59 +290,111 @@ async def execute_monitoring(
     pcap_path: Optional[Path] = None
     all_logs: List[str] = []
 
-    if target_clean == "servicios":
-        report_servicios, vars_s, logs_s, _ = await run_services_check(debug_mode=debug_mode)
-        all_logs.extend(logs_s)
+    # MODO 1: LECTURA DE SNAPSHOT CONSOLIDADO DESDE MARIADB (Por defecto)
+    if mode == "snapshot" and target_clean in ("servicios", "sedes", "completo", "monitoreo", "caidas", "incidentes", "fallas"):
+        snapshot, snapshot_dt = get_latest_snapshot()
+        if snapshot:
+            if target_clean == "servicios":
+                report_servicios, vars_s, logs_s = compile_services_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                all_logs.extend(logs_s)
+            elif target_clean == "sedes":
+                report_sedes, vars_sd, logs_sd = compile_sedes_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                all_logs.extend(logs_sd)
+            elif target_clean in ("caidas", "incidentes", "fallas"):
+                rep_s, vars_s, logs_s = compile_services_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                rep_sd, vars_sd, logs_sd = compile_sedes_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                all_logs.extend(logs_s)
+                all_logs.extend(logs_sd)
+                caidas_lines = []
+                for l in (rep_s or "").splitlines():
+                    if "❌" in l:
+                        caidas_lines.append(l)
+                for l in (rep_sd or "").splitlines():
+                    if "❌" in l:
+                        caidas_lines.append(l)
 
-    elif target_clean == "sedes":
-        report_sedes, vars_sd, logs_sd, _ = await run_sedes_check(debug_mode=debug_mode)
-        all_logs.extend(logs_sd)
+                fecha_str, hora_str = get_formatted_datetime()
+                if caidas_lines:
+                    report_servicios = (
+                        f"🚨 **REPORTE DE INCIDENTES Y SERVICIOS CAÍDOS**\n"
+                        f"📅 *{fecha_str} • {hora_str}*\n"
+                        f"🕒 Snapshot: {snapshot_dt}\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n"
+                        + "\n".join(caidas_lines) + "\n"
+                        f"━━━━━━━━━━━━━━━━━━━━"
+                    )
+                else:
+                    report_servicios = (
+                        f"✅ **SIN INCIDENTES ACTIVOS**\n"
+                        f"📅 *{fecha_str} • {hora_str}*\n"
+                        f"🕒 Snapshot: {snapshot_dt}\n\n"
+                        f"Todos los servicios y enlaces se encuentran operando con normalidad."
+                    )
+                report_sedes = None
+            else:  # completo / monitoreo
+                report_servicios, vars_s, logs_s = compile_services_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                report_sedes, vars_sd, logs_sd = compile_sedes_from_snapshot(snapshot, snapshot_dt, debug_mode)
+                all_logs.extend(logs_s)
+                all_logs.extend(logs_sd)
 
-    elif target_clean in ("analisis_red", "red", "trafico"):
+    # MODO 2: SONDEO FÍSICO DE RED EN CALIENTE (ONDEMAND O FALLBACK)
+    if report_servicios is None and report_sedes is None and target_clean not in ("analisis_red", "red", "trafico", "limpiar", "clean", "limpieza"):
+        if target_clean == "servicios":
+            report_servicios, vars_s, logs_s, _ = await run_services_check(debug_mode=debug_mode)
+            all_logs.extend(logs_s)
+
+        elif target_clean == "sedes":
+            report_sedes, vars_sd, logs_sd, _ = await run_sedes_check(debug_mode=debug_mode)
+            all_logs.extend(logs_sd)
+
+        elif target_clean in ("caidas", "incidentes", "fallas"):
+            (rep_s, vars_s, logs_s, _), (rep_sd, vars_sd, logs_sd, _) = await asyncio.gather(
+                run_services_check(debug_mode=debug_mode),
+                run_sedes_check(debug_mode=debug_mode)
+            )
+            all_logs.extend(logs_s)
+            all_logs.extend(logs_sd)
+            caidas_lines = []
+            if rep_s:
+                for l in rep_s.splitlines():
+                    if "❌" in l:
+                        caidas_lines.append(l)
+            if rep_sd:
+                for l in rep_sd.splitlines():
+                    if "❌" in l:
+                        caidas_lines.append(l)
+
+            fecha_str, hora_str = get_formatted_datetime()
+            if caidas_lines:
+                report_servicios = (
+                    f"🚨 **REPORTE DE INCIDENTES Y SERVICIOS CAÍDOS (EN VIVO)**\n"
+                    f"📅 *{fecha_str} • {hora_str}*\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    + "\n".join(caidas_lines) + "\n"
+                    f"━━━━━━━━━━━━━━━━━━━━"
+                )
+            else:
+                report_servicios = (
+                    f"✅ **SIN INCIDENTES ACTIVOS (EN VIVO)**\n"
+                    f"📅 *{fecha_str} • {hora_str}*\n\n"
+                    f"Todos los servicios y enlaces se encuentran operando con normalidad."
+                )
+            report_sedes = None
+
+        else:  # completo / monitoreo
+            (report_servicios, vars_s, logs_s, _), (report_sedes, vars_sd, logs_sd, _) = await asyncio.gather(
+                run_services_check(debug_mode=debug_mode),
+                run_sedes_check(debug_mode=debug_mode)
+            )
+            all_logs.extend(logs_s)
+            all_logs.extend(logs_sd)
+
+    if target_clean in ("analisis_red", "red", "trafico"):
         from monitor.network_analyzer import run_full_network_analysis
         rep_txt, pcap, _, _ = await run_full_network_analysis(capture_duration=60)
         report_network = rep_txt
         pcap_path = pcap
         all_logs.append(rep_txt)
-
-    elif target_clean in ("caidas", "incidentes", "fallas"):
-        (rep_s, vars_s, logs_s, _), (rep_sd, vars_sd, logs_sd, _) = await asyncio.gather(
-            run_services_check(debug_mode=debug_mode),
-            run_sedes_check(debug_mode=debug_mode)
-        )
-        all_logs.extend(logs_s)
-        all_logs.extend(logs_sd)
-        caidas_lines = []
-        if rep_s:
-            for l in rep_s.splitlines():
-                if "❌" in l:
-                    caidas_lines.append(l)
-        if rep_sd:
-            for l in rep_sd.splitlines():
-                if "❌" in l:
-                    caidas_lines.append(l)
-
-        fecha_str, hora_str = get_formatted_datetime()
-        if caidas_lines:
-            report_servicios = (
-                f"🚨 **REPORTE DE INCIDENTES Y SERVICIOS CAÍDOS**\n"
-                f"📅 *{fecha_str} • {hora_str}*\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                + "\n".join(caidas_lines) + "\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"⚠️ *Revise la captura web adjunta.*"
-            )
-        else:
-            report_servicios = (
-                f"✅ **SIN INCIDENTES ACTIVOS**\n"
-                f"📅 *{fecha_str} • {hora_str}*\n\n"
-                f"Todos los servicios y enlaces se encuentran operando con normalidad."
-            )
-        report_sedes = None
-
-    elif target_clean in ("web", "pantalla", "dashboard"):
-        report_servicios = None
-        report_sedes = None
 
     elif target_clean in ("limpiar", "clean", "limpieza"):
         from monitor.system_cleaner import run_system_cleanup
@@ -190,20 +402,12 @@ async def execute_monitoring(
         report_servicios = rep_clean
         all_logs.append(rep_clean)
 
-    else:  # completo / monitoreo
-        (report_servicios, vars_s, logs_s, _), (report_sedes, vars_sd, logs_sd, _) = await asyncio.gather(
-            run_services_check(debug_mode=debug_mode),
-            run_sedes_check(debug_mode=debug_mode)
-        )
-        all_logs.extend(logs_s)
-        all_logs.extend(logs_sd)
-
     elapsed_time = round(time.perf_counter() - t0, 2)
     log_file_path = write_consolidated_log(all_logs)
 
-    # Generar captura web panorámica (equivalente a la opción '/servicios web')
+    # Generar captura web panorámica solo si fue solicitada explícitamente (ej: ejecuciones CLI o cron desatendido)
     screenshot_file: Optional[Path] = None
-    if target_clean in ("servicios", "sedes", "completo", "monitoreo", "caidas", "incidentes", "fallas"):
+    if capture_screenshot and target_clean in ("servicios", "sedes", "completo", "monitoreo", "caidas", "incidentes", "fallas"):
         try:
             from monitor.web_screenshot import capture_web_dashboard
             screenshot_file = await capture_web_dashboard(mode="full")
@@ -244,7 +448,7 @@ def main():
     args = parser.parse_args()
 
     print(f"🚀 [MONITOR VALLE SECO] Ejecutando: [{args.target.upper()}]...")
-    result = asyncio.run(execute_monitoring(target=args.target, debug_mode=args.debug))
+    result = asyncio.run(execute_monitoring(target=args.target, debug_mode=args.debug, capture_screenshot=True))
 
     print("\n" + "=" * 65)
     if result.get("report_servicios"):

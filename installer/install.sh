@@ -340,12 +340,12 @@ echo -e "${GREEN}[+] Inteligencia Artificial lista.${NC}\n"
 # PASO 8: COMANDOS GLOBALES CLI (/usr/local/bin)
 # =========================================================================
 echo -e "${BLUE}[*] Paso 8: Vinculando comandos globales en /usr/local/bin...${NC}"
-chmod +x "$PROJECT_DIR/estatus" "$PROJECT_DIR/checkpoint" "$PROJECT_DIR/rollback" "$PROJECT_DIR/activar" 2>/dev/null || true
-ln -sf "$PROJECT_DIR/estatus" /usr/local/bin/estatus 2>/dev/null || true
-ln -sf "$PROJECT_DIR/checkpoint" /usr/local/bin/checkpoint 2>/dev/null || true
-ln -sf "$PROJECT_DIR/rollback" /usr/local/bin/rollback 2>/dev/null || true
-ln -sf "$PROJECT_DIR/activar" /usr/local/bin/activar 2>/dev/null || true
-ln -sf "$PROJECT_DIR/temperatura" /usr/local/bin/temperatura 2>/dev/null || true
+chmod +x "$PROJECT_DIR/tools/estatus" "$PROJECT_DIR/tools/checkpoint" "$PROJECT_DIR/tools/rollback" "$PROJECT_DIR/tools/activar" "$PROJECT_DIR/tools/temperatura" 2>/dev/null || true
+ln -sf "$PROJECT_DIR/tools/estatus" /usr/local/bin/estatus 2>/dev/null || true
+ln -sf "$PROJECT_DIR/tools/checkpoint" /usr/local/bin/checkpoint 2>/dev/null || true
+ln -sf "$PROJECT_DIR/tools/rollback" /usr/local/bin/rollback 2>/dev/null || true
+ln -sf "$PROJECT_DIR/tools/activar" /usr/local/bin/activar 2>/dev/null || true
+ln -sf "$PROJECT_DIR/tools/temperatura" /usr/local/bin/temperatura 2>/dev/null || true
 echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint', 'rollback', 'activar' y 'temperatura' listas en /usr/local/bin.${NC}\n"
 
 # =========================================================================
@@ -409,7 +409,7 @@ After=network-online.target
 User=$SYS_USER
 Group=$SYS_USER
 WorkingDirectory=$PROJECT_DIR
-ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/sentinel_bot.py
+ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/tools/sentinel_bot.py
 Restart=always
 RestartSec=10
 
@@ -463,12 +463,12 @@ SERVICE_EOF
 # 5. Cron de Escaneo Web Dinámico (frecuencia administrada desde el portal web)
 cat <<CRON_EOF > /etc/cron.d/monitoreo_web
 # /etc/cron.d/monitoreo_web - Sincronizacion Web Dinamica de Monitoreo
-* * * * * $SYS_USER $PROJECT_DIR/estatus web > /dev/null 2>&1
+* * * * * $SYS_USER $PROJECT_DIR/tools/estatus web > /dev/null 2>&1
 CRON_EOF
 chmod 644 /etc/cron.d/monitoreo_web
 
 # 6. Cron Runner Dinámico de Monitoreo cada minuto y Auto-Discovery cada 15 min
-(crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" | grep -v "estatus discovery" ; echo "* * * * * $PROJECT_DIR/estatus cron-runner >/dev/null 2>&1" ; echo "*/15 * * * * $PROJECT_DIR/estatus discovery --all >/dev/null 2>&1") | crontab -u "$SYS_USER" -
+(crontab -u "$SYS_USER" -l 2>/dev/null | grep -v "cron-runner" | grep -v "estatus servicios" | grep -v "estatus discovery" ; echo "* * * * * $PROJECT_DIR/tools/estatus cron-runner >/dev/null 2>&1" ; echo "*/15 * * * * $PROJECT_DIR/tools/estatus discovery --all >/dev/null 2>&1") | crontab -u "$SYS_USER" -
 
 systemctl daemon-reload
 systemctl enable boot-alert.service
@@ -685,9 +685,9 @@ echo -e "${GREEN}[+] Permisos de usuario aplicados correctamente.${NC}\n"
 # =========================================================================
 # PASO 12: HOOK DE POST-INSTALACIÓN / CAMBIOS MAYORES
 # =========================================================================
-if [ -f "$PROJECT_DIR/post_update.py" ] && [ -f "$PROJECT_DIR/venv/bin/python" ]; then
+if [ -f "$PROJECT_DIR/tools/post_update.py" ] && [ -f "$PROJECT_DIR/venv/bin/python" ]; then
     echo -e "${BLUE}[*] Paso 12: Ejecutando hook de post-actualización y capacidades de red...${NC}"
-    "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/post_update.py" || true
+    "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/tools/post_update.py" || true
     echo -e "${GREEN}[+] Hook de post-instalación completado con éxito.${NC}\n"
 fi
 

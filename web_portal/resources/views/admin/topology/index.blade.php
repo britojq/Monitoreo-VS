@@ -7,46 +7,57 @@
     <!-- ========================================================================= -->
     <!-- ENCABEZADO Y CONTROLES SUPERIORES                                          -->
     <!-- ========================================================================= -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-xl bg-obsidian-panel/80 border border-obsidian-border/90 backdrop-blur-md shadow-md">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-                <span class="material-symbols-outlined text-lg">hub</span>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Supervisión &amp; Jerarquía de Red</span>
             </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Topología de Red Visual Dinámica (Valle Seco)
-                    </h2>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
-                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                        LLDP / CDP / FDB
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">hub</span>
+                Topología de Red Visual Dinámica
+                <span class="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 inline-flex items-center justify-center cursor-help" title="LLDP / CDP / FDB Dinámico">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                </span>
+                @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('topology.rebuild'))
+                    <span class="w-6 h-6 rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center cursor-help" title="Modo Consulta: Acceso de solo lectura">
+                        <span class="material-symbols-outlined text-xs">visibility</span>
                     </span>
-                    @if(!auth()->user()->isAdmin() && !auth()->user()->hasPermission('topology.rebuild'))
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">
-                            <span class="material-symbols-outlined text-[11px]">visibility</span>
-                            MODO CONSULTA
-                        </span>
-                    @endif
-                </div>
-                <p class="text-[10px] font-mono text-obsidian-muted">
-                    Descubrimiento automático de vecinos, jerarquía física y lógica con grafo interactivo Cytoscape.js.
-                </p>
-            </div>
+                @endif
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">
+                Descubrimiento automático de dispositivos, jerarquía física y lógica con grafo interactivo en tiempo real
+            </p>
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <div class="flex items-center gap-1.5">
+                <span class="text-obsidian-muted text-xs font-mono uppercase">Filtrar Sede:</span>
+                <select id="site-select" onchange="filterBySite(this.value)" class="bg-obsidian-panel border border-cyan-500/40 text-cyan-300 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-cyan-400 font-mono shadow-xs" title="Filtrar por sede física">
+                    <option value="">Todas las Sedes (Troncal WAN)</option>
+                    @foreach($sites as $st)
+                        <option value="{{ $st->id }}" {{ ($selectedSiteId ?? null) == $st->id ? 'selected' : '' }}>
+                            {{ $st->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             @if((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('topology.rebuild'))) && !$isClusterSlave)
-                <form action="{{ route('admin.topology.rebuild') }}" method="POST" class="inline">
+                <form action="{{ route('admin.topology.rebuild') }}" method="POST" class="inline m-0">
                     @csrf
-                    <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                        <span class="material-symbols-outlined text-sm">reorder</span>
-                        <span>Re-escanear Vecinos</span>
+                    <button type="submit" class="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition flex items-center justify-center cursor-pointer shadow-xs" title="Re-escanear Dispositivos Interconectados (Protocolos LLDP / CDP / FDB)">
+                        <span class="material-symbols-outlined text-lg">travel_explore</span>
                     </button>
                 </form>
             @endif
-            <button type="button" onclick="loadTopologyGraph()" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                <span>Refrescar Grafo</span>
+
+            <button type="button" onclick="loadTopologyGraph()" class="w-9 h-9 rounded-lg bg-obsidian-panel border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition flex items-center justify-center cursor-pointer shadow-xs" title="Refrescar Grafo de Topología">
+                <span class="material-symbols-outlined text-lg">refresh</span>
             </button>
         </div>
     </div>
@@ -122,8 +133,8 @@
                     <button type="button" onclick="cyZoom(0.8)" class="p-1 px-2 rounded bg-obsidian-panel hover:bg-cyan-500 hover:text-black border border-obsidian-border transition text-[11px]" title="Zoom Alejar">
                         <span class="material-symbols-outlined text-xs align-middle">zoom_out</span>
                     </button>
-                    <button type="button" onclick="cyFit()" class="p-1 px-2 rounded bg-obsidian-panel hover:bg-cyan-500 hover:text-black border border-obsidian-border transition text-[11px]" title="Ajustar al Lienzo">
-                        <span class="material-symbols-outlined text-xs align-middle">crop_free</span> Fit
+                    <button type="button" onclick="cyFit()" class="p-1 px-2 rounded bg-obsidian-panel hover:bg-cyan-500 hover:text-black border border-obsidian-border transition text-[11px]" title="Ajustar al Lienzo (Fit)">
+                        <span class="material-symbols-outlined text-xs align-middle">crop_free</span>
                     </button>
                     <button type="button" onclick="cyReset()" class="p-1 px-2 rounded bg-obsidian-panel hover:bg-cyan-500 hover:text-black border border-obsidian-border transition text-[11px]" title="Restablecer Vista">
                         <span class="material-symbols-outlined text-xs align-middle">restart_alt</span>
@@ -164,7 +175,7 @@
 
                 <div id="node-details-content" class="space-y-3.5 mt-4 hidden font-mono text-xs">
                     <div>
-                        <span class="text-[10px] text-obsidian-muted uppercase block">Nombre de Equipo</span>
+                        <span class="text-[10px] text-obsidian-muted uppercase block">Nombre Etiqueta Corporativo</span>
                         <div id="detail-name" class="font-bold text-white text-sm break-words">--</div>
                     </div>
 
@@ -181,7 +192,7 @@
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <span class="text-[10px] text-obsidian-muted uppercase block">Fabricante / Vendor</span>
+                            <span class="text-[10px] text-obsidian-muted uppercase block">Fabricante / Marca</span>
                             <div id="detail-vendor" class="text-white">--</div>
                         </div>
                         <div>
@@ -191,8 +202,13 @@
                     </div>
 
                     <div>
-                        <span class="text-[10px] text-obsidian-muted uppercase block">Tiempo en Línea (Uptime)</span>
-                        <div id="detail-uptime" class="text-emerald-400 text-[11px]">--</div>
+                        <span class="text-[10px] text-obsidian-muted uppercase block">Sede Física</span>
+                        <div id="detail-site" class="text-slate-300 text-[11px]">--</div>
+                    </div>
+
+                    <div id="detail-responsable-container" class="hidden">
+                        <span class="text-[10px] text-obsidian-muted uppercase block">Responsable Asignado</span>
+                        <div id="detail-responsable" class="text-emerald-300 font-semibold text-[11px]">--</div>
                     </div>
 
                     <div id="detail-notes-container" class="hidden">
@@ -205,8 +221,8 @@
 
                     <div class="pt-3 border-t border-obsidian-border space-y-2">
                         <a id="detail-action-link" href="#" class="w-full py-2 px-3 rounded-lg bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black font-mono text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
-                            <span class="material-symbols-outlined text-sm">monitoring</span>
-                            <span>Ver Telemetría SNMP</span>
+                            <span class="material-symbols-outlined text-sm" id="detail-action-icon">open_in_new</span>
+                            <span id="detail-action-text">Ver Ficha Técnica</span>
                         </a>
                     </div>
                 </div>
@@ -234,10 +250,27 @@
         loadTopologyGraph();
     });
 
-    async function loadTopologyGraph() {
+    function filterBySite(siteId) {
+        loadTopologyGraph(siteId);
+    }
+
+    async function loadTopologyGraph(siteIdOverride) {
+        const siteSelect = document.getElementById('site-select');
+        const siteId = siteIdOverride !== undefined ? siteIdOverride : (siteSelect ? siteSelect.value : '');
         const cyContainer = document.getElementById('cy');
+
+        let url = '{{ route("admin.topology.data") }}';
+        if (siteId) {
+            url += '?site_id=' + encodeURIComponent(siteId);
+        }
+
         try {
-            const response = await fetch('{{ route("admin.topology.data") }}');
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
             const data = await response.json();
 
             if (cy) {
@@ -315,12 +348,25 @@
                             'height': 40
                         }
                     },
-                    // Hosts / Dispositivos Finales
+                    // Puestos de Trabajo / Workstations (ITAM)
                     {
-                        selector: 'node[type = "host"]',
+                        selector: 'node[type = "workstation"]',
                         style: {
                             'background-color': '#064e3b',
                             'border-color': '#10b981',
+                            'shape': 'round-rectangle',
+                            'border-width': 2,
+                            'width': 28,
+                            'height': 28,
+                            'font-size': '9px'
+                        }
+                    },
+                    // Hosts Genéricos
+                    {
+                        selector: 'node[type = "host"]',
+                        style: {
+                            'background-color': '#1e293b',
+                            'border-color': '#64748b',
                             'width': 26,
                             'height': 26,
                             'font-size': '9px'
@@ -387,6 +433,23 @@
                             'width': 2.5
                         }
                     },
+                    {
+                        selector: 'edge[link_type = "ACCESS"]',
+                        style: {
+                            'line-color': '#10b981',
+                            'target-arrow-color': '#10b981',
+                            'line-style': 'dotted',
+                            'width': 1.5
+                        }
+                    },
+                    {
+                        selector: 'edge[link_type = "WAN"]',
+                        style: {
+                            'line-color': '#f59e0b',
+                            'target-arrow-color': '#f59e0b',
+                            'width': 2.5
+                        }
+                    },
                     // Selección
                     {
                         selector: ':selected',
@@ -438,11 +501,20 @@
         document.getElementById('node-details-content').classList.remove('hidden');
 
         document.getElementById('detail-name').innerText = data.label || 'N/A';
-        document.getElementById('detail-ip').innerText = data.ip || 'N/A';
+        document.getElementById('detail-ip').innerText = data.ip || 'Sin IP';
         document.getElementById('detail-type').innerText = (data.type || 'Dispositivo').replace('_', ' ');
         document.getElementById('detail-vendor').innerText = data.vendor || 'N/A';
         document.getElementById('detail-model').innerText = data.model || 'N/A';
-        document.getElementById('detail-uptime').innerText = data.uptime || 'N/A';
+        document.getElementById('detail-site').innerText = data.site_name || 'Sede Central';
+
+        const respContainer = document.getElementById('detail-responsable-container');
+        const respEl = document.getElementById('detail-responsable');
+        if (data.responsable && data.responsable.trim() !== '') {
+            respEl.innerText = data.responsable;
+            respContainer.classList.remove('hidden');
+        } else {
+            respContainer.classList.add('hidden');
+        }
 
         const notesContainer = document.getElementById('detail-notes-container');
         const notesEl = document.getElementById('detail-notes');
@@ -463,9 +535,22 @@
         }
 
         const actionLink = document.getElementById('detail-action-link');
-        if (data.id.startsWith('snmp_')) {
-            actionLink.href = '{{ route("admin.snmp.index") }}?device_id=' + data.id.replace('snmp_', '');
+        const actionText = document.getElementById('detail-action-text');
+        const actionIcon = document.getElementById('detail-action-icon');
+
+        if (data.device_url) {
+            actionLink.href = data.device_url;
             actionLink.classList.remove('hidden');
+            if (data.source_module === 'inventory_asset') {
+                actionText.innerText = 'Ver Ficha en ITAM';
+                actionIcon.innerText = 'computer';
+            } else if (data.source_module === 'snmp') {
+                actionText.innerText = 'Ver Telemetría SNMP';
+                actionIcon.innerText = 'radar';
+            } else {
+                actionText.innerText = 'Ver Ficha de Red';
+                actionIcon.innerText = 'dns';
+            }
         } else {
             actionLink.classList.add('hidden');
         }
@@ -475,6 +560,7 @@
         document.getElementById('node-details-empty').classList.remove('hidden');
         document.getElementById('node-details-content').classList.add('hidden');
         document.getElementById('detail-notes-container').classList.add('hidden');
+        document.getElementById('detail-responsable-container').classList.add('hidden');
         const badge = document.getElementById('node-badge');
         badge.innerText = 'Seleccionar nodo';
         badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300';

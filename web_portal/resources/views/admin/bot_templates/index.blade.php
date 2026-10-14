@@ -3,50 +3,77 @@
 @section('page_title', 'Plantillas de Mensajería')
 
 @section('admin_content')
-<div class="space-y-6">
-    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT -->
-    <div class="flex flex-wrap items-center gap-2 border-b border-obsidian-border/80 pb-3">
-        <a href="{{ route('admin.bot.commands.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">terminal</span>
-            <span>Comandos & Políticas</span>
-        </a>
-        <a href="{{ route('admin.bot.templates.index') }}" class="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}">
-            <span class="material-symbols-outlined text-base">edit_note</span>
-            <span>Plantillas de Mensajería</span>
-        </a>
+<div class="space-y-4">
+    <!-- CABECERA -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-1.5 mb-1">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black transition text-[10.5px] font-mono font-semibold group shadow-xs">
+                    <span class="material-symbols-outlined text-xs group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+                    Dashboard
+                </a>
+                <span class="text-obsidian-border font-mono text-xs">/</span>
+                <span class="text-[10.5px] font-mono text-obsidian-muted">Bot de Telegram</span>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-2xl">edit_note</span>
+                Plantillas de Mensajería &amp; Reportes
+            </h1>
+            <p class="text-xs font-mono text-obsidian-muted">Edite el formato, encabezados corporativos, leyendas y firmas de los reportes emitidos por el Bot de Telegram</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            @if($isClusterSlave ?? false)
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-amber-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-amber-500/50 shadow-xl shadow-amber-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-amber-400">dns</span>
+                            <span class="font-bold text-amber-200">Fuente: Servidor Esclavo (Solo Lectura)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-gray-700 shadow-xl text-gray-300 text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-gray-400">lock</span>
+                            <span>Solo Lectura (Modo Esclavo)</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="relative group">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 transition shadow-xs cursor-help">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span class="material-symbols-outlined text-base text-cyan-400">dns</span>
+                    </span>
+                    <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                        <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-cyan-500/50 shadow-xl shadow-cyan-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-xs text-cyan-400">dns</span>
+                            <span class="font-bold text-cyan-200">Fuente: Servidor Maestro</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
     </div>
 
-    <!-- CABECERA DE LA PÁGINA -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-obsidian-border/80">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-950 to-blue-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shadow-md shrink-0">
-                <span class="material-symbols-outlined text-2xl">edit_note</span>
-            </div>
-            <div>
-                <h1 class="text-base sm:text-lg font-bold text-white tracking-wide uppercase font-mono flex items-center gap-2">
-                    Plantillas de Mensajería & Reportes Oficiales
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                        SERVIDOR MAESTRO
-                    </span>
-                </h1>
-                <p class="text-xs font-mono text-obsidian-muted">
-                    Edite el formato, encabezados institucionales, leyendas y firmas de los reportes emitidos por el Bot de Telegram
-                </p>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-            @if($isClusterSlave)
-            <span class="px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-500 font-mono text-xs inline-flex items-center gap-1.5" title="Modificaciones restringidas al Servidor Master">
-                <span class="material-symbols-outlined text-xs">lock</span>
-                <span>Solo Lectura (Modo Esclavo)</span>
-            </span>
-            @endif
-            <a href="{{ route('admin.dashboard') }}" class="px-3.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-xs font-mono text-obsidian-muted hover:text-white transition flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-sm">arrow_back</span>
-                <span>Dashboard</span>
-            </a>
-        </div>
+    <!-- PESTAÑAS COMANDOS & PLANTILLAS BOT (PANEL DE NAVEGACIÓN COMPACTO) -->
+    <div class="flex flex-wrap items-center gap-1.5 border-b border-obsidian-border/80 pb-2.5">
+        <a href="{{ route('admin.bot.commands.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.bot.commands.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Comandos y Políticas de Ejecución del Bot">
+            <span class="material-symbols-outlined text-sm">terminal</span>
+            <span>Comandos &amp; Políticas</span>
+        </a>
+        <a href="{{ route('admin.bot.templates.index') }}" class="px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer {{ request()->routeIs('admin.bot.templates.*') ? 'bg-cyan-500 text-black shadow-cyan-500/20' : 'bg-obsidian-panel/80 border border-obsidian-border text-obsidian-muted hover:text-white hover:border-cyan-500/40' }}" title="Plantillas de Mensajería y Reportes">
+            <span class="material-symbols-outlined text-sm">edit_note</span>
+            <span>Plantillas de Mensajería</span>
+        </a>
     </div>
 
 
@@ -114,18 +141,18 @@
                            placeholder="Ej. Servicios Corporativos (Carabobo - Valle Seco)"/>
                 </div>
 
-                <!-- ENCABEZADO INSTITUCIONAL -->
+                <!-- ENCABEZADO CORPORATIVO -->
                 <div class="space-y-1.5">
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-xs text-cyan-400">corporate_fare</span>
-                            Encabezado Institucional (Gerencia, División, Departamento, Lugar)
+                            Encabezado Corporativo (Gerencia, División, Departamento, Lugar)
                         </label>
                         <span class="text-[10px] font-mono text-obsidian-muted">Soporta HTML &lt;b&gt;</span>
                     </div>
                     <textarea name="header_text" id="input_header_text" rows="5" required
                               class="w-full bg-[#030914] border border-obsidian-border text-white text-xs font-mono rounded-lg p-3 focus:outline-none focus:border-cyan-400 transition leading-relaxed custom-scroll"
-                              placeholder="Líneas institucionales del encabezado...">{{ old('header_text', $currentTemplate->header_text) }}</textarea>
+                              placeholder="Líneas corporativas del encabezado...">{{ old('header_text', $currentTemplate->header_text) }}</textarea>
                 </div>
 
                 <!-- SUB-ENCABEZADO / SECCIÓN -->
@@ -188,7 +215,7 @@
                 <div class="space-y-1.5">
                     <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-xs text-cyan-400">campaign</span>
-                        Lema Institucional de Cierre
+                        Lema de Cierre
                     </label>
                     <input type="text" name="slogan" id="input_slogan"
                            value="{{ old('slogan', $currentTemplate->slogan) }}"
@@ -273,7 +300,7 @@
 
                 <!-- PIE DE CHAT -->
                 <div class="flex items-center justify-between text-[11px] text-gray-500 font-mono px-1">
-                    <span>Transmisión Oficial ATIT</span>
+                    <span>Transmisión ATIT</span>
                     <span>Hoy {{ date('h:i A') }} ✓✓</span>
                 </div>
             </div>
