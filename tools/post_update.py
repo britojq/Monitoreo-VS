@@ -17,7 +17,14 @@ import sys
 import time
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+if (Path(__file__).resolve().parent / "monitor").exists():
+    BASE_DIR = Path(__file__).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 LOG_DIR = Path("/tmp/monitor")
 
 
