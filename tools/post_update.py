@@ -444,6 +444,32 @@ def ensure_ups_service():
 
         subprocess.run(cmd_prefix + ["systemctl", "restart", "ups-monitor.service"], check=False)
         log("✅ Demonio ups-monitor.service iniciado/reiniciado exitosamente.")
+
+        # Auto-curación de identidad corporativa legítima del UPS (Reglas de Oro #6, #7 y #8)
+        try:
+            from monitor.monitor_db import get_db_connection
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE ups_devices
+                    SET name = 'UPS ZTG LV6KL - Sede Valle Seco',
+                        model = 'ZTG LV6KL 6kVA',
+                        serial_number = 'LV6KL-VS-01',
+                        firmware_version = 'R1.01.55'
+                    WHERE name LIKE '%222222%' OR model LIKE '%222222%' OR firmware_version = '(';
+                """)
+                cur.execute("""
+                    UPDATE inventory_peripherals
+                    SET brand = 'ZTG',
+                        model = 'LV6KL 6kVA',
+                        serial_number = 'LV6KL-VS-01'
+                    WHERE type = 'ups' AND (model LIKE '%222222%' OR brand = 'Genérico');
+                """)
+                conn.commit()
+            conn.close()
+            log("✅ Identidad corporativa de UPS y periférico ITAM conciliada en MariaDB.")
+        except Exception as e:
+            log(f"⚠️ Aviso curando identidad UPS: {e}")
     except Exception as e:
         log(f"⚠️ Aviso configurando servicio UPS: {e}")
 

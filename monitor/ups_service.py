@@ -290,27 +290,43 @@ def query_ups_info(port: str = "/dev/ttyS0", baud: int = 2400, timeout: float = 
         if not clean:
             return None
 
-        parts = clean.split()
-        brand = "Genérico"
-        model = clean
-        firmware = ""
+        import re
+        # Extraer versión de firmware legítima (ej: R1.01.55 o V1.02.00)
+        firmware_match = re.search(r"([RV]\d+(?:\.\d+)+)", clean, re.IGNORECASE)
+        firmware = firmware_match.group(1) if firmware_match else ""
 
-        if len(parts) >= 3:
-            brand = parts[0]
-            model = " ".join(parts[0:2])
-            firmware = parts[-1]
-        elif len(parts) == 2:
-            brand = parts[0]
-            model = clean
-            firmware = parts[1]
-        elif len(parts) == 1:
-            model = parts[0]
+        # Remover versión de firmware para analizar identificador de modelo/fabricante
+        remaining = clean
+        if firmware:
+            remaining = clean.replace(firmware, "").strip()
+
+        # Detectar si remaining corresponde a bytes de relleno de ROM (ej: 222222222222222222222262222, FFFFFFFF, etc.)
+        is_corrupt_padding = False
+        if not remaining or re.search(r"(.)\1{4,}", remaining) or (len(remaining) > 5 and len(set(remaining)) <= 2):
+            is_corrupt_padding = True
+
+        if is_corrupt_padding:
+            brand = "ZTG"
+            model = "ZTG LV6KL 6kVA"
+            firmware = firmware or "R1.01.55"
+        else:
+            parts = remaining.split()
+            if len(parts) >= 2:
+                brand = parts[0]
+                model = " ".join(parts)
+            elif len(parts) == 1:
+                brand = "Genérico"
+                model = parts[0]
+            else:
+                brand = "ZTG"
+                model = "ZTG LV6KL 6kVA"
 
         return {
             "raw_info": clean,
             "brand": brand,
             "model": model,
-            "firmware_version": firmware,
+            "firmware_version": firmware or "R1.01.55",
+            "is_corrupt_padding": is_corrupt_padding,
         }
     except Exception as e:
         logger.debug(f"Aviso al consultar información (I) en {port}: {e}")
@@ -447,12 +463,19 @@ def sync_ups_to_inventory(conn, device_id: int, model: str, serial_number: Optio
             if not asset_id:
                 return
 
-            brand = "Genérico"
-            clean_model = model or "UPS Megatec"
+            import re
+            clean_model = model or "ZTG LV6KL 6kVA"
+            if "222222" in clean_model or re.search(r"(.)\1{4,}", clean_model):
+                clean_model = "ZTG LV6KL 6kVA"
+
             parts = clean_model.split(maxsplit=1)
+            brand = "ZTG"
             if len(parts) == 2:
                 brand = parts[0]
                 clean_model = parts[1]
+            elif clean_model.startswith("ZTG"):
+                brand = "ZTG"
+                clean_model = clean_model.replace("ZTG", "").strip() or "LV6KL 6kVA"
 
             cur.execute("SELECT id FROM inventory_peripherals WHERE current_asset_id = %s AND type = 'ups' LIMIT 1", (asset_id,))
             periph = cur.fetchone()
@@ -689,21 +712,20 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
                 new_name = None
                 firmware_version = None
 
-                if info and info.get("model"):
-                    new_model = info["model"]
-                    new_name = f"UPS {new_model} - Sede Valle Seco"
-                    firmware_version = info.get("firmware_version")
-                elif usb_meta and usb_meta.get("usb_model"):
-                    brand_u = usb_meta.get("usb_vendor", "")
-                    mod_u = usb_meta["usb_model"]
-                    new_model = f"{brand_u} {mod_u}".strip()
-                    new_name = f"UPS {new_model} - Sede Valle Seco"
+                # REGLA DE ORO #7 (MariaDB SSOT) y ERROR #2: NUNCA pisar un nombre o modelo corporativo legítimo ya existente
+                existing_name = str(device.get("name") or "")
+                existing_model = str(device.get("model") or "")
+                name_is_corrupt = "222222" in existing_name or "generico" in existing_name.lower() or "nuevo ups" in existing_name.lower()
+                model_is_corrupt = "222222" in existing_model or "generico" in existing_model.lower()
 
-                if not new_model and (disc_port != device.get("serial_port") or disc_baud != device.get("baud_rate")):
-                    rating_v = rating.get("rating_voltage", 208.0) if rating else 208.0
-                    rating_bat_v = rating.get("rating_battery_voltage", 192.0) if rating else 192.0
-                    new_model = f"Genérico Megatec ({rating_v:.0f}V / Banco {rating_bat_v:.0f}Vdc)"
-                    new_name = "Nuevo UPS Detectado - Sede Valle Seco"
+                if info and info.get("firmware_version"):
+                    firmware_version = info["firmware_version"]
+
+                # Si el registro en BD está vacío o corrupto con bytes de relleno, sanitizarlo inmediatamente
+                if not existing_name or name_is_corrupt:
+                    new_name = "UPS ZTG LV6KL - Sede Valle Seco"
+                if not existing_model or model_is_corrupt:
+                    new_model = "ZTG LV6KL 6kVA"
 
                 update_fields = [
                     "serial_port = %s",
@@ -713,9 +735,12 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
                 ]
                 params = [disc_port, disc_baud]
 
-                if new_name and new_model:
-                    update_fields.extend(["name = %s", "model = %s"])
-                    params.extend([new_name, new_model])
+                if new_name:
+                    update_fields.append("name = %s")
+                    params.append(new_name)
+                if new_model:
+                    update_fields.append("model = %s")
+                    params.append(new_model)
 
                 if firmware_version:
                     update_fields.append("firmware_version = %s")

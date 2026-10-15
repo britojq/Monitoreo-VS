@@ -22,7 +22,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <div id="ups-header-icon" class="w-10 h-10 rounded-xl {{ $device->is_on_battery ? 'bg-red-950/80 border-red-500/50 text-red-400' : 'bg-cyan-950/80 border-cyan-500/50 text-cyan-400' }} border flex items-center justify-center shrink-0 transition-colors">
-                    <span class="material-symbols-outlined text-2xl" id="ups-status-icon">
+                    <span class="material-symbols-outlined text-2xl select-none" id="ups-status-icon" aria-hidden="true">
                         {{ $device->is_on_battery ? 'power_off' : 'battery_charging_full' }}
                     </span>
                 </div>
@@ -32,13 +32,13 @@
                             {{ $device->name }}
                         </h1>
                         @if($device->is_generic)
-                        <span class="w-6 h-6 rounded-md bg-amber-950/90 text-amber-300 border border-amber-500/60 inline-flex items-center justify-center cursor-help animate-pulse" title="Pendiente de Identificación Corporativa">
-                            <span class="material-symbols-outlined text-xs">warning</span>
+                        <span class="w-6 h-6 rounded-md bg-amber-950/90 text-amber-300 border border-amber-500/60 inline-flex items-center justify-center cursor-help animate-pulse" title="Pendiente de Identificación Corporativa" aria-label="Pendiente de Identificación Corporativa">
+                            <span class="material-symbols-outlined text-xs select-none" aria-hidden="true">warning</span>
                         </span>
                         @endif
-                        <span id="ups-status-badge" class="w-6 h-6 rounded-md inline-flex items-center justify-center cursor-help {{ $device->is_on_battery ? 'bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse' : ($device->is_online ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/60' : 'bg-slate-900 text-slate-400 border border-slate-700') }}" title="{{ $device->is_on_battery ? 'Modo Batería (Corte Eléctrico Activo)' : ($device->is_online ? 'Red Comercial Normal (Alimentación Estable)' : 'UPS Desconectado') }}">
+                        <span id="ups-status-badge" class="w-6 h-6 rounded-md inline-flex items-center justify-center cursor-help {{ $device->is_on_battery ? 'bg-red-950/90 text-red-400 border border-red-500/60 animate-pulse' : ($device->is_online ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/60' : 'bg-slate-900 text-slate-400 border border-slate-700') }}" title="{{ $device->is_on_battery ? 'Modo Batería (Corte Eléctrico Activo)' : ($device->is_online ? 'Red Comercial Normal (Alimentación Estable)' : 'UPS Desconectado') }}" aria-label="{{ $device->is_on_battery ? 'Modo Batería' : ($device->is_online ? 'Red Comercial Normal' : 'Desconectado') }}">
                             <span id="ups-pulse-dot" class="w-2 h-2 rounded-full {{ $device->is_on_battery ? 'bg-red-400' : ($device->is_online ? 'bg-emerald-400' : 'bg-slate-400') }}"></span>
-                            <span id="ups-status-text" class="sr-only">{{ $device->is_on_battery ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : ($device->is_online ? 'RED COMERCIAL NORMAL' : 'DESCONECTADO') }}</span>
+                            <span id="ups-status-text" class="hidden">{{ $device->is_on_battery ? 'MODO BATERÍA (CORTE ELÉCTRICO)' : ($device->is_online ? 'RED COMERCIAL NORMAL' : 'DESCONECTADO') }}</span>
                         </span>
                     </div>
                     <p class="text-[11px] font-mono text-obsidian-muted flex items-center gap-2 mt-0.5 flex-wrap">
@@ -50,7 +50,7 @@
                         @if($device->inventoryAsset)
                         <span>•</span>
                         <a href="{{ route('admin.devices.index', ['search' => $device->inventoryAsset->ip_address]) }}" class="text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1" title="Ver ficha técnica del servidor anfitrión en ITAM">
-                            <span class="material-symbols-outlined text-xs">dns</span>
+                            <span class="material-symbols-outlined text-xs select-none" aria-hidden="true">dns</span>
                             <span>Anfitrión: <strong class="text-white">{{ $device->inventoryAsset->display_identity ?? $device->inventoryAsset->name }}</strong> ({{ $device->inventoryAsset->ip_address }})</span>
                         </a>
                         @endif
