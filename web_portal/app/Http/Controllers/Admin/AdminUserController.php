@@ -1,33 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Users\AuthorizeLdapUserAction;
+use App\Actions\Users\CreateUserAction;
+use App\Actions\Users\DeleteUserAction;
+use App\Actions\Users\UpdateUserAction;
+use App\Actions\Users\UpdateUserPermissionsAction;
+use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\AuthorizeLdapUserRequest;
+use App\Http\Requests\Users\StoreUserRequest;
+use App\Http\Requests\Users\UpdateUserPermissionsRequest;
+use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\User;
 use App\Services\LdapAuthService;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AdminUserController extends Controller
 {
+    private readonly UserRepositoryInterface $repository;
+
+    public function __construct(
+        ?UserRepositoryInterface $repository = null
+    ) {
+        $this->repository = $repository ?? app(UserRepositoryInterface::class);
+    }
+
     public function index(): View
     {
-        $users = User::orderBy('id')->get();
+        $users = $this->repository->getAllOrdered();
+
         return view('admin.users.index', compact('users'));
     }
 
     /**
      * Buscar usuarios en el servidor LDAP corporativo (AJAX)
      */
-    public function searchLdapUsers(Request $request, LdapAuthService $ldapService): JsonResponse
+    public function searchLdapUsers(Request $request, ?LdapAuthService $ldapService = null): JsonResponse
     {
-        $q = trim($request->input('q', ''));
+        $ldapService = $ldapService ?? app(LdapAuthService::class);
+        $q = trim((string) $request->input('q', ''));
         if (strlen($q) < 2) {
             return response()->json([
                 'success' => false,
@@ -40,10 +60,9 @@ class AdminUserController extends Controller
         try {
             $results = $ldapService->searchUsers($q);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Fallo al consultar LDAP para término [{$q}]: " . $e->getMessage());
+            Log::warning("Fallo al consultar LDAP para término [{$q}]: " . $e->getMessage());
         }
 
-        // Enriquecer cada resultado con su estado actual en la BD local
         $existingUsers = User::whereIn('username', array_column($results, 'uid'))
             ->orWhereIn('email', array_column($results, 'email'))
             ->get()
@@ -54,7 +73,7 @@ class AdminUserController extends Controller
             if ($existing) {
                 $r['already_authorized'] = true;
                 $r['current_role'] = $existing->role;
-                $r['is_active'] = $existing->is_active;
+                $r['is_active'] = (bool) $existing->is_active;
                 $r['user_id'] = $existing->id;
                 if (!empty($existing->cedula)) {
                     $r['cedula'] = $existing->cedula;
@@ -68,7 +87,6 @@ class AdminUserController extends Controller
         }
         unset($r);
 
-        // Fallback / complementación con usuarios registrados localmente en MariaDB
         if (empty($results)) {
             $cleanQ = preg_replace('/[^0-9]/', '', $q);
             $localMatches = User::where(function ($query) use ($q, $cleanQ) {
@@ -96,7 +114,7 @@ class AdminUserController extends Controller
                     'is_default_area' => true,
                     'already_authorized' => true,
                     'current_role' => $u->role,
-                    'is_active' => $u->is_active,
+                    'is_active' => (bool) $u->is_active,
                     'user_id' => $u->id,
                     'source' => 'local',
                 ];
@@ -113,154 +131,83 @@ class AdminUserController extends Controller
     /**
      * Pre-autorizar o registrar manualmente a un usuario desde LDAP
      */
-    public function authorizeLdapUser(Request $request, LdapAuthService $ldapService)
+    public function authorizeLdapUser(Request $request, ?AuthorizeLdapUserAction $action = null)
     {
-        $validated = $request->validate([
-            'uid' => ['required', 'string', 'max:50'],
-            'role' => ['required', 'string', Rule::in(['admin', 'operator'])],
-        ]);
+        $action = $action ?? app(AuthorizeLdapUserAction::class);
+        $formRequest = $request instanceof AuthorizeLdapUserRequest
+            ? $request
+            : AuthorizeLdapUserRequest::createFrom($request);
 
-        $uid = strtoupper(trim($validated['uid']));
-        $role = $validated['role'];
+        if (!$request instanceof AuthorizeLdapUserRequest) {
+            $formRequest->setContainer(app())->validateResolved();
+        }
 
-        $ldapUser = $ldapService->findUserByUid($uid);
-        if (!$ldapUser) {
+        $validated = $formRequest->validated();
+        $result = $action->execute((string) $validated['uid'], (string) $validated['role']);
+
+        if (!$result['success']) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => "El usuario {$uid} no fue encontrado en el servidor LDAP corporativo.",
+                    'message' => $result['message'],
                 ], 404);
             }
-            return back()->with('error', "El usuario {$uid} no fue encontrado en el servidor LDAP.");
+            return back()->with('error', $result['message']);
         }
-
-        $user = User::where('username', $uid)
-            ->orWhere('email', $ldapUser['email'])
-            ->first();
-
-        if ($user) {
-            $user->update([
-                'name' => $ldapUser['name'],
-                'username' => $uid,
-                'email' => $ldapUser['email'],
-                'role' => $role,
-                'is_active' => true,
-                'ban_reason' => null,
-                'banned_at' => null,
-            ]);
-            $msg = "El usuario LDAP {$ldapUser['name']} ({$uid}) fue actualizado y reactivado exitosamente con rol '{$role}'.";
-        } else {
-            $user = User::create([
-                'name' => $ldapUser['name'],
-                'username' => $uid,
-                'email' => $ldapUser['email'],
-                'password' => Hash::make(\Illuminate\Support\Str::random(32)),
-                'role' => $role,
-                'is_active' => true,
-            ]);
-            $msg = "El usuario LDAP {$ldapUser['name']} ({$uid}) ha sido autorizado e incorporado exitosamente con rol '{$role}'.";
-        }
-
-        // Bitácora de auditoría
-        $now = now()->format('Y-m-d H:i:s');
-        $adminName = Auth::user() ? Auth::user()->name : 'Admin';
-        $logLine = sprintf(
-            "[%s] 👤 AUTORIZACIÓN MANUAL LDAP | Admin: %s | Usuario: %s (UID: %s, Email: %s, Rol: %s) | Área: %s\n",
-            $now,
-            $adminName,
-            $ldapUser['name'],
-            $uid,
-            $ldapUser['email'],
-            $role,
-            $ldapUser['description']
-        );
-        @file_put_contents('/scripts/telegram-admin-bot/audit/intentos_acceso.log', $logLine, FILE_APPEND | LOCK_EX);
-
-        // Notificar por Telegram
-        /** @var \App\Services\TelegramNotificationService $telegramService */
-        $telegramService = app(\App\Services\TelegramNotificationService::class);
-        $telegramService->notifyUserCreatedOrAuthorized($user, $adminName, 'ldap_preauth');
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => $msg,
-                'user' => $user,
+                'message' => $result['message'],
+                'user' => $result['user'],
             ]);
         }
 
-        return redirect()->route('admin.users.index')->with('success', $msg);
+        return redirect()->route('admin.users.index')->with('success', $result['message']);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ?CreateUserAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'string', Rule::in(['admin', 'operator'])],
-            'is_active' => ['boolean'],
-        ]);
+        $action = $action ?? app(CreateUserAction::class);
+        $formRequest = $request instanceof StoreUserRequest
+            ? $request
+            : StoreUserRequest::createFrom($request);
 
-        $validated['password'] = Hash::make($validated['password']);
-        $validated['is_active'] = $request->boolean('is_active', true);
+        if (!$request instanceof StoreUserRequest) {
+            $formRequest->setContainer(app())->validateResolved();
+        }
 
-        $user = User::create($validated);
-
-        // Notificar por Telegram
-        $adminName = Auth::user() ? Auth::user()->name : 'Admin';
-        /** @var \App\Services\TelegramNotificationService $telegramService */
-        $telegramService = app(\App\Services\TelegramNotificationService::class);
-        $telegramService->notifyUserCreatedOrAuthorized($user, $adminName, 'manual');
+        $action->execute($formRequest->validated());
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado exitosamente.');
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(Request $request, User $user, ?UpdateUserAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['required', 'string', Rule::in(['admin', 'operator'])],
-            'is_active' => ['boolean'],
-        ]);
+        $action = $action ?? app(UpdateUserAction::class);
+        $formRequest = $request instanceof UpdateUserRequest
+            ? $request
+            : UpdateUserRequest::createFrom($request);
 
-        // Si el usuario es de origen LDAP, la contraseña NUNCA se modifica localmente
-        if ($user->isLdapUser()) {
-            unset($validated['password']);
-        } elseif (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        if (!$request instanceof UpdateUserRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
 
-        // Si es el superadmin principal, no permitir cambiar rol a operador o desactivar
-        if ($user->email === 'britojq@gmail.com') {
-            $validated['role'] = 'admin';
-            $validated['is_active'] = true;
-        } else {
-            $validated['is_active'] = $request->boolean('is_active');
-        }
-
-        $user->update($validated);
+        $action->execute($user, $formRequest->validated(), $request->boolean('is_active'));
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado exitosamente.');
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(User $user, ?DeleteUserAction $action = null): RedirectResponse
     {
-        if ($user->id === Auth::id()) {
-            return back()->with('error', 'No puede eliminar su propia cuenta de usuario en sesión.');
+        $action = $action ?? app(DeleteUserAction::class);
+        $result = $action->execute($user);
+
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        if ($user->email === 'britojq@gmail.com') {
-            return back()->with('error', 'El Administrador Principal del sistema no puede ser eliminado.');
-        }
-
-        $user->delete();
-
-        return redirect()->route('admin.users.index')->with('success', 'Usuario eliminado exitosamente.');
+        return redirect()->route('admin.users.index')->with('success', $result['message']);
     }
 
     /**
@@ -279,8 +226,8 @@ class AdminUserController extends Controller
                 'is_admin' => $user->isAdmin(),
                 'is_default' => is_null($user->permissions),
             ],
-            'modules' => \App\Services\PermissionService::getModules(),
-            'default_operator' => \App\Services\PermissionService::getDefaultOperatorPermissions(),
+            'modules' => PermissionService::getModules(),
+            'default_operator' => PermissionService::getDefaultOperatorPermissions(),
             'assigned_permissions' => $user->permissions,
             'effective_permissions' => $user->getEffectivePermissions(),
         ]);
@@ -289,36 +236,35 @@ class AdminUserController extends Controller
     /**
      * Actualizar la matriz de permisos granulares de un usuario (AJAX)
      */
-    public function updatePermissions(Request $request, User $user): JsonResponse
+    public function updatePermissions(Request $request, User $user, ?UpdateUserPermissionsAction $action = null): JsonResponse
     {
-        // El Administrador Principal no puede ser restringido
-        if ($user->email === 'britojq@gmail.com') {
-            return response()->json([
-                'success' => false,
-                'message' => 'El Administrador Principal conserva acceso total irrevocable (*).',
-            ], 422);
+        $action = $action ?? app(UpdateUserPermissionsAction::class);
+        $formRequest = $request instanceof UpdateUserPermissionsRequest
+            ? $request
+            : UpdateUserPermissionsRequest::createFrom($request);
+
+        if (!$request instanceof UpdateUserPermissionsRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
 
-        $resetToDefault = $request->boolean('reset_to_default', false);
+        $result = $action->execute(
+            $user,
+            $formRequest->boolean('reset_to_default'),
+            $formRequest->input('permissions')
+        );
 
-        if ($resetToDefault) {
-            $user->update(['permissions' => null]);
-            $msg = "Permisos del usuario [{$user->name}] restablecidos a los valores predeterminados de su rol ({$user->role}).";
-        } else {
-            $rawPermissions = $request->input('permissions', []);
-            if (!is_array($rawPermissions)) {
-                $rawPermissions = [];
-            }
-            $sanitized = \App\Services\PermissionService::sanitizePermissions($rawPermissions);
-            $user->update(['permissions' => $sanitized]);
-            $msg = "Se asignaron " . count($sanitized) . " permiso(s) al usuario [{$user->name}].";
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], $result['status_code']);
         }
 
         return response()->json([
             'success' => true,
-            'message' => $msg,
-            'effective_permissions' => $user->getEffectivePermissions(),
-            'is_default' => is_null($user->permissions),
+            'message' => $result['message'],
+            'effective_permissions' => $result['effective_permissions'],
+            'is_default' => $result['is_default'],
         ]);
     }
 }

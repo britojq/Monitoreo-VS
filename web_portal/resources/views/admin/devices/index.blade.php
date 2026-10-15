@@ -2735,52 +2735,12 @@
                         <span class="text-[9.5px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">Opcional</span>
                     </div>
 
-                    <div class="relative">
-                        <label class="block text-[11px] font-mono text-slate-300 mb-1 font-semibold uppercase">Buscar Trabajador en Directorio Activo LDAP:</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">search</span>
-                            <input type="text" id="create-ldap-search" placeholder="Escriba Cédula, Usuario o Nombre (ej: 15482314, U1234567, jperez)..." 
-                                   class="w-full pl-9 pr-9 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/50 focus:border-cyan-400 focus:outline-none"
-                                   autocomplete="off" oninput="handleCreateLdapSearch(this.value)">
-                            <span id="create-ldap-spinner" class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 text-sm animate-spin hidden">progress_activity</span>
-                        </div>
-                        <div id="create-ldap-dropdown" class="hidden absolute z-50 left-0 right-0 top-full mt-1.5 max-h-48 overflow-y-auto rounded-xl bg-[#040e1e] border border-cyan-500/50 shadow-2xl p-1.5 space-y-1 divide-y divide-obsidian-border/30 font-mono text-xs"></div>
-                    </div>
-
-                    <!-- TARJETA PREVIEW USUARIO SELECCIONADO -->
-                    <div id="create-selected-user-card" class="hidden p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-xs font-mono flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2.5">
-                            <span class="material-symbols-outlined text-cyan-400 text-lg">verified</span>
-                            <div>
-                                <div class="font-bold text-white text-xs" id="create-card-name">--</div>
-                                <div class="text-[10px] text-obsidian-muted" id="create-card-detail">--</div>
-                            </div>
-                        </div>
-                        <button type="button" onclick="clearCreateLdapUser()" class="text-obsidian-muted hover:text-red-400 p-1 rounded-lg hover:bg-white/10 transition" title="Quitar asignación">
-                            <span class="material-symbols-outlined text-base">close</span>
-                        </button>
-                    </div>
-
-                    <!-- CAMPOS DETALLE PARA EL ACTA -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Nombre Completo del Trabajador</label>
-                            <input type="text" name="custodian_name" id="create-custodian-name" placeholder="Nombre y Apellidos" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cédula de Identidad</label>
-                            <input type="text" name="custodian_id_number" id="create-custodian-id" placeholder="V-12.345.678" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Departamento / Gerencia</label>
-                            <input type="text" name="custodian_department" id="create-custodian-dept" placeholder="Ej: ATIT Carabobo" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cargo / Rol Asignado</label>
-                            <input type="text" name="custodian_role" id="create-custodian-role" placeholder="Ej: Analista de Sistemas" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                    </div>
-                    <input type="hidden" name="user_id" id="create-custodian-user-id" value="">
+                    <x-ldap-user-picker 
+                        id="create-device-picker" 
+                        name="custodian" 
+                        label="Buscar Trabajador en Directorio Activo LDAP:" 
+                        :show-details="true"
+                        :can-release="false" />
                 </div>
 
                 <!-- ========================================================================= -->
@@ -3094,15 +3054,17 @@
                     <span class="material-symbols-outlined text-2xl">edit_note</span>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-white font-mono flex items-center gap-2 flex-wrap">
+                    <h3 class="text-base font-bold text-white font-mono flex items-center gap-2">
                         <span>Editar Parámetros Técnicos &amp; Puesto</span>
-                        <span id="edit-device-name-badge" class="px-2.5 py-0.5 rounded text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono font-semibold"></span>
-                        <span id="edit-glpi-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700/60 inline-flex items-center gap-1">
+                        <span id="edit-glpi-badge" class="hidden w-6 h-6 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-700/60 inline-flex items-center justify-center cursor-help" title="Agente GLPI Activo en este dispositivo">
                             <span class="material-symbols-outlined text-xs">bolt</span>
-                            <span>Agente GLPI Activo</span>
                         </span>
                     </h3>
-                    <p class="text-xs text-obsidian-muted font-mono">Gestión unificada de hardware, periféricos, red, resguardo y asignación</p>
+                    <p class="text-xs text-obsidian-muted font-mono flex items-center gap-1.5 flex-wrap">
+                        <span class="text-amber-300 font-bold" id="edit-device-name-badge">--</span>
+                        <span>&bull;</span>
+                        <span>Gestión unificada de hardware, periféricos, red, resguardo y asignación</span>
+                    </p>
                 </div>
             </div>
             <button type="button" onclick="closeDeviceEditModal()" class="text-obsidian-muted hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Cerrar ventana">
@@ -3454,66 +3416,12 @@
                         <span id="edit-assignment-badge" class="px-2.5 py-0.5 rounded text-[10px] font-bold font-mono">--</span>
                     </div>
 
-                    <!-- TARJETA DE ESTADO ACTUAL -->
-                    <div id="edit-current-assignment-card" class="hidden p-3 rounded-xl bg-[#041224] border border-cyan-500/30 flex items-center justify-between gap-3 text-xs font-mono">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                                <span class="material-symbols-outlined text-lg">person</span>
-                            </div>
-                            <div>
-                                <div class="text-white font-bold text-xs" id="edit-current-custodian-name">--</div>
-                                <div class="text-[10.5px] text-obsidian-muted" id="edit-current-custodian-detail">--</div>
-                            </div>
-                        </div>
-                        <button type="button" onclick="setEditAssignmentAction('release')" id="btn-edit-release-stock" class="px-3 py-1.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white transition text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs">
-                            <span class="material-symbols-outlined text-sm">person_off</span>
-                            <span>Liberar a Stock</span>
-                        </button>
-                    </div>
-
-                    <!-- AVISO DE LIBERACIÓN PENDIENTE -->
-                    <div id="edit-release-notice" class="hidden p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs font-mono flex items-center justify-between gap-2 shadow-sm">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-red-400 text-base">warning</span>
-                            <span>El equipo se liberará a <strong>Stock Disponible</strong> y el acta activa pasará a histórico al guardar cambios.</span>
-                        </div>
-                        <button type="button" onclick="cancelEditRelease()" class="text-xs text-red-300 underline hover:text-white font-bold cursor-pointer">Deshacer</button>
-                    </div>
-
-                    <!-- BUSCADOR LDAP PARA ASIGNAR O CAMBIAR RESPONSABLE -->
-                    <div id="edit-ldap-search-wrapper" class="space-y-2">
-                        <label class="block text-[11px] font-mono text-slate-300 mb-1 font-semibold uppercase">Buscar Trabajador en Directorio Activo LDAP:</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">search</span>
-                            <input type="text" id="edit-ldap-search" placeholder="Escriba Cédula, Usuario o Nombre (ej: 15482314, U1234567, jperez)..." 
-                                   class="w-full pl-9 pr-9 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/50 focus:border-cyan-400 focus:outline-none"
-                                   autocomplete="off" oninput="handleEditLdapSearch(this.value)">
-                            <span id="edit-ldap-spinner" class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 text-sm animate-spin hidden">progress_activity</span>
-                        </div>
-                        <div id="edit-ldap-dropdown" class="hidden max-h-48 overflow-y-auto rounded-xl bg-[#040e1e] border border-cyan-500/50 shadow-2xl p-1.5 space-y-1 divide-y divide-obsidian-border/30 text-xs font-mono"></div>
-                    </div>
-
-                    <!-- CAMPOS DETALLE PARA EL ACTA (EDITABLES) -->
-                    <div id="edit-assignment-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Nombre Completo del Trabajador</label>
-                            <input type="text" name="custodian_name" id="edit-custodian-name" placeholder="Nombre y Apellidos" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cédula de Identidad</label>
-                            <input type="text" name="custodian_id_number" id="edit-custodian-id" placeholder="V-12.345.678" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Departamento / Gerencia</label>
-                            <input type="text" name="custodian_department" id="edit-custodian-dept" placeholder="Ej: ATIT Carabobo" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cargo / Rol Asignado</label>
-                            <input type="text" name="custodian_role" id="edit-custodian-role" placeholder="Ej: Analista de Sistemas" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
-                        </div>
-                    </div>
-                    <input type="hidden" name="assignment_action" id="edit-assignment-action" value="keep">
-                    <input type="hidden" name="user_id" id="edit-custodian-user-id" value="">
+                    <x-ldap-user-picker 
+                        id="edit-device-picker" 
+                        name="custodian" 
+                        label="Buscar Trabajador en Directorio Activo LDAP:" 
+                        :show-details="true"
+                        :can-release="true" />
                 </div>
 
                 <!-- ========================================================================= -->
@@ -5744,7 +5652,9 @@
         handleCreateAccessChange(document.getElementById('create-access-type')?.value || 'SSH');
         const vncPassInput = document.getElementById('create-vnc-password');
         if (vncPassInput) vncPassInput.value = '';
-        clearCreateLdapUser();
+        if (typeof window['create-device-picker_reset'] === 'function') {
+            window['create-device-picker_reset']();
+        }
         const statusSelect = document.getElementById('create-status');
         if (statusSelect) {
             statusSelect.value = 'assigned';
@@ -5941,46 +5851,30 @@
             }
         }
 
-        // Configuración de Asignación / LDAP en Edición
-        const editActionInput = document.getElementById('edit-assignment-action');
-        if (editActionInput) editActionInput.value = 'keep';
-        const editUserIdInput = document.getElementById('edit-custodian-user-id');
-        if (editUserIdInput) editUserIdInput.value = dev.current_user_id || '';
-        const editLdapSearch = document.getElementById('edit-ldap-search');
-        if (editLdapSearch) editLdapSearch.value = '';
-        const editLdapDropdown = document.getElementById('edit-ldap-dropdown');
-        if (editLdapDropdown) { editLdapDropdown.innerHTML = ''; editLdapDropdown.classList.add('hidden'); }
-        const editReleaseNotice = document.getElementById('edit-release-notice');
-        if (editReleaseNotice) editReleaseNotice.classList.add('hidden');
-
-        const editCustName = document.getElementById('edit-custodian-name');
-        const editCustId = document.getElementById('edit-custodian-id');
-        const editCustDept = document.getElementById('edit-custodian-dept');
-        const editCustRole = document.getElementById('edit-custodian-role');
-        if (editCustName) editCustName.value = dev.custodian_name || '';
-        if (editCustId) editCustId.value = dev.custodian_id_number || '';
-        if (editCustDept) editCustDept.value = dev.custodian_department || '';
-        if (editCustRole) editCustRole.value = dev.custodian_role || '';
+        // Configuración de Asignación / LDAP en Edición con componente ldap-user-picker
+        if (typeof window['edit-device-picker_populate'] === 'function') {
+            if (dev.custodian_name) {
+                window['edit-device-picker_populate']({
+                    name: dev.custodian_name,
+                    id_number: dev.custodian_id_number,
+                    department: dev.custodian_department,
+                    role: dev.custodian_role,
+                    user_id: dev.current_user_id
+                });
+            } else {
+                window['edit-device-picker_reset']();
+            }
+        }
 
         const editAssignBadge = document.getElementById('edit-assignment-badge');
-        const editCurrentCard = document.getElementById('edit-current-assignment-card');
-        const editCurrentName = document.getElementById('edit-current-custodian-name');
-        const editCurrentDetail = document.getElementById('edit-current-custodian-detail');
-
-        if (dev.custodian_name) {
-            if (editAssignBadge) {
-                editAssignBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40';
+        if (editAssignBadge) {
+            if (dev.custodian_name) {
+                editAssignBadge.className = 'px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40';
                 editAssignBadge.textContent = 'Asignado';
-            }
-            if (editCurrentCard) editCurrentCard.classList.remove('hidden');
-            if (editCurrentName) editCurrentName.textContent = dev.custodian_name;
-            if (editCurrentDetail) editCurrentDetail.textContent = `C.I: ${dev.custodian_id_number || 'N/A'} • ${dev.custodian_department || 'Sin Dpto'}`;
-        } else {
-            if (editAssignBadge) {
-                editAssignBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
+            } else {
+                editAssignBadge.className = 'px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
                 editAssignBadge.textContent = 'En Stock / Sin Asignación';
             }
-            if (editCurrentCard) editCurrentCard.classList.add('hidden');
         }
 
         const m = document.getElementById('modal-device-edit');
@@ -6494,104 +6388,6 @@
         }
     }
 
-    // --- MODAL DE CREACIÓN DE DISPOSITIVO: BÚSQUEDA LDAP ---
-    function handleCreateLdapSearch(query) {
-        if (createLdapDebounceTimer) clearTimeout(createLdapDebounceTimer);
-        const q = query.trim();
-        const dropdown = document.getElementById('create-ldap-dropdown');
-        const spinner = document.getElementById('create-ldap-spinner');
-
-        if (q.length < 2) {
-            if (dropdown) { dropdown.innerHTML = ''; dropdown.classList.add('hidden'); }
-            if (spinner) spinner.classList.add('hidden');
-            return;
-        }
-
-        if (spinner) spinner.classList.remove('hidden');
-        createLdapDebounceTimer = setTimeout(async () => {
-            const results = await fetchLdapUsers(q);
-            if (spinner) spinner.classList.add('hidden');
-            createLdapLastResults = results;
-            renderCreateLdapDropdown(results);
-        }, 250);
-    }
-
-    function renderCreateLdapDropdown(users) {
-        const dropdown = document.getElementById('create-ldap-dropdown');
-        if (!dropdown) return;
-
-        if (!users || users.length === 0) {
-            dropdown.innerHTML = '<div class="p-2.5 text-center text-obsidian-muted font-mono text-[11px]">Sin coincidencias en LDAP corporativo ni usuarios locales.</div>';
-            dropdown.classList.remove('hidden');
-            return;
-        }
-
-        dropdown.innerHTML = users.map((u, idx) => `
-            <div onclick="selectCreateLdapUserByIndex(${idx})" 
-                 class="p-2 rounded-lg hover:bg-cyan-950/70 hover:border-cyan-500/40 border border-transparent flex items-center justify-between gap-2 cursor-pointer transition group">
-                <div class="space-y-0.5">
-                    <div class="font-bold text-white group-hover:text-cyan-300 flex items-center gap-1.5 text-xs">
-                        <span>${escapeHtml(u.name)}</span>
-                        <span class="px-1.5 py-0.2 rounded text-[8.5px] bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-mono">${escapeHtml(u.uid || '')}</span>
-                    </div>
-                    <div class="text-[10px] text-obsidian-muted flex items-center gap-2 font-mono">
-                        <span class="text-cyan-400 font-semibold">${escapeHtml(u.cedula || 'Sin Cédula')}</span>
-                        <span>•</span>
-                        <span>${escapeHtml(u.department || 'ATIT')}</span>
-                    </div>
-                </div>
-                <span class="material-symbols-outlined text-sm text-obsidian-muted group-hover:text-cyan-400">check_circle</span>
-            </div>
-        `).join('');
-        dropdown.classList.remove('hidden');
-    }
-
-    function selectCreateLdapUserByIndex(idx) {
-        const u = createLdapLastResults[idx];
-        if (!u) return;
-
-        document.getElementById('create-custodian-name').value = u.name || '';
-        document.getElementById('create-custodian-id').value = u.cedula || '';
-        document.getElementById('create-custodian-dept').value = u.department || 'ATIT Carabobo';
-        document.getElementById('create-custodian-role').value = u.role || '';
-        document.getElementById('create-custodian-user-id').value = u.user_id || '';
-
-        const card = document.getElementById('create-selected-user-card');
-        if (card) {
-            document.getElementById('create-card-name').textContent = `${u.name} (${u.uid || ''})`;
-            document.getElementById('create-card-detail').textContent = `C.I: ${u.cedula || 'N/A'} • ${u.department || 'ATIT'}`;
-            card.classList.remove('hidden');
-        }
-
-        const statusSelect = document.getElementById('create-status');
-        if (statusSelect) statusSelect.value = 'assigned';
-
-        const dropdown = document.getElementById('create-ldap-dropdown');
-        if (dropdown) dropdown.classList.add('hidden');
-        const searchInput = document.getElementById('create-ldap-search');
-        if (searchInput) searchInput.value = '';
-    }
-
-    function clearCreateLdapUser() {
-        const card = document.getElementById('create-selected-user-card');
-        if (card) card.classList.add('hidden');
-        const searchInput = document.getElementById('create-ldap-search');
-        if (searchInput) searchInput.value = '';
-        const dropdown = document.getElementById('create-ldap-dropdown');
-        if (dropdown) { dropdown.innerHTML = ''; dropdown.classList.add('hidden'); }
-
-        const nameInput = document.getElementById('create-custodian-name');
-        if (nameInput) nameInput.value = '';
-        const idInput = document.getElementById('create-custodian-id');
-        if (idInput) idInput.value = '';
-        const deptInput = document.getElementById('create-custodian-dept');
-        if (deptInput) deptInput.value = '';
-        const roleInput = document.getElementById('create-custodian-role');
-        if (roleInput) roleInput.value = '';
-        const userIdInput = document.getElementById('create-custodian-user-id');
-        if (userIdInput) userIdInput.value = '';
-    }
-
     function handleCreateStatusChange(status) {
         const wrap = document.getElementById('create-assignment-wrapper');
         if (!wrap) return;
@@ -6601,120 +6397,6 @@
         } else {
             wrap.classList.add('opacity-60');
             wrap.classList.remove('border-cyan-500/60');
-        }
-    }
-
-    // --- MODAL DE EDICIÓN DE DISPOSITIVO: ASIGNACIÓN Y REASIGNACIÓN LDAP ---
-    function handleEditLdapSearch(query) {
-        if (editLdapDebounceTimer) clearTimeout(editLdapDebounceTimer);
-        const q = query.trim();
-        const dropdown = document.getElementById('edit-ldap-dropdown');
-        const spinner = document.getElementById('edit-ldap-spinner');
-
-        if (q.length < 2) {
-            if (dropdown) { dropdown.innerHTML = ''; dropdown.classList.add('hidden'); }
-            if (spinner) spinner.classList.add('hidden');
-            return;
-        }
-
-        if (spinner) spinner.classList.remove('hidden');
-        editLdapDebounceTimer = setTimeout(async () => {
-            const results = await fetchLdapUsers(q);
-            if (spinner) spinner.classList.add('hidden');
-            editLdapLastResults = results;
-            renderEditLdapDropdown(results);
-        }, 250);
-    }
-
-    function renderEditLdapDropdown(users) {
-        const dropdown = document.getElementById('edit-ldap-dropdown');
-        if (!dropdown) return;
-
-        if (!users || users.length === 0) {
-            dropdown.innerHTML = '<div class="p-2.5 text-center text-obsidian-muted font-mono text-[11px]">Sin coincidencias en LDAP ni usuarios locales.</div>';
-            dropdown.classList.remove('hidden');
-            return;
-        }
-
-        dropdown.innerHTML = users.map((u, idx) => `
-            <div onclick="selectEditLdapUserByIndex(${idx})" 
-                 class="p-2 rounded-lg hover:bg-cyan-950/70 hover:border-cyan-500/40 border border-transparent flex items-center justify-between gap-2 cursor-pointer transition group">
-                <div class="space-y-0.5">
-                    <div class="font-bold text-white group-hover:text-cyan-300 flex items-center gap-1.5 text-xs">
-                        <span>${escapeHtml(u.name)}</span>
-                        <span class="px-1.5 py-0.2 rounded text-[8.5px] bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-mono">${escapeHtml(u.uid || '')}</span>
-                    </div>
-                    <div class="text-[10px] text-obsidian-muted flex items-center gap-2 font-mono">
-                        <span class="text-cyan-400 font-semibold">${escapeHtml(u.cedula || 'Sin Cédula')}</span>
-                        <span>•</span>
-                        <span>${escapeHtml(u.department || 'ATIT')}</span>
-                    </div>
-                </div>
-                <span class="material-symbols-outlined text-sm text-obsidian-muted group-hover:text-cyan-400">check_circle</span>
-            </div>
-        `).join('');
-        dropdown.classList.remove('hidden');
-    }
-
-    function selectEditLdapUserByIndex(idx) {
-        const u = editLdapLastResults[idx];
-        if (!u) return;
-
-        document.getElementById('edit-assignment-action').value = 'assign';
-        document.getElementById('edit-custodian-name').value = u.name || '';
-        document.getElementById('edit-custodian-id').value = u.cedula || '';
-        document.getElementById('edit-custodian-dept').value = u.department || 'ATIT Carabobo';
-        document.getElementById('edit-custodian-role').value = u.role || '';
-        document.getElementById('edit-custodian-user-id').value = u.user_id || '';
-
-        const badge = document.getElementById('edit-assignment-badge');
-        if (badge) {
-            badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/50';
-            badge.textContent = 'Reasignación LDAP Seleccionada (Guardar para aplicar)';
-        }
-
-        const releaseNotice = document.getElementById('edit-release-notice');
-        if (releaseNotice) releaseNotice.classList.add('hidden');
-
-        const dropdown = document.getElementById('edit-ldap-dropdown');
-        if (dropdown) dropdown.classList.add('hidden');
-        const searchInput = document.getElementById('edit-ldap-search');
-        if (searchInput) searchInput.value = '';
-    }
-
-    function setEditAssignmentAction(action) {
-        if (action === 'release') {
-            document.getElementById('edit-assignment-action').value = 'release';
-            const releaseNotice = document.getElementById('edit-release-notice');
-            if (releaseNotice) releaseNotice.classList.remove('hidden');
-            const currentCard = document.getElementById('edit-current-assignment-card');
-            if (currentCard) currentCard.classList.add('hidden');
-
-            document.getElementById('edit-custodian-name').value = '';
-            document.getElementById('edit-custodian-id').value = '';
-            document.getElementById('edit-custodian-dept').value = '';
-            document.getElementById('edit-custodian-role').value = '';
-            document.getElementById('edit-custodian-user-id').value = '';
-
-            const badge = document.getElementById('edit-assignment-badge');
-            if (badge) {
-                badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 text-red-300 border border-red-500/40';
-                badge.textContent = 'Devolución a Stock al Guardar';
-            }
-        }
-    }
-
-    function cancelEditRelease() {
-        document.getElementById('edit-assignment-action').value = 'keep';
-        const releaseNotice = document.getElementById('edit-release-notice');
-        if (releaseNotice) releaseNotice.classList.add('hidden');
-        const currentCard = document.getElementById('edit-current-assignment-card');
-        if (currentCard) currentCard.classList.remove('hidden');
-
-        const badge = document.getElementById('edit-assignment-badge');
-        if (badge) {
-            badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40';
-            badge.textContent = 'Asignado';
         }
     }
 

@@ -213,13 +213,13 @@ class AdminDeviceModalInventoryTest extends TestCase
 
         // Bloque de asignación en creación
         $response->assertSee('create-assignment-wrapper', false);
-        $response->assertSee('create-ldap-search', false);
-        $response->assertSee('create-custodian-name', false);
+        $response->assertSee('create-device-picker', false);
+        $response->assertSee('create-device-picker-custodian-name', false);
 
         // Bloque de asignación en edición
-        $response->assertSee('edit-assignment-action', false);
-        $response->assertSee('edit-ldap-search', false);
-        $response->assertSee('edit-custodian-name', false);
+        $response->assertSee('edit-device-picker', false);
+        $response->assertSee('edit-device-picker-assignment-action', false);
+        $response->assertSee('edit-device-picker-custodian-name', false);
     }
 
     /**

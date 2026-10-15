@@ -224,12 +224,16 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN ADICIONAL PARA DISPOSITIVOS DE RED (PUERTOS Y ACCESO) -->
-            <div id="netDeviceFieldsSection" class="hidden space-y-3 pt-3 border-t border-purple-500/30 bg-purple-950/10 p-4 rounded-xl">
-                <h3 class="text-xs font-mono uppercase font-bold text-purple-400 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-sm">settings_ethernet</span>
-                    Parámetros Técnicos de Red
-                </h3>
+            <!-- SECCIÓN ADICIONAL PARA DISPOSITIVOS DE RED (PUERTOS Y ACCESO REMOTO) -->
+            <div id="netDeviceFieldsSection" class="hidden space-y-3.5 pt-3 border-t border-purple-500/30 bg-purple-950/10 p-4 rounded-xl">
+                <div class="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                    <h3 class="text-xs font-mono uppercase font-bold text-purple-400 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">settings_ethernet</span>
+                        Parámetros Técnicos &amp; Acceso Remoto
+                    </h3>
+                    <span class="text-[9.5px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-500/30">NOC &amp; ITAM Parity</span>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Puertos de Red</label>
@@ -237,17 +241,92 @@
                     </div>
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Tipo de Acceso Remoto</label>
-                        <select name="access_type" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-purple-500 focus:outline-none">
+                        <select name="access_type" id="create-access-type" onchange="handleAccessChange(this.value)" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-purple-500 focus:outline-none">
                             <option value="SIN SOPORTE">SIN SOPORTE</option>
                             <option value="SSH">SSH</option>
                             <option value="TELNET">TELNET</option>
                             <option value="WEB">WEB / HTTP(S)</option>
                             <option value="VNC">VNC</option>
+                            <option value="SSH+VNC">Dual: SSH (22) + VNC (5900)</option>
                         </select>
                     </div>
+                    <div id="create-single-port-wrapper">
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1" id="create-access-port-label">Puerto de Acceso</label>
+                        <input type="number" name="access_port" id="create-access-port" value="{{ old('access_port', 22) }}" min="1" max="65535" placeholder="Ej. 22, 23, 80" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-purple-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- PUERTOS DUALES DEDICADOS (SSH + VNC) -->
+                <div id="create-dual-ports-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Puerto de Acceso</label>
-                        <input type="number" name="access_port" value="{{ old('access_port') }}" placeholder="Ej. 22, 23, 80" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-purple-500 focus:outline-none">
+                        <label class="block text-xs font-mono text-emerald-400 mb-1 font-semibold uppercase">Puerto SSH</label>
+                        <input type="number" name="ssh_port" id="create-ssh-port" value="{{ old('ssh_port', 22) }}" min="1" max="65535" class="w-full px-3 py-2 bg-[#040b15] border border-emerald-500/40 rounded-xl text-xs font-mono text-white focus:border-emerald-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-purple-400 mb-1 font-semibold uppercase">Puerto VNC</label>
+                        <input type="number" name="vnc_port" id="create-vnc-port" value="{{ old('vnc_port', 5900) }}" min="1" max="65535" class="w-full px-3 py-2 bg-[#040b15] border border-purple-500/40 rounded-xl text-xs font-mono text-white focus:border-purple-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- CREDENCIALES VNC -->
+                <div id="create-vnc-wrapper" class="hidden p-3 rounded-xl bg-[#020610] border border-purple-500/20 space-y-2 font-mono">
+                    <div class="flex items-center justify-between border-b border-purple-500/20 pb-1.5">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-purple-400">
+                            <span class="material-symbols-outlined text-sm">desktop_windows</span>
+                            <span>Contraseña VNC (Cifrado AES-256)</span>
+                        </div>
+                        <span class="text-[9px] px-2 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30">Auto-login noVNC</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Contraseña VNC</label>
+                            <div class="relative">
+                                <input type="password" name="vnc_password" placeholder="Contraseña de escritorio remoto" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-purple-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-end pb-1.5">
+                            <p class="text-[10px] text-slate-400 leading-tight">
+                                Se guardará cifrada para inicio de sesión directo en la consola web noVNC.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CREDENCIALES SSH -->
+                <div id="create-ssh-wrapper" class="p-3 rounded-xl bg-[#020610] border border-emerald-500/20 space-y-2 font-mono">
+                    <div class="flex items-center justify-between border-b border-emerald-500/20 pb-1.5">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                            <span class="material-symbols-outlined text-sm">key</span>
+                            <span>Credenciales de Gestión SSH (Cifrado AES-256)</span>
+                        </div>
+                        <span class="text-[9px] px-2 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">Terminal SSH</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Usuario SSH</label>
+                            <input type="text" name="ssh_username" value="{{ old('ssh_username') }}" placeholder="admin / cisco" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Contraseña</label>
+                            <div class="relative">
+                                <input type="password" name="ssh_password" placeholder="Contraseña SSH" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Enable Secret</label>
+                            <div class="relative">
+                                <input type="password" name="ssh_enable_secret" placeholder="Clave Cisco" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -289,14 +368,14 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN: RED Y ASIGNACIÓN -->
+            <!-- SECCIÓN: IDENTIDAD DE RED -->
             <div class="space-y-3 pt-3 border-t border-obsidian-border">
                 <h3 class="text-xs font-mono uppercase font-bold text-cyan-400 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm">lan</span>
-                    Red y Asignación
+                    Direccionamiento de Red
                 </h3>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP</label>
                         <input type="text" name="ip_address" value="{{ old('ip_address') }}" placeholder="Ej. 10.20.107.155" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
@@ -306,17 +385,27 @@
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección MAC</label>
                         <input type="text" name="mac_address" value="{{ old('mac_address') }}" placeholder="Ej. 18:66:DA:55:66:21" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
                     </div>
-
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Funcionario Responsable</label>
-                        <input type="text" name="custodian_name" value="{{ old('custodian_name') }}" placeholder="Nombre y Apellido" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Departamento / Área</label>
-                        <input type="text" name="custodian_department" value="{{ old('custodian_department') }}" placeholder="Ej. Informática, Finanzas" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
-                    </div>
                 </div>
+            </div>
+
+            <!-- SECCIÓN: RESPONSABLE & ASIGNACIÓN (ACTA UINF-4.05 / LDAP) -->
+            <div class="space-y-3 pt-3 border-t border-obsidian-border">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-mono uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">badge</span>
+                        Responsable &amp; Asignación (Acta UINF-4.05)
+                    </h3>
+                    <span class="text-[9.5px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">Opcional</span>
+                </div>
+
+                <x-ldap-user-picker 
+                    id="create-asset-picker" 
+                    name="custodian" 
+                    label="Buscar Trabajador en Directorio Activo LDAP:" 
+                    :show-details="true" 
+                    :can-release="false" 
+                    theme="cyan" 
+                />
             </div>
 
             <!-- SECCIÓN: OBSERVACIONES -->
@@ -380,6 +469,66 @@
             sec.classList.remove('hidden');
         } else {
             sec.classList.add('hidden');
+        }
+    }
+
+    function handleAccessChange(val) {
+        const singlePortWrapper = document.getElementById('create-single-port-wrapper');
+        const dualPortsWrapper = document.getElementById('create-dual-ports-wrapper');
+        const portInput = document.getElementById('create-access-port');
+        const portLabel = document.getElementById('create-access-port-label');
+        const vncWrapper = document.getElementById('create-vnc-wrapper');
+        const sshWrapper = document.getElementById('create-ssh-wrapper');
+
+        const upper = (val || '').toUpperCase();
+
+        if (upper === 'SSH+VNC') {
+            if (singlePortWrapper) singlePortWrapper.classList.add('hidden');
+            if (dualPortsWrapper) dualPortsWrapper.classList.remove('hidden');
+            if (vncWrapper) vncWrapper.classList.remove('hidden');
+            if (sshWrapper) sshWrapper.classList.remove('hidden');
+        } else {
+            if (singlePortWrapper) singlePortWrapper.classList.remove('hidden');
+            if (dualPortsWrapper) dualPortsWrapper.classList.add('hidden');
+
+            if (upper === 'SSH') {
+                if (portInput) portInput.value = 22;
+                if (portLabel) portLabel.textContent = 'Puerto SSH';
+                if (vncWrapper) vncWrapper.classList.add('hidden');
+                if (sshWrapper) sshWrapper.classList.remove('hidden');
+            } else if (upper === 'TELNET') {
+                if (portInput) portInput.value = 23;
+                if (portLabel) portLabel.textContent = 'Puerto Telnet';
+                if (vncWrapper) vncWrapper.classList.add('hidden');
+                if (sshWrapper) sshWrapper.classList.remove('hidden');
+            } else if (upper === 'WEB') {
+                if (portInput) portInput.value = 80;
+                if (portLabel) portLabel.textContent = 'Puerto Web (HTTP/S)';
+                if (vncWrapper) vncWrapper.classList.add('hidden');
+                if (sshWrapper) sshWrapper.classList.add('hidden');
+            } else if (upper === 'VNC') {
+                if (portInput) portInput.value = 5900;
+                if (portLabel) portLabel.textContent = 'Puerto VNC';
+                if (vncWrapper) vncWrapper.classList.remove('hidden');
+                if (sshWrapper) sshWrapper.classList.add('hidden');
+            } else {
+                if (portInput) portInput.value = '';
+                if (portLabel) portLabel.textContent = 'Puerto de Acceso';
+                if (vncWrapper) vncWrapper.classList.add('hidden');
+                if (sshWrapper) sshWrapper.classList.add('hidden');
+            }
+        }
+    }
+
+    function togglePasswordVisibility(btn) {
+        const input = btn.parentElement.querySelector('input');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            input.type = 'password';
+            icon.textContent = 'visibility';
         }
     }
 </script>

@@ -1,24 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Maintenance\CreateMaintenanceTicketAction;
+use App\Actions\Maintenance\DeleteMaintenanceTicketAction;
+use App\Actions\Maintenance\UpdateMaintenanceTicketAction;
+use App\Contracts\Repositories\MaintenanceTicketRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
+use App\Http\Requests\Maintenance\StoreMaintenanceTicketRequest;
+use App\Http\Requests\Maintenance\UpdateMaintenanceTicketRequest;
 use App\Models\InventoryAsset;
-use App\Models\InventoryComponentHistory;
 use App\Models\MaintenanceTicket;
-use App\Models\MonitoredSite;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class MaintenanceTicketController extends Controller
 {
+    private readonly MaintenanceTicketRepositoryInterface $repository;
+
+    public function __construct(
+        ?MaintenanceTicketRepositoryInterface $repository = null
+    ) {
+        $this->repository = $repository ?? app(MaintenanceTicketRepositoryInterface::class);
+    }
+
     /**
      * Listado general de Órdenes de Servicio y Mantenimiento Técnico.
      */
@@ -27,48 +37,17 @@ class MaintenanceTicketController extends Controller
         $statusFilter = $request->query('status');
         $typeFilter = $request->query('type');
         $priorityFilter = $request->query('priority');
-        $search = trim((string)$request->query('search', ''));
+        $search = trim((string) $request->query('search', ''));
 
-        $query = MaintenanceTicket::with(['asset.monitoredSite', 'technician'])
-            ->orderBy('id', 'desc');
+        $tickets = $this->repository->paginateFiltered(
+            $statusFilter ? (string) $statusFilter : null,
+            $typeFilter ? (string) $typeFilter : null,
+            $priorityFilter ? (string) $priorityFilter : null,
+            $search !== '' ? $search : null,
+            15
+        )->withQueryString();
 
-        if (!empty($statusFilter)) {
-            $query->where('status', $statusFilter);
-        }
-
-        if (!empty($typeFilter)) {
-            $query->where('type', $typeFilter);
-        }
-
-        if (!empty($priorityFilter)) {
-            $query->where('priority', $priorityFilter);
-        }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_code', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('asset', function ($qa) use ($search) {
-                      $qa->where('name', 'like', "%{$search}%")
-                         ->orWhere('serial_number', 'like', "%{$search}%")
-                         ->orWhere('asset_tag', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('technician', function ($qt) use ($search) {
-                      $qt->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $tickets = $query->paginate(15)->withQueryString();
-
-        // KPIs de Mantenimiento
-        $stats = [
-            'scheduled' => MaintenanceTicket::where('status', 'scheduled')->count(),
-            'in_progress' => MaintenanceTicket::where('status', 'in_progress')->count(),
-            'completed' => MaintenanceTicket::where('status', 'completed')->count(),
-            'total_cost' => (float) MaintenanceTicket::where('status', 'completed')->sum('cost'),
-        ];
+        $stats = $this->repository->getStats();
 
         return view('admin.inventory.maintenance.index', compact('tickets', 'stats', 'statusFilter', 'typeFilter', 'priorityFilter', 'search'));
     }
@@ -93,74 +72,27 @@ class MaintenanceTicketController extends Controller
     /**
      * Guarda la nueva orden de servicio técnico.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ?CreateMaintenanceTicketAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'inventory_asset_id' => 'required|exists:inventory_assets,id',
-            'type' => 'required|in:preventive,corrective',
-            'priority' => 'required|in:low,medium,high,critical',
-            'title' => 'required|string|max:191',
-            'description' => 'nullable|string',
-            'scheduled_at' => 'nullable|date',
-            'technician_user_id' => 'nullable|exists:users,id',
-            'cost' => 'nullable|numeric|min:0',
-        ]);
+        $action = $action ?? app(CreateMaintenanceTicketAction::class);
+        $formRequest = $request instanceof StoreMaintenanceTicketRequest
+            ? $request
+            : StoreMaintenanceTicketRequest::createFrom($request);
 
-        $year = date('Y');
-        $prefix = "MNT-{$year}";
-        $count = MaintenanceTicket::where('ticket_code', 'like', "{$prefix}-%")->count() + 1;
-        $code = sprintf("%s-%04d", $prefix, $count);
+        if (!$request instanceof StoreMaintenanceTicketRequest) {
+            $formRequest->setContainer(app())->validateResolved();
+        }
 
-        $asset = InventoryAsset::findOrFail($validated['inventory_asset_id']);
-
-        DB::beginTransaction();
         try {
-            $ticket = MaintenanceTicket::create([
-                'ticket_code' => $code,
-                'inventory_asset_id' => $asset->id,
-                'type' => $validated['type'],
-                'status' => 'scheduled',
-                'priority' => $validated['priority'],
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'scheduled_at' => !empty($validated['scheduled_at']) ? Carbon::parse($validated['scheduled_at']) : now(),
-                'technician_user_id' => $validated['technician_user_id'] ?? Auth::id(),
-                'cost' => $validated['cost'] ?? 0.00,
-            ]);
-
-            // Si es mantenimiento correctivo o de alta prioridad, marcar el activo en mantenimiento
-            if ($validated['type'] === 'corrective' || in_array($validated['priority'], ['high', 'critical'])) {
-                $asset->update(['status' => 'in_maintenance']);
-            }
-
-            AuditLog::create([
-                'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name ?? 'Sistema',
-                'user_email' => Auth::user()->email ?? 'system@local',
-                'user_role' => Auth::user()->role ?? 'admin',
-                'event' => 'created',
-                'module' => 'inventory',
-                'auditable_type' => MaintenanceTicket::class,
-                'auditable_id' => $ticket->id,
-                'entity_name' => $ticket->ticket_code,
-                'entity_label' => $ticket->title,
-                'description' => "Ticket {$code} creado para activo [{$asset->asset_tag}] ({$validated['type']}): {$validated['title']}",
-                'new_values' => $ticket->toArray(),
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
-
-            DB::commit();
-
-            // Notificación al chat privado del Administrador
-            if (class_exists(\App\Services\TelegramNotificationService::class)) {
-                app(\App\Services\TelegramNotificationService::class)->notifyMaintenanceTicketOpened($ticket);
-            }
+            $ticket = $action->execute(
+                $formRequest->validated(),
+                $request->ip(),
+                $request->userAgent()
+            );
 
             return redirect()->route('admin.inventory.maintenance.show', $ticket->id)
-                ->with('success', "Ticket {$code} registrado exitosamente.");
-        } catch (\Exception $e) {
-            DB::rollBack();
+                ->with('success', "Ticket {$ticket->ticket_code} registrado exitosamente.");
+        } catch (\Throwable $e) {
             return back()->withInput()->with('error', "Error al registrar el ticket: {$e->getMessage()}");
         }
     }
@@ -189,104 +121,29 @@ class MaintenanceTicketController extends Controller
     /**
      * Actualiza el ticket, registra resolución, repuestos y costos.
      */
-    public function update(Request $request, MaintenanceTicket $ticket): RedirectResponse
+    public function update(Request $request, MaintenanceTicket $ticket, ?UpdateMaintenanceTicketAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'status' => 'required|in:scheduled,in_progress,completed,canceled',
-            'priority' => 'required|in:low,medium,high,critical',
-            'title' => 'required|string|max:191',
-            'description' => 'nullable|string',
-            'scheduled_at' => 'nullable|date',
-            'technician_user_id' => 'nullable|exists:users,id',
-            'resolution_notes' => 'nullable|string',
-            'cost' => 'nullable|numeric|min:0',
-            'warranty_applied' => 'nullable|boolean',
-            'parts_replaced' => 'nullable|array',
-            'parts_replaced.*.name' => 'required|string',
-            'parts_replaced.*.serial' => 'nullable|string',
-            'parts_replaced.*.cost' => 'nullable|numeric',
-        ]);
+        $action = $action ?? app(UpdateMaintenanceTicketAction::class);
+        $formRequest = $request instanceof UpdateMaintenanceTicketRequest
+            ? $request
+            : UpdateMaintenanceTicketRequest::createFrom($request);
 
-        DB::beginTransaction();
+        if (!$request instanceof UpdateMaintenanceTicketRequest) {
+            $formRequest->setContainer(app())->validateResolved();
+        }
+
         try {
-            $oldStatus = $ticket->status;
-            $newStatus = $validated['status'];
+            $updated = $action->execute(
+                $ticket,
+                $formRequest->validated(),
+                $request->boolean('warranty_applied'),
+                $request->ip(),
+                $request->userAgent()
+            );
 
-            $updateData = [
-                'status' => $newStatus,
-                'priority' => $validated['priority'],
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'scheduled_at' => !empty($validated['scheduled_at']) ? Carbon::parse($validated['scheduled_at']) : $ticket->scheduled_at,
-                'technician_user_id' => $validated['technician_user_id'] ?? $ticket->technician_user_id,
-                'resolution_notes' => $validated['resolution_notes'] ?? null,
-                'cost' => $validated['cost'] ?? $ticket->cost,
-                'warranty_applied' => $request->boolean('warranty_applied'),
-                'parts_replaced_json' => $validated['parts_replaced'] ?? $ticket->parts_replaced_json,
-            ];
-
-            if ($newStatus === 'in_progress' && !$ticket->started_at) {
-                $updateData['started_at'] = now();
-                $ticket->asset->update(['status' => 'in_maintenance']);
-            }
-
-            if ($newStatus === 'completed') {
-                if (!$ticket->completed_at) {
-                    $updateData['completed_at'] = now();
-                }
-                // Si el activo estaba en mantenimiento, restaurar a activo o asignado
-                if ($ticket->asset->status === 'in_maintenance') {
-                    $targetStatus = $ticket->asset->custodian_name ? 'assigned' : 'active';
-                    $ticket->asset->update(['status' => $targetStatus]);
-                }
-
-                // Registrar reemplazo de partes en la auditoría forense de componentes si aplica
-                if (!empty($validated['parts_replaced'])) {
-                    foreach ($validated['parts_replaced'] as $part) {
-                        InventoryComponentHistory::create([
-                            'inventory_asset_id' => $ticket->inventory_asset_id,
-                            'action' => 'replaced',
-                            'component_type' => 'maintenance_part',
-                            'old_value' => null,
-                            'new_value' => $part,
-                            'reason' => "Sustituido en Ticket {$ticket->ticket_code}: {$part['name']}",
-                            'registered_by_user_id' => Auth::id(),
-                            'recorded_at' => now(),
-                        ]);
-                    }
-                }
-            }
-
-            if ($newStatus === 'canceled' && $ticket->asset->status === 'in_maintenance') {
-                $targetStatus = $ticket->asset->custodian_name ? 'assigned' : 'active';
-                $ticket->asset->update(['status' => $targetStatus]);
-            }
-
-            $ticket->update($updateData);
-
-            AuditLog::create([
-                'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name ?? 'Sistema',
-                'user_email' => Auth::user()->email ?? 'system@local',
-                'user_role' => Auth::user()->role ?? 'admin',
-                'event' => 'updated',
-                'module' => 'inventory',
-                'auditable_type' => MaintenanceTicket::class,
-                'auditable_id' => $ticket->id,
-                'entity_name' => $ticket->ticket_code,
-                'entity_label' => $ticket->title,
-                'description' => "Ticket {$ticket->ticket_code} actualizado ({$oldStatus} -> {$newStatus})",
-                'new_values' => $ticket->toArray(),
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('admin.inventory.maintenance.show', $ticket->id)
-                ->with('success', "Ticket {$ticket->ticket_code} actualizado correctamente.");
-        } catch (\Exception $e) {
-            DB::rollBack();
+            return redirect()->route('admin.inventory.maintenance.show', $updated->id)
+                ->with('success', "Ticket {$updated->ticket_code} actualizado correctamente.");
+        } catch (\Throwable $e) {
             return back()->withInput()->with('error', "Error al actualizar ticket: {$e->getMessage()}");
         }
     }
@@ -321,25 +178,10 @@ class MaintenanceTicketController extends Controller
     /**
      * Elimina un ticket de mantenimiento.
      */
-    public function destroy(MaintenanceTicket $ticket): RedirectResponse
+    public function destroy(MaintenanceTicket $ticket, ?DeleteMaintenanceTicketAction $action = null): RedirectResponse
     {
-        $code = $ticket->ticket_code;
-        $ticket->delete();
-
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name ?? 'Sistema',
-            'user_email' => Auth::user()->email ?? 'system@local',
-            'user_role' => Auth::user()->role ?? 'admin',
-            'event' => 'deleted',
-            'module' => 'inventory',
-            'auditable_type' => MaintenanceTicket::class,
-            'auditable_id' => $ticket->id,
-            'entity_name' => $code,
-            'description' => "Ticket de mantenimiento {$code} eliminado.",
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        $action = $action ?? app(DeleteMaintenanceTicketAction::class);
+        $code = $action->execute($ticket, request()->ip(), request()->userAgent());
 
         return redirect()->route('admin.inventory.maintenance.index')
             ->with('success', "Ticket {$code} eliminado.");

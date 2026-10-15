@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Cron\AddCronScheduleAction;
+use App\Actions\Cron\RemoveCronScheduleAction;
+use App\Actions\Cron\ToggleCronAction;
+use App\Actions\Cron\UpdateWebCheckIntervalAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Cron\AddCronScheduleRequest;
+use App\Http\Requests\Cron\RemoveCronScheduleRequest;
+use App\Http\Requests\Cron\UpdateWebCheckIntervalRequest;
 use App\Models\BotSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class AdminCronController extends Controller
 {
@@ -56,149 +62,88 @@ class AdminCronController extends Controller
     /**
      * Alterna la activación/pausa de los envíos automáticos.
      */
-    public function toggle(Request $request): RedirectResponse
+    public function toggle(Request $request, ?ToggleCronAction $action = null): RedirectResponse
     {
+        $action = $action ?? app(ToggleCronAction::class);
         $user = $request->user();
-        $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
-        $nowStr = date('Y-m-d H:i:s');
+        $adminName = $user ? "{$user->name} [Web]" : 'Administrador [Web]';
 
-        try {
-            $currentState = (bool) BotSetting::get('cron_reports_enabled', false);
-            $newState = !$currentState;
+        $result = $action->execute($adminName);
 
-            BotSetting::set('cron_reports_enabled', $newState, 'cron', 'Envíos Automáticos de Reportes Programados', 'boolean');
-            BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
-            BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
-
-            // Exportación unidireccional para demonios en Python
-            BotSetting::syncToFile();
-
-            $msg = $newState 
-                ? 'Envíos programados por cron ACTIVADOS correctamente en la base de datos central.' 
-                : 'Envíos programados por cron PAUSADOS correctamente en la base de datos central.';
-
-            return back()->with('success', $msg);
-        } catch (\Throwable $e) {
-            Log::error('Error alternando estado de cron en MariaDB: ' . $e->getMessage());
-            return back()->with('error', 'No fue posible actualizar el estado de los envíos programados.');
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
         }
+
+        return back()->with('success', $result['message']);
     }
 
     /**
      * Añade un nuevo horario de envío.
      */
-    public function addSchedule(Request $request): RedirectResponse
+    public function addSchedule(Request $request, ?AddCronScheduleAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
-        ], [
-            'time.regex' => 'El horario debe tener formato válido de 24 horas (HH:MM).',
-        ]);
+        $action = $action ?? app(AddCronScheduleAction::class);
+        $formRequest = $request instanceof AddCronScheduleRequest
+            ? $request
+            : AddCronScheduleRequest::createFrom($request);
 
-        $newTime = trim((string) $validated['time']);
-        $user = $request->user();
-        $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
-        $nowStr = date('Y-m-d H:i:s');
-
-        try {
-            $schedules = BotSetting::get('cron_schedules', ['07:30', '16:00']);
-            if (!is_array($schedules)) {
-                $schedules = ['07:30', '16:00'];
-            }
-
-            if (!in_array($newTime, $schedules, true)) {
-                $schedules[] = $newTime;
-                sort($schedules);
-                $cleanSchedules = array_values(array_unique($schedules));
-
-                BotSetting::set('cron_schedules', $cleanSchedules, 'cron', 'Horarios de Envío de Reportes', 'json');
-                BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
-                BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
-
-                BotSetting::syncToFile();
-
-                return back()->with('success', "Horario {$newTime} agregado exitosamente a la programación.");
-            }
-
-            return back()->with('info', "El horario {$newTime} ya se encuentra programado.");
-        } catch (\Throwable $e) {
-            Log::error('Error añadiendo horario cron en MariaDB: ' . $e->getMessage());
-            return back()->with('error', 'Error al guardar el nuevo horario.');
+        if (!$request instanceof AddCronScheduleRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
+
+        $user = $request->user();
+        $adminName = $user ? "{$user->name} [Web]" : 'Administrador [Web]';
+
+        $result = $action->execute(trim((string) $formRequest->validated('time')), $adminName);
+
+        return back()->with($result['type'] ?? 'info', $result['message']);
     }
 
     /**
      * Elimina un horario de envío.
      */
-    public function removeSchedule(Request $request): RedirectResponse
+    public function removeSchedule(Request $request, ?RemoveCronScheduleAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'time' => ['required', 'string'],
-        ]);
+        $action = $action ?? app(RemoveCronScheduleAction::class);
+        $formRequest = $request instanceof RemoveCronScheduleRequest
+            ? $request
+            : RemoveCronScheduleRequest::createFrom($request);
 
-        $timeToRemove = trim((string) $validated['time']);
-        $user = $request->user();
-        $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
-        $nowStr = date('Y-m-d H:i:s');
-
-        try {
-            $schedules = BotSetting::get('cron_schedules', ['07:30', '16:00']);
-            if (!is_array($schedules)) {
-                $schedules = ['07:30', '16:00'];
-            }
-
-            $key = array_search($timeToRemove, $schedules, true);
-            if ($key !== false) {
-                unset($schedules[$key]);
-                sort($schedules);
-                $cleanSchedules = array_values($schedules);
-
-                BotSetting::set('cron_schedules', $cleanSchedules, 'cron', 'Horarios de Envío de Reportes', 'json');
-                BotSetting::set('cron_reports_updated_at', $nowStr, 'cron', 'Última Actualización de Cron', 'text');
-                BotSetting::set('cron_reports_updated_by', $adminName, 'cron', 'Usuario que Actualizó Cron', 'text');
-
-                BotSetting::syncToFile();
-
-                return back()->with('success', "Horario {$timeToRemove} eliminado de la programación.");
-            }
-
-            return back()->with('warning', "El horario {$timeToRemove} no fue encontrado.");
-        } catch (\Throwable $e) {
-            Log::error('Error eliminando horario cron en MariaDB: ' . $e->getMessage());
-            return back()->with('error', 'Error al eliminar el horario.');
+        if (!$request instanceof RemoveCronScheduleRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
+
+        $user = $request->user();
+        $adminName = $user ? "{$user->name} [Web]" : 'Administrador [Web]';
+
+        $result = $action->execute(trim((string) $formRequest->validated('time')), $adminName);
+
+        return back()->with($result['type'] ?? 'info', $result['message']);
     }
 
     /**
      * Actualiza el intervalo de chequeo y actualización de servicios para el portal web.
      */
-    public function updateWebCheckInterval(Request $request): RedirectResponse
+    public function updateWebCheckInterval(Request $request, ?UpdateWebCheckIntervalAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
-        ], [
-            'interval_minutes.required' => 'Debe indicar el intervalo en minutos.',
-            'interval_minutes.integer' => 'El intervalo debe ser un valor entero.',
-            'interval_minutes.min' => 'El intervalo mínimo es de 1 minuto.',
-            'interval_minutes.max' => 'El intervalo máximo es de 1440 minutos (24 horas).',
-        ]);
+        $action = $action ?? app(UpdateWebCheckIntervalAction::class);
+        $formRequest = $request instanceof UpdateWebCheckIntervalRequest
+            ? $request
+            : UpdateWebCheckIntervalRequest::createFrom($request);
 
-        $interval = (int) $validated['interval_minutes'];
-        $user = $request->user();
-        $adminName = $user ? "{$user->name} [Web]" : "Administrador [Web]";
-        $nowStr = date('Y-m-d H:i:s');
-
-        try {
-            BotSetting::set('web_check_interval_minutes', $interval, 'cron', 'Intervalo de Sondeo Web (minutos)', 'integer');
-            BotSetting::set('web_check_interval_updated_at', $nowStr, 'cron', 'Última Actualización de Intervalo Web', 'text');
-            BotSetting::set('web_check_interval_updated_by', $adminName, 'cron', 'Usuario que Actualizó Intervalo Web', 'text');
-
-            BotSetting::syncToFile();
-
-            return back()->with('success', "Frecuencia de monitoreo y actualización web configurada a {$interval} minutos exitosamente.");
-        } catch (\Throwable $e) {
-            Log::error('Error actualizando intervalo de monitoreo web en MariaDB: ' . $e->getMessage());
-            return back()->with('error', 'Error al guardar el nuevo intervalo de monitoreo web.');
+        if (!$request instanceof UpdateWebCheckIntervalRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
+
+        $user = $request->user();
+        $adminName = $user ? "{$user->name} [Web]" : 'Administrador [Web]';
+
+        $result = $action->execute((int) $formRequest->validated('interval_minutes'), $adminName);
+
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
     }
 }

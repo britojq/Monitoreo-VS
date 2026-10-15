@@ -24,7 +24,20 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Contracts\NetworkTopologyInterface::class, \App\Services\Topology\NetworkTopologyService::class);
         $this->app->singleton(\App\Contracts\AssetTimelineInterface::class, \App\Services\Inventory\AssetTimelineService::class);
         $this->app->singleton(\App\Contracts\ExecutiveReportInterface::class, \App\Services\Reports\ExecutiveReportService::class);
+
+        // Repositorios de Dominio (Principios SOLID)
+        $this->app->bind(\App\Contracts\Repositories\InventoryAssetRepositoryInterface::class, \App\Repositories\Eloquent\EloquentInventoryAssetRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\NetworkDeviceRepositoryInterface::class, \App\Repositories\Eloquent\EloquentNetworkDeviceRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\SiteRepositoryInterface::class, \App\Repositories\Eloquent\EloquentSiteRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\ServiceRepositoryInterface::class, \App\Repositories\Eloquent\EloquentServiceRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\AlertRepositoryInterface::class, \App\Repositories\Eloquent\EloquentAlertRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\ProxyRepositoryInterface::class, \App\Repositories\Eloquent\EloquentProxyRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\UserRepositoryInterface::class, \App\Repositories\Eloquent\EloquentUserRepository::class);
+        $this->app->bind(\App\Contracts\Repositories\MaintenanceTicketRepositoryInterface::class, \App\Repositories\Eloquent\EloquentMaintenanceTicketRepository::class);
     }
+
+
+
 
     /**
      * Bootstrap any application services.

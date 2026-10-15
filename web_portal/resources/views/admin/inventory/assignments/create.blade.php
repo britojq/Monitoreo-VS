@@ -199,45 +199,24 @@
         <div class="bg-obsidian-panel/40 border border-obsidian-border p-6 rounded-2xl backdrop-blur-md">
             <h2 class="text-base font-bold text-white flex items-center gap-2 mb-4">
                 <span class="material-symbols-outlined text-obsidian-cyan">badge</span>
-                3. Datos del Responsable / Trabajador & Procedencia
+                3. Datos del Responsable / Trabajador &amp; Procedencia
             </h2>
 
-            <!-- Autocompletar desde Usuarios -->
-            <div class="mb-4 pb-4 border-b border-obsidian-border/50">
-                <label class="block text-xs font-mono text-obsidian-muted uppercase mb-1">Autocompletar desde Directorio de Usuarios</label>
-                <select id="userQuickSelect" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-sm text-white focus:border-obsidian-cyan outline-none transition" onchange="onUserSelected(this)">
-                    <option value="">-- Seleccionar usuario para rellenar automáticamente (opcional) --</option>
-                    @foreach($users as $u)
-                        <option value="{{ $u->id }}" 
-                                data-name="{{ $u->name }}" 
-                                data-cedula="{{ $u->cedula }}" 
-                                data-phone="{{ $u->phone }}">
-                            {{ $u->name }} (C.I: {{ $u->cedula ?? 'N/A' }})
-                        </option>
-                    @endforeach
-                </select>
-                <input type="hidden" name="user_id" id="userIdInput">
-            </div>
+            <div class="space-y-4">
+                <x-ldap-user-picker 
+                    id="assignment-picker" 
+                    name="custodian" 
+                    label="Buscar Trabajador en Directorio Activo LDAP:" 
+                    :show-details="true" 
+                    :required="true" 
+                    theme="cyan" 
+                />
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted uppercase mb-1">Nombre y Apellido *</label>
-                    <input type="text" name="custodian_name" id="custodianName" required placeholder="Nombre del trabajador" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-sm text-white placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted uppercase mb-1">Nº de Cédula</label>
-                    <input type="text" name="custodian_id_number" id="custodianIdNumber" placeholder="Ej: 11.746.281" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-sm text-white placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none font-mono">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted uppercase mb-1">Unidad / Gerencia</label>
-                    <input type="text" name="custodian_department" id="custodianDepartment" placeholder="Ej: A.S.H.O / Transmisión" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-sm text-white placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono text-obsidian-muted uppercase mb-1">Extensión Telefónica</label>
-                    <input type="text" name="phone_extension" id="phoneExtension" placeholder="Ej: 2111" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-sm text-white placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none font-mono">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                        <label class="block text-[10.5px] font-mono text-obsidian-muted mb-1 uppercase font-semibold">Extensión Telefónica (Opcional)</label>
+                        <input type="text" name="phone_extension" id="phoneExtension" value="{{ old('phone_extension') }}" placeholder="Ej: 2111 / 0242-2210000" class="w-full px-2.5 py-1.5 bg-[#020710] border border-obsidian-border rounded-lg text-xs text-white placeholder-obsidian-muted/60 focus:border-cyan-400 focus:outline-none font-mono">
+                    </div>
                 </div>
             </div>
 
@@ -424,12 +403,16 @@ function onAssetSelected(select) {
     document.getElementById('specOs').value = opt.getAttribute('data-os') || '';
     document.getElementById('specIp').value = opt.getAttribute('data-ip') || '';
 
-    // Si es devolución o ya tiene responsable asignado, autollenar
+    // Si el activo ya tiene un responsable registrado, autollenar con el picker
     const custName = opt.getAttribute('data-custodian-name');
-    if (custName && !document.getElementById('custodianName').value) {
-        document.getElementById('custodianName').value = custName;
-        document.getElementById('custodianIdNumber').value = opt.getAttribute('data-custodian-id') || '';
-        document.getElementById('custodianDepartment').value = opt.getAttribute('data-custodian-dept') || '';
+    if (custName && typeof window['assignment-picker_populate'] === 'function') {
+        window['assignment-picker_populate']({
+            name: custName,
+            id_number: opt.getAttribute('data-custodian-id') || '',
+            department: opt.getAttribute('data-custodian-dept') || '',
+            role: '',
+            user_id: ''
+        });
     }
 
     // Cargar periféricos vinculados detectados por GLPI
@@ -480,17 +463,6 @@ function onAssetSelected(select) {
     }
 }
 
-function onUserSelected(select) {
-    const opt = select.options[select.selectedIndex];
-    if (!opt || !opt.value) return;
-
-    document.getElementById('userIdInput').value = opt.value;
-    document.getElementById('custodianName').value = opt.getAttribute('data-name') || '';
-    document.getElementById('custodianIdNumber').value = opt.getAttribute('data-cedula') || '';
-    document.getElementById('custodianDepartment').value = opt.getAttribute('data-dept') || '';
-    document.getElementById('phoneExtension').value = opt.getAttribute('data-phone') || '';
-}
-
 function toggleMovementFields(type) {
     const checkpoint = document.getElementById('checkpointSection');
     if (type === 'transfer') {
@@ -504,6 +476,19 @@ function toggleMovementFields(type) {
 const bulkAssetsData = @json($bulkAssets ?? []);
 
 document.addEventListener('DOMContentLoaded', () => {
+    const pickerContainer = document.getElementById('assignment-picker-container');
+    if (pickerContainer) {
+        pickerContainer.addEventListener('ldap-user-selected', (e) => {
+            const u = e.detail;
+            if (u && (u.phone || u.telephoneNumber)) {
+                const phoneInput = document.getElementById('phoneExtension');
+                if (phoneInput && !phoneInput.value) {
+                    phoneInput.value = u.phone || u.telephoneNumber || '';
+                }
+            }
+        });
+    }
+
     const sel = document.getElementById('assetSelector');
     if (sel && sel.value) {
         onAssetSelected(sel);

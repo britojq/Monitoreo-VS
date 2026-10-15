@@ -144,34 +144,186 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN 3: RED Y RESPONSABLE -->
+            <!-- SECCIÓN 3: DIRECCIONAMIENTO DE RED -->
             <div class="space-y-3 pt-3 border-t border-obsidian-border">
                 <h3 class="text-xs font-mono uppercase font-bold text-cyan-400 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm">lan</span>
-                    Red y Responsable Asignado
+                    Direccionamiento de Red
                 </h3>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP</label>
-                        <input type="text" name="ip_address" value="{{ old('ip_address', $asset->ip_address) }}" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                        <input type="text" name="ip_address" value="{{ old('ip_address', $asset->ip_address) }}" placeholder="Ej. 10.20.107.155" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
                     </div>
 
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección MAC</label>
-                        <input type="text" name="mac_address" value="{{ old('mac_address', $asset->mac_address) }}" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Responsable Asignado</label>
-                        <input type="text" name="custodian_name" value="{{ old('custodian_name', $asset->custodian_name) }}" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Departamento / Área</label>
-                        <input type="text" name="custodian_department" value="{{ old('custodian_department', $asset->custodian_department) }}" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                        <input type="text" name="mac_address" value="{{ old('mac_address', $asset->mac_address) }}" placeholder="Ej. 18:66:DA:55:66:21" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
                     </div>
                 </div>
+            </div>
+
+            <!-- SECCIÓN 4: PARÁMETROS TÉCNICOS & ACCESO REMOTO -->
+            <div class="space-y-3.5 pt-3 border-t border-cyan-500/30 bg-[#030d1c]/80 p-4 rounded-2xl border border-cyan-500/20">
+                <div class="flex items-center justify-between border-b border-cyan-500/20 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-cyan-400 text-lg">settings_remote</span>
+                        <h3 class="text-xs font-mono uppercase font-bold text-cyan-300">Parámetros Técnicos &amp; Acceso Remoto</h3>
+                    </div>
+                    <span class="text-[9.5px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">NOC &amp; ITAM Parity</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Puertos de Red</label>
+                        <input type="text" name="ports" value="{{ old('ports', $asset->ports) }}" placeholder="Ej. 24x GE, 4x SFP" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1">Protocolo de Acceso</label>
+                        <select name="access_type" id="edit-access-type" onchange="handleAccessChange(this.value)" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                            <option value="SIN SOPORTE" {{ old('access_type', $asset->access_type) === 'SIN SOPORTE' ? 'selected' : '' }}>SIN SOPORTE</option>
+                            <option value="SSH" {{ old('access_type', $asset->access_type) === 'SSH' ? 'selected' : '' }}>Terminal SSH</option>
+                            <option value="TELNET" {{ old('access_type', $asset->access_type) === 'TELNET' ? 'selected' : '' }}>Terminal Telnet</option>
+                            <option value="WEB" {{ old('access_type', $asset->access_type) === 'WEB' ? 'selected' : '' }}>Interfaz Web (HTTP/HTTPS)</option>
+                            <option value="VNC" {{ old('access_type', $asset->access_type) === 'VNC' ? 'selected' : '' }}>Escritorio Remoto VNC</option>
+                            <option value="SSH+VNC" {{ old('access_type', $asset->access_type) === 'SSH+VNC' ? 'selected' : '' }}>Dual: SSH (22) + VNC (5900)</option>
+                        </select>
+                    </div>
+
+                    <div id="edit-single-port-wrapper">
+                        <label class="block text-xs font-mono text-obsidian-muted mb-1" id="edit-access-port-label">Puerto de Conexión</label>
+                        <input type="number" name="access_port" id="edit-access-port" value="{{ old('access_port', $asset->access_port ?? 22) }}" min="1" max="65535" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- PUERTOS DUALES DEDICADOS (SSH + VNC) -->
+                <div id="edit-dual-ports-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono text-emerald-400 mb-1 font-semibold uppercase">Puerto SSH</label>
+                        <input type="number" name="ssh_port" id="edit-ssh-port" value="{{ old('ssh_port', $asset->ssh_port ?? 22) }}" min="1" max="65535" class="w-full px-3 py-2 bg-[#040b15] border border-emerald-500/40 rounded-xl text-xs font-mono text-white focus:border-emerald-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono text-purple-400 mb-1 font-semibold uppercase">Puerto VNC</label>
+                        <input type="number" name="vnc_port" id="edit-vnc-port" value="{{ old('vnc_port', $asset->vnc_port ?? 5900) }}" min="1" max="65535" class="w-full px-3 py-2 bg-[#040b15] border border-purple-500/40 rounded-xl text-xs font-mono text-white focus:border-purple-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- CREDENCIALES VNC -->
+                <div id="edit-vnc-wrapper" class="hidden p-3 rounded-xl bg-[#020610] border border-purple-500/20 space-y-2 font-mono">
+                    <div class="flex items-center justify-between border-b border-purple-500/20 pb-1.5">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-purple-400">
+                            <span class="material-symbols-outlined text-sm">desktop_windows</span>
+                            <span>Contraseña VNC (Cifrado AES-256)</span>
+                        </div>
+                        @if($asset->has_vnc_credentials)
+                            <span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40">
+                                <span class="material-symbols-outlined text-xs">verified_user</span> Clave Configurada
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                                Sin Clave Guardada
+                            </span>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Nueva Contraseña VNC (dejar vacío para conservar)</label>
+                            <div class="relative">
+                                <input type="password" name="vnc_password" placeholder="••••••••" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-purple-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                        @if($asset->has_vnc_credentials)
+                            <div class="flex items-center pt-4">
+                                <label class="inline-flex items-center gap-1.5 text-[11px] text-red-300 hover:text-red-200 cursor-pointer">
+                                    <input type="checkbox" name="clear_vnc_credentials" value="1" class="rounded bg-black border-red-500 text-red-500 focus:ring-0">
+                                    <span>Eliminar contraseña VNC guardada</span>
+                                </label>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- CREDENCIALES SSH -->
+                <div id="edit-ssh-wrapper" class="p-3 rounded-xl bg-[#020610] border border-emerald-500/20 space-y-2 font-mono">
+                    <div class="flex items-center justify-between border-b border-emerald-500/20 pb-1.5">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                            <span class="material-symbols-outlined text-sm">key</span>
+                            <span>Credenciales de Gestión SSH (Cifrado AES-256)</span>
+                        </div>
+                        @if($asset->has_ssh_credentials)
+                            <span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                <span class="material-symbols-outlined text-xs">verified_user</span> Credenciales Activas
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                                Sin Credenciales Guardadas
+                            </span>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Usuario SSH</label>
+                            <input type="text" name="ssh_username" value="{{ old('ssh_username', $asset->ssh_username) }}" placeholder="admin / cisco" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Nueva Contraseña SSH</label>
+                            <div class="relative">
+                                <input type="password" name="ssh_password" placeholder="Dejar vacío para conservar" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10.5px] text-slate-300 mb-0.5">Nuevo Enable Secret</label>
+                            <div class="relative">
+                                <input type="password" name="ssh_enable_secret" placeholder="Dejar vacío para conservar" class="w-full px-2.5 py-1.5 rounded-lg bg-[#040b15] border border-obsidian-border text-white text-xs font-mono focus:border-emerald-400 focus:outline-none pr-7">
+                                <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-1.5 top-1.5 text-slate-400 hover:text-white" tabindex="-1">
+                                    <span class="material-symbols-outlined text-xs">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    @if($asset->has_ssh_credentials)
+                        <div class="pt-1">
+                            <label class="inline-flex items-center gap-1.5 text-[11px] text-red-300 hover:text-red-200 cursor-pointer">
+                                <input type="checkbox" name="clear_ssh_credentials" value="1" class="rounded bg-black border-red-500 text-red-500 focus:ring-0">
+                                <span>Eliminar credenciales SSH almacenadas</span>
+                            </label>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- SECCIÓN 5: RESPONSABLE & ASIGNACIÓN (ACTA UINF-4.05 / LDAP) -->
+            <div class="space-y-3 pt-3 border-t border-obsidian-border">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-mono uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">badge</span>
+                        Responsable &amp; Asignación (Acta UINF-4.05)
+                    </h3>
+                    <span class="text-[9.5px] font-mono px-2 py-0.5 rounded {{ $asset->custodian_name ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700' }}">
+                        {{ $asset->custodian_name ? 'Asignado' : 'En Stock / Sin Asignación' }}
+                    </span>
+                </div>
+
+                <x-ldap-user-picker 
+                    id="edit-asset-picker" 
+                    name="custodian" 
+                    label="Buscar Trabajador en Directorio Activo LDAP:" 
+                    :show-details="true" 
+                    :can-release="true" 
+                    :current-name="$asset->custodian_name ?? ''" 
+                    :current-id-number="$asset->custodian_id_number ?? ''" 
+                    :current-department="$asset->custodian_department ?? ''" 
+                    :current-user-id="$asset->current_user_id ?? ''" 
+                    theme="cyan" 
+                />
             </div>
 
             @php
@@ -285,5 +437,67 @@ function togglePcFields(val) {
         sec.style.display = (val === 'desktop' || val === 'laptop' || val === 'server') ? '' : 'none';
     }
 }
+
+function handleAccessChange(val) {
+    const singlePortWrapper = document.getElementById('edit-single-port-wrapper');
+    const dualPortsWrapper = document.getElementById('edit-dual-ports-wrapper');
+    const portInput = document.getElementById('edit-access-port');
+    const portLabel = document.getElementById('edit-access-port-label');
+    const vncWrapper = document.getElementById('edit-vnc-wrapper');
+    const sshWrapper = document.getElementById('edit-ssh-wrapper');
+
+    const upper = (val || '').toUpperCase();
+
+    if (upper === 'SSH+VNC') {
+        if (singlePortWrapper) singlePortWrapper.classList.add('hidden');
+        if (dualPortsWrapper) dualPortsWrapper.classList.remove('hidden');
+        if (vncWrapper) vncWrapper.classList.remove('hidden');
+        if (sshWrapper) sshWrapper.classList.remove('hidden');
+    } else {
+        if (singlePortWrapper) singlePortWrapper.classList.remove('hidden');
+        if (dualPortsWrapper) dualPortsWrapper.classList.add('hidden');
+
+        if (upper === 'SSH') {
+            if (portLabel) portLabel.textContent = 'Puerto SSH';
+            if (vncWrapper) vncWrapper.classList.add('hidden');
+            if (sshWrapper) sshWrapper.classList.remove('hidden');
+        } else if (upper === 'TELNET') {
+            if (portLabel) portLabel.textContent = 'Puerto Telnet';
+            if (vncWrapper) vncWrapper.classList.add('hidden');
+            if (sshWrapper) sshWrapper.classList.remove('hidden');
+        } else if (upper === 'WEB') {
+            if (portLabel) portLabel.textContent = 'Puerto Web (HTTP/S)';
+            if (vncWrapper) vncWrapper.classList.add('hidden');
+            if (sshWrapper) sshWrapper.classList.add('hidden');
+        } else if (upper === 'VNC') {
+            if (portLabel) portLabel.textContent = 'Puerto VNC';
+            if (vncWrapper) vncWrapper.classList.remove('hidden');
+            if (sshWrapper) sshWrapper.classList.add('hidden');
+        } else {
+            if (portLabel) portLabel.textContent = 'Puerto de Acceso';
+            if (vncWrapper) vncWrapper.classList.add('hidden');
+            if (sshWrapper) sshWrapper.classList.add('hidden');
+        }
+    }
+}
+
+function togglePasswordVisibility(btn) {
+    const input = btn.parentElement.querySelector('input');
+    const icon = btn.querySelector('.material-symbols-outlined');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = 'visibility_off';
+    } else {
+        input.type = 'password';
+        icon.textContent = 'visibility';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const accType = document.getElementById('edit-access-type');
+    if (accType) {
+        handleAccessChange(accType.value);
+    }
+});
 </script>
 @endsection

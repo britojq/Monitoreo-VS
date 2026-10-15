@@ -1,0 +1,140 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\DTOs;
+
+readonly class InventoryAssetData
+{
+    public function __construct(
+        public ?int $id,
+        public ?string $assetTag,
+        public string $name, // Nombre Etiqueta (Identidad Operativa Principal)
+        public string $type,
+        public string $status,
+        public ?string $brand = null,
+        public ?string $model = null,
+        public ?string $serialNumber = null,
+        public ?string $macAddress = null,
+        public ?string $ipAddress = null,
+        public ?int $monitoredSiteId = null,
+        public ?int $deviceNumber = null,
+        public string $accessType = 'SIN SOPORTE',
+        public ?int $accessPort = null,
+        public ?int $sshPort = null,
+        public ?int $vncPort = null,
+        public ?int $webPort = null,
+        public ?int $telnetPort = null,
+        public ?string $sshUsername = null,
+        public ?string $sshPassword = null,
+        public ?string $sshEnableSecret = null,
+        public ?string $vncPassword = null,
+        public ?string $ports = null,
+        public ?string $normalStateMsg = null,
+        public ?string $errorStateMsg = null,
+        public bool $isActive = true,
+        public int $sortOrder = 0,
+        public bool $telegramAlertEnabled = true,
+        public ?string $telegramAlertTarget = null,
+        public ?string $locationDetail = null,
+        public ?int $monitoredNetworkDeviceId = null,
+        public ?int $currentUserId = null,
+        public ?string $responsibleName = null, // Mapeado a custodian_name en BD
+        public ?string $responsibleIdNumber = null, // Mapeado a custodian_id_number
+        public ?string $responsibleDepartment = null, // Mapeado a custodian_department
+        public ?string $operatingSystem = null,
+        public ?string $osKernel = null,
+        public ?string $purchaseDate = null,
+        public ?string $warrantyExpiration = null,
+        public ?string $notes = null,
+    ) {}
+
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: isset($data['id']) ? (int) $data['id'] : null,
+            assetTag: $data['asset_tag'] ?? null,
+            name: (string) ($data['name'] ?? ''),
+            type: (string) ($data['type'] ?? 'workstation'),
+            status: (string) ($data['status'] ?? 'in_use'),
+            brand: $data['brand'] ?? null,
+            model: $data['model'] ?? null,
+            serialNumber: $data['serial_number'] ?? null,
+            macAddress: $data['mac_address'] ?? null,
+            ipAddress: $data['ip_address'] ?? null,
+            monitoredSiteId: isset($data['monitored_site_id']) ? (int) $data['monitored_site_id'] : null,
+            deviceNumber: isset($data['device_number']) ? (int) $data['device_number'] : null,
+            accessType: $data['access_type'] ?? 'SIN SOPORTE',
+            accessPort: isset($data['access_port']) ? (int) $data['access_port'] : null,
+            sshPort: isset($data['ssh_port']) ? (int) $data['ssh_port'] : null,
+            vncPort: isset($data['vnc_port']) ? (int) $data['vnc_port'] : null,
+            webPort: isset($data['web_port']) ? (int) $data['web_port'] : null,
+            telnetPort: isset($data['telnet_port']) ? (int) $data['telnet_port'] : null,
+            sshUsername: $data['ssh_username'] ?? null,
+            sshPassword: $data['ssh_password'] ?? $data['ssh_password_encrypted'] ?? null,
+            sshEnableSecret: $data['ssh_enable_secret'] ?? $data['ssh_enable_secret_encrypted'] ?? null,
+            vncPassword: $data['vnc_password'] ?? $data['vnc_password_encrypted'] ?? null,
+            ports: $data['ports'] ?? null,
+            normalStateMsg: $data['normal_state_msg'] ?? null,
+            errorStateMsg: $data['error_state_msg'] ?? null,
+            isActive: (bool) ($data['is_active'] ?? true),
+            sortOrder: (int) ($data['sort_order'] ?? 0),
+            telegramAlertEnabled: (bool) ($data['telegram_alert_enabled'] ?? true),
+            telegramAlertTarget: $data['telegram_alert_target'] ?? null,
+            locationDetail: $data['location_detail'] ?? null,
+            monitoredNetworkDeviceId: isset($data['monitored_network_device_id']) ? (int) $data['monitored_network_device_id'] : null,
+            currentUserId: isset($data['current_user_id']) ? (int) $data['current_user_id'] : null,
+            responsibleName: $data['responsible_name'] ?? $data['custodian_name'] ?? null,
+            responsibleIdNumber: $data['responsible_id_number'] ?? $data['custodian_id_number'] ?? null,
+            responsibleDepartment: $data['responsible_department'] ?? $data['custodian_department'] ?? null,
+            operatingSystem: $data['operating_system'] ?? null,
+            osKernel: $data['os_kernel'] ?? null,
+            purchaseDate: $data['purchase_date'] ?? null,
+            warrantyExpiration: $data['warranty_expiration'] ?? null,
+            notes: $data['notes'] ?? null,
+        );
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'asset_tag' => $this->assetTag,
+            'name' => $this->name,
+            'type' => $this->type,
+            'status' => $this->status,
+            'brand' => $this->brand,
+            'model' => $this->model,
+            'serial_number' => $this->serialNumber,
+            'mac_address' => $this->macAddress,
+            'ip_address' => $this->ipAddress,
+            'monitored_site_id' => $this->monitoredSiteId,
+            'device_number' => $this->deviceNumber,
+            'access_type' => $this->accessType,
+            'access_port' => $this->accessPort,
+            'ssh_port' => $this->sshPort,
+            'vnc_port' => $this->vncPort,
+            'web_port' => $this->webPort,
+            'telnet_port' => $this->telnetPort,
+            'ssh_username' => $this->sshUsername,
+            'ports' => $this->ports,
+            'normal_state_msg' => $this->normalStateMsg,
+            'error_state_msg' => $this->errorStateMsg,
+            'is_active' => $this->isActive,
+            'sort_order' => $this->sortOrder,
+            'telegram_alert_enabled' => $this->telegramAlertEnabled,
+            'telegram_alert_target' => $this->telegramAlertTarget,
+            'location_detail' => $this->locationDetail,
+            'monitored_network_device_id' => $this->monitoredNetworkDeviceId,
+            'current_user_id' => $this->currentUserId,
+            'custodian_name' => $this->responsibleName,
+            'custodian_id_number' => $this->responsibleIdNumber,
+            'custodian_department' => $this->responsibleDepartment,
+            'operating_system' => $this->operatingSystem,
+            'os_kernel' => $this->osKernel,
+            'purchase_date' => $this->purchaseDate,
+            'warranty_expiration' => $this->warrantyExpiration,
+            'notes' => $this->notes,
+        ];
+    }
+}

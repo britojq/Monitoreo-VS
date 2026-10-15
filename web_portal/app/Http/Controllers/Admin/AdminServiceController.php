@@ -1,29 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Services\CreateServiceAction;
+use App\Actions\Services\DeleteServiceAction;
+use App\Actions\Services\ToggleServiceAction;
+use App\Actions\Services\UpdateServiceAction;
+use App\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Services\StoreServiceRequest;
+use App\Http\Requests\Services\UpdateServiceRequest;
 use App\Models\MonitoredService;
 use App\Models\MonitoringSnapshot;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminServiceController extends Controller
 {
+    private readonly ServiceRepositoryInterface $repository;
+
+    public function __construct(
+        ?ServiceRepositoryInterface $repository = null
+    ) {
+        $this->repository = $repository ?? app(ServiceRepositoryInterface::class);
+    }
+
     public function index(): View
     {
-        $services = MonitoredService::orderBy('sort_order')->get();
+        $services = $this->repository->getAllOrdered();
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotServices = collect();
+
         if ($latestSnapshot && isset($latestSnapshot->payload_json['services'])) {
             foreach ($latestSnapshot->payload_json['services'] as $srv) {
                 if (isset($srv['id'])) {
-                    $snapshotServices->put((string)$srv['id'], $srv);
+                    $snapshotServices->put((string) $srv['id'], $srv);
                 }
                 if (isset($srv['letter'])) {
-                    $snapshotServices->put((string)$srv['letter'], $srv);
+                    $snapshotServices->put((string) $srv['letter'], $srv);
                 }
             }
         }
@@ -31,130 +49,69 @@ class AdminServiceController extends Controller
         return view('admin.services.index', compact('services', 'snapshotServices'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ?CreateServiceAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'letter' => ['nullable', 'string', 'max:10'],
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', Rule::in(['WEB', 'DNS', 'SMTP', 'DHCP', 'CUPS', 'LDAP', 'PING', 'PROXY'])],
-            'scope' => ['required', 'string', Rule::in(['corporativo', 'regional'])],
-            'host_ip' => ['nullable', 'string', 'max:255'],
-            'web_url' => ['nullable', 'string', 'max:500'],
-            'port' => ['nullable', 'integer'],
-            'credentials' => ['nullable', 'string', 'max:255'],
-            'check_interface' => ['nullable', 'string', 'max:50'],
-            'dns_test_domain' => ['nullable', 'string', 'max:255'],
-            'normal_state_msg' => ['nullable', 'string', 'max:255'],
-            'error_state_msg' => ['nullable', 'string', 'max:255'],
-            'is_active' => ['boolean'],
-            'sort_order' => ['nullable', 'integer'],
-            'telegram_alert_enabled' => ['nullable', 'boolean'],
-            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
-        ]);
+        $action = $action ?? app(CreateServiceAction::class);
+        $formRequest = $request instanceof StoreServiceRequest
+            ? $request
+            : StoreServiceRequest::createFrom($request);
 
-        if (empty($validated['letter'])) {
-            $nextId = (MonitoredService::max('id') ?? 0) + 1;
-            $validated['letter'] = "S{$nextId}";
-        } else {
-            $validated['letter'] = strtoupper(trim($validated['letter']));
+        if (!$request instanceof StoreServiceRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
-        $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
-        $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['sort_order'] = $validated['sort_order'] ?? MonitoredService::count();
-        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
-        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
 
-        MonitoredService::create($validated);
-
-        // Disparar sincronización con archivo de configuración
-        app(SyncController::class)->exportToConfigFiles();
+        $action->execute($formRequest->toDto());
 
         return redirect()->route('admin.services.index')->with('success', 'Servicio agregado exitosamente.');
     }
 
-    public function update(Request $request, MonitoredService $service): RedirectResponse
+    public function update(Request $request, MonitoredService $service, ?UpdateServiceAction $action = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'letter' => ['nullable', 'string', 'max:10'],
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', Rule::in(['WEB', 'DNS', 'SMTP', 'DHCP', 'CUPS', 'LDAP', 'PING', 'PROXY'])],
-            'scope' => ['required', 'string', Rule::in(['corporativo', 'regional'])],
-            'host_ip' => ['nullable', 'string', 'max:255'],
-            'web_url' => ['nullable', 'string', 'max:500'],
-            'port' => ['nullable', 'integer'],
-            'credentials' => ['nullable', 'string', 'max:255'],
-            'check_interface' => ['nullable', 'string', 'max:50'],
-            'dns_test_domain' => ['nullable', 'string', 'max:255'],
-            'normal_state_msg' => ['nullable', 'string', 'max:255'],
-            'error_state_msg' => ['nullable', 'string', 'max:255'],
-            'is_active' => ['boolean'],
-            'sort_order' => ['nullable', 'integer'],
-            'telegram_alert_enabled' => ['nullable', 'boolean'],
-            'telegram_alert_target' => ['nullable', 'string', Rule::in(['owner', 'group'])],
-        ]);
+        $action = $action ?? app(UpdateServiceAction::class);
+        $formRequest = $request instanceof UpdateServiceRequest
+            ? $request
+            : UpdateServiceRequest::createFrom($request);
 
-        if (empty($validated['letter'])) {
-            $validated['letter'] = "S{$service->id}";
-        } else {
-            $validated['letter'] = strtoupper(trim($validated['letter']));
+        if (!$request instanceof UpdateServiceRequest) {
+            $formRequest->setContainer(app())->validateResolved();
         }
-        $validated['scope'] = strtolower($validated['scope'] ?? 'corporativo');
-        $validated['is_active'] = $request->boolean('is_active');
-        $validated['telegram_alert_enabled'] = $request->boolean('telegram_alert_enabled');
-        $validated['telegram_alert_target'] = in_array($request->input('telegram_alert_target'), ['owner', 'group']) ? $request->input('telegram_alert_target') : 'owner';
 
-        $service->update($validated);
-
-        // Disparar sincronización con archivo de configuración
-        app(SyncController::class)->exportToConfigFiles();
+        $action->execute($service->id, $formRequest->toDto($service));
 
         return redirect()->route('admin.services.index')->with('success', 'Servicio actualizado exitosamente.');
     }
 
-    public function toggle(MonitoredService $service): RedirectResponse
+    public function toggle(MonitoredService $service, ?ToggleServiceAction $action = null): RedirectResponse
     {
-        $service->is_active = !$service->is_active;
-        $service->save();
+        $action = $action ?? app(ToggleServiceAction::class);
+        $updated = $action->execute($service->id);
+        $status = $updated->is_active ? 'activado' : 'desactivado';
 
-        app(SyncController::class)->exportToConfigFiles();
-
-        $status = $service->is_active ? 'activado' : 'desactivado';
         return back()->with('success', "Servicio [{$service->name}] {$status} exitosamente.");
     }
 
-    public function history(Request $request, MonitoredService $service): \Illuminate\Http\JsonResponse
+    public function history(Request $request, MonitoredService $service): JsonResponse
     {
-        $range = $request->query('range', '24h');
-        
+        $range = (string) $request->query('range', '24h');
         $query = $service->histories()->reorder('checked_at', 'asc');
-        
-        switch ($range) {
-            case '6h':
-                $query->where('checked_at', '>=', now()->subHours(6));
-                break;
-            case '7d':
-                $query->where('checked_at', '>=', now()->subDays(7));
-                break;
-            case '30d':
-                $query->where('checked_at', '>=', now()->subDays(30));
-                break;
-            case '24h':
-            default:
-                $query->where('checked_at', '>=', now()->subHours(24));
-                break;
-        }
+
+        match ($range) {
+            '6h' => $query->where('checked_at', '>=', now()->subHours(6)),
+            '7d' => $query->where('checked_at', '>=', now()->subDays(7)),
+            '30d' => $query->where('checked_at', '>=', now()->subDays(30)),
+            default => $query->where('checked_at', '>=', now()->subHours(24)),
+        };
 
         $records = $query->get();
-
         $totalChecks = $records->count();
         $upChecks = $records->where('is_up', true)->count();
         $downChecks = $totalChecks - $upChecks;
         $uptimePct = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 2) : 0.0;
-        
+
         $upRecords = $records->where('is_up', true);
-        $avgLatency = $upRecords->count() > 0 ? round($upRecords->avg('latency_ms'), 2) : 0.0;
-        $maxLatency = $upRecords->count() > 0 ? round($upRecords->max('latency_ms'), 2) : 0.0;
-        $minLatency = $upRecords->count() > 0 ? round($upRecords->min('latency_ms'), 2) : 0.0;
+        $avgLatency = $upRecords->count() > 0 ? round((float) $upRecords->avg('latency_ms'), 2) : 0.0;
+        $maxLatency = $upRecords->count() > 0 ? round((float) $upRecords->max('latency_ms'), 2) : 0.0;
+        $minLatency = $upRecords->count() > 0 ? round((float) $upRecords->min('latency_ms'), 2) : 0.0;
 
         $labels = [];
         $latencies = [];
@@ -162,25 +119,24 @@ class AdminServiceController extends Controller
         $points = [];
 
         foreach ($records as $r) {
-            $formattedTime = ($range == '7d' || $range == '30d') 
-                ? $r->checked_at->format('d/m H:i') 
+            $formattedTime = ($range === '7d' || $range === '30d')
+                ? $r->checked_at->format('d/m H:i')
                 : $r->checked_at->format('H:i');
-                
+
             $labels[] = $formattedTime;
             $latencies[] = $r->is_up ? (float) $r->latency_ms : 0.0;
             $statuses[] = $r->is_up ? 1 : 0;
             $points[] = [
                 'time' => $r->checked_at->format('Y-m-d H:i:s'),
                 'time_human' => $r->checked_at->diffForHumans(),
-                'is_up' => $r->is_up,
+                'is_up' => (bool) $r->is_up,
                 'latency_ms' => (float) $r->latency_ms,
                 'http_code' => $r->http_code,
                 'status_message' => $r->status_message,
             ];
         }
 
-        // Obtener caídas recientes para el registro de incidentes (ordenadas de más reciente a más antigua)
-        $incidents = $records->where('is_up', false)->sortByDesc('checked_at')->values()->map(function($r) {
+        $incidents = $records->where('is_up', false)->sortByDesc('checked_at')->values()->map(function ($r) {
             return [
                 'time' => $r->checked_at->format('Y-m-d H:i:s'),
                 'time_human' => $r->checked_at->diffForHumans(),
@@ -199,7 +155,7 @@ class AdminServiceController extends Controller
                 'name' => $service->name,
                 'type' => $service->type,
                 'target' => $service->host_ip ?: ($service->web_url ?: '127.0.0.1'),
-                'is_active' => $service->is_active,
+                'is_active' => (bool) $service->is_active,
             ],
             'range' => $range,
             'stats' => [
@@ -210,8 +166,8 @@ class AdminServiceController extends Controller
                 'avg_latency' => $avgLatency,
                 'max_latency' => $maxLatency,
                 'min_latency' => $minLatency,
-                'last_check' => $records->last() ? $records->last()->checked_at->format('Y-m-d H:i:s') : null,
-                'last_check_human' => $records->last() ? $records->last()->checked_at->diffForHumans() : null,
+                'last_check' => $lastRecord ? $lastRecord->checked_at->format('Y-m-d H:i:s') : null,
+                'last_check_human' => $lastRecord ? $lastRecord->checked_at->diffForHumans() : null,
             ],
             'labels' => $labels,
             'latencies' => $latencies,
@@ -221,11 +177,10 @@ class AdminServiceController extends Controller
         ]);
     }
 
-    public function destroy(MonitoredService $service): RedirectResponse
+    public function destroy(MonitoredService $service, ?DeleteServiceAction $action = null): RedirectResponse
     {
-        $service->delete();
-
-        app(SyncController::class)->exportToConfigFiles();
+        $action = $action ?? app(DeleteServiceAction::class);
+        $action->execute($service->id);
 
         return redirect()->route('admin.services.index')->with('success', 'Servicio eliminado exitosamente.');
     }
