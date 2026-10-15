@@ -142,16 +142,12 @@ class NexusAdminService
 
         // 3. Sincronizar hacia /var/www/monitoreo si aplica
         if ($this->baseDir !== $this->webDir && is_dir($this->webDir)) {
-            $syncCmd = "sudo cp -a {$this->baseDir}/web_portal/resources/views/layouts/admin.blade.php {$this->webDir}/resources/views/layouts/admin.blade.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Services/Cluster/RuntimeParityInspector.php {$this->webDir}/app/Services/Cluster/RuntimeParityInspector.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Http/Controllers/Admin/HelpController.php {$this->webDir}/app/Http/Controllers/Admin/HelpController.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Console/Commands/SystemVersionCommand.php {$this->webDir}/app/Console/Commands/SystemVersionCommand.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Console/Commands/VerifyZeroDummyDataCommand.php {$this->webDir}/app/Console/Commands/VerifyZeroDummyDataCommand.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Services/NexusAdminService.php {$this->webDir}/app/Services/NexusAdminService.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Http/Controllers/Api/NexusAdminController.php {$this->webDir}/app/Http/Controllers/Api/NexusAdminController.php 2>/dev/null; " .
-                       "sudo cp -a {$this->baseDir}/web_portal/app/Http/Middleware/StealthNexusGuard.php {$this->webDir}/app/Http/Middleware/StealthNexusGuard.php 2>/dev/null";
-            $this->runCommand($syncCmd);
-            $output['web_sync'] = 'Archivos sincronizados a ' . $this->webDir;
+            $syncCmd = "rsync -a --delete --exclude=vendor --exclude=node_modules --exclude=.env --exclude=storage --exclude=database/database.sqlite " .
+                       escapeshellarg($this->baseDir . '/web_portal/') . " " . escapeshellarg($this->webDir . '/');
+            $syncRes = $this->runCommand($syncCmd);
+            $output['web_sync'] = ($syncRes['exit_code'] === 0) 
+                ? 'Archivos sincronizados a ' . $this->webDir 
+                : 'Error sincronizando: ' . $syncRes['output'];
         }
 
         // 4. Migraciones si son requeridas
@@ -161,7 +157,7 @@ class NexusAdminService
         }
 
         // 5. Purga de caché y reinicio seguro de servidor web
-        $this->runCommand("php {$this->webDir}/artisan view:clear && php {$this->webDir}/artisan cache:clear");
+        $this->runCommand("php {$this->webDir}/artisan view:clear && php {$this->webDir}/artisan route:clear && php {$this->webDir}/artisan config:clear && php {$this->webDir}/artisan cache:clear");
         $this->runCommand("sudo systemctl reload apache2 php8.4-fpm 2>/dev/null || true");
 
         return [
