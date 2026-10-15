@@ -133,7 +133,8 @@ class NexusAdminService
         $output['git_fetch'] = $fetchRes['output'];
 
         // 2. Checkout / Reset atómico a origin/master
-        $resetRes = $this->runCommand($gitSafe . 'checkout origin/master -- monitor/ tools/ web_portal/ tests/ docs/ 2>&1 || ' . $gitSafe . 'reset origin/master');
+        $checkoutCmd = $gitSafe . 'checkout origin/master -- monitor/ tools/ web_portal/ tests/ 2>&1';
+        $resetRes = $this->runCommand($checkoutCmd);
         $output['git_checkout'] = $resetRes['output'];
 
         $headCommit = trim((string) @shell_exec($gitSafe . 'rev-parse --short HEAD'));
