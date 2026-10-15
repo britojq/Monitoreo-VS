@@ -146,7 +146,8 @@ case "$COMMAND" in
         call_api '{"migrate": false}'
         ;;
     rollback)
-        COMMIT="${1:-HEAD@{1}}"
+        DEFAULT_COMMIT="HEAD@{1}"
+        COMMIT="${1:-$DEFAULT_COMMIT}"
         echo -e "${YELLOW}⚠️ Ejecutando rollback hacia: ${COMMIT}...${NC}"
         call_api "{\"target\": \"${COMMIT}\"}"
         ;;
