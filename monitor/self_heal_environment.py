@@ -117,18 +117,23 @@ def purge_caches_and_sync_web():
 
     # 2. Sincronizar Portal Web si estamos en servidor con Apache
     if WEB_DIR.exists() and WEB_DIR != (BASE_DIR / "web_portal"):
-        sudo = ["sudo"] if os.geteuid() != 0 else []
-        cmd_rsync = sudo + [
-            "rsync", "-a",
+        cmd_rsync = [
+            "rsync", "-a", "--delete",
             "--exclude=vendor/", "--exclude=node_modules/", "--exclude=.env",
             "--exclude=storage/", "--exclude=database/database.sqlite",
             f"{BASE_DIR}/web_portal/", f"{WEB_DIR}/"
         ]
-        subprocess.run(cmd_rsync, capture_output=True)
+        res = subprocess.run(cmd_rsync, capture_output=True)
+        if res.returncode != 0:
+            subprocess.run(["sudo"] + cmd_rsync, capture_output=True)
 
-        for acmd in ["view:clear", "route:clear", "config:clear"]:
-            subprocess.run(sudo + ["php", f"{WEB_DIR}/artisan", acmd], capture_output=True)
-        log("Portal web sincronizado y cachés de Laravel purgadas.")
+        for acmd in [["migrate", "--force"], ["view:clear"], ["route:clear"], ["config:clear"], ["cache:clear"]]:
+            res = subprocess.run(["php", f"{WEB_DIR}/artisan"] + acmd, capture_output=True)
+            if res.returncode != 0:
+                subprocess.run(["sudo", "php", f"{WEB_DIR}/artisan"] + acmd, capture_output=True)
+
+        subprocess.run(["sudo", "systemctl", "reload", "apache2"], capture_output=True)
+        log("Portal web sincronizado, migraciones aplicadas y cachés de Laravel purgadas.")
 
 def run_background_scan():
     """Ejecuta un escaneo web forzado en segundo plano."""
