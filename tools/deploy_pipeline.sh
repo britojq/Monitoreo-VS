@@ -7,7 +7,14 @@
 
 set -uo pipefail
 
-BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/monitor/database_backup.py" ]; then
+    BASE_DIR="$SCRIPT_DIR"
+elif [ -f "$SCRIPT_DIR/../monitor/database_backup.py" ]; then
+    BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    BASE_DIR="/scripts/telegram-admin-bot"
+fi
 cd "$BASE_DIR"
 
 PYTHON_BIN="$BASE_DIR/venv/bin/python"
@@ -29,7 +36,7 @@ NC="\033[0m"
 log() {
     local ts
     ts=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "[$ts] $*" | tee -a "$LOG_FILE"
+    echo -e "[$ts] $*" | tee -a "$LOG_FILE" >&2
 }
 
 # ------------------------------------------------------------------------------
@@ -41,11 +48,11 @@ is_locked() {
 
 check_lock() {
     if is_locked; then
-        echo -e "${RED}⛔ [CIRCUIT BREAKER ACTIVO] El pipeline de despliegue está bloqueado por una falla previa.${NC}"
-        echo -e "${YELLOW}Motivo del bloqueo:${NC}"
-        cat "$LOCK_FILE"
-        echo ""
-        echo -e "Para desbloquear una vez corregido el repositorio: ${CYAN}$0 unlock${NC}"
+        echo -e "${RED}⛔ [CIRCUIT BREAKER ACTIVO] El pipeline de despliegue está bloqueado por una falla previa.${NC}" >&2
+        echo -e "${YELLOW}Motivo del bloqueo:${NC}" >&2
+        cat "$LOCK_FILE" >&2
+        echo "" >&2
+        echo -e "Para desbloquear una vez corregido el repositorio: ${CYAN}$0 unlock${NC}" >&2
         exit 1
     fi
 }
@@ -64,11 +71,13 @@ unlock_pipeline() {
 # ------------------------------------------------------------------------------
 get_git_proxy_args() {
     "$PYTHON_BIN" -c "
+import sys, os
+sys.path.insert(0, '$BASE_DIR')
 import asyncio
 from monitor.git_network import evaluate_github_connectivity, get_git_proxy_args
 url, label, ok = asyncio.run(evaluate_github_connectivity(timeout=3.5))
 if not ok:
-    import sys; sys.exit(2)
+    sys.exit(2)
 args = get_git_proxy_args(url)
 print(' '.join(args))
 " 2>/dev/null
@@ -76,6 +85,8 @@ print(' '.join(args))
 
 get_network_route_label() {
     "$PYTHON_BIN" -c "
+import sys, os
+sys.path.insert(0, '$BASE_DIR')
 import asyncio
 from monitor.git_network import evaluate_github_connectivity
 url, label, ok = asyncio.run(evaluate_github_connectivity(timeout=3.5))
@@ -91,12 +102,14 @@ create_db_backup() {
     log "💾 Generando respaldo atómico previo de la base de datos..."
     local res
     res=$("$PYTHON_BIN" -c "
+import sys, os
+sys.path.insert(0, '$BASE_DIR')
 from monitor.database_backup import create_db_snapshot
 ok, path, msg = create_db_snapshot('$tag')
 if ok:
     print(path)
 else:
-    import sys; sys.exit(1)
+    sys.exit(1)
 " 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$res" ]; then
         echo "$res"
@@ -109,10 +122,11 @@ restore_db_backup() {
     local backup_path="${1:-}"
     log "${YELLOW}🔄 Restaurando base de datos desde respaldo seguro...${NC}"
     "$PYTHON_BIN" -c "
+import sys, os
+sys.path.insert(0, '$BASE_DIR')
 from monitor.database_backup import restore_db_snapshot
 ok, msg = restore_db_snapshot('$backup_path' if '$backup_path' else None)
 print(msg)
-import sys
 sys.exit(0 if ok else 1)
 "
 }

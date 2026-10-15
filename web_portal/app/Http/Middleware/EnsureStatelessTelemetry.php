@@ -84,6 +84,12 @@ class EnsureStatelessTelemetry
     protected function isVolatilePath(string $path): bool
     {
         $normalized = '/' . ltrim($path, '/');
+
+        // Endpoints públicos legítimos que no requieren autenticación
+        if ($normalized === '/api/status' || $normalized === '/' || str_starts_with($normalized, '/acta/verificar')) {
+            return false;
+        }
+
         foreach ($this->volatilePatterns as $pattern) {
             if (str_contains($normalized, $pattern)) {
                 return true;
