@@ -29,7 +29,7 @@ class VerifyZeroDummyDataCommand extends Command
      */
     protected array $forbiddenPatterns = [
         '%TEST-%',
-        '%TEST_%',
+        '%TEST\_%',
         '%TEST DUAL%',
         '%TEST-DUAL%',
         '%DUMMY%',

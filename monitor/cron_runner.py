@@ -123,7 +123,7 @@ async def run_scheduled_dispatch(force: bool = False) -> bool:
         execute_monitoring(target="servicios", debug_mode=False, capture_screenshot=False, mode="snapshot")
     )
     screenshot_task = asyncio.create_task(
-        capture_web_dashboard(mode="servicios")
+        capture_web_dashboard(mode="full")
     )
 
     monitoring_res, screen_res = await asyncio.gather(monitoring_task, screenshot_task, return_exceptions=True)
@@ -154,7 +154,7 @@ async def run_scheduled_dispatch(force: bool = False) -> bool:
                 caption = (
                     "📸 <b>Captura en Tiempo Real</b>\n"
                     "🏢 <b>SISTEMA DE MONITOREO VALLE SECO</b>\n"
-                    "📌 <i>Servicios Corporativos</i>"
+                    "📌 <i>Vista Global de Infraestructura</i>"
                 )
                 await dispatcher.send_photo(chat_id, screenshot_file, caption=caption)
 

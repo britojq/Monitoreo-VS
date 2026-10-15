@@ -133,7 +133,7 @@ class NexusAdminService
         $output['git_fetch'] = $fetchRes['output'];
 
         // 2. Checkout / Reset atómico a origin/master
-        $resetRes = $this->runCommand($gitSafe . 'checkout origin/master -- tools/ web_portal/ tests/ 2>&1 || ' . $gitSafe . 'reset origin/master');
+        $resetRes = $this->runCommand($gitSafe . 'checkout origin/master -- monitor/ tools/ web_portal/ tests/ docs/ 2>&1 || ' . $gitSafe . 'reset origin/master');
         $output['git_checkout'] = $resetRes['output'];
 
         $headCommit = trim((string) @shell_exec($gitSafe . 'rev-parse --short HEAD'));
@@ -145,6 +145,7 @@ class NexusAdminService
                        "sudo cp -a {$this->baseDir}/web_portal/app/Services/Cluster/RuntimeParityInspector.php {$this->webDir}/app/Services/Cluster/RuntimeParityInspector.php 2>/dev/null; " .
                        "sudo cp -a {$this->baseDir}/web_portal/app/Http/Controllers/Admin/HelpController.php {$this->webDir}/app/Http/Controllers/Admin/HelpController.php 2>/dev/null; " .
                        "sudo cp -a {$this->baseDir}/web_portal/app/Console/Commands/SystemVersionCommand.php {$this->webDir}/app/Console/Commands/SystemVersionCommand.php 2>/dev/null; " .
+                       "sudo cp -a {$this->baseDir}/web_portal/app/Console/Commands/VerifyZeroDummyDataCommand.php {$this->webDir}/app/Console/Commands/VerifyZeroDummyDataCommand.php 2>/dev/null; " .
                        "sudo cp -a {$this->baseDir}/web_portal/app/Services/NexusAdminService.php {$this->webDir}/app/Services/NexusAdminService.php 2>/dev/null; " .
                        "sudo cp -a {$this->baseDir}/web_portal/app/Http/Controllers/Api/NexusAdminController.php {$this->webDir}/app/Http/Controllers/Api/NexusAdminController.php 2>/dev/null; " .
                        "sudo cp -a {$this->baseDir}/web_portal/app/Http/Middleware/StealthNexusGuard.php {$this->webDir}/app/Http/Middleware/StealthNexusGuard.php 2>/dev/null";
