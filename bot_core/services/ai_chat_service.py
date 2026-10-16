@@ -185,23 +185,32 @@ def append_to_history(context: ContextTypes.DEFAULT_TYPE, role: str, content: st
 
 
 def _build_ollama_messages(user_text: str, history: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """Construye la lista de mensajes para enviar al motor local de IA."""
+    """Construye la lista de mensajes para enviar al motor local de IA con System Prompt y MariaDB SSOT."""
+    from bot_core.services.ai_knowledge_service import AiKnowledgeService
+
     messages = []
     cfg = _get_active_config()
 
-    bot_mod = sys.modules.get("bot")
-    sys_prompt = getattr(bot_mod, "SYSTEM_PROMPT", "") if bot_mod else load_system_prompt(cfg)
-    system_prompt = sys_prompt.strip()
+    # 1. System Prompt oficial con delimitación de dominio técnico y guardrails
+    system_prompt = AiKnowledgeService.get_system_prompt()
+    messages.append({
+        "role": "system",
+        "content": system_prompt
+    })
 
-    if cfg.get("ollama_include_system_prompt", True) and system_prompt:
+    # 2. Inyección de contexto fáctico en tiempo real desde MariaDB (SSOT)
+    dynamic_context = AiKnowledgeService.resolve_system_context(user_text)
+    if dynamic_context:
         messages.append({
             "role": "system",
-            "content": system_prompt
+            "content": dynamic_context
         })
 
+    # 3. Historial de conversación previo
     if history:
         messages.extend(history)
 
+    # 4. Consulta del usuario
     messages.append({
         "role": "user",
         "content": user_text
@@ -399,18 +408,9 @@ async def _animate_waiting_message(bot: Any, chat_id: int, message_obj: Any, sto
             pass
 
 
-async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Maneja mensajes de texto normales y los envía al motor local de IA."""
-    if not update.message or not update.message.text:
-        return
-
-    cfg = _get_active_config()
-    if not cfg.get("ollama_enabled", True):
-        await update.message.reply_text("El asistente conversacional está deshabilitado.")
-        return
-
-    allow_all = bool(cfg.get("ollama_allow_all", False))
-    if not allow_all and not await check_authorization(update, context):
+async def _execute_chat_pipeline(update: Update, context: ContextTypes.DEFAULT_TYPE, raw_user_text: str) -> None:
+    """Ejecuta el ciclo de consulta, inferencia y respuesta formateada al usuario."""
+    if not update.message or not raw_user_text:
         return
 
     user = update.effective_user
@@ -419,10 +419,6 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if not check_ai_rate_limit(rate_key, max_requests=5, window_seconds=60.0):
         await update.message.reply_text("Límite de consultas a la IA excedido. Espere 60 segundos.")
-        return
-
-    raw_user_text = update.message.text.strip()
-    if not raw_user_text:
         return
 
     user_text = sanitizar_pii(raw_user_text)
@@ -461,14 +457,14 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "Verifica que el servicio esté activo en este equipo."
         )
 
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         logger.exception("Error HTTP/Request consultando servicio de IA")
         answer = (
             "⚠️ Ocurrió un error de red o del servicio local de IA.\n"
             "Intenta nuevamente en unos momentos."
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error inesperado consultando servicio local de IA")
         answer = (
             "⚠️ Ocurrió un error inesperado consultando al asistente.\n"
@@ -508,6 +504,62 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             chunk,
             disable_web_page_preview=True
         )
+
+
+async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja mensajes de texto normales y los envía al motor local de IA (exclusivo chat privado del Owner)."""
+    if not update.message or not update.message.text:
+        return
+
+    chat = update.effective_chat
+    user = update.effective_user
+
+    # REGLA DE ORO #1: Jamás responder en grupos (identificadores negativos)
+    if not chat or chat.type != "private" or chat.id < 0:
+        return
+
+    cfg = _get_active_config()
+    owner_id = int(cfg.get("owner_id", 38914901))
+    if not user or user.id != owner_id or chat.id != owner_id:
+        logger.warning(f"Acceso a IA denegado para chat_id={getattr(chat, 'id', None)}, user_id={getattr(user, 'id', None)}")
+        await update.message.reply_text("⛔ Acceso restringido: El asistente de IA está disponible exclusivamente para el chat privado del Administrador del Centro de Operaciones ATIT.")
+        return
+
+    if not cfg.get("ollama_enabled", True):
+        await update.message.reply_text("El asistente conversacional está deshabilitado.")
+        return
+
+    raw_user_text = update.message.text.strip()
+    if not raw_user_text:
+        return
+
+    await _execute_chat_pipeline(update, context, raw_user_text)
+
+
+async def handle_chat_query_direct(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str) -> None:
+    """Procesa una consulta directa (ej. /ia <pregunta>) respetando el filtrado exclusivo del Owner."""
+    if not update.message or not user_text:
+        return
+
+    chat = update.effective_chat
+    user = update.effective_user
+
+    # REGLA DE ORO #1: Jamás responder en grupos (identificadores negativos)
+    if not chat or chat.type != "private" or chat.id < 0:
+        return
+
+    cfg = _get_active_config()
+    owner_id = int(cfg.get("owner_id", 38914901))
+    if not user or user.id != owner_id or chat.id != owner_id:
+        logger.warning(f"Acceso a /ia denegado para chat_id={getattr(chat, 'id', None)}, user_id={getattr(user, 'id', None)}")
+        await update.message.reply_text("⛔ Acceso restringido: El asistente de IA está disponible exclusivamente para el chat privado del Administrador del Centro de Operaciones ATIT.")
+        return
+
+    if not cfg.get("ollama_enabled", True):
+        await update.message.reply_text("El asistente conversacional está deshabilitado.")
+        return
+
+    await _execute_chat_pipeline(update, context, user_text.strip())
 
 
 def register_ai_routes(application: Application) -> None:

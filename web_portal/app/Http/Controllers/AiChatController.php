@@ -11,8 +11,12 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class AiChatController extends Controller
 {
+    public function __construct(
+        protected \App\Services\Ai\AiKnowledgeEngineService $knowledgeEngine
+    ) {}
+
     /**
-     * Procesar consulta del usuario y responder usando el modelo corporativo de Ollama
+     * Procesar consulta del usuario y responder usando el motor local de IA
      */
     public function chat(Request $request): JsonResponse
     {
@@ -37,11 +41,11 @@ class AiChatController extends Controller
 
         $user = Auth::user();
 
-        // 1.1 Verificación de Permiso Granular RBAC
-        if (!$user->isAdmin() && !$user->hasPermission('ai.chat')) {
+        // 1.1 Verificación de Permiso Granular RBAC (Exclusivo Personal ATIT: Admin u Operador)
+        if (!$user->isAdmin() && !$user->hasPermission('ai.chat') && !in_array($user->role, ['operator', 'operador'], true)) {
             return response()->json([
                 'success' => false,
-                'error' => 'No dispones del permiso requerido [ai.chat] para interactuar con el asistente corporativo.',
+                'error' => 'Acceso restringido: Esta funcionalidad está reservada exclusivamente para el personal operativo de ATIT.',
             ], 403);
         }
 
@@ -75,21 +79,28 @@ class AiChatController extends Controller
         // Prevenir corte de ejecución en PHP durante inferencia CPU intensiva
         @set_time_limit(240);
 
-        // 4. Ensamblar historial de mensajes
-        // Nota: qwen-empresa ya tiene el System Prompt corporativo y reglas de seguridad
-        // precompiladas e integradas en su Modelfile (al igual que en el bot de Telegram).
-        $messages = [];
+        // 4. Ensamblar prompt con Delimitación de Dominio y Contexto Fáctico de MariaDB (SSOT)
+        $roleName = ($user->role === 'admin' || $user->role === 'SuperAdmin') ? 'Administrador' : 'Operador ATIT';
+        $systemPrompt = $this->knowledgeEngine->getSystemPrompt($user->name, $roleName);
 
-        if (config('services.ollama.include_system_prompt', false)) {
-            $messages[] = [
-                'role' => 'system',
-                'content' => $this->buildSystemPrompt($user),
-            ];
+        // Resolver contexto fáctico de infraestructura (proxies, conteo de equipos, seriales)
+        $systemContext = $this->knowledgeEngine->resolveSystemContext($userMessage);
+        if ($systemContext) {
+            $systemPrompt .= "\n\n" . $systemContext;
         }
+
+        $messages = [];
+        $messages[] = [
+            'role' => 'system',
+            'content' => $systemPrompt,
+        ];
 
         // Añadir historial previo si se proporciona
         if (!empty($validated['history'])) {
             foreach ($validated['history'] as $item) {
+                if ($item['role'] === 'system') {
+                    continue; // Evitar sobreescribir el system prompt fresco
+                }
                 $messages[] = [
                     'role' => $item['role'],
                     'content' => $item['content'],

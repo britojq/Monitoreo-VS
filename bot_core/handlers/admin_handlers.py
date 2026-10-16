@@ -637,6 +637,12 @@ async def cmd_ia_control(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return
 
+        elif subcmd not in ("panel", "status", "estado"):
+            full_query = " ".join(context.args).strip()
+            from bot_core.services.ai_chat_service import handle_chat_query_direct
+            await handle_chat_query_direct(update, context, full_query)
+            return
+
     dashboard_text, keyboard = await asyncio.to_thread(format_ai_control_panel_html)
     await _reply(update.message, dashboard_text, reply_markup=keyboard)
 
