@@ -117,15 +117,15 @@ async def check_web(url: str, timeout: float = 4.0) -> Tuple[bool, str, str]:
         return False, "0", f"Error de conexión: {e}"
 
 
-async def check_dns(dns_server: str, test_host: str, timeout: float = 3.5) -> Tuple[bool, str, str]:
-    """Verifica resolución DNS usando dig @dns_server test_host."""
+async def check_dns(dns_server: str, test_host: str, timeout: float = 5.0) -> Tuple[bool, str, str]:
+    """Verifica resolución DNS usando dig @dns_server test_host con reintentos para enlaces WAN."""
     if not dns_server or dns_server.startswith("0.0.0.0"):
         return False, "0", "Servidor DNS no configurado"
 
     target_host = test_host if test_host else "1.1.1.1"
     try:
         proc = await asyncio.create_subprocess_exec(
-            "dig", f"@{dns_server}", target_host, "+time=2", "+tries=1",
+            "dig", f"@{dns_server}", target_host, "+time=2", "+tries=2",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -147,8 +147,8 @@ async def check_proxy(proxy_url: str, test_url: str = "https://core.telegram.org
 
     target = test_url if test_url else "https://core.telegram.org/bots"
 
-    # 1. Comprobar caché de corto plazo (60s) en memoria RAM compartida (/dev/shm)
-    cached = get_cached_proxy_result(proxy_url, target, max_age_seconds=60.0)
+    # 1. Comprobar caché de corto plazo (180s) en memoria RAM compartida (/dev/shm)
+    cached = get_cached_proxy_result(proxy_url, target, max_age_seconds=180.0)
     if cached:
         return cached["is_ok"], cached["code_str"], cached["detail"]
 

@@ -2362,6 +2362,17 @@ async def manage_permissions(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await _reply(update.message, panel_text, reply_markup=reply_markup)
 
 
+def _format_audit_date(raw_date: str) -> str:
+    """Convierte fecha ISO (YYYY-MM-DD HH:MM:SS) a formato inequívoco legible en español (DD/MM/YYYY a las hh:mm:ss AM/PM)."""
+    if not raw_date or raw_date == "Desconocida":
+        return raw_date
+    try:
+        dt = datetime.strptime(raw_date.strip(), "%Y-%m-%d %H:%M:%S")
+        return dt.strftime("%d/%m/%Y a las %I:%M:%S %p")
+    except Exception:
+        return raw_date
+
+
 def get_denied_users_summary() -> List[Dict[str, Any]]:
     """Extrae la lista de usuarios no autorizados registrados en el log de auditoría."""
     audit_path = get_audit_log_path()
@@ -2404,7 +2415,7 @@ def get_denied_users_summary() -> List[Dict[str, Any]]:
                             "user_id": user_id,
                             "username": username if username != "(sin username)" else "",
                             "name": nombre,
-                            "last_seen": fecha
+                            "last_seen": _format_audit_date(fecha)
                         }
             except Exception:
                 continue
@@ -2854,17 +2865,20 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     bot_token = cfg.get("bot_token", "")
     tg_url = f"https://api.telegram.org/bot{bot_token}/getMe"
 
-    network_tasks = [
-        _check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=4.0)
-    ]
+    # 1. Probar Conexión Directa primero
+    direct_res = await _check_endpoint_health("Conexión Directa a Internet", tg_url, None, timeout=4.0)
+    network_results = [direct_res]
+
+    # 2. Probar proxies secuencialmente con respiro anti-bloqueo (pfSense/Squid max_user_ip)
     proxies_list = load_proxies_list()
-    for p in proxies_list:
+    for idx, p in enumerate(proxies_list):
         p_name = p.get("name", "Proxy")
         p_url = p.get("url")
         if p_url:
-            network_tasks.append(_check_endpoint_health(p_name, tg_url, p_url, timeout=7.0))
-
-    network_results = await asyncio.gather(*network_tasks)
+            if idx > 0:
+                await asyncio.sleep(1.0)
+            p_res = await _check_endpoint_health(p_name, tg_url, p_url, timeout=5.5)
+            network_results.append(p_res)
 
     allowed_users = cfg.get("allowed_user_ids", [])
     allowed_groups = cfg.get("allowed_group_ids", [])
@@ -2887,7 +2901,7 @@ async def bot_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "📊 <b>Informe de Estado y Diagnóstico del Bot</b>",
         f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>",
         "",
-        "🌐 <b>DIAGNÓSTICO DE RED E INTERNET</b>"
+        "🌐 <b>CONECTIVIDAD A INTERNET DEL BOT (DIRECTA Y PROXIES)</b>"
     ]
 
     for res in network_results:

@@ -263,7 +263,7 @@ async def _check_endpoint_health(name: str, tg_url: str, proxy_url: str | None =
     """Verifica la conectividad y latencia hacia Telegram (directa o vía proxy) con protección de caché."""
     guard = None
     if proxy_url:
-        cached = get_cached_proxy_result(proxy_url, tg_url, max_age_seconds=60.0)
+        cached = get_cached_proxy_result(proxy_url, tg_url, max_age_seconds=180.0)
         if cached and cached.get("is_ok"):
             elapsed_ms = int(cached.get("latency_ms", 0))
             code = int(cached.get("code_str", 200) or 200)

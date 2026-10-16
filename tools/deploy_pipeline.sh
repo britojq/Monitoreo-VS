@@ -161,7 +161,14 @@ run_smoke_test() {
         return 3
     fi
 
-    log "${GREEN}✅ Smoke Test Exitoso: Todos los endpoints y base de datos responden al 100%.${NC}"
+    # 4. Barrera de Calidad Integral (Quality Gate Zero-Fail)
+    log "🛡️ Ejecutando Certificación Integral de Sistema (system:certify)..."
+    if ! sudo php "$WEB_DIR/artisan" system:certify; then
+        log "${RED}❌ Smoke Test Fallido: system:certify detectó errores de sintaxis, render o violaciones de integridad.${NC}"
+        return 4
+    fi
+
+    log "${GREEN}✅ Smoke Test Exitoso: Todos los endpoints, vistas y base de datos responden al 100%.${NC}"
     return 0
 }
 
