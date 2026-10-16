@@ -1,0 +1,1 @@
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart tg-admin-bot, /usr/bin/systemctl restart tg-admin-bot, /bin/systemctl reload apache2, /usr/bin/systemctl reload apache2, /bin/systemctl reload php8.4-fpm, /usr/bin/systemctl reload php8.4-fpm

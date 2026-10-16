@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Admin Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=britojab
+Group=britojab
+WorkingDirectory=/scripts/telegram-admin-bot
+ExecStartPre=/scripts/telegram-admin-bot/tools/rollback --pre-start-check
+ExecStart=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

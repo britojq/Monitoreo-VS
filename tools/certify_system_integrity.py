@@ -137,6 +137,82 @@ def sync_and_certify_web_root() -> bool:
     return True
 
 
+def certify_infrastructure_and_runtime() -> bool:
+    """Certifica unidades systemd, ausencia de drift en templates, permisos britojab:www-data y journald limpio."""
+    log(f"{CYAN}{BOLD}▶ AUDITORÍA INFRAESTRUCTURA & RUNTIME: Verificando systemd, permisos y journald...{NC}")
+    failed = []
+
+    # 1. Comprobar binarios en ExecStart/ExecStartPre de system/templates/systemd/
+    tpl_dir = BASE_DIR / "system" / "templates" / "systemd"
+    if tpl_dir.exists():
+        for tpl in tpl_dir.glob("*.service"):
+            content = tpl.read_text(encoding="utf-8", errors="ignore")
+            for line in content.splitlines():
+                line = line.strip()
+                if line.startswith("ExecStart=") or line.startswith("ExecStartPre="):
+                    val = line.split("=", 1)[1].strip()
+                    if val.startswith("-"):
+                        val = val[1:].strip()
+                    parts = val.split()
+                    if parts:
+                        bin_p = Path(parts[0])
+                        if not bin_p.exists() or not os.access(bin_p, os.X_OK):
+                            failed.append(f"Binario no ejecutable en {tpl.name}: {parts[0]}")
+
+    # 2. Comprobar que ningún archivo dentro de /scripts/telegram-admin-bot pertenezca a root
+    try:
+        res_find = subprocess.run(
+            ["find", str(BASE_DIR), "-user", "root"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        root_files = [f for f in res_find.stdout.splitlines() if f.strip() and ".git" not in f]
+        if root_files:
+            failed.append(f"Se detectaron {len(root_files)} archivos pertenecientes a root en {BASE_DIR} (ej: {root_files[:3]})")
+    except Exception as e:
+        failed.append(f"Error comprobando propiedad de archivos: {e}")
+
+    # 3. Comprobar que tg-admin-bot.service no tenga drift con su plantilla
+    installed_unit = Path("/etc/systemd/system/tg-admin-bot.service")
+    tpl_unit = tpl_dir / "tg-admin-bot.service"
+    if installed_unit.exists() and tpl_unit.exists():
+        import filecmp
+        if not filecmp.cmp(str(installed_unit), str(tpl_unit), shallow=False):
+            failed.append(f"Drift detectado entre {installed_unit} y la plantilla {tpl_unit}. Ejecute tools/system_sync.py.")
+
+    # 4. Comprobar estado de tg-admin-bot en systemd
+    try:
+        res_status = subprocess.run(["systemctl", "is-active", "tg-admin-bot"], capture_output=True, text=True, check=False)
+        status_out = res_status.stdout.strip()
+        if status_out != "active":
+            failed.append(f"tg-admin-bot.service no está activo (estado: '{status_out}')")
+    except Exception as e:
+        failed.append(f"Error verificando systemctl is-active: {e}")
+
+    # 5. Comprobar journalctl en busca de 203/EXEC
+    try:
+        res_journal = subprocess.run(
+            ["journalctl", "-u", "tg-admin-bot", "-n", "30", "--no-pager"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        journal_text = res_journal.stdout
+        if "status=203/EXEC" in journal_text:
+            failed.append("Se detectó error 'status=203/EXEC' en journalctl de tg-admin-bot")
+    except Exception as e:
+        failed.append(f"Error verificando journalctl: {e}")
+
+    if failed:
+        for err in failed:
+            log(f"{RED}❌ {err}{NC}")
+        return False
+
+    log(f"{GREEN}✓ Infraestructura y runtime certificados: systemd sin drift, permisos correctos y cero fallos 203/EXEC.{NC}")
+    return True
+
+
 def main():
     print(f"\n{BOLD}{CYAN}========================================================================={NC}")
     print(f"{BOLD}{CYAN} 🛡️ BARRERA DE CALIDAD ANTI-REGRESIONES Y CERTIFICACIÓN COMPLETA        {NC}")
@@ -145,9 +221,10 @@ def main():
     py_ok = certify_python_modules()
     laravel_ok = certify_laravel_system()
     web_ok = sync_and_certify_web_root() if laravel_ok else False
+    infra_ok = certify_infrastructure_and_runtime()
 
     print(f"\n{BOLD}{CYAN}========================================================================={NC}")
-    if py_ok and laravel_ok and web_ok:
+    if py_ok and laravel_ok and web_ok and infra_ok:
         print(f"{BOLD}{GREEN} 🎉 CERTIFICACIÓN INTEGRAL SUPERADA AL 100%: SISTEMA BLINDADO Y SEGURO {NC}")
         print(f"{BOLD}{CYAN}========================================================================={NC}\n")
         sys.exit(0)

@@ -229,7 +229,7 @@ async def handle_start() -> int:
         if not is_clean and had_group_outage:
             node_role = str(config.get("node_role", "master")).lower()
             is_non_prod = (
-                node_role == "slave"
+                node_role in ("slave", "dev")
                 or os.environ.get("TESTING") == "1"
                 or os.environ.get("APP_ENV") == "local"
             )

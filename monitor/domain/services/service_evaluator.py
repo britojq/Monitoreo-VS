@@ -151,7 +151,7 @@ def resolve_safe_target(
     Si es 'group' pero estamos en esclavo, desarrollo o testing, retorna el Owner.
     """
     if str(target_type).strip().lower() == "group":
-        if is_non_prod or str(node_role).strip().lower() == "slave":
+        if is_non_prod or str(node_role).strip().lower() in ("slave", "dev"):
             return owner_id
         return group_id
     return owner_id

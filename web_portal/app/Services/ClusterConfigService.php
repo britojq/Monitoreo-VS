@@ -14,9 +14,10 @@ class ClusterConfigService
      */
     public function getConfig(): array
     {
-        $role = (string) BotSetting::get('cluster_node_role', 'master');
+        $role = strtolower(trim((string) BotSetting::get('cluster_node_role', 'master')));
+        $validRole = in_array($role, ['master', 'slave', 'dev'], true) ? $role : 'master';
         $default = [
-            'node_role' => (strtolower($role) === 'slave') ? 'slave' : 'master',
+            'node_role' => $validRole,
             'cluster_token' => (string) BotSetting::get('cluster_token', ''),
             'master_api_url' => rtrim((string) BotSetting::get('cluster_master_api_url', 'http://10.20.23.252'), '/'),
             'cluster_last_sync_at' => BotSetting::get('cluster_last_sync_at', null),
@@ -51,6 +52,11 @@ class ClusterConfigService
         return $this->getNodeRole() === 'slave';
     }
 
+    public function isDev(): bool
+    {
+        return $this->getNodeRole() === 'dev';
+    }
+
     public function getClusterToken(): string
     {
         return $this->getConfig()['cluster_token'];
@@ -69,7 +75,8 @@ class ClusterConfigService
         try {
             if (isset($attributes['node_role'])) {
                 $role = strtolower(trim((string) $attributes['node_role']));
-                BotSetting::set('cluster_node_role', ($role === 'slave') ? 'slave' : 'master', 'cluster', 'Rol del Nodo en Cluster', 'text');
+                $validRole = in_array($role, ['master', 'slave', 'dev'], true) ? $role : 'master';
+                BotSetting::set('cluster_node_role', $validRole, 'cluster', 'Rol del Nodo en Cluster', 'text');
             }
 
             if (isset($attributes['cluster_token']) && !empty(trim((string) $attributes['cluster_token']))) {

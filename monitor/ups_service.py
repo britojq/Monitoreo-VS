@@ -80,7 +80,7 @@ def get_notification_targets(target_type: str) -> List[str]:
 
     if str(target_type).strip().lower() == "group":
         is_non_prod = (
-            node_role == "slave"
+            node_role in ("slave", "dev")
             or os.environ.get("TESTING") == "1"
             or os.environ.get("APP_ENV") == "local"
         )

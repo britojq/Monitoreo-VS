@@ -1,0 +1,2 @@
+# Directiva obligatoria para /etc/pam.d/sudo y /etc/pam.d/su (contención estricta y alertas)
+session requisite pam_exec.so seteuid stdout /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh

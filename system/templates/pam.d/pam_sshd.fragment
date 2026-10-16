@@ -1,0 +1,2 @@
+# Directiva obligatoria para /etc/pam.d/sshd (despacho PAM a Telegram en logins SSH)
+session optional pam_exec.so seteuid /bin/bash /scripts/telegram-admin-bot/monitor/ssh_alert.sh

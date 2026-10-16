@@ -107,38 +107,16 @@ call_api() {
     
     local response
     local http_code
-    local cookie_file="/tmp/nexus_cookie_${TARGET_HOST}.txt"
-    local cookie_arg=()
-    if [ -f "$cookie_file" ]; then
-        cookie_arg=(-b "$cookie_file")
-    fi
 
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -H "X-Nexus-Token: ${NEXUS_TOKEN}" \
-        "${cookie_arg[@]}" \
         -d "$payload" \
         "$API_URL")
 
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
-
-    if [ "$http_code" -eq 503 ]; then
-        # Intentar obtener cookie de bypass de mantenimiento
-        curl -s -c "$cookie_file" "http://${TARGET_HOST}:${TARGET_PORT}/nexus2026" >/dev/null 2>&1 || true
-        if [ -f "$cookie_file" ]; then
-            response=$(curl -s -w "\n%{http_code}" -X POST \
-                -H "Content-Type: application/json" \
-                -H "Accept: application/json" \
-                -H "X-Nexus-Token: ${NEXUS_TOKEN}" \
-                -b "$cookie_file" \
-                -d "$payload" \
-                "$API_URL")
-            http_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-        fi
-    fi
 
     if [ "$http_code" -eq 404 ]; then
         echo -e "${RED}❌ Error 404: El endpoint Nexus no respondió o el token es inválido.${NC}"

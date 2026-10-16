@@ -25,12 +25,12 @@ class AdminClusterController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'node_role' => ['required', 'in:master,slave'],
+            'node_role' => ['required', 'in:master,slave,dev'],
             'cluster_token' => ['required', 'string', 'min:16'],
             'master_api_url' => ['nullable', 'url'],
             'slave_sync_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
         ], [
-            'node_role.required' => 'Debe seleccionar un rol para el servidor (Master o Slave).',
+            'node_role.required' => 'Debe seleccionar un rol para el servidor (Master, Slave o Dev).',
             'node_role.in' => 'El rol seleccionado no es válido.',
             'cluster_token.required' => 'El token de clúster es obligatorio.',
             'cluster_token.min' => 'El token de clúster debe tener al menos 16 caracteres.',
@@ -40,8 +40,8 @@ class AdminClusterController extends Controller
             'slave_sync_interval_minutes.max' => 'El intervalo de sincronización no puede superar 1440 minutos.',
         ]);
 
-        if ($validated['node_role'] === 'slave' && empty($validated['master_api_url'])) {
-            return back()->with('error', 'Para operar en modo Esclavo (Slave) debe especificar la URL del servidor Master.');
+        if (in_array($validated['node_role'], ['slave', 'dev'], true) && empty($validated['master_api_url'])) {
+            return back()->with('error', 'Para operar en modo Esclavo (Slave) o Desarrollo (Dev) debe especificar la URL del servidor Master.');
         }
 
         $ok = $this->clusterService->updateConfig([
@@ -53,7 +53,11 @@ class AdminClusterController extends Controller
         ]);
 
         if ($ok) {
-            $roleLabel = $validated['node_role'] === 'master' ? 'MASTER (Servidor Principal)' : 'SLAVE (Nodo Réplica)';
+            $roleLabel = match ($validated['node_role']) {
+                'master' => 'MASTER (Servidor Principal)',
+                'dev' => 'DESARROLLO (Sandbox & Réplica)',
+                default => 'SLAVE (Nodo Réplica)',
+            };
             return back()->with('success', "Rol del servidor configurado exitosamente como {$roleLabel}.");
         }
 

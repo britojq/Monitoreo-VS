@@ -55,7 +55,7 @@ def get_notification_target(target_type: str) -> str:
     if target_type == "group":
         # REGLA DE ORO #1: En modo esclavo/desarrollo o testing, JAMÁS despachar al grupo corporativo
         is_non_prod = (
-            node_role == "slave"
+            node_role in ("slave", "dev")
             or os.environ.get("TESTING") == "1"
             or os.environ.get("APP_ENV") == "local"
         )

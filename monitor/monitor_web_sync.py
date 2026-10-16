@@ -86,7 +86,7 @@ def should_run_web_scan(force: bool = False) -> tuple[bool, int, float]:
         try:
             cfg = json.loads(config_file.read_text(encoding="utf-8"))
             role = str(cfg.get("node_role", "master")).lower()
-            if role == "slave":
+            if role in ("slave", "dev"):
                 interval_minutes = int(cfg.get("slave_sync_interval_minutes", 2))
             else:
                 interval_minutes = int(cfg.get("web_check_interval_minutes", 10))
@@ -936,7 +936,9 @@ async def sync_from_master() -> bool:
                             (nd["id"], nd.get("monitored_site_id"), nd.get("device_number", 1),
                              nd.get("name"), nd.get("ip"), nd.get("mac"), nd.get("vendor_data"),
                              nd.get("access_type", "SSH"), nd.get("access_port", 22),
-                             nd.get("model"), nd.get("serial"), nd.get("ports"), nd.get("notes"),
+                             nd.get("model"), nd.get("serial"),
+                             None if str(nd.get("ports") or "").strip() == "1x GE" else nd.get("ports"),
+                             nd.get("notes"),
                              nd.get("normal_state_msg"), nd.get("error_state_msg"),
                              1 if nd.get("is_active", True) else 0, nd.get("sort_order", 0),
                              1 if nd.get("telegram_alert_enabled") else 0,
@@ -1842,7 +1844,7 @@ async def sync_from_master() -> bool:
                     inv_assets = data.get("config", {}).get("inventory_assets", [])
                     if inv_assets:
                         inv_asset_sql = """
-                            INSERT INTO inventory_assets
+                            INSERT IGNORE INTO inventory_assets
                             (id, asset_tag, name, type, status, brand, model, serial_number, mac_address, ip_address,
                              monitored_site_id, location_detail, monitored_network_device_id, current_user_id,
                              custodian_name, custodian_id_number, custodian_department, operating_system, os_kernel,
@@ -1884,7 +1886,7 @@ async def sync_from_master() -> bool:
                     inv_comps = data.get("config", {}).get("inventory_components", [])
                     if inv_comps:
                         inv_comp_sql = """
-                            INSERT INTO inventory_components
+                            INSERT IGNORE INTO inventory_components
                             (id, inventory_asset_id, type, name, brand, model, capacity, serial_number, slot_or_bus, status, created_at, updated_at)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON DUPLICATE KEY UPDATE
@@ -1910,7 +1912,7 @@ async def sync_from_master() -> bool:
                     inv_periphs = data.get("config", {}).get("inventory_peripherals", [])
                     if inv_periphs:
                         inv_peri_sql = """
-                            INSERT INTO inventory_peripherals
+                            INSERT IGNORE INTO inventory_peripherals
                             (id, asset_tag, type, brand, model, serial_number, status, monitored_site_id, current_asset_id, current_user_id, notes, created_at, updated_at)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON DUPLICATE KEY UPDATE
@@ -2123,8 +2125,8 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    if node_role == "slave" and not force_local:
-        # En modo esclavo, se sincroniza del Master sin escanear la red
+    if node_role in ("slave", "dev") and not force_local:
+        # En modo esclavo o desarrollo, se sincroniza del Master sin escanear la red física
         success = asyncio.run(sync_from_master())
         sys.exit(0 if success else 1)
     else:

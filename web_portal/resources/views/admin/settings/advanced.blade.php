@@ -442,23 +442,23 @@
     @endif
 
     <!-- ========================================================================= -->
-    <!-- CONFIGURACIÓN DE CLÚSTER & ROL DEL SERVIDOR (MASTER / SLAVE)               -->
+    <!-- CONFIGURACIÓN DE CLÚSTER & ROL DEL SERVIDOR (MASTER / SLAVE / DEV)       -->
     <!-- ========================================================================= -->
-    <div class="glass-card rounded-xl p-6 space-y-5 border {{ $isClusterSlave ? 'border-amber-500/40' : 'border-cyan-500/30' }}">
+    <div class="glass-card rounded-xl p-6 space-y-5 border {{ $isClusterDev ? 'border-purple-500/40' : ($isClusterSlave ? 'border-amber-500/40' : 'border-cyan-500/30') }}">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-border/70">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40' }}">
-                    <span class="material-symbols-outlined text-xl">{{ $isClusterSlave ? 'cloud_sync' : 'hub' }}</span>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ $isClusterDev ? 'bg-purple-950/80 text-purple-400 border border-purple-500/40' : ($isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40') }}">
+                    <span class="material-symbols-outlined text-xl">{{ $isClusterDev ? 'science' : ($isClusterSlave ? 'cloud_sync' : 'hub') }}</span>
                 </div>
                 <div>
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
-                        Arquitectura de Clúster (Master / Slave)
-                        <span class="w-6 h-6 rounded-md {{ $isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' }} inline-flex items-center justify-center cursor-help" title="{{ $isClusterSlave ? 'Nodo Réplica (Slave)' : 'Nodo Principal (Master)' }}">
-                            <span class="material-symbols-outlined text-xs">{{ $isClusterSlave ? 'hub' : 'dns' }}</span>
+                        Arquitectura de Clúster (Master / Slave / Dev)
+                        <span class="w-6 h-6 rounded-md {{ $isClusterDev ? 'bg-purple-950/80 text-purple-400 border border-purple-500/40' : ($isClusterSlave ? 'bg-amber-950/80 text-amber-400 border border-amber-500/40' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40') }} inline-flex items-center justify-center cursor-help" title="{{ $isClusterDev ? 'Modo Desarrollo (Sandbox & Réplica)' : ($isClusterSlave ? 'Nodo Réplica (Slave)' : 'Nodo Principal (Master)') }}">
+                            <span class="material-symbols-outlined text-xs">{{ $isClusterDev ? 'science' : ($isClusterSlave ? 'hub' : 'dns') }}</span>
                         </span>
                     </h2>
                     <p class="text-xs text-obsidian-muted mt-0.5">
-                        Define si este servidor actúa como nodo escaneador principal (Master) o como nodo réplica de consulta (Slave) para prevenir colisiones en pfSense.
+                        Define si este servidor actúa como nodo escaneador principal (Master), réplica de consulta (Slave) o entorno de pruebas (Dev) con telemetría remota y libertad de edición local.
                     </p>
                 </div>
             </div>
@@ -471,7 +471,7 @@
             <div class="lg:col-span-2 space-y-4">
                 <div class="space-y-2">
                     <label class="text-xs font-mono font-bold text-gray-300 uppercase block">Seleccione el Rol de este Servidor:</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <!-- OPCIÓN MASTER -->
                         <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ $isClusterMaster ? 'bg-cyan-950/40 border-cyan-500/60 text-white ring-1 ring-cyan-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-obsidian-cyan/40' }}">
                             <input type="radio" name="node_role" value="master" {{ $isClusterMaster ? 'checked' : '' }} onchange="toggleClusterRoleFields('master')" class="mt-1 text-obsidian-cyan focus:ring-0">
@@ -481,7 +481,7 @@
                                     Servidor Maestro (Master)
                                 </div>
                                 <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
-                                    Realiza los escaneos de red cada 10 min, gestiona las configuraciones maestras y sirve la API de telemetría hacia los esclavos.
+                                    Realiza los escaneos de red cada 10 min, gestiona las configuraciones maestras y sirve la API de telemetría hacia los nodos réplica.
                                 </p>
                             </div>
                         </label>
@@ -495,15 +495,46 @@
                                     Servidor Esclavo (Slave)
                                 </div>
                                 <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
-                                    No realiza escaneos automáticos de fondo a la red. Sincroniza su telemetría web desde el Master sin colisionar con pfSense.
+                                    Nodo de solo lectura. No realiza escaneos directos; sincroniza su telemetría web desde el Master sin colisionar con pfSense.
+                                </p>
+                            </div>
+                        </label>
+
+                        <!-- OPCIÓN DEV -->
+                        <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition {{ $isClusterDev ? 'bg-purple-950/40 border-purple-500/60 text-white ring-1 ring-purple-500/30' : 'bg-[#040d1a] border-obsidian-border text-obsidian-muted hover:border-purple-500/40' }}">
+                            <input type="radio" name="node_role" value="dev" {{ $isClusterDev ? 'checked' : '' }} onchange="toggleClusterRoleFields('dev')" class="mt-1 text-purple-400 focus:ring-0">
+                            <div>
+                                <div class="font-bold text-xs font-mono flex items-center gap-1.5 text-white">
+                                    <span class="material-symbols-outlined text-sm text-purple-400">science</span>
+                                    Modo Desarrollo (Dev)
+                                </div>
+                                <p class="text-[11px] text-obsidian-muted mt-1 leading-relaxed">
+                                    Pausa chequeos directos a red y pfSense. Descarga telemetría viva del Master pero habilita edición total local (sandbox para GLPI y pruebas).
                                 </p>
                             </div>
                         </label>
                     </div>
                 </div>
 
-                <!-- CAMPO URL DEL MASTER (VISIBLE CUANDO ES SLAVE) -->
-                <div id="field_master_url" class="space-y-1.5 {{ $isClusterSlave ? '' : 'hidden' }}">
+                <!-- CAMPO URL DEL MASTER (VISIBLE CUANDO ES SLAVE O DEV) -->
+                <div id="field_master_url" class="space-y-1.5 {{ ($isClusterSlave || $isClusterDev) ? '' : 'hidden' }}">
+                    <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-amber-400">link</span>
+                        URL / Dirección del Servidor Master
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="url" name="master_api_url" id="input_master_url" value="{{ $clusterConfig['master_api_url'] }}" placeholder="http://10.20.23.252"
+                            class="flex-1 bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan">
+                        <button type="button" onclick="testMasterConnection()" id="btn-test-connection" class="px-3 py-2.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap">
+                            <span class="material-symbols-outlined text-sm">wifi_tethering</span>
+                            Probar Conexión
+                        </button>
+                    </div>
+                    <div id="test-connection-feedback" class="hidden text-xs font-mono pt-1"></div>
+                </div>
+
+                <!-- CAMPO INTERVALO DE SINCRONIZACIÓN DEL SLAVE/DEV -->
+                <div id="field_slave_sync_interval" class="space-y-2 {{ ($isClusterSlave || $isClusterDev) ? '' : 'hidden' }}">
                     <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm text-amber-400">link</span>
                         URL / Dirección del Servidor Master
@@ -605,7 +636,7 @@
                 </div>
                 <div class="flex justify-between py-1 border-b border-obsidian-border/40">
                     <span class="text-obsidian-muted">Rol actual:</span>
-                    <span class="text-white font-bold uppercase {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-300' }}">{{ $clusterConfig['node_role'] }}</span>
+                    <span class="text-white font-bold uppercase {{ $isClusterDev ? 'text-purple-400' : ($isClusterSlave ? 'text-amber-400' : 'text-cyan-300') }}">{{ $clusterConfig['node_role'] }}</span>
                 </div>
                 <div class="flex justify-between py-1 border-b border-obsidian-border/40">
                     <span class="text-obsidian-muted">Última sinc:</span>
@@ -613,8 +644,8 @@
                 </div>
                 <div class="flex justify-between py-1 border-b border-obsidian-border/40">
                     <span class="text-obsidian-muted">Estado del enlace:</span>
-                    <span class="{{ $clusterConfig['cluster_last_sync_status'] === 'ok' || $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'text-emerald-400' : 'text-amber-400' }}">
-                        {{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente') }}
+                    <span class="{{ $clusterConfig['cluster_last_sync_status'] === 'ok' || $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'text-emerald-400' : ($isClusterDev ? 'text-purple-400' : 'text-amber-400') }}">
+                        {{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : ($isClusterDev ? 'Dev Activo' : 'Pendiente')) }}
                     </span>
                 </div>
                 <div class="flex justify-between py-1">
@@ -928,7 +959,7 @@
 function toggleClusterRoleFields(role) {
     const masterField = document.getElementById('field_master_url');
     const slaveIntervalField = document.getElementById('field_slave_sync_interval');
-    if (role === 'slave') {
+    if (role === 'slave' || role === 'dev') {
         if (masterField) masterField.classList.remove('hidden');
         if (slaveIntervalField) slaveIntervalField.classList.remove('hidden');
     } else {

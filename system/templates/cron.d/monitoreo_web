@@ -1,0 +1,2 @@
+# /etc/cron.d/monitoreo_web - Sincronizacion Web Dinamica de Monitoreo
+* * * * * britojab /scripts/telegram-admin-bot/tools/estatus web > /dev/null 2>&1

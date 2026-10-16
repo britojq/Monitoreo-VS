@@ -1,0 +1,19 @@
+[Unit]
+Description=Guardián de Telemetría Push en Tiempo Real (SNMP Traps + NetFlow + Syslog)
+Wants=network-online.target
+After=network-online.target mariadb.service
+
+[Service]
+Type=simple
+User=britojab
+Group=britojab
+WorkingDirectory=/scripts/telegram-admin-bot
+ExecStart=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/push_telemetry_daemon.py
+Restart=always
+RestartSec=10
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

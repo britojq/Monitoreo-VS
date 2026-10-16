@@ -1,0 +1,15 @@
+[Unit]
+Description=Guardián Térmico y de Protección Física de CPU
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/scripts/telegram-admin-bot
+ExecStart=/scripts/telegram-admin-bot/venv/bin/python /scripts/telegram-admin-bot/monitor/thermal_guard.py --daemon
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

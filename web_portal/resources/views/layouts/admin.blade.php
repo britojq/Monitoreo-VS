@@ -291,30 +291,32 @@
             <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
                 <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (SOLO ICONO CON TOOLTIP HUD) -->
                 <div class="relative group">
-                    <div class="flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20' }}"
-                         title="{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ')' : 'MODO MAESTRO (MASTER): Ejecuta escaneos programados y sirve API de telemetría' }}">
-                        <span class="material-symbols-outlined text-base {{ $isClusterSlave ? 'text-amber-400' : 'text-cyan-400' }}">
-                            {{ $isClusterSlave ? 'cloud_sync' : 'dns' }}
+                    <div class="flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $isClusterDev ? 'bg-purple-950/60 text-purple-300 border-purple-500/50 hover:bg-purple-900/60 shadow-sm shadow-purple-500/20' : ($isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20') }}"
+                         title="{{ $isClusterDev ? 'MODO DESARROLLO (TELEMETRÍA REMOTA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ') con sandbox local activo' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA): Sincroniza desde el Master (' . $clusterConfig['master_api_url'] . ')' : 'MODO MAESTRO (MASTER): Ejecuta escaneos programados y sirve API de telemetría') }}">
+                        <span class="material-symbols-outlined text-base {{ $isClusterDev ? 'text-purple-400' : ($isClusterSlave ? 'text-amber-400' : 'text-cyan-400') }}">
+                            {{ $isClusterDev ? 'science' : ($isClusterSlave ? 'cloud_sync' : 'dns') }}
                         </span>
                     </div>
 
                     <!-- HUD TOOLTIP EN HOVER -->
-                    <div class="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-96 p-3.5 rounded-xl bg-[#06111f] border {{ $isClusterSlave ? 'border-amber-500/60 shadow-amber-500/20' : 'border-cyan-500/60 shadow-cyan-500/20' }} shadow-2xl backdrop-blur-xl text-xs font-mono transition-all duration-200 pointer-events-none">
-                        <div class="flex items-center gap-2 pb-2 mb-2 border-b {{ $isClusterSlave ? 'border-amber-500/30 text-amber-400' : 'border-cyan-500/30 text-cyan-300' }} font-bold">
-                            <span class="material-symbols-outlined text-base">{{ $isClusterSlave ? 'cloud_sync' : 'dns' }}</span>
-                            <span>{{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)' }}</span>
+                    <div class="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-96 p-3.5 rounded-xl bg-[#06111f] border {{ $isClusterDev ? 'border-purple-500/60 shadow-purple-500/20' : ($isClusterSlave ? 'border-amber-500/60 shadow-amber-500/20' : 'border-cyan-500/60 shadow-cyan-500/20') }} shadow-2xl backdrop-blur-xl text-xs font-mono transition-all duration-200 pointer-events-none">
+                        <div class="flex items-center gap-2 pb-2 mb-2 border-b {{ $isClusterDev ? 'border-purple-500/30 text-purple-300' : ($isClusterSlave ? 'border-amber-500/30 text-amber-400' : 'border-cyan-500/30 text-cyan-300') }} font-bold">
+                            <span class="material-symbols-outlined text-base">{{ $isClusterDev ? 'science' : ($isClusterSlave ? 'cloud_sync' : 'dns') }}</span>
+                            <span>{{ $isClusterDev ? 'MODO DESARROLLO (SANDBOX & RÉPLICA)' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)') }}</span>
                         </div>
                         <p class="text-[11px] text-gray-200 leading-relaxed">
-                            @if($isClusterSlave)
+                            @if($isClusterDev)
+                                Este servidor sincroniza telemetría en tiempo real desde el Master (<code class="text-purple-300">{{ $clusterConfig['master_api_url'] }}</code>). Los sondeos directos a pfSense se encuentran pausados y las modificaciones locales están habilitadas para desarrollo, pruebas y GLPI.
+                            @elseif($isClusterSlave)
                                 Este servidor sincroniza su telemetría web desde el Master (<code class="text-amber-300">{{ $clusterConfig['master_api_url'] }}</code>). La configuración de infraestructura es de solo lectura. Para modificar servicios, sedes o proxies, ingrese al servidor Master.
                             @else
                                 Este servidor ejecuta los escaneos periódicos a la red y al firewall pfSense. Gestiona las configuraciones activas y sirve la API interna hacia los nodos réplica.
                             @endif
                         </p>
                         <div class="mt-2.5 pt-2 border-t border-obsidian-border/60 flex items-center justify-between text-[10px] text-obsidian-muted">
-                            <span>Estado: <strong class="{{ $isClusterSlave ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'text-emerald-400' : 'text-amber-400') : 'text-cyan-300' }}">{{ $clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente') }}</strong></span>
-                            @if($isClusterSlave)
-                                <span>Cadencia: <strong class="text-amber-300">Cada {{ $clusterConfig['slave_sync_interval_minutes'] ?? 2 }} min</strong></span>
+                            <span>Estado: <strong class="{{ $isClusterDev ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'text-emerald-400' : 'text-purple-300') : ($isClusterSlave ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'text-emerald-400' : 'text-amber-400') : 'text-cyan-300') }}">{{ $isClusterDev ? ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Dev Activo') : ($clusterConfig['cluster_last_sync_status'] === 'master_active' ? 'Master Activo' : ($clusterConfig['cluster_last_sync_status'] === 'ok' ? 'Sincronizado' : 'Pendiente')) }}</strong></span>
+                            @if($isClusterSlave || $isClusterDev)
+                                <span>Cadencia: <strong class="{{ $isClusterDev ? 'text-purple-300' : 'text-amber-300' }}">Cada {{ $clusterConfig['slave_sync_interval_minutes'] ?? 2 }} min</strong></span>
                             @endif
                         </div>
                     </div>
@@ -971,10 +973,10 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
-                            v5.10.20
+                            v5.11.10
                         </span>
-                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
-                            {{ $isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)' }}
+                        <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterDev ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : ($isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40') }}">
+                            {{ $isClusterDev ? 'MODO DESARROLLO (SANDBOX)' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)') }}
                         </span>
                     </div>
                     <h2 class="text-base sm:text-lg font-bold text-white tracking-tight leading-tight mt-0.5">
@@ -1018,7 +1020,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Versión del Sistema:</span>
-                                <span class="text-obsidian-cyan font-bold">v5.10.20</span>
+                                <span class="text-obsidian-cyan font-bold">v5.11.10</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Módulos de la Plataforma:</span>

@@ -1,0 +1,76 @@
+# ==============================================================================
+# 🛡️ JAIL FAIL2BAN DE SEGURIDAD INTEGRAL: monitoreo_security.local
+# Protección activa para SSH (22), Apache Web (80/443) y VNC (5900)
+# Con despacho a Telegram y registro en MariaDB audit_logs
+# ==============================================================================
+
+[DEFAULT]
+# Whitelist estricta: loopback, nodos del cluster y subred corporativa
+ignoreip = 127.0.0.1/8 ::1 10.20.23.221 10.20.23.252 10.20.23.1 10.20.23.0/24
+
+bantime  = 3600
+findtime = 600
+maxretry = 4
+
+# Acción combinada: bloqueo de red nftables + alerta a Telegram y MariaDB
+banaction = nftables-multiport
+action = %(banaction)s[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+         telegram-alert[name=%(__name__)s, port="%(port)s"]
+
+# ------------------------------------------------------------------------------
+# 1. JAIL SSH (Puerto 22): Detección de fuerza bruta en logins
+# ------------------------------------------------------------------------------
+[sshd]
+enabled  = true
+port     = ssh
+backend  = systemd
+maxretry = 3
+findtime = 600
+bantime  = 7200
+
+# ------------------------------------------------------------------------------
+# 2. JAILS APACHE / WEB (Puertos 80, 443): Ataques web, bots y escaneos
+# ------------------------------------------------------------------------------
+[apache-auth]
+enabled  = true
+port     = http,https
+logpath  = /var/log/apache2/*error.log
+maxretry = 4
+findtime = 600
+bantime  = 7200
+
+[apache-badbots]
+enabled  = true
+port     = http,https
+logpath  = /var/log/apache2/*access.log
+maxretry = 2
+findtime = 1800
+bantime  = 86400
+
+[apache-botsearch]
+enabled  = true
+port     = http,https
+logpath  = /var/log/apache2/*error.log
+maxretry = 3
+findtime = 600
+bantime  = 43200
+
+[apache-noscript]
+enabled  = true
+port     = http,https
+logpath  = /var/log/apache2/*error.log
+maxretry = 3
+findtime = 600
+bantime  = 43200
+
+# ------------------------------------------------------------------------------
+# 3. JAIL VNC (Puerto 5900): Detección de fuerza bruta y conexiones anómalas
+# ------------------------------------------------------------------------------
+[vnc-bruteforce]
+enabled  = true
+port     = 5900
+filter   = vnc-bruteforce
+backend  = systemd
+maxretry = 5
+findtime = 120
+bantime  = 7200
