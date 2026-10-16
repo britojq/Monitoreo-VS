@@ -18,7 +18,8 @@ class IpamGridService implements IpamGridInterface
      * Subredes oficiales conocidas por ID de Sede en la infraestructura.
      */
     protected array $siteSubnetsMap = [
-        1 => '10.20.23.0/24',   // CIAU VALLE SECO
+        1 => '10.20.23.0/24',   // SEDE VALLE SECO (Edificio Central)
+        2 => '10.20.23.0/24',   // CIAU VALLE SECO (Oficina Comercial)
         3 => '10.20.107.0/24',  // CIAU CONSOLIDADO
         4 => '10.20.107.0/24',  // CIAU PASEO MARIÑO
         5 => '10.20.106.0/24',  // CIAU MORON
@@ -266,7 +267,7 @@ class IpamGridService implements IpamGridInterface
         if (!in_array('10.20.23.0/24', $seenCidrs, true)) {
             array_unshift($subnets, [
                 'site_id' => 1,
-                'site_name' => 'CIAU VALLE SECO (Sede Principal)',
+                'site_name' => 'SEDE VALLE SECO (Edificio Central)',
                 'cidr' => '10.20.23.0/24',
                 'gateway_ip' => '10.20.23.1',
             ]);

@@ -142,8 +142,12 @@ case "$COMMAND" in
         call_api "{}"
         ;;
     deploy)
-        echo -e "${BLUE}🚀 Iniciando despliegue remoto GitOps Zero-SSH...${NC}"
-        call_api '{"migrate": false}'
+        DO_MIGRATE=false
+        if [ "${1:-}" = "--migrate" ] || [ "${1:-}" = "migrate" ]; then
+            DO_MIGRATE=true
+        fi
+        echo -e "${BLUE}🚀 Iniciando despliegue remoto GitOps Zero-SSH (migrate: ${DO_MIGRATE})...${NC}"
+        call_api "{\"migrate\": ${DO_MIGRATE}}"
         ;;
     rollback)
         DEFAULT_COMMIT="HEAD@{1}"

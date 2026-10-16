@@ -58,7 +58,8 @@ class MonitoringDataService
             ->get();
 
         // 4. Dispositivos locales en red Valle Seco (Sede ID: 1 o por defecto)
-        $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
+        $valleSecoSite = MonitoredSite::where('name', 'SEDE VALLE SECO')->first() 
+            ?? MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
         $valleSecoId = $valleSecoSite ? $valleSecoSite->id : 1;
 
         $networkDevices = MonitoredNetworkDevice::where('is_active', true)

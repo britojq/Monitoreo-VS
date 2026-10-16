@@ -45,17 +45,23 @@ class AdminGlpiDeployController extends Controller
         $siteFilter = $request->query('site'); // all, monitored, discovered, or site_id
         $scanSubnet = trim($request->query('scan_subnet', ''));
 
-        // 1. Catálogo de Sedes con equipos para el filtro visual
-        $sedes = MonitoredSite::whereHas('devices')->orderBy('name')->get();
+        // 1. Catálogo de Sedes oficiales para el filtro visual y despliegue
+        $sedes = MonitoredSite::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
 
         // Mapa de subredes conocidas por sede para escaneo rápido
-        $siteSubnets = [
-            1 => '10.20.23.0/24',   // CIAU VALLE SECO
-            3 => '10.20.107.0/24',  // CIAU CONSOLIDADO
-            4 => '10.20.107.0/24',  // CIAU PASEO MARIÑO
-            5 => '10.20.106.0/24',  // CIAU MORON
-            7 => '10.20.27.0/24',   // CORDINACION TRASMISION
-        ];
+        $siteSubnets = [];
+        foreach ($sedes as $s) {
+            if (!empty($s->ip) && filter_var($s->ip, FILTER_VALIDATE_IP)) {
+                $siteSubnets[$s->id] = preg_replace('/\.\d+$/', '.0/24', $s->ip);
+            }
+        }
+        // Segmentos prioritarios de infraestructura
+        $siteSubnets[1] = '10.20.23.0/24';   // SEDE VALLE SECO (Edificio Central)
+        $siteSubnets[2] = '10.20.23.0/24';   // CIAU VALLE SECO (Oficina Comercial)
+        $siteSubnets[3] = '10.20.107.0/24';  // CIAU CONSOLIDADO
+        $siteSubnets[4] = '10.20.107.0/24';  // CIAU PASEO MARIÑO
+        $siteSubnets[5] = '10.20.106.0/24';  // CIAU MORON
+        $siteSubnets[7] = '10.20.27.0/24';   // CORDINACION TRASMISION
 
         // 2. Activos de inventario existentes para cotejar estado GLPI por IP y por MAC (Deduplicación DHCP)
         $inventoryAssets = InventoryAsset::all()->keyBy('ip_address');

@@ -1328,7 +1328,7 @@
             <div class="p-5 space-y-4 overflow-y-auto flex-1 custom-scroll">
                 <div>
                     <label class="block text-[11px] text-obsidian-muted mb-1.5 font-bold uppercase tracking-wider">
-                        Opción 1: Seleccionar Sede
+                        Seleccionar Sede
                     </label>
                     <select id="scan-site-selector" onchange="onScanSiteChanged(this.value)" class="w-full px-3 py-2 rounded-xl bg-obsidian-card border border-obsidian-border text-white text-xs focus:outline-none focus:border-cyan-500">
                         <option value="">-- Elige una Sede para autocompletar su subred --</option>
