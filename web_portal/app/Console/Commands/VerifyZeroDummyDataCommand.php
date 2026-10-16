@@ -78,6 +78,9 @@ class VerifyZeroDummyDataCommand extends Command
                         if ($table === 'snmp_oids' && $col === 'description') {
                             $query->where('description', 'not like', '%3=testing%');
                         }
+                        if ($table === 'glpi_inventory_logs' && $col === 'raw_payload') {
+                            $query->where('raw_payload', 'not like', '%speech-dispatcher%');
+                        }
 
                         $matches = $query->get();
 

@@ -60,7 +60,7 @@ class ProfileController extends Controller
             return redirect()->route('admin.profile.show')->with('info', 'No se realizaron cambios en la foto de perfil.');
         }
 
-        // 2. Actualización de Ficha ATIT (válida para usuarios LDAP y Locales)
+        // 2. Actualización de Ficha de Identidad / Datos del Trabajador (válida para usuarios LDAP y Locales)
         if ($request->has('atit_profile_only')) {
             $validated = $request->validate([
                 'academic_title' => ['nullable', 'string', 'max:50'],
@@ -75,12 +75,35 @@ class ProfileController extends Controller
             ]);
 
             $user->academic_title = $validated['academic_title'] ?? null;
-            $user->cedula = $validated['cedula'] ?? null;
-            $user->personal_number = $validated['personal_number'] ?? null;
+
+            // Proteger datos de LDAP: si ya vinieron de Directorio Activo, mantenerlos intactos
+            if ($isLdap && !empty($user->cedula)) {
+                // Conservar cédula traída de LDAP
+            } else {
+                $user->cedula = $validated['cedula'] ?? null;
+            }
+
+            if ($isLdap && !empty($user->personal_number)) {
+                // Conservar ficha traída de LDAP
+            } else {
+                $user->personal_number = $validated['personal_number'] ?? null;
+            }
+
             $user->phone = $validated['phone'] ?? null;
             $user->save();
 
-            return redirect()->route('admin.profile.show')->with('success', 'Ficha ATIT actualizada exitosamente.');
+            // Conciliar y auto-asociar activos y actas en MariaDB con los datos actualizados
+            try {
+                app(\App\Services\EntityResolverService::class)->reconcileUserAssets($user);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Error reconciliando activos de usuario en profile: ' . $e->getMessage());
+            }
+
+            $successMsg = $user->isUser() 
+                ? 'Datos del trabajador actualizados exitosamente.' 
+                : 'Ficha de Identidad actualizada exitosamente.';
+
+            return redirect()->route('admin.profile.show')->with('success', $successMsg);
         }
 
         // 3. Actualización de Cuenta Local Completa
@@ -129,6 +152,13 @@ class ProfileController extends Controller
             }
 
             $user->save();
+
+            // Conciliar y auto-asociar activos y actas en MariaDB con los datos actualizados
+            try {
+                app(\App\Services\EntityResolverService::class)->reconcileUserAssets($user);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Error reconciliando activos de usuario en profile local: ' . $e->getMessage());
+            }
 
             return redirect()->route('admin.profile.show')->with('success', 'Perfil actualizado exitosamente.');
         }

@@ -3,6 +3,9 @@
 @section('page_title', 'Dashboard')
 
 @section('admin_content')
+@if(auth()->user()->isUser())
+    @include('partials.user_services_dashboard')
+@else
 <div class="space-y-6">
     <!-- ========================================================================= -->
     <!-- BARRA SUPERIOR DE ACCIONES RÁPIDAS Y TELEMETRÍA                           -->
@@ -22,8 +25,8 @@
                     </span>
                 </div>
                 <p class="text-[10px] font-mono text-obsidian-muted">
-                    Operador en turno: <span class="text-cyan-300 font-semibold">{{ auth()->user()->full_title_name }}</span>
-                    @if(!auth()->user()->hasCompleteAtitProfile())
+                    {{ auth()->user()->isUser() ? 'Usuario:' : 'Operador en turno:' }} <span class="text-cyan-300 font-semibold">{{ auth()->user()->full_title_name }}</span>
+                    @if(!auth()->user()->isUser() && !auth()->user()->hasCompleteAtitProfile())
                         <a href="{{ route('admin.profile.show') }}" class="text-amber-400 underline font-bold ml-1 hover:text-white">⚠ Ficha Incompleta</a>
                     @endif
                 </p>
@@ -41,10 +44,12 @@
                 $dashLoadPct = $dashUps ? ($dashUps->load_percent ?? 8) : 8;
                 $dashLoadWatts = round(($dashLoadPct / 100) * 6000);
                 $dashRuntimeMin = round(($dashBatPct / 100) * 135);
+                $canViewUps = auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('ups.view'));
             @endphp
 
             @if($dashUps)
             <!-- BADGE 1: VOLTAJE DE ENTRADA (220V) -->
+            @if($canViewUps)
             <a href="{{ route('admin.ups.index') }}" 
                id="dash-ups-mode-badge"
                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer {{ $dashIsOnBat ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse shadow-red-500/20' : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:border-amber-400' }}"
@@ -54,8 +59,19 @@
                 </span>
                 <span id="dash-ups-mode-text">{{ $dashIsOnBat ? 'CORTE 0V' : 'Entrada 220V' }}</span>
             </a>
+            @else
+            <div id="dash-ups-mode-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs {{ $dashIsOnBat ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse shadow-red-500/20' : 'bg-amber-950/60 border-amber-500/40 text-amber-300' }}"
+               title="Voltaje de Entrada AC: {{ $dashIsOnBat ? '0.0 VAC (CORTE ELÉCTRICO)' : number_format($dashInV, 1) . ' VAC (Línea Comercial Normal)' }}">
+                <span class="material-symbols-outlined text-sm {{ $dashIsOnBat ? 'text-red-400 animate-pulse' : 'text-amber-400' }}" id="dash-ups-mode-icon">
+                    {{ $dashIsOnBat ? 'power_off' : 'bolt' }}
+                </span>
+                <span id="dash-ups-mode-text">{{ $dashIsOnBat ? 'CORTE 0V' : 'Entrada 220V' }}</span>
+            </div>
+            @endif
 
             <!-- BADGE 2: VOLTAJE DE SALIDA A EQUIPOS (110V) -->
+            @if($canViewUps)
             <a href="{{ route('admin.ups.index') }}" 
                id="dash-ups-out-badge"
                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-300 hover:border-blue-400 text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer"
@@ -63,8 +79,17 @@
                 <span class="material-symbols-outlined text-sm text-blue-400">electrical_services</span>
                 <span id="dash-ups-out-text">Salida 110V</span>
             </a>
+            @else
+            <div id="dash-ups-out-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-300 text-[11px] font-mono font-bold transition shadow-xs"
+               title="Voltaje Regulado de Salida a Equipos: {{ number_format($dashOutEquipos, 1) }} VAC (Rack de Servidores)">
+                <span class="material-symbols-outlined text-sm text-blue-400">electrical_services</span>
+                <span id="dash-ups-out-text">Salida 110V</span>
+            </div>
+            @endif
 
             <!-- BADGE 3: NIVEL DE BATERÍA -->
+            @if($canViewUps)
             <a href="{{ route('admin.ups.index') }}" 
                id="dash-ups-bat-badge"
                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer {{ $dashBatPct < 25 ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse' : ($dashBatPct < 60 ? 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:border-amber-400' : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:border-emerald-400') }}"
@@ -74,8 +99,19 @@
                 </span>
                 <span id="dash-ups-bat-text">{{ $dashBatPct }}% Bat</span>
             </a>
+            @else
+            <div id="dash-ups-bat-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono font-bold transition shadow-xs {{ $dashBatPct < 25 ? 'bg-red-950/80 border-red-500/60 text-red-400 animate-pulse' : ($dashBatPct < 60 ? 'bg-amber-950/60 border-amber-500/40 text-amber-300' : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300') }}"
+               title="Nivel de Batería: {{ $dashBatPct }}% • Autonomía est.: ~{{ $dashRuntimeMin }} min">
+                <span class="material-symbols-outlined text-sm {{ $dashBatPct < 25 ? 'text-red-400 animate-pulse' : ($dashBatPct < 60 ? 'text-amber-400' : 'text-emerald-400') }}" id="dash-ups-bat-icon">
+                    {{ $dashIsOnBat ? 'battery_alert' : ($dashBatPct >= 95 ? 'battery_charging_full' : 'battery_std') }}
+                </span>
+                <span id="dash-ups-bat-text">{{ $dashBatPct }}% Bat</span>
+            </div>
+            @endif
 
             <!-- BADGE 4: CARGA / POTENCIA CONSUMIDA -->
+            @if($canViewUps)
             <a href="{{ route('admin.ups.index') }}" 
                id="dash-ups-load-badge"
                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:border-purple-400 text-[11px] font-mono font-bold transition shadow-xs hover:scale-105 active:scale-95 cursor-pointer"
@@ -83,6 +119,14 @@
                 <span class="material-symbols-outlined text-sm text-purple-400">speed</span>
                 <span id="dash-ups-load-text">{{ $dashLoadPct }}% Carga</span>
             </a>
+            @else
+            <div id="dash-ups-load-badge"
+               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/40 text-purple-300 text-[11px] font-mono font-bold transition shadow-xs"
+               title="Demanda de Carga del Rack: {{ $dashLoadPct }}% (~{{ $dashLoadWatts }} W a {{ number_format($dashOutEquipos, 1) }} VAC)">
+                <span class="material-symbols-outlined text-sm text-purple-400">speed</span>
+                <span id="dash-ups-load-text">{{ $dashLoadPct }}% Carga</span>
+            </div>
+            @endif
             @endif
 
             @if(auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('telegram.dispatch')))
@@ -116,6 +160,7 @@
 
 
 </div>
+@endif
 
 <!-- MODAL ENVIAR REPORTE A TELEGRAM -->
 <div id="modal-telegram-dispatch" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4">

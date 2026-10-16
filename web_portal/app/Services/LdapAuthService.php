@@ -422,16 +422,8 @@ class LdapAuthService
             }
         }
 
-        if (!$areaAuthorized) {
-            @ldap_unbind($conn);
-            Log::warning("LDAP: Acceso denegado a usuario {$cleanUsername} por área no autorizada. Descripción: [{$description}]");
-            return [
-                'success' => false,
-                'message' => 'Acceso Denegado: Su cuenta corporativa no pertenece a las áreas autorizadas de infraestructura (ATIT / Infraestructura Carabobo). Debe solicitar el acceso al Administrador del Sistema.',
-                'data' => null,
-                'area_authorized' => false,
-            ];
-        }
+        // Si pertenece a ATIT o está pre-autorizado, rol operador/admin; en caso contrario, rol usuario (autoconsulta)
+        $targetRole = $areaAuthorized ? ($cfg['default_role'] ?? 'operator') : 'user';
 
         // Paso 3: Validar contraseña mediante bind con el DN del usuario
         $userBind = @ldap_bind($conn, $userDn, $cleanPassword);
@@ -452,6 +444,20 @@ class LdapAuthService
         $telephone = $entry['telephonenumber'][0] ?? '';
         $st = $entry['st'][0] ?? '';
 
+        // Extracción y normalización de cédula de identidad desde employeenumber o UID
+        $rawEmp = $entry['employeenumber'][0] ?? null;
+        $cedula = '';
+        if ($rawEmp) {
+            $cleanDigits = preg_replace('/^1(?=\d{7,8}$)/', '', trim($rawEmp));
+            $cleanDigits = preg_replace('/\D/', '', $cleanDigits);
+            if (!empty($cleanDigits)) {
+                $cedula = 'V-' . number_format((int)$cleanDigits, 0, '', '.');
+            }
+        }
+        if (empty($cedula) && preg_match('/^[a-zA-Z]?(\d{6,8})$/', $entryUid, $m)) {
+            $cedula = 'V-' . number_format((int)$m[1], 0, '', '.');
+        }
+
         @ldap_unbind($conn);
 
         return [
@@ -461,6 +467,9 @@ class LdapAuthService
                 'username' => $entryUid,
                 'name' => $cn,
                 'email' => $entryMail,
+                'cedula' => $cedula,
+                'phone' => $telephone,
+                'personal_number' => $rawEmp,
                 'dn' => $userDn,
                 'description' => $description,
                 'givenName' => $givenName,
@@ -468,8 +477,11 @@ class LdapAuthService
                 'telephone' => $telephone,
                 'st' => $st,
                 'pre_authorized' => $isPreAuthorized,
+                'area_authorized' => $areaAuthorized,
+                'target_role' => $targetRole,
             ],
-            'area_authorized' => true,
+            'area_authorized' => $areaAuthorized,
+            'target_role' => $targetRole,
         ];
     }
 

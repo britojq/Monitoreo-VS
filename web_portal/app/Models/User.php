@@ -68,9 +68,15 @@ class User extends Authenticatable
         return $this->role === 'admin' || $this->role === 'SuperAdmin';
     }
 
+    public function isUser(): bool
+    {
+        return $this->role === 'user';
+    }
+
     /**
      * Retorna los permisos efectivos del usuario.
      * Si es Administrador, tiene acceso total a todas las claves.
+     * Si es Usuario (rol 'user'), retorna los permisos restringidos de autoconsulta.
      * Si es Operador y sus permisos son null, retorna los permisos por defecto de operador.
      * Si tiene permisos personalizados asignados, retorna dichos permisos.
      */
@@ -78,6 +84,10 @@ class User extends Authenticatable
     {
         if ($this->isAdmin()) {
             return \App\Services\PermissionService::getAllPermissionKeys();
+        }
+
+        if ($this->isUser()) {
+            return \App\Services\PermissionService::getDefaultUserPermissions();
         }
 
         if (is_array($this->permissions)) {
@@ -92,7 +102,7 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
-        if ($this->isAdmin()) {
+        if ($this->isAdmin() || $permission === 'itam.my_devices') {
             return true;
         }
 

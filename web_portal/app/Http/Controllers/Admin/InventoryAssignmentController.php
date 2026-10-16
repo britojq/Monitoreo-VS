@@ -193,6 +193,35 @@ class InventoryAssignmentController extends Controller
 
         $asset = InventoryAsset::with(['components'])->findOrFail($validated['inventory_asset_id']);
 
+        // Auto-resolver user_id si no vino en el formulario pero el usuario ya existe por Cédula o Nombre
+        if ($validated['movement_type'] === 'assignment' && empty($validated['user_id'])) {
+            $cedulaVal = trim((string)($validated['custodian_id_number'] ?? ''));
+            $nameVal = trim((string)($validated['custodian_name'] ?? ''));
+            $rawDigits = preg_replace('/\D/', '', $cedulaVal);
+
+            $matchedUser = User::where(function ($q) use ($cedulaVal, $rawDigits, $nameVal) {
+                $hasCond = false;
+                if (!empty($cedulaVal)) {
+                    $q->where('cedula', $cedulaVal);
+                    if (!empty($rawDigits)) {
+                        $q->orWhere('cedula', 'like', "%{$rawDigits}%");
+                    }
+                    $hasCond = true;
+                }
+                if (!empty($nameVal) && !in_array(strtolower($nameVal), ['usuario', 'operador', 'admin', 'user'])) {
+                    if ($hasCond) {
+                        $q->orWhere('name', $nameVal);
+                    } else {
+                        $q->where('name', $nameVal);
+                    }
+                }
+            })->first();
+
+            if ($matchedUser) {
+                $validated['user_id'] = $matchedUser->id;
+            }
+        }
+
         // Generar correlativo oficial único
         $year = $assignedAt->format('Y');
         $prefix = ($validated['movement_type'] === 'return') ? "ACTA-DEV-{$year}" : "UINF-4.05-{$year}";

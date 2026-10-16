@@ -25,13 +25,9 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <span class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase {{ $user->role === 'admin' ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : 'bg-blue-950/80 text-blue-300 border border-blue-500/40' }}">
-                Rol: {{ $user->role === 'admin' ? 'Administrador' : 'Operador' }}
-            </span>
-            <span class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 {{ $user->is_active ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-red-950/80 text-red-300 border border-red-500/40' }}">
-                <span class="w-2 h-2 rounded-full {{ $user->is_active ? 'bg-emerald-400' : 'bg-red-400' }}"></span>
-                {{ $user->is_active ? 'Activo' : 'Suspendido' }}
-            </span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ $user->is_active ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400' : 'bg-red-950/80 border border-red-500/40 text-red-400' }}" title="{{ $user->is_active ? 'Estado: Cuenta Activa' : 'Estado: Cuenta Suspendida' }}">
+                <span class="w-2.5 h-2.5 rounded-full {{ $user->is_active ? 'bg-emerald-400' : 'bg-red-400' }}"></span>
+            </div>
         </div>
     </div>
 
@@ -184,21 +180,12 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-sm text-obsidian-muted">mail</span>
-                                    <span>Correo Corporativo</span>
-                                </label>
-                                <input type="email" value="{{ $user->email }}" readonly class="w-full bg-obsidian-panel/50 border border-obsidian-border rounded-lg p-2.5 text-obsidian-muted cursor-not-allowed select-all"/>
-                            </div>
-                            <div>
-                                <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-sm text-obsidian-muted">shield_person</span>
-                                    <span>Rol de Seguridad en Monitoreo</span>
-                                </label>
-                                <input type="text" value="{{ $user->role === 'admin' ? 'Administrador (Control Total)' : 'Operador (Consulta y Monitoreo)' }}" readonly class="w-full bg-obsidian-panel/50 border border-obsidian-border rounded-lg p-2.5 text-white cursor-not-allowed font-bold"/>
-                            </div>
+                        <div>
+                            <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-obsidian-muted">mail</span>
+                                <span>Correo Corporativo</span>
+                            </label>
+                            <input type="email" value="{{ $user->email }}" readonly class="w-full bg-obsidian-panel/50 border border-obsidian-border rounded-lg p-2.5 text-obsidian-muted cursor-not-allowed select-all"/>
                         </div>
 
                         <div class="p-4 rounded-xl bg-obsidian-panel/40 border border-obsidian-border/60 text-[11px] text-obsidian-muted space-y-1.5">
@@ -241,12 +228,6 @@
                             <input type="email" name="email" value="{{ old('email', $user->email) }}" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition"/>
                         </div>
 
-                        <!-- ROL ASIGNADO (Solo informativo, no editable por el propio usuario) -->
-                        <div>
-                            <label class="block text-obsidian-muted mb-1">Rol de Acceso Asignado</label>
-                            <input type="text" value="{{ $user->role === 'admin' ? 'Administrador' : 'Operador' }}" disabled class="w-full bg-obsidian-panel/50 border border-obsidian-border rounded-lg p-2.5 text-obsidian-muted cursor-not-allowed"/>
-                            <p class="text-[10px] text-obsidian-muted/70 mt-1">El rol solo puede ser modificado por otro Administrador en la sección de Usuarios.</p>
-                        </div>
 
                         <!-- CAMBIO DE CONTRASEÑA -->
                         <div class="pt-4 border-t border-obsidian-border/80 space-y-3">
@@ -279,20 +260,31 @@
             @endif
 
             <!-- ============================================================== -->
-            <!-- TARJETA COMÚN: FICHA DE IDENTIDAD ATIT (FIRMA DE REPORTES)     -->
+            <!-- TARJETA: FICHA DE DATOS / IDENTIDAD ATIT                       -->
             <!-- ============================================================== -->
             <div class="glass-card rounded-2xl p-6 border border-obsidian-cyan/40 space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-obsidian-border pb-3">
                     <div class="flex items-center gap-2.5">
                         <span class="material-symbols-outlined text-2xl text-obsidian-cyan">assignment_ind</span>
                         <div>
-                            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Identidad ATIT / empresa</h3>
-                            <p class="text-[11px] font-mono text-obsidian-muted">Firma corporativa adjuntada a reportes de Telegram enviados desde la Web</p>
+                            @if($user->isUser())
+                                <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Datos del Trabajador</h3>
+                                <p class="text-[11px] font-mono text-obsidian-muted">Información institucional y de contacto para asignación y consulta de equipos</p>
+                            @else
+                                <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Identidad ATIT / empresa</h3>
+                                <p class="text-[11px] font-mono text-obsidian-muted">Firma corporativa adjuntada a reportes de Telegram enviados desde la Web</p>
+                            @endif
                         </div>
                     </div>
-                    <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ $user->hasCompleteAtitProfile() ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
-                        {{ $user->hasCompleteAtitProfile() ? '✓ Ficha Completa' : '⚠️ Ficha Incompleta' }}
-                    </span>
+                    @if(!$user->isUser())
+                        <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ $user->hasCompleteAtitProfile() ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40' }}">
+                            {{ $user->hasCompleteAtitProfile() ? '✓ Ficha Completa' : '⚠️ Ficha Incompleta' }}
+                        </span>
+                    @else
+                        <span class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase w-fit {{ !empty($user->cedula) ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-obsidian-panel text-obsidian-muted border border-obsidian-border' }}">
+                            {{ !empty($user->cedula) ? '✓ Datos Registrados' : 'Datos Pendientes' }}
+                        </span>
+                    @endif
                 </div>
 
                 <form action="{{ route('admin.profile.update') }}" method="POST" class="space-y-4 font-mono text-xs">
@@ -315,8 +307,14 @@
                             <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">badge</span>
                                 <span>Cédula de Identidad (C.I.)</span>
+                                @if($user->isLdapUser() && !empty($user->cedula))
+                                    <span class="text-[10px] text-obsidian-cyan font-mono">(Directorio Activo)</span>
+                                @endif
                             </label>
-                            <input type="text" name="cedula" id="input_cedula" value="{{ old('cedula', $user->cedula) }}" placeholder="Ej: 12345678" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <input type="text" name="cedula" id="input_cedula" value="{{ old('cedula', $user->cedula) }}" placeholder="Ej: 12345678" {{ ($user->isLdapUser() && !empty($user->cedula)) ? 'readonly' : '' }} class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition {{ ($user->isLdapUser() && !empty($user->cedula)) ? 'opacity-80 cursor-not-allowed bg-obsidian-panel/50' : '' }}" oninput="updateSignaturePreview()"/>
+                            @if($user->isLdapUser() && !empty($user->cedula))
+                                <p class="text-[10px] text-obsidian-cyan/80 mt-1">Sincronizado desde LDAP corporativo (protegido contra modificación).</p>
+                            @endif
                         </div>
                     </div>
 
@@ -326,8 +324,14 @@
                             <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">pin</span>
                                 <span>N° de Personal / Ficha empresa</span>
+                                @if($user->isLdapUser() && !empty($user->personal_number))
+                                    <span class="text-[10px] text-obsidian-cyan font-mono">(Directorio Activo)</span>
+                                @endif
                             </label>
-                            <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 100001" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition" oninput="updateSignaturePreview()"/>
+                            <input type="text" name="personal_number" id="input_personal_number" value="{{ old('personal_number', $user->personal_number) }}" placeholder="Ej: 100001" {{ ($user->isLdapUser() && !empty($user->personal_number)) ? 'readonly' : '' }} class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:outline-none focus:border-obsidian-cyan transition {{ ($user->isLdapUser() && !empty($user->personal_number)) ? 'opacity-80 cursor-not-allowed bg-obsidian-panel/50' : '' }}" oninput="updateSignaturePreview()"/>
+                            @if($user->isLdapUser() && !empty($user->personal_number))
+                                <p class="text-[10px] text-obsidian-cyan/80 mt-1">Sincronizado desde LDAP corporativo (protegido contra modificación).</p>
+                            @endif
                         </div>
 
                         <!-- TELÉFONO DE CONTACTO -->
@@ -340,7 +344,8 @@
                         </div>
                     </div>
 
-                    <!-- PREVISUALIZACIÓN DE FIRMA TELEGRAM EN VIVO -->
+                    @if(!$user->isUser())
+                    <!-- PREVISUALIZACIÓN DE FIRMA TELEGRAM EN VIVO (SOLO OPERADORES Y ADMINISTRADORES) -->
                     <div class="mt-4 p-4 rounded-xl bg-black/40 border border-obsidian-border space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-[11px] text-obsidian-cyan font-bold uppercase flex items-center gap-1.5">
@@ -355,11 +360,12 @@ C.I: {{ $user->cedula ?? '(Sin cédula)' }}
 N° Personal: {{ $user->personal_number ?? '(Sin ficha)' }}
 📱Tlf: {{ $user->phone ?? '(Sin teléfono)' }}</pre>
                     </div>
+                    @endif
 
                     <div class="pt-2 flex justify-end">
                         <button type="submit" class="px-6 py-2.5 rounded-lg bg-obsidian-cyan text-black font-mono font-bold text-xs uppercase flex items-center gap-2 hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/20 cursor-pointer">
                             <span class="material-symbols-outlined text-base">save</span>
-                            Guardar Ficha de Identidad
+                            {{ $user->isUser() ? 'Guardar Datos del Trabajador' : 'Guardar Ficha de Identidad' }}
                         </button>
                     </div>
                 </form>
@@ -371,6 +377,7 @@ N° Personal: {{ $user->personal_number ?? '(Sin ficha)' }}
 <script>
     const userRawName = @json($user->name);
 
+    @if(!$user->isUser())
     function updateSignaturePreview() {
         const title = (document.getElementById('input_academic_title')?.value || '').trim();
         const ci = (document.getElementById('input_cedula')?.value || '').trim() || '(Sin cédula)';
@@ -387,6 +394,11 @@ N° Personal: {{ $user->personal_number ?? '(Sin ficha)' }}
             preview.textContent = `Personal de  ATIT:\n${fullName}\nC.I: ${ci}\nN° Personal: ${personal}\n📱Tlf: ${phone}`;
         }
     }
+    @else
+    function updateSignaturePreview() {
+        // En rol de usuario regular no se genera firma corporativa de Telegram
+    }
+    @endif
 
     function previewAvatar(input) {
         if (input.files && input.files[0]) {

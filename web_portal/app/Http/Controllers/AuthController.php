@@ -126,13 +126,17 @@ class AuthController extends Controller
         $isNewJitUser = false;
         if (!$user) {
             $isNewJitUser = true;
-            // AUTO-REGISTRO JIT (Just-In-Time) como Operador
+            // AUTO-REGISTRO JIT (Just-In-Time) con rol condicional (Operador o Usuario)
+            $assignedRole = $ldapData['target_role'] ?? 'operator';
             $user = \App\Models\User::create([
                 'name' => $ldapData['name'],
                 'username' => $cleanUsername,
                 'email' => $cleanEmail,
+                'cedula' => !empty($ldapData['cedula']) ? $ldapData['cedula'] : null,
+                'phone' => !empty($ldapData['phone']) ? $ldapData['phone'] : null,
+                'personal_number' => !empty($ldapData['personal_number']) ? $ldapData['personal_number'] : null,
                 'password' => bcrypt(\Illuminate\Support\Str::random(32)), // Clave local aleatoria segura
-                'role' => 'operator', // Rol predeterminado para cuentas LDAP
+                'role' => $assignedRole,
                 'is_active' => true,
                 'last_login_at' => now(),
                 'last_login_ip' => $request->ip(),
@@ -148,12 +152,29 @@ class AuthController extends Controller
             }
 
             // Sincronizar datos actualizados desde LDAP
-            $user->update([
+            $updateData = [
                 'name' => $ldapData['name'],
                 'username' => $cleanUsername,
                 'last_login_at' => now(),
                 'last_login_ip' => $request->ip(),
-            ]);
+            ];
+            if (empty($user->cedula) && !empty($ldapData['cedula'])) {
+                $updateData['cedula'] = $ldapData['cedula'];
+            }
+            if (empty($user->phone) && !empty($ldapData['phone'])) {
+                $updateData['phone'] = $ldapData['phone'];
+            }
+            if (empty($user->personal_number) && !empty($ldapData['personal_number'])) {
+                $updateData['personal_number'] = $ldapData['personal_number'];
+            }
+            $user->update($updateData);
+        }
+
+        // Auto-conciliación inmediata con el inventario de puestos de trabajo y actas asignadas
+        try {
+            app(\App\Services\EntityResolverService::class)->reconcileUserAssets($user);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error conciliando activos para usuario {$user->id}: " . $e->getMessage());
         }
 
         // Iniciar sesión en el portal

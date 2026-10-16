@@ -533,25 +533,8 @@
                     <div id="test-connection-feedback" class="hidden text-xs font-mono pt-1"></div>
                 </div>
 
-                <!-- CAMPO INTERVALO DE SINCRONIZACIÓN DEL SLAVE/DEV -->
+                <!-- CAMPO INTERVALO DE SINCRONIZACIÓN (VISIBLE CUANDO ES SLAVE O DEV) -->
                 <div id="field_slave_sync_interval" class="space-y-2 {{ ($isClusterSlave || $isClusterDev) ? '' : 'hidden' }}">
-                    <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-sm text-amber-400">link</span>
-                        URL / Dirección del Servidor Master
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <input type="url" name="master_api_url" id="input_master_url" value="{{ $clusterConfig['master_api_url'] }}" placeholder="http://10.20.23.252"
-                            class="flex-1 bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan">
-                        <button type="button" onclick="testMasterConnection()" id="btn-test-connection" class="px-3 py-2.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap">
-                            <span class="material-symbols-outlined text-sm">wifi_tethering</span>
-                            Probar Conexión
-                        </button>
-                    </div>
-                    <div id="test-connection-feedback" class="hidden text-xs font-mono pt-1"></div>
-                </div>
-
-                <!-- CAMPO INTERVALO DE SINCRONIZACIÓN DEL SLAVE (VISIBLE CUANDO ES SLAVE) -->
-                <div id="field_slave_sync_interval" class="space-y-2 {{ $isClusterSlave ? '' : 'hidden' }}">
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-sm text-amber-400">schedule</span>

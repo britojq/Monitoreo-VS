@@ -33,12 +33,19 @@
                 Dashboard
             </a>
 
+            <!-- MIS EQUIPOS ASIGNADOS -->
+            <a href="{{ route('admin.my_devices.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.my_devices.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}" title="Equipos informáticos, periféricos y actas asignadas">
+                <span class="material-symbols-outlined text-lg">computer</span>
+                Mis Equipos
+            </a>
+
             <!-- MI PERFIL (Para Administradores y Operadores) -->
             <a href="{{ route('admin.profile.show') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold transition {{ request()->routeIs('admin.profile.*') ? 'bg-obsidian-cyan text-black' : 'text-obsidian-muted hover:text-white hover:bg-obsidian-panel' }}">
                 <span class="material-symbols-outlined text-lg">account_circle</span>
                 Mi Perfil
             </a>
 
+            @if(!auth()->user()->isUser())
             <!-- ============================================================= -->
             <!-- SECCIÓN: GESTIÓN OPERATIVA & MONITOREO                        -->
             <!-- ============================================================= -->
@@ -193,6 +200,7 @@
                 Configuración Avanzada
             </a>
             @endif
+            @endif
         </nav>
 
         <!-- PIE DE SIDEBAR (FIJO) -->
@@ -279,16 +287,16 @@
                 <div class="flex-1 max-w-xs md:max-w-md mx-1 sm:mx-4">
                     <div class="relative w-full">
                         <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">search</span>
-                        <input type="text" id="live-search-input" onkeyup="filterLiveItems()" placeholder="Buscar servicio o sede..." class="w-full bg-[#051424]/90 border border-obsidian-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan font-mono transition"/>
+                        <input type="text" id="live-search-input" onkeyup="filterLiveItems()" placeholder="{{ auth()->user()->isUser() ? 'Buscar servicio...' : 'Buscar servicio o sede...' }}" class="w-full bg-[#051424]/90 border border-obsidian-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-obsidian-muted focus:outline-none focus:border-obsidian-cyan font-mono transition"/>
                     </div>
                 </div>
             @else
                 <div class="flex-1"></div>
             @endif
 
-            <!-- SECCIÓN DERECHA: ROL CLÚSTER, ASISTENTE IA, BADGE GLOBAL, RELOJ & PERFIL -->
             <!-- SECCIÓN DERECHA: ROL CLÚSTER, ALERTAS, BATERÍA UPS, ASISTENTE IA, ESTADO GLOBAL, RELOJ & PERFIL -->
             <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                @if(!auth()->user()->isUser())
                 <!-- BADGE INTERACTIVO DE ROL DE CLÚSTER (SOLO ICONO CON TOOLTIP HUD) -->
                 <div class="relative group">
                     <div class="flex items-center justify-center w-8 h-8 rounded-full border cursor-pointer transition-all duration-200 {{ $isClusterDev ? 'bg-purple-950/60 text-purple-300 border-purple-500/50 hover:bg-purple-900/60 shadow-sm shadow-purple-500/20' : ($isClusterSlave ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:bg-amber-900/60 shadow-sm shadow-amber-500/20' : 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/60 shadow-sm shadow-cyan-500/20') }}"
@@ -553,6 +561,7 @@
 
                     <div class="h-6 w-px bg-obsidian-border hidden sm:block"></div>
                 @endif
+                @endif
 
                 <!-- USUARIO EN SESIÓN (Click abre ventana para cerrar sesión y perfil) -->
                 <button type="button" 
@@ -563,7 +572,7 @@
                     <div class="text-right hidden sm:block">
                         <span class="text-xs font-bold text-white block group-hover:text-obsidian-cyan transition truncate max-w-[130px]">{{ Auth::user()->name }}</span>
                         <span class="text-[9px] font-mono text-obsidian-cyan uppercase flex items-center justify-end gap-0.5">
-                            <span>{{ Auth::user()->role === 'admin' ? 'Administrador' : 'Operador' }}</span>
+                            <span>{{ Auth::user()->role === 'admin' ? 'Administrador' : (Auth::user()->role === 'operator' ? 'Operador' : 'Usuario') }}</span>
                             <span class="material-symbols-outlined text-[13px] text-obsidian-cyan/70 group-hover:text-obsidian-cyan group-hover:translate-y-0.5 transition-transform">expand_more</span>
                         </span>
                     </div>
@@ -973,7 +982,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
-                            v5.11.10
+                            v5.13.30
                         </span>
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterDev ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : ($isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40') }}">
                             {{ $isClusterDev ? 'MODO DESARROLLO (SANDBOX)' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)') }}
@@ -1020,7 +1029,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Versión del Sistema:</span>
-                                <span class="text-obsidian-cyan font-bold">v5.11.10</span>
+                                <span class="text-obsidian-cyan font-bold">v5.13.30</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Módulos de la Plataforma:</span>

@@ -441,6 +441,11 @@ class PermissionService
                     'description' => 'Ejecutar instalación desatendida y barridos de subred para despliegue de agentes.',
                     'default_operator' => false,
                 ],
+                'itam.my_devices' => [
+                    'name' => 'Consultar Mis Equipos Asignados',
+                    'description' => 'Ver lista de equipos, hardware complementario y actas asignadas a mi persona.',
+                    'default_operator' => true,
+                ],
             ],
         ],
         'ipam' => [
@@ -515,6 +520,16 @@ class PermissionService
             }
         }
         return $defaults;
+    }
+
+    /**
+     * Retorna la lista de permisos predeterminados para el rol usuario (solo consulta de sus equipos)
+     */
+    public static function getDefaultUserPermissions(): array
+    {
+        return [
+            'itam.my_devices',
+        ];
     }
 
     /**

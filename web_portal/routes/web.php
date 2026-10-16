@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\MaintenanceTicketController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\HelpController;
+use App\Http\Controllers\Admin\MyDevicesController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SshSessionController;
 use App\Http\Controllers\Admin\SyncController;
@@ -130,6 +131,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Perfil de Usuario (Accesible para Administradores y Operadores)
     Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Autoconsulta de Equipos y Actas Asignadas (Para todos los usuarios autenticados)
+    Route::get('my-devices', [MyDevicesController::class, 'index'])->name('my_devices.index');
+    Route::get('my-devices/acta/{assignment}', [MyDevicesController::class, 'downloadActa'])->name('my_devices.acta');
 
     // Manual de Ayuda para Usuarios y Operadores
     Route::get('ayuda', [HelpController::class, 'index'])->name('help.index');
