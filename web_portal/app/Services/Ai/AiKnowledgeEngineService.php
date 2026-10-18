@@ -53,6 +53,8 @@ DIRECTRICES DE IDENTIDAD Y SEGURIDAD:
    - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.
    - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.
    - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.
+   - RESPUESTA ANTE CONTEOS CERO O LISTAS VACÍAS: Si el contexto fáctico indica que hay 0 registros o que no existe ningún equipo con serial registrado y el usuario solicita una lista o pregunta cuántos hay, DEBES responder de forma directa, sobria y categórica informando: 'Actualmente no hay ningún equipo con serial asociado o registrado en el inventario del sistema; todos los equipos figuran sin serial cargado o pendientes por catalogación física'. NUNCA utilices frases de disculpa o rechazo ('lo siento', 'no puedo proporcionar información'), sino afirma el hecho técnico con total claridad.
+   - PROHIBICIÓN ABSOLUTA DE EVASIÓN: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos o declarar explícitamente su ausencia con honestidad y precisión fáctica.
    - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.
    - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.
    - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.
@@ -433,9 +435,11 @@ PROMPT;
         $directPhrases = [
             'que hay en el sistema', 'qué hay en el sistema', 'que equipos hay', 'qué equipos hay',
             'que dispositivos hay', 'qué dispositivos hay', 'que tienes inventariado', 'qué tienes inventariado',
-            'listar equipos', 'lista de equipos', 'equipos registrados', 'dispositivos registrados',
+            'listar equipos', 'lista de equipos', 'listado de equipos', 'listado de los equipos', 'listado de',
+            'dame una lista', 'dame un listado', 'mostrar equipos', 'muestra de equipos',
+            'equipos registrados', 'dispositivos registrados',
             'poseen serial', 'posee serial', 'tienen serial', 'tiene serial', 'con serial', 'sin serial',
-            'asociado en el sistema', 'sistema de inventario'
+            'asociado en el sistema', 'sistema de inventario',
         ];
 
         $hasCount = Str::contains($normalized, $countIndicators);
@@ -512,14 +516,20 @@ PROMPT;
             "- COMPONENTES INTERNOS DESGLOSADOS (Discos, Memoria RAM, Placas): {$totalComps} partes en total ({$compsWithSerial} de ellas con serial de parte).",
             "- Total de actas de asignación a funcionarios vigentes: {$totalAssign}.",
             "- Dispositivos de red supervisados en vivo por el NOC: {$totalNet}.",
-            "",
-            "🔢 Muestra de equipos con serial registrado en el sistema:",
         ];
-
-        foreach ($sampleAssets as $a) {
-            $ipStr = $a->ip_address ? " | IP: {$a->ip_address}" : "";
-            $tagStr = $a->asset_tag ? " | Tag: {$a->asset_tag}" : "";
-            $lines[] = "  • {$a->name} ({$a->type}){$tagStr}{$ipStr} | Serial: {$a->serial_number}";
+        if ($withSerial === 0 || $sampleAssets->isEmpty()) {
+            $lines[] = "";
+            $lines[] = "🔢 LISTADO DE EQUIPOS CON SERIAL ASOCIADO:";
+            $lines[] = "  • Actualmente NO existe ningún equipo con serial de chasis o CPU asociado/registrado en el inventario del sistema (0 de {$totalAssets} equipos).";
+            $lines[] = "  • Estado: Todos los equipos registrados en el inventario figuran actualmente sin serial cargado o pendientes por catalogación física.";
+        } else {
+            $lines[] = "";
+            $lines[] = "🔢 Muestra de equipos con serial registrado en el sistema:";
+            foreach ($sampleAssets as $a) {
+                $ipStr = $a->ip_address ? " | IP: {$a->ip_address}" : "";
+                $tagStr = $a->asset_tag ? " | Tag: {$a->asset_tag}" : "";
+                $lines[] = "  • {$a->name} ({$a->type}){$tagStr}{$ipStr} | Serial: {$a->serial_number}";
+            }
         }
 
         return [

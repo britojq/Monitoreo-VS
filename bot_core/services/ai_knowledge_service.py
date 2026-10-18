@@ -45,6 +45,8 @@ class AiKnowledgeService:
             "   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.\n"
             "   - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.\n"
             "   - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.\n"
+            "   - RESPUESTA ANTE CONTEOS CERO O LISTAS VACÍAS: Si el contexto fáctico indica que hay 0 registros o que no existe ningún equipo con serial registrado y el usuario solicita una lista o pregunta cuántos hay, DEBES responder de forma directa, sobria y categórica informando: 'Actualmente no hay ningún equipo con serial asociado o registrado en el inventario del sistema; todos los equipos figuran sin serial cargado o pendientes por catalogación física'. NUNCA utilices frases de disculpa o rechazo ('lo siento', 'no puedo proporcionar información'), sino afirma el hecho técnico con total claridad.\n"
+            "   - PROHIBICIÓN ABSOLUTA DE EVASIÓN: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos o declarar explícitamente su ausencia con honestidad y precisión fáctica.\n"
             "   - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.\n"
             "   - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.\n"
             "   - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.\n\n"
@@ -434,7 +436,9 @@ class AiKnowledgeService:
         direct_phrases = (
             "que hay en el sistema", "qué hay en el sistema", "que equipos hay", "qué equipos hay",
             "que dispositivos hay", "qué dispositivos hay", "que tienes inventariado", "qué tienes inventariado",
-            "listar equipos", "lista de equipos", "equipos registrados", "dispositivos registrados",
+            "listar equipos", "lista de equipos", "listado de equipos", "listado de los equipos", "listado de",
+            "dame una lista", "dame un listado", "mostrar equipos", "muestra de equipos",
+            "equipos registrados", "dispositivos registrados",
             "poseen serial", "posee serial", "tienen serial", "tiene serial", "con serial", "sin serial",
             "asociado en el sistema", "sistema de inventario"
         )
@@ -524,13 +528,23 @@ class AiKnowledgeService:
             f"- Componentes internos desglosados (Discos, Memoria RAM, Placas): {total_comps} componentes en total ({comps_with_serial} con serial registrado).",
             f"- Total de actas de asignación a funcionarios vigentes: {total_assign}.",
             f"- Dispositivos de red supervisados en vivo por el NOC: {total_net}.",
-            "",
-            "🔢 Muestra de equipos con serial registrado en el sistema:"
         ]
-        for a in sample_assets:
-            ip_str = f" | IP: {a['ip_address']}" if a.get("ip_address") else ""
-            tag_str = f" | Tag: {a['asset_tag']}" if a.get("asset_tag") else ""
-            lines.append(f"  • {a['name']} ({a['type']}){tag_str}{ip_str} | Serial: {a['serial_number']}")
+        if with_serial == 0 or not sample_assets:
+            lines.extend([
+                "",
+                "🔢 LISTADO DE EQUIPOS CON SERIAL ASOCIADO:",
+                f"  • Actualmente NO existe ningún equipo con serial de chasis o CPU asociado/registrado en el inventario del sistema (0 de {total_assets} equipos).",
+                "  • Estado: Todos los equipos registrados en el inventario figuran actualmente sin serial cargado o pendientes por catalogación física."
+            ])
+        else:
+            lines.extend([
+                "",
+                "🔢 Muestra de equipos con serial registrado en el sistema:"
+            ])
+            for a in sample_assets:
+                ip_str = f" | IP: {a['ip_address']}" if a.get("ip_address") else ""
+                tag_str = f" | Tag: {a['asset_tag']}" if a.get("asset_tag") else ""
+                lines.append(f"  • {a['name']} ({a['type']}){tag_str}{ip_str} | Serial: {a['serial_number']}")
 
         return "\n".join(lines), {"type": "census", "name": "Analítica de Inventario"}
 
