@@ -172,7 +172,7 @@ class BotSetting extends Model
                     'ai_web_enabled' => $currentData['ai_web_enabled'] = $parsedVal,
                     'ai_web_updated_at' => $currentData['ai_web_updated_at'] = $parsedVal,
                     'ai_web_updated_by' => $currentData['ai_web_updated_by'] = $parsedVal,
-                    'bot_token' => $currentData['bot_token'] = $parsedVal,
+                    'bot_token' => $currentData['bot_token'] = '[ENCRYPTED_HARDWARE_VAULT]',
                     'owner_id' => $currentData['owner_id'] = $parsedVal,
                     'allowed_user_ids' => $currentData['allowed_user_ids'] = $parsedVal,
                     'allowed_group_ids' => $currentData['allowed_group_ids'] = $parsedVal,

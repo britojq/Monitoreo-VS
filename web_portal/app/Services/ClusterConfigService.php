@@ -28,6 +28,9 @@ class ClusterConfigService
         // Generar token por defecto si está vacío
         if (empty($default['cluster_token'])) {
             $botToken = (string) BotSetting::get('bot_token', 'SecretKey2026');
+            if ($botToken === '[ENCRYPTED_HARDWARE_VAULT]' || empty($botToken)) {
+                $botToken = \App\Services\Security\HardwareVaultService::resolveBotToken() ?: 'SecretKey2026';
+            }
             $default['cluster_token'] = hash('sha256', 'ValleSeco_Cluster_' . $botToken);
             BotSetting::set('cluster_token', $default['cluster_token'], 'cluster', 'Token de Autenticación de Cluster', 'text');
             BotSetting::set('cluster_node_role', $default['node_role'], 'cluster', 'Rol del Nodo en Cluster', 'text');

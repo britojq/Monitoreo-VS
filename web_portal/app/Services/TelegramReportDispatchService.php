@@ -222,29 +222,13 @@ class TelegramReportDispatchService
     protected function loadBotConfig(): array
     {
         $token = (string) (BotSetting::get('bot_token') ?: '');
+        if (empty($token) || $token === '[ENCRYPTED_HARDWARE_VAULT]') {
+            $token = \App\Services\Security\HardwareVaultService::resolveBotToken();
+        }
         $ownerId = (string) (BotSetting::get('owner_id') ?: '38914901');
         $allowedGroups = BotSetting::get('allowed_group_ids');
         $groupId = (!empty($allowedGroups) && is_array($allowedGroups)) ? (string)$allowedGroups[0] : '-1001383163558';
         $proxies = [];
-
-        // Si la base de datos estuviera vacía en el primer arranque, contingencia transparente a config.json
-        if (empty($token)) {
-            $jsonPath = file_exists('/scripts/telegram-admin-bot/config/config.json')
-                ? '/scripts/telegram-admin-bot/config/config.json'
-                : base_path('../config/config.json');
-            if (file_exists($jsonPath)) {
-                $json = json_decode(@file_get_contents($jsonPath), true);
-                if (is_array($json)) {
-                    $token = $json['bot_token'] ?? null;
-                    if (!empty($json['owner_id'])) {
-                        $ownerId = (string)$json['owner_id'];
-                    }
-                    if (!empty($json['allowed_group_ids'][0])) {
-                        $groupId = (string)$json['allowed_group_ids'][0];
-                    }
-                }
-            }
-        }
 
         // Cargar proxies activos directamente desde MariaDB centralizada
         try {

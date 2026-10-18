@@ -127,15 +127,16 @@ def save_config(config_dict: Dict[str, Any] | None = None) -> bool:
             target = load_config()
 
     try:
-        # Garantizar que los valores inmutables permanezcan consistentes en el archivo
-        target["owner_id"] = IMMUTABLE_OWNER_ID
-        target["bot_token"] = IMMUTABLE_BOT_TOKEN
-        target["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
-        target["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
-        target["git_branch"] = IMMUTABLE_GIT_BRANCH
+        # En disco o archivo plano jamás se escribe el token en texto plano (Regla de Oro #13)
+        disk_target = dict(target)
+        disk_target["owner_id"] = IMMUTABLE_OWNER_ID
+        disk_target["bot_token"] = "[ENCRYPTED_HARDWARE_VAULT]"
+        disk_target["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
+        disk_target["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
+        disk_target["git_branch"] = IMMUTABLE_GIT_BRANCH
 
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(target, f, indent=2, ensure_ascii=False)
+            json.dump(disk_target, f, indent=2, ensure_ascii=False)
         logger.info(f"Configuración guardada exitosamente en {CONFIG_PATH}")
         return True
     except Exception as e:

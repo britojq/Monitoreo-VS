@@ -32,29 +32,22 @@ class TelegramTransport implements NotifierInterface
         $dbToken = (string) (BotSetting::get('bot_token') ?: '');
         $dbOwnerId = (string) (BotSetting::get('owner_id') ?: '38914901');
 
-        if (!empty($dbToken)) {
+        if (!empty($dbToken) && $dbToken !== '[ENCRYPTED_HARDWARE_VAULT]') {
             $this->botToken = $dbToken;
+        } else {
+            $this->botToken = \App\Services\Security\HardwareVaultService::resolveBotToken();
         }
+
         if (!empty($dbOwnerId)) {
             $this->targetChats[] = $dbOwnerId;
         }
 
-        // Contingencia transparente a config.json si MariaDB estuviera inicializándose
+        // Contingencia transparente si no se ha resuelto el token ni el destinatario
         if (empty($this->botToken)) {
-            $jsonPath = file_exists('/scripts/telegram-admin-bot/config/config.json')
-                ? '/scripts/telegram-admin-bot/config/config.json'
-                : base_path('../config/config.json');
-            if (file_exists($jsonPath)) {
-                $json = json_decode(@file_get_contents($jsonPath), true);
-                if (is_array($json)) {
-                    if (!empty($json['bot_token'])) {
-                        $this->botToken = (string)$json['bot_token'];
-                    }
-                    if (!empty($json['owner_id']) && empty($this->targetChats)) {
-                        $this->targetChats[] = (string)$json['owner_id'];
-                    }
-                }
-            }
+            $this->botToken = \App\Services\Security\HardwareVaultService::resolveBotToken();
+        }
+        if (empty($this->targetChats)) {
+            $this->targetChats[] = '38914901';
         }
 
         // Cargar proxies activos desde MariaDB centralizada

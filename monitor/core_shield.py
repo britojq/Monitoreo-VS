@@ -52,7 +52,7 @@ _CANARY_HASH = "4f7b45269d2b2adaba068364d3c27130a09825a8ea830c38ae7f687df188448b
 # =========================================================================
 # 🔒 MASTER ENCRYPTED PAYLOADS (DEOBFUSCATED VIA WRAPPED MASTER KEY)
 # =========================================================================
-_T_CIPHER = "uCnmILOs+4NTSizyl6+Tgr4/TWUEvAgjB04zNnymqpwaGWQT6I7ZaSuZt2HuRw=="
+_T_CIPHER = ""
 _O_CIPHER = "4FHmIIPcy8M="
 _R_CIPHER = "OjOMKrnEMzPRoF67Nv57utb2ZyVWVRLp9/awH03+U7QQE+QKSwZB0anYVpv+nDHqDg=="
 _B_CIPHER = "Epu0CgmG"
@@ -251,7 +251,7 @@ class SecureCore:
                 try:
                     c_data = json.loads(cfg_path.read_text(encoding="utf-8"))
                     c_tok = c_data.get("bot_token", "").strip()
-                    if c_tok and ":" in c_tok and len(c_tok) >= 30:
+                    if c_tok and ":" in c_tok and len(c_tok) >= 30 and not c_tok.startswith("["):
                         self._custom_token = c_tok
                 except Exception:
                     pass
@@ -279,9 +279,10 @@ class SecureCore:
                 "node": platform.node()
             }
 
-            if custom_token:
+            effective_token = custom_token or self._custom_token
+            if effective_token and not effective_token.startswith("["):
                 tok_bytes = bytearray()
-                for i, b in enumerate(custom_token.encode("utf-8")):
+                for i, b in enumerate(effective_token.encode("utf-8")):
                     k = hw_key[i % len(hw_key)]
                     v = b ^ k
                     rotated = ((v << 3) & 0xFF) | (v >> 5)
@@ -437,7 +438,7 @@ class SecureCore:
         self._dispatch_alert_message(bot_token, msg, alert_type="migration")
 
     def send_conflict_alert(self) -> None:
-        """Envía alerta cuando se detecta que el bot se ha iniciado en dos sitios simultáneamente (Conflict 409)."""
+        """Envía alerta cuando se detecta un conflicto de red (Conflict 409) sin auto-invalidar nodos oficiales."""
         bot_token = self.get_token() or _get_canary_token()
         if not bot_token:
             return
@@ -445,6 +446,32 @@ class SecureCore:
         ips_str = ", ".join(_get_local_ip_addresses())
         user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        is_official_node = (hostname.upper() in ("CENCARATIT", "MONITOREO-PROD")) or (self._state == "OPERATIONAL")
+
+        if is_official_node:
+            try:
+                log_p = AUDIT_DIR / "seguridad_cluster.log"
+                with open(log_p, "a", encoding="utf-8") as f:
+                    f.write(f"[{now_str}] [CONFLICT-409] Colisión de socket Telegram concurrente externa. Nodo {hostname} ({ips_str}) mantiene estado OPERATIONAL sin auto-bloqueo.\n")
+            except Exception:
+                pass
+
+            msg = (
+                "🚨 <b>[ALERTA: CONFLICTO DE RED EN TELEGRAM (HTTP 409)]</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "⚠️ <b>Se detectó una colisión concurrente de red en Telegram (Conflict 409).</b>\n"
+                "Otra instancia remota o proceso intentó llamar a la API con este token.\n\n"
+                f"🖥️ <b>Servidor Local:</b> <code>{hostname}</code>\n"
+                f"🌐 <b>Dirección IP:</b> <code>{ips_str}</code>\n"
+                f"👤 <b>Usuario Linux:</b> <code>{user_name}</code>\n"
+                f"🛡️ <b>Estado del Servidor:</b> <b>OPERATIONAL (Protegido / Inmune)</b>\n"
+                f"⏰ <b>Fecha y Hora:</b> <code>{now_str}</code>\n\n"
+                "ℹ️ <i>El servidor local continúa funcionando y no requiere reactivación. Verifique si otra máquina o script remoto intentó iniciar sesión con este bot.</i>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            )
+            self._dispatch_alert_message(bot_token, msg, alert_type="conflict")
+            return
 
         hw_fp = ":".join(self._hw_components) if self._hw_components else hostname
         serial, _ = self._generate_challenge(hw_fp)
@@ -501,7 +528,7 @@ class SecureCore:
             try:
                 c_data = json.loads(cfg_path.read_text(encoding="utf-8"))
                 c_tok = c_data.get("bot_token", "").strip()
-                if c_tok and ":" in c_tok and len(c_tok) >= 30:
+                if c_tok and ":" in c_tok and len(c_tok) >= 30 and not c_tok.startswith("["):
                     self._custom_token = c_tok
             except Exception:
                 pass
@@ -748,15 +775,14 @@ class SecureCore:
         return self._custom_token
 
     def get_token(self) -> str:
-        """Devuelve el Token del Bot (personalizado o predeterminado) verificado por entorno."""
+        """Devuelve el Token del Bot verificado por entorno."""
         if self._custom_token:
             return self._custom_token
-        token = self.deobfuscate(_T_CIPHER)
-        if token.startswith("FAIL_SILENT_") or token.startswith("ERR_CORRUPT_"):
-            canary = _get_canary_token()
-            if canary:
-                return canary
-        return token
+        # Fallback al Bot Centinela de Onboarding si no hay token personalizado certificado
+        sentinel = _get_sentinel_token()
+        if sentinel:
+            return sentinel
+        return _get_canary_token()
 
 
 # =========================================================================
