@@ -44,6 +44,7 @@ class AiKnowledgeService:
             "3. DATOS DE INFRAESTRUCTURA REAL (MARIADB SSOT):\n"
             "   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.\n"
             "   - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.\n"
+            "   - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.\n"
             "   - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.\n"
             "   - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.\n"
             "   - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.\n\n"
@@ -86,6 +87,7 @@ class AiKnowledgeService:
                         updated_entity = ent
 
                 # -------------------------------------------------------------
+                # -------------------------------------------------------------
                 # 2. DOMINIO DE HARDWARE PROFUNDO Y SERIALES (Components/Peripherals)
                 # -------------------------------------------------------------
                 hardware_res = cls._resolve_hardware_and_serials(normalized, user_message, cur, updated_entity)
@@ -96,7 +98,17 @@ class AiKnowledgeService:
                         updated_entity = ent
 
                 # -------------------------------------------------------------
-                # 3. DOMINIO DE TELEMETRÍA, UPTIME Y HORAS APAGADO (Downtime)
+                # 3. DOMINIO ANALÍTICO Y CUANTITATIVO DE INVENTARIO Y SERIALES (RAG Fáctico)
+                # -------------------------------------------------------------
+                analytics_res = cls._resolve_inventory_analytics(normalized, user_message, cur)
+                if analytics_res and not hardware_res:
+                    block, ent = analytics_res
+                    context_blocks.append(block)
+                    if ent and not updated_entity:
+                        updated_entity = ent
+
+                # -------------------------------------------------------------
+                # 4. DOMINIO DE TELEMETRÍA, UPTIME Y HORAS APAGADO (Downtime)
                 # -------------------------------------------------------------
                 uptime_res = cls._resolve_uptime_and_downtime(normalized, user_message, cur, updated_entity)
                 if uptime_res:
@@ -106,28 +118,41 @@ class AiKnowledgeService:
                         updated_entity = ent
 
                 # -------------------------------------------------------------
-                # 4. DOMINIO DE ENERGÍA Y UPS CENTRAL (ups_devices / telemetry)
+                # 5. DOMINIO DE ENERGÍA Y UPS CENTRAL (ups_devices / telemetry)
                 # -------------------------------------------------------------
                 ups_block = cls._resolve_ups_and_power(normalized, cur)
                 if ups_block:
                     context_blocks.append(ups_block)
 
                 # -------------------------------------------------------------
-                # 5. DOMINIO DE PROXIES CORPORATIVOS
+                # 6. DOMINIO DE PROXIES CORPORATIVOS
                 # -------------------------------------------------------------
                 proxy_block = cls._resolve_proxies(normalized, cur)
                 if proxy_block:
                     context_blocks.append(proxy_block)
 
                 # -------------------------------------------------------------
-                # 6. DOMINIO DE SEDES Y CENSO GLOBAL
+                # 7. DOMINIO DE SEDES Y CENSO GLOBAL
                 # -------------------------------------------------------------
                 site_res = cls._resolve_sites_and_census(normalized, cur)
-                if site_res:
+                if site_res and not analytics_res:
                     block, ent = site_res
                     context_blocks.append(block)
                     if ent:
                         updated_entity = ent
+
+                # -------------------------------------------------------------
+                # 8. FALLBACK FÁCTICO: Si consulta sobre el sistema/red y no hubo coincidencia previa
+                # -------------------------------------------------------------
+                if not context_blocks:
+                    infra_kws = ("sistema", "red", "infraestructura", "servidores", "valle seco", "atit", "noc", "monitoreo", "equipos", "dispositivos", "inventario", "seriales")
+                    if any(k in normalized for k in infra_kws):
+                        fallback_res = cls._resolve_inventory_analytics("resumen inventario censo", user_message, cur)
+                        if fallback_res:
+                            block, ent = fallback_res
+                            context_blocks.append(block)
+                            if ent and not updated_entity:
+                                updated_entity = ent
 
         except Exception as e:
             logger.exception(f"Error procesando contexto relacional de MariaDB para IA: {e}")
@@ -392,6 +417,122 @@ class AiKnowledgeService:
                     return "\n".join(lines), {"type": "site", "name": s["name"]}
 
         return None
+
+    @classmethod
+    def _resolve_inventory_analytics(
+        cls,
+        normalized: str,
+        user_message: str,
+        cur: Any
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
+        """
+        Resuelve consultas analíticas, cuantitativas y de agregación sobre el inventario y seriales
+        (ej. cuántos equipos tienen serial, total inventariado, desglose por tipo o componentes).
+        """
+        count_indicators = ("cuant", "cuánt", "total", "cantidad", "numero", "número", "conteo", "censo", "estadistica", "estadística", "resumen")
+        inv_indicators = ("equipo", "equipos", "dispositivo", "dispositivos", "activo", "activos", "inventari", "serial", "seriales", "chasis", "periferico", "periféricos", "componente", "componentes", "switch", "switches", "router", "routers", "impresora", "impresoras", "desktop", "computadora", "computadoras", "pc", "estacion", "estación")
+        direct_phrases = (
+            "que hay en el sistema", "qué hay en el sistema", "que equipos hay", "qué equipos hay",
+            "que dispositivos hay", "qué dispositivos hay", "que tienes inventariado", "qué tienes inventariado",
+            "listar equipos", "lista de equipos", "equipos registrados", "dispositivos registrados",
+            "poseen serial", "posee serial", "tienen serial", "tiene serial", "con serial", "sin serial",
+            "asociado en el sistema", "sistema de inventario"
+        )
+
+        has_count = any(k in normalized for k in count_indicators)
+        has_inv = any(k in normalized for k in inv_indicators)
+        has_direct = any(p in normalized for p in direct_phrases)
+
+        # Si no hay indicios de consulta cuantitativa o de inventario global, ignorar
+        if not ((has_count and has_inv) or has_direct):
+            return None
+
+        # 1. Conteo total de activos físicos en ITAM
+        cur.execute("SELECT count(*) as total FROM inventory_assets")
+        total_assets = cur.fetchone()["total"] or 0
+
+        # 2. Conteo de activos con serial válido en chasis / CPU
+        cur.execute("""
+            SELECT count(*) as with_serial FROM inventory_assets 
+            WHERE serial_number IS NOT NULL 
+              AND TRIM(serial_number) != '' 
+              AND LOWER(TRIM(serial_number)) NOT IN ('sin serial', 'sin serial en chasis', 's/s', 'n/a', 'none', 'null')
+        """)
+        with_serial = cur.fetchone()["with_serial"] or 0
+        without_serial = max(0, total_assets - with_serial)
+        pct_serial = round((with_serial / total_assets * 100), 1) if total_assets > 0 else 0.0
+
+        # 3. Desglose de activos por tipo de hardware
+        cur.execute("SELECT type, count(*) as count FROM inventory_assets GROUP BY type ORDER BY count DESC")
+        types_rows = cur.fetchall()
+        type_names = {
+            "desktop": "computadoras de escritorio / PCs",
+            "printer": "impresoras de red",
+            "switch": "switches de comunicación",
+            "router": "routers de borde / WAN",
+            "server": "servidores corporativos",
+            "ip_phone": "teléfonos IP",
+            "firewall": "firewalls perimetrales"
+        }
+        types_breakdown = ", ".join([f"{r['count']} {type_names.get(r['type'], r['type'])}" for r in types_rows])
+
+        # 4. Periféricos asociados y sus seriales (Monitores, UPS, Impresoras)
+        cur.execute("""
+            SELECT count(*) as total, 
+                   sum(CASE WHEN serial_number IS NOT NULL AND TRIM(serial_number) != '' AND LOWER(TRIM(serial_number)) NOT IN ('sin serial', 's/s', 'n/a', 'none') THEN 1 ELSE 0 END) as with_ser 
+            FROM inventory_peripherals
+        """)
+        p_row = cur.fetchone() or {}
+        total_periphs = p_row.get("total") or 0
+        periphs_with_serial = int(p_row.get("with_ser") or 0)
+
+        # 5. Componentes internos y sus seriales (RAM, Discos)
+        cur.execute("""
+            SELECT count(*) as total, 
+                   sum(CASE WHEN serial_number IS NOT NULL AND TRIM(serial_number) != '' AND LOWER(TRIM(serial_number)) NOT IN ('sin serial', 's/s', 'n/a', 'none') THEN 1 ELSE 0 END) as with_ser 
+            FROM inventory_components
+        """)
+        c_row = cur.fetchone() or {}
+        total_comps = c_row.get("total") or 0
+        comps_with_serial = int(c_row.get("with_ser") or 0)
+
+        # 6. Actas y red
+        cur.execute("SELECT count(*) as total FROM inventory_assignments WHERE status = 'active'")
+        total_assign = cur.fetchone()["total"] or 0
+        cur.execute("SELECT count(*) as total FROM monitored_network_devices WHERE is_active = 1")
+        total_net = cur.fetchone()["total"] or 0
+
+        # 7. Muestra de equipos con serial registrado
+        cur.execute("""
+            SELECT name, type, serial_number, asset_tag, ip_address 
+            FROM inventory_assets 
+            WHERE serial_number IS NOT NULL 
+              AND TRIM(serial_number) != '' 
+              AND LOWER(TRIM(serial_number)) NOT IN ('sin serial', 'sin serial en chasis', 's/s', 'n/a', 'none', 'null')
+            ORDER BY name ASC
+            LIMIT 12
+        """)
+        sample_assets = cur.fetchall()
+
+        lines = [
+            "📊 ANALÍTICA Y CENSO FÁCTICO DE INVENTARIO Y SERIALES (MariaDB SSOT):",
+            f"- Total de dispositivos físicos inventariados en el sistema (ITAM): {total_assets} equipos.",
+            f"- Equipos con serial de chasis/CPU registrado: {with_serial} equipos ({pct_serial}% del inventario de activos).",
+            f"- Equipos sin serial de chasis (o pendientes por asignación física): {without_serial} equipos.",
+            f"- Desglose por tipo de hardware: {types_breakdown}.",
+            f"- Periféricos asociados en inventario (Monitores, UPS, teclados, etc.): {total_periphs} periféricos en total ({periphs_with_serial} con serial registrado).",
+            f"- Componentes internos desglosados (Discos, Memoria RAM, Placas): {total_comps} componentes en total ({comps_with_serial} con serial registrado).",
+            f"- Total de actas de asignación a funcionarios vigentes: {total_assign}.",
+            f"- Dispositivos de red supervisados en vivo por el NOC: {total_net}.",
+            "",
+            "🔢 Muestra de equipos con serial registrado en el sistema:"
+        ]
+        for a in sample_assets:
+            ip_str = f" | IP: {a['ip_address']}" if a.get("ip_address") else ""
+            tag_str = f" | Tag: {a['asset_tag']}" if a.get("asset_tag") else ""
+            lines.append(f"  • {a['name']} ({a['type']}){tag_str}{ip_str} | Serial: {a['serial_number']}")
+
+        return "\n".join(lines), {"type": "census", "name": "Analítica de Inventario"}
 
     @classmethod
     def _resolve_uptime_and_downtime(

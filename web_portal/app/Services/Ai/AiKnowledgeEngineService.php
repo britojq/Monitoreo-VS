@@ -52,6 +52,7 @@ DIRECTRICES DE IDENTIDAD Y SEGURIDAD:
 3. DATOS DE INFRAESTRUCTURA REAL (MARIADB SSOT):
    - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.
    - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.
+   - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.
    - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.
    - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.
    - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.
@@ -94,7 +95,16 @@ PROMPT;
             }
         }
 
-        // 3. Dominio de Telemetría, Uptime y Horas Apagado (Downtime)
+        // 3. Dominio Analítico y Cuantitativo de Inventario y Seriales (RAG Fáctico)
+        $analyticsRes = $this->resolveInventoryAnalytics($normalized, $userMessage);
+        if ($analyticsRes && !$hardwareRes) {
+            $contextBlocks[] = $analyticsRes['text'];
+            if (!empty($analyticsRes['entity']) && empty($updatedEntity)) {
+                $updatedEntity = $analyticsRes['entity'];
+            }
+        }
+
+        // 4. Dominio de Telemetría, Uptime y Horas Apagado (Downtime)
         $uptimeRes = $this->resolveUptimeDowntime($normalized, $userMessage, $updatedEntity);
         if ($uptimeRes) {
             $contextBlocks[] = $uptimeRes['text'];
@@ -103,24 +113,38 @@ PROMPT;
             }
         }
 
-        // 4. Dominio de Energía y Respaldo Eléctrico (UPS)
+        // 5. Dominio de Energía y Respaldo Eléctrico (UPS)
         $upsBlock = $this->resolveUpsPower($normalized);
         if ($upsBlock) {
             $contextBlocks[] = $upsBlock;
         }
 
-        // 5. Dominio de Proxies Corporativos
+        // 6. Dominio de Proxies Corporativos
         $proxyBlock = $this->resolveProxies($normalized);
         if ($proxyBlock) {
             $contextBlocks[] = $proxyBlock;
         }
 
-        // 6. Dominio de Sedes y Censo Global
+        // 7. Dominio de Sedes y Censo Global
         $siteRes = $this->resolveSitesAndCensus($normalized);
-        if ($siteRes) {
+        if ($siteRes && !$analyticsRes) {
             $contextBlocks[] = $siteRes['text'];
             if (!empty($siteRes['entity'])) {
                 $updatedEntity = $siteRes['entity'];
+            }
+        }
+
+        // 8. Fallback Fáctico Basal: Si consulta sobre el sistema/red y no hubo coincidencia previa
+        if (empty($contextBlocks)) {
+            $infraKws = ['sistema', 'red', 'infraestructura', 'servidores', 'valle seco', 'atit', 'noc', 'monitoreo', 'equipos', 'dispositivos', 'inventario', 'seriales'];
+            if (Str::contains($normalized, $infraKws)) {
+                $fallbackRes = $this->resolveInventoryAnalytics('resumen inventario censo', $userMessage);
+                if ($fallbackRes) {
+                    $contextBlocks[] = $fallbackRes['text'];
+                    if (!empty($fallbackRes['entity']) && empty($updatedEntity)) {
+                        $updatedEntity = $fallbackRes['entity'];
+                    }
+                }
             }
         }
 
@@ -394,6 +418,114 @@ PROMPT;
         }
 
         return null;
+    }
+
+    /**
+     * Resuelve consultas analíticas, cuantitativas y de agregación sobre el inventario y seriales
+     * (ej. cuántos equipos tienen serial, total inventariado, desglose por tipo o componentes).
+     *
+     * @return array{text: string, entity: ?array<string, mixed>}|null
+     */
+    protected function resolveInventoryAnalytics(string $normalized, string $userMessage): ?array
+    {
+        $countIndicators = ['cuant', 'cuánt', 'total', 'cantidad', 'numero', 'número', 'conteo', 'censo', 'estadistica', 'estadística', 'resumen'];
+        $invIndicators = ['equipo', 'equipos', 'dispositivo', 'dispositivos', 'activo', 'activos', 'inventari', 'serial', 'seriales', 'chasis', 'periferico', 'periféricos', 'componente', 'componentes', 'switch', 'switches', 'router', 'routers', 'impresora', 'impresoras', 'desktop', 'computadora', 'computadoras', 'pc', 'estacion', 'estación'];
+        $directPhrases = [
+            'que hay en el sistema', 'qué hay en el sistema', 'que equipos hay', 'qué equipos hay',
+            'que dispositivos hay', 'qué dispositivos hay', 'que tienes inventariado', 'qué tienes inventariado',
+            'listar equipos', 'lista de equipos', 'equipos registrados', 'dispositivos registrados',
+            'poseen serial', 'posee serial', 'tienen serial', 'tiene serial', 'con serial', 'sin serial',
+            'asociado en el sistema', 'sistema de inventario'
+        ];
+
+        $hasCount = Str::contains($normalized, $countIndicators);
+        $hasInv = Str::contains($normalized, $invIndicators);
+        $hasDirect = Str::contains($normalized, $directPhrases);
+
+        if (! (($hasCount && $hasInv) || $hasDirect)) {
+            return null;
+        }
+
+        // 1. Conteo total de activos físicos en ITAM
+        $totalAssets = InventoryAsset::count();
+
+        // 2. Conteo de activos con serial válido en chasis / CPU
+        $withSerial = InventoryAsset::whereNotNull('serial_number')
+            ->whereRaw("TRIM(serial_number) != ''")
+            ->whereRaw("LOWER(TRIM(serial_number)) NOT IN ('sin serial', 'sin serial en chasis', 's/s', 'n/a', 'none', 'null')")
+            ->count();
+        $withoutSerial = max(0, $totalAssets - $withSerial);
+        $pctSerial = $totalAssets > 0 ? round(($withSerial / $totalAssets * 100), 1) : 0.0;
+
+        // 3. Desglose de activos por tipo de hardware
+        $typeRows = InventoryAsset::selectRaw('type, count(*) as count')
+            ->groupBy('type')
+            ->orderByDesc('count')
+            ->get();
+        $typeNames = [
+            'desktop' => 'computadoras de escritorio / PCs',
+            'printer' => 'impresoras de red',
+            'switch' => 'switches de comunicación',
+            'router' => 'routers de borde / WAN',
+            'server' => 'servidores corporativos',
+            'ip_phone' => 'teléfonos IP',
+            'firewall' => 'firewalls perimetrales',
+        ];
+        $typesBreakdown = $typeRows->map(function ($r) use ($typeNames) {
+            $name = $typeNames[$r->type] ?? $r->type;
+            return "{$r->count} {$name}";
+        })->implode(', ');
+
+        // 4. Periféricos asociados y sus seriales (Monitores, UPS, Impresoras)
+        $totalPeriphs = InventoryPeripheral::count();
+        $periphsWithSerial = InventoryPeripheral::whereNotNull('serial_number')
+            ->whereRaw("TRIM(serial_number) != ''")
+            ->whereRaw("LOWER(TRIM(serial_number)) NOT IN ('sin serial', 's/s', 'n/a', 'none')")
+            ->count();
+
+        // 5. Componentes internos y sus seriales (RAM, Discos)
+        $totalComps = InventoryComponent::count();
+        $compsWithSerial = InventoryComponent::whereNotNull('serial_number')
+            ->whereRaw("TRIM(serial_number) != ''")
+            ->whereRaw("LOWER(TRIM(serial_number)) NOT IN ('sin serial', 's/s', 'n/a', 'none')")
+            ->count();
+
+        // 6. Actas y red
+        $totalAssign = InventoryAssignment::where('status', 'active')->count();
+        $totalNet = MonitoredNetworkDevice::where('is_active', true)->count();
+
+        // 7. Muestra de equipos con serial registrado
+        $sampleAssets = InventoryAsset::whereNotNull('serial_number')
+            ->whereRaw("TRIM(serial_number) != ''")
+            ->whereRaw("LOWER(TRIM(serial_number)) NOT IN ('sin serial', 'sin serial en chasis', 's/s', 'n/a', 'none', 'null')")
+            ->orderBy('name', 'asc')
+            ->limit(12)
+            ->get();
+
+        $lines = [
+            "📊 ANALÍTICA Y CENSO FÁCTICO DE INVENTARIO Y SERIALES (MariaDB SSOT):",
+            "- TOTAL DE EQUIPOS FÍSICOS EN INVENTARIO (ITAM): {$totalAssets} equipos.",
+            "- EQUIPOS CON SERIAL DE CHASIS / CPU: {$withSerial} equipos poseen serial registrado ({$pctSerial}% del inventario de activos).",
+            "- EQUIPOS SIN SERIAL DE CHASIS (o pendientes por asignación física): {$withoutSerial} equipos.",
+            "- DESGLOSE POR TIPO DE HARDWARE: {$typesBreakdown}.",
+            "- HARDWARE COMPLEMENTARIO Y PERIFÉRICOS (Monitores, UPS, etc.): {$totalPeriphs} periféricos en total ({$periphsWithSerial} de ellos con serial de fabricante).",
+            "- COMPONENTES INTERNOS DESGLOSADOS (Discos, Memoria RAM, Placas): {$totalComps} partes en total ({$compsWithSerial} de ellas con serial de parte).",
+            "- Total de actas de asignación a funcionarios vigentes: {$totalAssign}.",
+            "- Dispositivos de red supervisados en vivo por el NOC: {$totalNet}.",
+            "",
+            "🔢 Muestra de equipos con serial registrado en el sistema:",
+        ];
+
+        foreach ($sampleAssets as $a) {
+            $ipStr = $a->ip_address ? " | IP: {$a->ip_address}" : "";
+            $tagStr = $a->asset_tag ? " | Tag: {$a->asset_tag}" : "";
+            $lines[] = "  • {$a->name} ({$a->type}){$tagStr}{$ipStr} | Serial: {$a->serial_number}";
+        }
+
+        return [
+            'text' => implode("\n", $lines),
+            'entity' => ['type' => 'census', 'name' => 'Analítica de Inventario'],
+        ];
     }
 
     /**
