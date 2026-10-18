@@ -447,7 +447,7 @@ class SecureCore:
         user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        is_official_node = (hostname.upper() in ("CENCARATIT", "MONITOREO-PROD")) or (self._state == "OPERATIONAL")
+        is_official_node = (hostname.upper() in ("CENCARATIT", "MONITOREO-PROD", "MONITOREO-VS")) or (self._state == "OPERATIONAL")
 
         if is_official_node:
             try:
