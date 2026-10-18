@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AiChatController extends Controller
 {
@@ -83,10 +84,13 @@ class AiChatController extends Controller
         $roleName = ($user->role === 'admin' || $user->role === 'SuperAdmin') ? 'Administrador' : 'Operador ATIT';
         $systemPrompt = $this->knowledgeEngine->getSystemPrompt($user->name, $roleName);
 
-        // Resolver contexto fáctico de infraestructura (proxies, conteo de equipos, seriales)
-        $systemContext = $this->knowledgeEngine->resolveSystemContext($userMessage);
-        if ($systemContext) {
-            $systemPrompt .= "\n\n" . $systemContext;
+        // Resolver contexto fáctico de infraestructura con memoria anafórica de entidad activa
+        $resolved = $this->knowledgeEngine->resolveSystemContext($userMessage, session('ai_active_entity'));
+        if (!empty($resolved['context'])) {
+            $systemPrompt .= "\n\n" . $resolved['context'];
+        }
+        if (!empty($resolved['active_entity'])) {
+            session(['ai_active_entity' => $resolved['active_entity']]);
         }
 
         $messages = [];
@@ -95,11 +99,28 @@ class AiChatController extends Controller
             'content' => $systemPrompt,
         ];
 
-        // Añadir historial previo si se proporciona
+        // Función de detección de declinaciones / negativas previas para no contaminar el historial
+        $isRefusal = function (string $text): bool {
+            $norm = Str::lower($text);
+            return Str::contains($norm, [
+                'no tengo capacidad',
+                'no puedo responder',
+                'no dispongo de información',
+                'declino responder',
+                'realiza tu consulta en google',
+                'google.com',
+                'lo siento, el motor local',
+                'ocurrió un error',
+                'no pude conectar',
+                'tardó demasiado',
+            ]);
+        };
+
+        // Añadir historial previo higienizado (CERO negativas previas para evitar el Refusal Trap)
         if (!empty($validated['history'])) {
             foreach ($validated['history'] as $item) {
-                if ($item['role'] === 'system') {
-                    continue; // Evitar sobreescribir el system prompt fresco
+                if ($item['role'] === 'system' || $isRefusal($item['content'])) {
+                    continue; // Excluir system prompts repetidos y respuestas de rechazo
                 }
                 $messages[] = [
                     'role' => $item['role'],
@@ -115,7 +136,7 @@ class AiChatController extends Controller
             'content' => $sanitizedUserText,
         ];
 
-        // 5. Enviar petición a Ollama local
+        // 5. Enviar petición al motor local de IA
         try {
             $ollamaUrl = config('services.ollama.url', 'http://127.0.0.1:11434/api/chat');
             $ollamaModel = config('services.ollama.model', 'qwen-empresa');
@@ -137,9 +158,12 @@ class AiChatController extends Controller
                     $reply = 'No se obtuvo una respuesta válida del motor de IA.';
                 }
 
+                $isNegative = $isRefusal($reply);
+
                 return response()->json([
                     'success' => true,
                     'reply' => $reply,
+                    'dont_retain_history' => $isNegative,
                 ]);
             }
 
@@ -221,4 +245,17 @@ EOT;
         $text = preg_replace('/\b(04\d{2}|4\d{2})[- ]?\d{7}\b/', '[TLF. OCULTO]', $text);
         return $text;
     }
+
+    /**
+     * Reiniciar historial y memoria anafórica de la sesión web
+     */
+    public function reset(): JsonResponse
+    {
+        session()->forget(['ai_chat_history', 'ai_active_entity']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Historial y memoria conversacional reiniciados con éxito.',
+        ]);
+    }
 }
+

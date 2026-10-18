@@ -184,12 +184,33 @@ def append_to_history(context: ContextTypes.DEFAULT_TYPE, role: str, content: st
         context.chat_data["history"] = history[-max_history:]
 
 
-def _build_ollama_messages(user_text: str, history: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """Construye la lista de mensajes para enviar al motor local de IA con System Prompt y MariaDB SSOT."""
+def _is_negative_or_refusal(text: str) -> bool:
+    """Detecta si una respuesta fue una declinación o fallo para no contaminar el historial."""
+    normalized = (text or "").lower()
+    refusal_patterns = (
+        "no tengo capacidad",
+        "no puedo responder",
+        "no dispongo de información",
+        "declino responder",
+        "realiza tu consulta en google",
+        "google.com",
+        "lo siento, el motor local",
+        "ocurrió un error",
+        "no pude conectar",
+        "tardó demasiado",
+    )
+    return any(p in normalized for p in refusal_patterns)
+
+
+def _build_ollama_messages(
+    user_text: str,
+    history: List[Dict[str, str]],
+    active_entity: Optional[Dict[str, Any]] = None
+) -> Tuple[List[Dict[str, str]], Optional[Dict[str, Any]]]:
+    """Construye la lista de mensajes para enviar al motor local de IA con System Prompt, MariaDB SSOT y memoria anafórica."""
     from bot_core.services.ai_knowledge_service import AiKnowledgeService
 
     messages = []
-    cfg = _get_active_config()
 
     # 1. System Prompt oficial con delimitación de dominio técnico y guardrails
     system_prompt = AiKnowledgeService.get_system_prompt()
@@ -198,8 +219,8 @@ def _build_ollama_messages(user_text: str, history: List[Dict[str, str]]) -> Lis
         "content": system_prompt
     })
 
-    # 2. Inyección de contexto fáctico en tiempo real desde MariaDB (SSOT)
-    dynamic_context = AiKnowledgeService.resolve_system_context(user_text)
+    # 2. Inyección de contexto fáctico en tiempo real desde MariaDB (SSOT) con resolución anafórica
+    dynamic_context, updated_entity = AiKnowledgeService.resolve_system_context(user_text, active_entity)
     if dynamic_context:
         messages.append({
             "role": "system",
@@ -216,20 +237,26 @@ def _build_ollama_messages(user_text: str, history: List[Dict[str, str]]) -> Lis
         "content": user_text
     })
 
-    return messages
+    return messages, updated_entity
 
 
-def _ask_ollama_sync(user_text: str, history: List[Dict[str, str]]) -> str:
+def _ask_ollama_sync(
+    user_text: str,
+    history: List[Dict[str, str]],
+    active_entity: Optional[Dict[str, Any]] = None
+) -> Tuple[str, Optional[Dict[str, Any]]]:
     """Consulta sincrónica al motor local de inferencia. Se ejecuta en un hilo para no bloquear el bot."""
     cfg = _get_active_config()
     base_url = str(cfg.get("ollama_base_url", "http://localhost:11434")).rstrip("/")
     model = cfg.get("ollama_model", "qwen-empresa")
     timeout = int(cfg.get("ollama_timeout", 180))
 
+    messages, updated_entity = _build_ollama_messages(user_text, history, active_entity)
+
     payload = {
         "model": model,
         "stream": False,
-        "messages": _build_ollama_messages(user_text, history),
+        "messages": messages,
         "options": {
             "temperature": float(cfg.get("ollama_temperature", 0.3)),
             "num_ctx": int(cfg.get("ollama_num_ctx", 4096))
@@ -255,14 +282,18 @@ def _ask_ollama_sync(user_text: str, history: List[Dict[str, str]]) -> str:
     content = (content or "").strip()
 
     if not content:
-        return "Lo siento, el motor local de IA no devolvió respuesta."
+        return "Lo siento, el motor local de IA no devolvió respuesta.", updated_entity
 
-    return content
+    return content, updated_entity
 
 
-async def ask_ollama_async(user_text: str, history: List[Dict[str, str]]) -> str:
-    """Consulta asíncrona al motor local de IA."""
-    return await asyncio.to_thread(_ask_ollama_sync, user_text, history)
+async def ask_ollama_async(
+    user_text: str,
+    history: List[Dict[str, str]],
+    active_entity: Optional[Dict[str, Any]] = None
+) -> Tuple[str, Optional[Dict[str, Any]]]:
+    """Consulta asíncrona al motor local de IA con memoria de entidad activa."""
+    return await asyncio.to_thread(_ask_ollama_sync, user_text, history, active_entity)
 
 
 async def handle_dynamic_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -377,8 +408,9 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     context.chat_data.pop("history", None)
+    context.chat_data.pop("active_entity", None)
     if update.message:
-        await update.message.reply_text("✅ Historial de conversación reiniciado.")
+        await update.message.reply_text("✅ Historial de conversación y memoria activa reiniciados.")
 
 
 async def _animate_waiting_message(bot: Any, chat_id: int, message_obj: Any, stop_event: asyncio.Event) -> None:
@@ -439,10 +471,13 @@ async def _execute_chat_pipeline(update: Update, context: ContextTypes.DEFAULT_T
         logger.warning(f"No se pudo enviar el mensaje inicial de espera: {e}")
 
     history = context.chat_data.get("history", [])
+    active_entity = context.chat_data.get("active_entity")
     success = False
 
     try:
-        answer = await ask_ollama_async(user_text, history)
+        answer, updated_entity = await ask_ollama_async(user_text, history, active_entity)
+        if updated_entity:
+            context.chat_data["active_entity"] = updated_entity
         success = True
 
     except requests.exceptions.Timeout:
@@ -487,8 +522,11 @@ async def _execute_chat_pipeline(update: Update, context: ContextTypes.DEFAULT_T
                 pass
 
     if success:
-        append_to_history(context, "user", user_text)
-        append_to_history(context, "assistant", answer)
+        if not _is_negative_or_refusal(answer):
+            append_to_history(context, "user", user_text)
+            append_to_history(context, "assistant", answer)
+        else:
+            logger.info("Respuesta de declinación/rechazo omitida del historial para prevenir sesgo de repetición negativa.")
 
     formatted_answer = markdown_to_telegram_html(answer)
 

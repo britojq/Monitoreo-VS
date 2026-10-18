@@ -982,7 +982,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
-                            v5.15.20
+                            v5.16.30
                         </span>
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterDev ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : ($isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40') }}">
                             {{ $isClusterDev ? 'MODO DESARROLLO (SANDBOX)' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)') }}
@@ -1029,7 +1029,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Versión del Sistema:</span>
-                                <span class="text-obsidian-cyan font-bold">v5.15.20</span>
+                                <span class="text-obsidian-cyan font-bold">v5.16.30</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Módulos de la Plataforma:</span>

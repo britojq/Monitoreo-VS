@@ -103,6 +103,7 @@ Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->nam
 // --- ASISTENTE IA (Estrictamente Protegido por Autenticación) ---
 Route::middleware(['auth'])->group(function () {
     Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
+    Route::post('/ai/reset', [AiChatController::class, 'reset'])->name('ai.reset');
 });
 
 // --- PANEL ADMINISTRATIVO (Requiere Autenticación) ---

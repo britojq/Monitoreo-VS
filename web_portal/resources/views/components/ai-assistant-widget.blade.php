@@ -163,8 +163,22 @@
         }
     }
 
-    function resetAiChatHistory() {
+    async function resetAiChatHistory() {
         aiChatHistory = [];
+        try {
+            const tokenEl = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+            await fetch("{{ route('ai.reset') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+        } catch (e) {}
+
         const container = document.getElementById('ai-drawer-messages');
         if (container) {
             container.innerHTML = `
@@ -222,10 +236,13 @@
 
             if (response.ok && data.success) {
                 appendAssistantMessage(data.reply);
-                aiChatHistory.push({ role: 'user', content: messageText });
-                aiChatHistory.push({ role: 'assistant', content: data.reply });
-                if (aiChatHistory.length > 10) {
-                    aiChatHistory = aiChatHistory.slice(-10);
+                // Si la respuesta fue de rechazo, no se guarda en el historial para evitar contaminación contextual
+                if (!data.dont_retain_history) {
+                    aiChatHistory.push({ role: 'user', content: messageText });
+                    aiChatHistory.push({ role: 'assistant', content: data.reply });
+                    if (aiChatHistory.length > 10) {
+                        aiChatHistory = aiChatHistory.slice(-10);
+                    }
                 }
             } else {
                 const errMsg = data.error || 'Ocurrió un error al procesar tu consulta con el motor de IA.';
