@@ -139,10 +139,16 @@ fi
 # ------------------------------------------------------------------------------
 log "${BOLD}▶ FASE 4: Sincronizando portal web hacia '$WEB_DIR'...${NC}"
 sudo rsync -av --delete \
+    --filter='protect vendor' \
+    --filter='protect vendor/***' \
+    --filter='protect .env' \
+    --filter='protect storage' \
+    --filter='protect storage/***' \
     --exclude='.env' \
     --exclude='storage/' \
     --exclude='database/database.sqlite' \
     --exclude='node_modules/' \
+    --exclude='vendor' \
     --exclude='vendor/' \
     "$BASE_DIR/web_portal/" "$WEB_DIR/"
 
@@ -192,9 +198,16 @@ if [ "$SMOKE_OK" = "false" ]; then
     log "${RED}🚨 SMOKE TEST FALLIDO. INICIANDO AUTO-ROLLBACK PREVENTIVO...${NC}"
     git reset --hard "$PREV_COMMIT"
     sudo rsync -av --delete \
+        --filter='protect vendor' \
+        --filter='protect vendor/***' \
+        --filter='protect .env' \
+        --filter='protect storage' \
+        --filter='protect storage/***' \
         --exclude='.env' \
         --exclude='storage/' \
         --exclude='database/database.sqlite' \
+        --exclude='node_modules/' \
+        --exclude='vendor' \
         --exclude='vendor/' \
         "$BASE_DIR/web_portal/" "$WEB_DIR/"
     if [ -n "$BACKUP_PATH" ] && [ -f "$BACKUP_PATH" ]; then

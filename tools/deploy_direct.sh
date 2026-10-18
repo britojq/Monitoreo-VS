@@ -69,6 +69,21 @@ log "Comprobando acceso SSH hacia '${REMOTE_HOST}'..."
 ssh -o BatchMode=yes -o ConnectTimeout=5 "$REMOTE_HOST" "echo SSH_OK" >/dev/null 2>&1 || fail "No se pudo conectar vía SSH a '${REMOTE_HOST}'."
 log "${GREEN}✓ Conectividad SSH establecida con éxito.${NC}"
 
+# 4. Comprobar y sanear librerías vendor en el servidor remoto
+log "Comprobando dependencias (vendor) en el servidor remoto..."
+ssh "$REMOTE_HOST" "
+    if [ -L '$REMOTE_WEB_DIR/vendor' ] && [ ! -f '$REMOTE_WEB_DIR/vendor/autoload.php' ]; then
+        echo 'Eliminando symlink roto de vendor...'
+        sudo rm -f '$REMOTE_WEB_DIR/vendor'
+    fi
+"
+REMOTE_VENDOR_OK=$(ssh "$REMOTE_HOST" "[ -f '$REMOTE_WEB_DIR/vendor/autoload.php' ] && echo 'YES' || echo 'NO'")
+if [ "$REMOTE_VENDOR_OK" != "YES" ]; then
+    log "${YELLOW}Dependencias 'vendor' no encontradas o dañadas en Producción. Transfiriendo librerías (95 MB)...${NC}"
+    rsync -avzL --rsync-path="sudo rsync" "$LOCAL_WEB_DIR/vendor/" "${REMOTE_HOST}:$REMOTE_WEB_DIR/vendor/"
+    log "${GREEN}✓ Dependencias 'vendor' transferidas e inicializadas con éxito.${NC}"
+fi
+
 # ------------------------------------------------------------------------------
 # FASE 1: ACTIVACIÓN OBLIGATORIA DEL MODO MANTENIMIENTO (REGLA DE ORO #4.3)
 # ------------------------------------------------------------------------------
@@ -101,17 +116,23 @@ log "${BOLD}▶ FASE 3: Sincronizando código limpio vía rsync (Inmutabilidad p
 
 # A. Portal Web (/var/www/monitoreo)
 log "Sincronizando portal web hacia '$REMOTE_HOST:$REMOTE_WEB_DIR'..."
-rsync -avz --delete \
+rsync -avz --delete --rsync-path="sudo rsync" \
+    --filter='protect vendor' \
+    --filter='protect vendor/***' \
+    --filter='protect .env' \
+    --filter='protect storage' \
+    --filter='protect storage/***' \
     --exclude='.env' \
     --exclude='storage/' \
     --exclude='database/database.sqlite' \
     --exclude='node_modules/' \
+    --exclude='vendor' \
     --exclude='vendor/' \
     "$LOCAL_WEB_DIR/" "${REMOTE_HOST}:$REMOTE_WEB_DIR/"
 
 # B. Demonios y scripts Python (/scripts/telegram-admin-bot)
 log "Sincronizando demonios y scripts hacia '$REMOTE_HOST:$REMOTE_BOT_DIR'..."
-rsync -avz \
+rsync -avz --rsync-path="sudo rsync" \
     --exclude='config/config.json' \
     --exclude='.sys_anchor' \
     --exclude='audit/' \
@@ -137,10 +158,10 @@ ssh "$REMOTE_HOST" "
     sudo php $REMOTE_WEB_DIR/artisan migrate --force
 
     echo '--> Purgando todas las cachés de Laravel...'
-    php $REMOTE_WEB_DIR/artisan view:clear
-    php $REMOTE_WEB_DIR/artisan route:clear
-    php $REMOTE_WEB_DIR/artisan cache:clear
-    php $REMOTE_WEB_DIR/artisan config:clear
+    sudo php $REMOTE_WEB_DIR/artisan view:clear
+    sudo php $REMOTE_WEB_DIR/artisan route:clear
+    sudo php $REMOTE_WEB_DIR/artisan cache:clear
+    sudo php $REMOTE_WEB_DIR/artisan config:clear
 
     echo '--> Ajustando permisos en storage y bootstrap/cache...'
     sudo chown -R www-data:www-data $REMOTE_WEB_DIR/storage $REMOTE_WEB_DIR/bootstrap/cache
