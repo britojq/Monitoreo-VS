@@ -79,7 +79,7 @@ class GlpiAgentCensusCollector
                 'other_or_unclassified' => $other,
             ],
             'recent_agents' => $recentAgents,
-            'receiver_endpoint' => url('/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure'),
+            'receiver_endpoint' => url('/api/v1/inventory/receiver/' . (\App\Models\BotSetting::get('glpi_receiver_token', 'd8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96'))),
             'token_tag' => 'ValleSeco-ITAM',
         ];
     }

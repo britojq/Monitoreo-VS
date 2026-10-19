@@ -91,7 +91,11 @@ class User extends Authenticatable
         }
 
         if (is_array($this->permissions)) {
-            return \App\Services\PermissionService::sanitizePermissions($this->permissions);
+            $perms = \App\Services\PermissionService::sanitizePermissions($this->permissions);
+            if (!in_array('itam.my_devices', $perms, true)) {
+                $perms[] = 'itam.my_devices';
+            }
+            return $perms;
         }
 
         return \App\Services\PermissionService::getDefaultOperatorPermissions();

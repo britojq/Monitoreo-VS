@@ -7,7 +7,7 @@
 set -e
 
 # Configuración por defecto
-SERVER_URL="${SERVER_URL:-http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure}"
+SERVER_URL="${SERVER_URL:-http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96}"
 BASE_URL="${BASE_URL:-http://10.20.23.221/instaladores}"
 DEB_FILE="${DEB_FILE:-glpi-agent_all.deb}"
 TAG="${TAG:-ValleSeco-ITAM}"

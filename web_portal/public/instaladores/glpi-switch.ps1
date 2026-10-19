@@ -16,9 +16,9 @@ if (-not $isAdmin) {
 }
 
 $ServerUrl = if ($Target -eq "prod") {
-    "http://10.20.23.252/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
+    "http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
 } else {
-    "http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
+    "http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
 }
 
 Write-Host "[*] Conmutando agente GLPI hacia: $Target ($ServerUrl)..." -ForegroundColor Cyan

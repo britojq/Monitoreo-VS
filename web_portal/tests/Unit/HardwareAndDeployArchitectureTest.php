@@ -88,7 +88,8 @@ class HardwareAndDeployArchitectureTest extends TestCase
     public function test_agent_deploy_service_ip_in_subnet(): void
     {
         $commandRunner = $this->createMock(CommandRunnerInterface::class);
-        $deployService = new AgentDeployService($commandRunner);
+        $endpointConfig = $this->createMock(\App\Contracts\GlpiEndpointConfigInterface::class);
+        $deployService = new AgentDeployService($commandRunner, $endpointConfig);
 
         $this->assertTrue($deployService->ipInSubnet('10.20.23.5', '10.20.23.0/24'));
         $this->assertTrue($deployService->ipInSubnet('10.20.23.254', '10.20.23.0/24'));
@@ -99,7 +100,8 @@ class HardwareAndDeployArchitectureTest extends TestCase
     public function test_agent_deploy_service_supported_device_classification(): void
     {
         $commandRunner = $this->createMock(CommandRunnerInterface::class);
-        $deployService = new AgentDeployService($commandRunner);
+        $endpointConfig = $this->createMock(\App\Contracts\GlpiEndpointConfigInterface::class);
+        $deployService = new AgentDeployService($commandRunner, $endpointConfig);
 
         // Estación de trabajo PC debe ser soportada
         $pcItem = [
@@ -125,6 +127,15 @@ class HardwareAndDeployArchitectureTest extends TestCase
     public function test_agent_deploy_service_executes_deploy_via_runner(): void
     {
         $commandRunner = $this->createMock(CommandRunnerInterface::class);
+        $endpointConfig = $this->createMock(\App\Contracts\GlpiEndpointConfigInterface::class);
+        $endpointConfig->expects($this->once())
+            ->method('resolveTargetUrl')
+            ->with('dev', null)
+            ->willReturn([
+                'server_url' => 'http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
+                'deploy_base_url' => 'http://10.20.23.221',
+            ]);
+
         $commandRunner->expects($this->once())
             ->method('run')
             ->willReturn([
@@ -134,7 +145,7 @@ class HardwareAndDeployArchitectureTest extends TestCase
                 'exit_code' => 0,
             ]);
 
-        $deployService = new AgentDeployService($commandRunner);
+        $deployService = new AgentDeployService($commandRunner, $endpointConfig);
         $result = $deployService->deploy('10.20.23.199', 'windows', 'admin', 'dev', 'install', 'secret');
 
         $this->assertTrue($result['success']);

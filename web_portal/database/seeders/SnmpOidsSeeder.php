@@ -562,6 +562,7 @@ class SnmpOidsSeeder extends Seeder
                     'is_active' => true,
                     'network_device_id' => $netDev?->id,
                     'site_id' => $netDev?->monitored_site_id,
+                    'notes' => $netDev?->notes,
                 ]
             );
 

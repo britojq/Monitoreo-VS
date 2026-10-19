@@ -42,7 +42,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
         $netDevsByIp = MonitoredNetworkDevice::all()->keyBy('ip');
 
         // 2. Dispositivos SNMP
-        $snmpQuery = SnmpDevice::with('site');
+        $snmpQuery = SnmpDevice::with(['site', 'networkDevice']);
         if ($siteId) {
             $snmpQuery->where('site_id', $siteId);
         }
@@ -97,7 +97,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
                     'model' => $d->model ?? 'Dispositivo SNMP',
                     'uptime' => $d->uptime_formatted ?? 'N/A',
                     'site_name' => $d->site?->name ?? 'Sede Central',
-                    'notes' => $d->notes ?? null,
+                    'notes' => $d->notes ?: ($d->networkDevice?->notes ?: ($ndObj?->notes ?? null)),
                     'device_url' => route('admin.snmp.show', $d->id),
                     'source_module' => 'snmp',
                 ],
@@ -279,7 +279,16 @@ class NetworkTopologyService implements NetworkTopologyInterface
                 elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.4') || ($sIp === '10.20.23.4' && $tIp === '10.20.23.2')) $edgeLabel = 'P47 (SW02)';
                 elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.5') || ($sIp === '10.20.23.5' && $tIp === '10.20.23.2')) $edgeLabel = 'P43 (SW03)';
                 elseif (($sIp === '10.20.23.2' && $tIp === '10.20.27.83') || ($sIp === '10.20.27.83' && $tIp === '10.20.23.2')) $edgeLabel = 'P46 (Transmisión)';
-                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.107.131') || ($sIp === '10.20.107.131' && $tIp === '10.20.23.2')) $edgeLabel = 'P45 (Consolidado)';
+                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.107.131') || ($sIp === '10.20.107.131' && $tIp === '10.20.23.2')) {
+                    $targetHost = strtolower($l->target_hostname ?? '');
+                    if (str_contains($targetHost, 'mariño') || str_contains($targetHost, 'marino')) {
+                        $edgeLabel = 'P44 (Paseo Mariño)';
+                    } elseif (str_contains($targetHost, 'consolidado')) {
+                        $edgeLabel = 'P45 (Consolidado)';
+                    } else {
+                        $edgeLabel = 'P44 (Paseo Mariño) / P45 (Consolidado)';
+                    }
+                }
                 elseif (($sIp === '10.20.23.5' && $tIp === '10.20.23.252') || ($sIp === '10.20.23.252' && $tIp === '10.20.23.5')) $edgeLabel = 'Monitoreo';
 
                 $edges[] = [
@@ -325,20 +334,32 @@ class NetworkTopologyService implements NetworkTopologyInterface
                             'classes' => "device-node node-router " . ($st->last_check_status === 'DOWN' ? 'status-down' : 'status-up'),
                         ];
 
-                        if ($rootNodeId && $rootNodeId !== $siteNodeId) {
-                            $edgeKey = min($rootNodeId, $siteNodeId) . '---' . max($rootNodeId, $siteNodeId);
+                        $sourceNodeId = $rootNodeId;
+                        $edgeLabel = 'WAN ' . explode(' ', $st->name)[0];
+                        $linkType = 'WAN';
+
+                        if (str_contains(mb_strtoupper($st->name, 'UTF-8'), 'PASEO MARIÑO') || str_contains(mb_strtoupper($st->name, 'UTF-8'), 'PASEO MARINO')) {
+                            if (isset($addedIps['10.20.23.2'])) {
+                                $sourceNodeId = $addedIps['10.20.23.2'];
+                                $edgeLabel = 'P44 (Paseo Mariño)';
+                                $linkType = 'TRUNK';
+                            }
+                        }
+
+                        if ($sourceNodeId && $sourceNodeId !== $siteNodeId) {
+                            $edgeKey = min($sourceNodeId, $siteNodeId) . '---' . max($sourceNodeId, $siteNodeId);
                             if (!isset($addedEdgeKeys[$edgeKey])) {
                                 $addedEdgeKeys[$edgeKey] = true;
                                 $edges[] = [
                                     'data' => [
                                         'id' => 'edge_site_' . $st->id,
-                                        'source' => $rootNodeId,
+                                        'source' => $sourceNodeId,
                                         'target' => $siteNodeId,
-                                        'label' => 'WAN ' . explode(' ', $st->name)[0],
-                                        'link_type' => 'WAN',
+                                        'label' => $edgeLabel,
+                                        'link_type' => $linkType,
                                         'status' => $st->last_check_status === 'DOWN' ? 'down' : 'up',
                                     ],
-                                    'classes' => 'edge-link edge-wan ' . ($st->last_check_status === 'DOWN' ? 'status-down' : 'status-up'),
+                                    'classes' => 'edge-link edge-' . strtolower($linkType) . ' ' . ($st->last_check_status === 'DOWN' ? 'status-down' : 'status-up'),
                                 ];
                             }
                         }

@@ -13,7 +13,8 @@ use App\Models\InventoryAsset;
 class AgentDeployService
 {
     public function __construct(
-        protected CommandRunnerInterface $commandRunner
+        protected CommandRunnerInterface $commandRunner,
+        protected \App\Contracts\GlpiEndpointConfigInterface $endpointConfig
     ) {}
 
     /**
@@ -26,7 +27,8 @@ class AgentDeployService
         string $target,
         string $action,
         ?string $password = null,
-        ?string $domain = null
+        ?string $domain = null,
+        ?string $customIp = null
     ): array {
         $python = $this->getPythonBinary();
         $script = $this->getDeployerScriptPath();
@@ -38,6 +40,10 @@ class AgentDeployService
             ];
         }
 
+        $targetInfo = $this->endpointConfig->resolveTargetUrl($target, $customIp);
+        $serverUrl = $targetInfo['server_url'];
+        $deployBaseUrl = $targetInfo['deploy_base_url'];
+
         $args = [
             $python,
             $script,
@@ -45,6 +51,8 @@ class AgentDeployService
             '--os', $os,
             '--user', $user,
             '--target', $target,
+            '--server-url', $serverUrl,
+            '--deploy-base', $deployBaseUrl,
             '--action', $action,
             '--json',
         ];

@@ -5,7 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$ServerUrl = "http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure",
+    [string]$ServerUrl = "http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96",
     [string]$BaseUrl = "http://10.20.23.221/instaladores",
     [string]$Tag = "ValleSeco-ITAM",
     [switch]$ForceReinstall

@@ -141,16 +141,109 @@ class VerifyZeroDummyDataCommand extends Command
             // Ignorar si la tabla no existe en alguna ejecución
         }
 
+        // Chequeo de duplicidad de direcciones IP en inventario de red (Reglas #6, #7 y #8)
+        try {
+            $duplicateIps = DB::table('inventory_assets')
+                ->select('ip_address', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'), DB::raw('GROUP_CONCAT(name) as names'))
+                ->whereNotNull('ip_address')
+                ->where('ip_address', '!=', '')
+                ->where('ip_address', '!=', '0.0.0.0')
+                ->groupBy('ip_address')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateIps as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'ip_address',
+                    'pattern' => 'IP DUPLICADA EN CENSO (Regla #6 / #7)',
+                    'id' => $dup->ids,
+                    'snippet' => "IP {$dup->ip_address} repetida {$dup->count} veces en equipos: [{$dup->names}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de duplicidad de posiciones (device_number) por sede (Regla #7)
+        try {
+            $duplicateSlots = DB::table('inventory_assets')
+                ->select('monitored_site_id', 'device_number', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'), DB::raw('GROUP_CONCAT(name) as names'))
+                ->whereNotNull('monitored_site_id')
+                ->whereNotNull('device_number')
+                ->groupBy('monitored_site_id', 'device_number')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateSlots as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'device_number',
+                    'pattern' => 'POSICIÓN DUPLICADA POR SEDE (device_number)',
+                    'id' => $dup->ids,
+                    'snippet' => "Sede {$dup->monitored_site_id} Posición #{$dup->device_number} repetida {$dup->count} veces en: [{$dup->names}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de duplicidad de nombres operativos por sede (Regla #7)
+        try {
+            $duplicateNames = DB::table('inventory_assets')
+                ->select('monitored_site_id', 'name', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'))
+                ->whereNotNull('monitored_site_id')
+                ->whereNotNull('name')
+                ->groupBy('monitored_site_id', 'name')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateNames as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'name',
+                    'pattern' => 'NOMBRE OPERATIVO DUPLICADO EN SEDE',
+                    'id' => $dup->ids,
+                    'snippet' => "Sede {$dup->monitored_site_id} Nombre '{$dup->name}' repetido {$dup->count} veces en IDs: [{$dup->ids}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de integridad de activos troncales (Router Principal ID 1 y Servidor Desarrollo ID 11519)
+        try {
+            $router = DB::table('inventory_assets')->where('id', 1)->first();
+            if (!$router || $router->name !== 'ROUTER PRINCIPAL' || $router->ip_address !== '10.20.23.1' || $router->access_type !== 'TELNET' || (int) $router->access_port !== 23) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'id=1 (ROUTER PRINCIPAL)',
+                    'pattern' => 'CORRUPCIÓN DE ACTIVO CRÍTICO (Error #8)',
+                    'id' => '1',
+                    'snippet' => 'Router Principal no tiene los parámetros legítimos (TELNET:23, 10.20.23.1, tipo router)',
+                ];
+            }
+
+            $devServer = DB::table('inventory_assets')->where('id', 11519)->first();
+            if (!$devServer || $devServer->ip_address !== '10.20.23.221' || !str_contains($devServer->name, 'CENCARATIT')) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'id=11519 (CENCARATIT)',
+                    'pattern' => 'CORRUPCIÓN DE SERVIDOR DE DESARROLLO',
+                    'id' => '11519',
+                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 10.20.23.221 o nombre CENCARATIT',
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
         if (empty($violations)) {
             $this->info('================================================================');
-            $this->info('[OK] VERIFICACIÓN EXITOSA: Cero datos ficticios o de prueba en MariaDB.');
-            $this->info('Todas las tablas del sistema cumplen al 100% con la Regla de Oro #6.');
+            $this->info('[OK] VERIFICACIÓN EXITOSA: Cero datos ficticios, cero duplicados y 100% integridad en MariaDB.');
+            $this->info('Todas las tablas del sistema cumplen al 100% con la Regla de Oro #6 y #7.');
             $this->info('================================================================');
             return Command::SUCCESS;
         }
 
         $this->error('================================================================');
-        $this->error('[FALLO CRÍTICO] Se detectaron registros ficticios o de pruebas en MariaDB:');
+        $this->error('[FALLO CRÍTICO] Se detectaron violaciones de integridad o registros ficticios en MariaDB:');
         $this->error('================================================================');
 
         $headers = ['Tabla', 'Columna', 'ID', 'Patrón', 'Muestra del Valor'];
@@ -161,9 +254,13 @@ class VerifyZeroDummyDataCommand extends Command
         $this->table($headers, $rows);
 
         if ($this->option('purge')) {
-            $this->warn('Ejecutando purga automática de violaciones detectadas...');
+            $this->warn('Ejecutando purga automática de violaciones de texto residual detectadas...');
             foreach ($violations as $v) {
-                if ($v['id'] !== 'N/A' && !empty($v['table'])) {
+                if (str_contains($v['pattern'], 'DUPLICADA') || str_contains($v['pattern'], 'CORRUPCIÓN')) {
+                    $this->error("La violación en {$v['table']} ({$v['pattern']}) requiere saneamiento relacional y no puede ser purgada automáticamente con --purge.");
+                    continue;
+                }
+                if ($v['id'] !== 'N/A' && !empty($v['table']) && is_numeric($v['id'])) {
                     DB::table($v['table'])->where('id', $v['id'])->delete();
                 }
             }

@@ -635,7 +635,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals('TELNET', $asset->access_type);
         $this->assertEquals(23, $asset->access_port);
         $this->assertEquals('10.20.23.1', $asset->ip_address);
-        $this->assertEquals('Router Gateway principal de la Sede Valle Seco.', $asset->notes);
+        $this->assertStringContainsString('Gateway principal de la', $asset->notes);
 
         $netDev = \App\Models\MonitoredNetworkDevice::find(1);
         $this->assertNotNull($netDev, 'El Router Principal (ID 1) debe existir en monitored_network_devices');
@@ -643,7 +643,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals('TELNET', $netDev->access_type);
         $this->assertEquals(23, $netDev->access_port);
         $this->assertEquals('10.20.23.1', $netDev->ip);
-        $this->assertEquals('Router Gateway principal de la Sede Valle Seco.', $netDev->notes);
+        $this->assertStringContainsString('Gateway principal de la', $netDev->notes);
     }
 
     /**

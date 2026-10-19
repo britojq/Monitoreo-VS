@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Contracts\GlpiAgentTriggerInterface;
+use App\Contracts\GlpiEndpointConfigInterface;
 use App\Contracts\HardwareDriftDetectorInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DeployAgentRequest;
 use App\Http\Requests\Admin\ScanSubnetRequest;
+use App\Http\Requests\Admin\UpdateGlpiEndpointsRequest;
 use App\Models\AuditLog;
 use App\Models\DiscoveredDevice;
 use App\Models\InventoryAsset;
@@ -30,7 +32,8 @@ class AdminGlpiDeployController extends Controller
     public function __construct(
         protected AgentDeployService $deployService,
         protected HardwareDriftDetectorInterface $driftDetector,
-        protected GlpiAgentTriggerInterface $agentTrigger
+        protected GlpiAgentTriggerInterface $agentTrigger,
+        protected GlpiEndpointConfigInterface $endpointConfig
     ) {}
 
     /**
@@ -124,8 +127,8 @@ class AdminGlpiDeployController extends Controller
                     }
                 }
 
-                if ($isRegisteredNonPc && empty($asset?->last_glpi_sync_at)) {
-                    continue; // Excluir de la vista de despliegue de agente GLPI
+                if ($isRegisteredNonPc) {
+                    continue; // Excluir de la vista de despliegue de agente GLPI (Routers, Switches, etc.)
                 }
 
                 $rawOs = strtolower(($m->model ?? '') . ' ' . ($m->notes ?? '') . ' ' . ($m->name ?? '') . ' ' . ($asset->operating_system ?? ''));
@@ -184,7 +187,7 @@ class AdminGlpiDeployController extends Controller
             $reassignedAssetName = $isIpReassigned ? $assetByMac->name : null;
 
             // Excluir dispositivos descubiertos que ya están registrados en inventario como no-PC
-            if ($asset && in_array($asset->type, ['switch', 'router', 'printer', 'ip_phone', 'firewall', 'access_point', 'ups', 'network', 'peripheral'], true) && empty($asset->last_glpi_sync_at)) {
+            if ($asset && in_array($asset->type, ['switch', 'router', 'printer', 'ip_phone', 'firewall', 'access_point', 'ups', 'network', 'peripheral'], true)) {
                 continue;
             }
             $rawOs = strtolower(($dev->os_detected ?? '') . ' ' . ($dev->vendor ?? '') . ' ' . ($asset->operating_system ?? ''));
@@ -431,8 +434,23 @@ class AdminGlpiDeployController extends Controller
 
         $driftSummary = $this->driftDetector->getDriftSummary();
         $driftAssets = $this->driftDetector->getAssetsWithDrift();
+        $glpiEndpoints = $this->endpointConfig->getEndpointsConfig();
 
-        return view('admin.inventory.deploy.index', compact('paginatedDevices', 'stats', 'sedes', 'siteSubnets', 'scanSubnet', 'driftSummary', 'driftAssets'));
+        return view('admin.inventory.deploy.index', compact('paginatedDevices', 'stats', 'sedes', 'siteSubnets', 'scanSubnet', 'driftSummary', 'driftAssets', 'glpiEndpoints'));
+    }
+
+    /**
+     * Actualiza las configuraciones de endpoints y tokens GLPI en MariaDB.
+     */
+    public function updateEndpoints(UpdateGlpiEndpointsRequest $request): JsonResponse
+    {
+        $this->endpointConfig->updateEndpoints($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración de endpoints GLPI actualizada correctamente en MariaDB.',
+            'endpoints' => $this->endpointConfig->getEndpointsConfig(),
+        ]);
     }
 
     /**
@@ -449,7 +467,8 @@ class AdminGlpiDeployController extends Controller
             $validated['target'],
             $validated['action'],
             $validated['password'] ?? null,
-            $validated['domain'] ?? null
+            $validated['domain'] ?? null,
+            $validated['custom_ip'] ?? null
         );
 
         return response()->json($result);

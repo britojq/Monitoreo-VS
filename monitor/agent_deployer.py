@@ -19,6 +19,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,16 +36,30 @@ def is_port_open(host: str, port: int, timeout: float = 2.0) -> bool:
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
 
-DEV_SERVER_URL = "http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
-PROD_SERVER_URL = "http://10.20.23.252/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
+DEV_SERVER_URL = "http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
+PROD_SERVER_URL = "http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
 DEV_DEPLOY_BASE = "http://10.20.23.221"
 PROD_DEPLOY_BASE = "http://10.20.23.252"
 
 
-def get_target_url(target: str = "dev") -> Tuple[str, str]:
-    """Retorna (server_url, deploy_base_url) según el entorno seleccionado."""
-    if target.lower() in ("prod", "production", "produccion"):
+def get_target_url(
+    target: str = "dev",
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
+) -> Tuple[str, str]:
+    """Retorna (server_url, deploy_base_url) según argumentos dinámicos o entorno seleccionado."""
+    if server_url and deploy_base:
+        return server_url, deploy_base
+    if server_url and not deploy_base:
+        parsed = urlparse(server_url)
+        base = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else server_url
+        return server_url, base
+
+    norm = str(target).lower().strip()
+    if norm in ("prod", "production", "produccion"):
         return PROD_SERVER_URL, PROD_DEPLOY_BASE
+    if norm in ("auto", "current"):
+        return DEV_SERVER_URL, DEV_DEPLOY_BASE
     return DEV_SERVER_URL, DEV_DEPLOY_BASE
 
 
@@ -57,6 +72,8 @@ def deploy_linux_ssh(
     target: str = "dev",
     action: str = "install",
     timeout: int = 120,
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ejecuta el despliegue o conmutación remota en Linux/Xubuntu vía SSH.
@@ -66,7 +83,7 @@ def deploy_linux_ssh(
     except ImportError:
         return {"success": False, "error": "Librería paramiko no disponible en el entorno Python."}
 
-    server_url, base_url = get_target_url(target)
+    resolved_server_url, base_url = get_target_url(target, server_url, deploy_base)
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -87,24 +104,24 @@ def deploy_linux_ssh(
 
         if action == "switch":
             if password:
-                inner_cmd = f"{dl_switch} | bash -s {target}"
-                cmd = f"echo {shlex.quote(password)} | sudo -S bash -c {shlex.quote(inner_cmd)}"
+                inner_cmd = f"export SERVER_URL='{resolved_server_url}'; {dl_switch} | bash -s '{resolved_server_url}'"
+                cmd = f"echo {shlex.quote(password)} | sudo -S -E bash -c {shlex.quote(inner_cmd)}"
             else:
-                cmd = f"{dl_switch} | sudo bash -s {target}"
+                cmd = f"export SERVER_URL='{resolved_server_url}'; {dl_switch} | sudo -E bash -s '{resolved_server_url}'"
         elif action == "status":
             cmd = "systemctl is-active glpi-agent 2>/dev/null || echo 'inactive'; glpi-agent --version 2>/dev/null || echo 'not_installed'"
         else:
             # install
             if password:
                 inner_cmd = (
-                    f"export SERVER_URL='{server_url}'; "
+                    f"export SERVER_URL='{resolved_server_url}'; "
                     f"export BASE_URL='{base_url}/instaladores'; "
                     f"{dl_linux} | bash"
                 )
                 cmd = f"echo {shlex.quote(password)} | sudo -S -E bash -c {shlex.quote(inner_cmd)}"
             else:
                 cmd = (
-                    f"export SERVER_URL='{server_url}'; "
+                    f"export SERVER_URL='{resolved_server_url}'; "
                     f"export BASE_URL='{base_url}/instaladores'; "
                     f"{dl_linux} | sudo -E bash"
                 )
@@ -143,6 +160,8 @@ def deploy_windows_winrm(
     target: str = "dev",
     action: str = "install",
     timeout: int = 90,
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ejecuta el despliegue o conmutación remota en Windows vía WinRM (soporta Dominio).
@@ -152,7 +171,7 @@ def deploy_windows_winrm(
     except ImportError:
         return {"success": False, "error": "Librería pywinrm no disponible en el entorno Python."}
 
-    server_url, base_url = get_target_url(target)
+    resolved_server_url, base_url = get_target_url(target, server_url, deploy_base)
 
     # Formateo de usuario de dominio si aplica
     full_username = f"{domain}\\{user}" if domain and "\\" not in user else user
@@ -170,12 +189,20 @@ def deploy_windows_winrm(
         )
 
         if action == "switch":
-            ps_script = f"(New-Object System.Net.WebClient).DownloadString('{base_url}/deploy/switch/win') | iex"
+            ps_script = (
+                f"$s='{resolved_server_url}'; "
+                f"$c=(New-Object System.Net.WebClient).DownloadString('{base_url}/deploy/switch/win'); "
+                f"& ([scriptblock]::Create($c)) -CustomUrl $s"
+            )
         elif action == "status":
             ps_script = "(Get-Service glpi-agent -ErrorAction SilentlyContinue).Status; if (Test-Path 'HKLM:\\SOFTWARE\\GLPI-Agent') { (Get-ItemProperty 'HKLM:\\SOFTWARE\\GLPI-Agent').server }"
         else:
             # install
-            ps_script = f"(New-Object System.Net.WebClient).DownloadString('{base_url}/deploy/win') | iex"
+            ps_script = (
+                f"$s='{resolved_server_url}'; $b='{base_url}/instaladores'; "
+                f"$c=(New-Object System.Net.WebClient).DownloadString('{base_url}/deploy/win'); "
+                f"& ([scriptblock]::Create($c)) -ServerUrl $s -BaseUrl $b"
+            )
 
         logger.info(f"Ejecutando PowerShell remoto en {host}: {ps_script}")
         res = session.run_ps(ps_script)
@@ -208,19 +235,22 @@ def deploy_windows_rpc(
     target: str = "dev",
     action: str = "install",
     timeout: int = 150,
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ejecuta el despliegue o comando remoto en Windows vía WMI / SMB (Impacket).
     Compatible con Windows 7 (PowerShell 2.0) y sistemas modernos sin WinRM habilitado.
     """
-    server_url, base_url = get_target_url(target)
+    resolved_server_url, base_url = get_target_url(target, server_url, deploy_base)
 
     if action == "switch":
-        win_cmd = f'powershell -ExecutionPolicy Bypass -NoProfile -Command "(New-Object System.Net.WebClient).DownloadString(\'{base_url}/deploy/switch/win\') | iex"'
+        win_cmd = f'powershell -ExecutionPolicy Bypass -NoProfile -Command "$s=\'{resolved_server_url}\'; $c=(New-Object System.Net.WebClient).DownloadString(\'{base_url}/deploy/switch/win\'); & ([scriptblock]::Create($c)) -CustomUrl $s"'
     elif action == "status":
         win_cmd = "sc query glpi-agent"
     else:
         # install
+        win_cmd = f'powershell -ExecutionPolicy Bypass -NoProfile -Command "$s=\'{resolved_server_url}\'; $b=\'{base_url}/instaladores\'; $c=(New-Object System.Net.WebClient).DownloadString(\'{base_url}/deploy/win\'); & ([scriptblock]::Create($c)) -ServerUrl $s -BaseUrl $b"'
         win_cmd = f'powershell -ExecutionPolicy Bypass -NoProfile -Command "(New-Object System.Net.WebClient).DownloadString(\'{base_url}/deploy/win\') | iex"'
 
     pwd = password or ""
@@ -310,6 +340,8 @@ def deploy_windows(
     target: str = "dev",
     action: str = "install",
     timeout: int = 90,
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Intenta despliegue en Windows: primero WinRM (si puerto está abierto), con fallback automático a RPC/WMI.
@@ -325,6 +357,8 @@ def deploy_windows(
             target=target,
             action=action,
             timeout=timeout,
+            server_url=server_url,
+            deploy_base=deploy_base,
         )
         if winrm_res.get("success"):
             winrm_res["method"] = "winrm"
@@ -341,6 +375,8 @@ def deploy_windows(
         target=target,
         action=action,
         timeout=150,
+        server_url=server_url,
+        deploy_base=deploy_base,
     )
     if rpc_res.get("success"):
         return rpc_res
@@ -353,8 +389,7 @@ def deploy_windows(
         f"• WinRM: {winrm_err}\n"
         f"• RPC/SMB: {rpc_err}\n\n"
         f"💡 Nota para Windows 7 / Standalone: Las cuentas locales sin contraseña o directivas UAC impiden ejecución remota. "
-        f"Recomendación rápida 1-clic: Abra PowerShell como Administrador en la máquina y ejecute:\n"
-        f"(New-Object System.Net.WebClient).DownloadString('http://10.20.23.221/deploy/win') | iex"
+        f"Recomendación rápida 1-clic: Abra PowerShell como Administrador en la máquina y ejecute el comando descargable desde la consola web."
     )
 
     return {
@@ -406,6 +441,8 @@ def run_deployment(
     action: str = "install",
     key_filename: Optional[str] = None,
     wait_verify: bool = True,
+    server_url: Optional[str] = None,
+    deploy_base: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Orquesta el despliegue completo y la verificación posterior en base de datos.
@@ -419,6 +456,8 @@ def run_deployment(
             domain=domain,
             target=target,
             action=action,
+            server_url=server_url,
+            deploy_base=deploy_base,
         )
     else:
         result = deploy_linux_ssh(
@@ -428,6 +467,8 @@ def run_deployment(
             key_filename=key_filename,
             target=target,
             action=action,
+            server_url=server_url,
+            deploy_base=deploy_base,
         )
 
     if wait_verify and action in ("install", "switch") and result.get("success"):
@@ -447,7 +488,9 @@ def main():
     parser.add_argument("--password", help="Contraseña del usuario administrativo")
     parser.add_argument("--domain", help="Nombre del dominio Active Directory (para Windows)")
     parser.add_argument("--key", help="Ruta a clave SSH privada (para Linux)")
-    parser.add_argument("--target", choices=["dev", "prod"], default="dev", help="Servidor destino: dev (10.20.23.221) o prod (10.20.23.252)")
+    parser.add_argument("--target", default="dev", help="Servidor destino: dev, prod, o auto")
+    parser.add_argument("--server-url", help="URL completa del receptor GLPI (sobrescribe target)")
+    parser.add_argument("--deploy-base", help="URL base para descargar instaladores (ej: http://IP)")
     parser.add_argument("--action", choices=["install", "switch", "status"], default="install", help="Acción a ejecutar")
     parser.add_argument("--no-verify", action="store_true", help="No esperar verificación en BD")
     parser.add_argument("--json", action="store_true", help="Salida en formato JSON estructurado")
@@ -464,6 +507,8 @@ def main():
         action=args.action,
         key_filename=args.key,
         wait_verify=not args.no_verify,
+        server_url=args.server_url,
+        deploy_base=args.deploy_base,
     )
 
     if args.json:

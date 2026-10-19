@@ -34,7 +34,8 @@ class DeployAgentRequest extends FormRequest
             'user' => ['required', 'string'],
             'password' => ['nullable', 'string'],
             'domain' => ['nullable', 'string'],
-            'target' => ['required', 'in:dev,prod'],
+            'target' => ['required', 'in:auto,current,prod,dev,custom'],
+            'custom_ip' => ['nullable', 'string', 'max:255', 'required_if:target,custom'],
             'action' => ['required', 'in:install,switch,status'],
         ];
     }

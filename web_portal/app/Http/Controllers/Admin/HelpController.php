@@ -27,7 +27,7 @@ class HelpController extends Controller
     public function index(Request $request): View
     {
         $clusterRole = (string) config('monitoring.cluster.role', 'slave');
-        $systemVersion = 'v5.16.70';
+        $systemVersion = 'v5.19.50';
 
         $stats = [
             'services' => MonitoredService::count(),

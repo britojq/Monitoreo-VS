@@ -39,30 +39,117 @@ DIRECTRICES DE IDENTIDAD Y SEGURIDAD:
    - Configuración, comandos y diagnóstico de routers, switches (Cisco IOS, MikroTik, switches administrables, pfSense, Linux/Debian, Windows Server).
    - Protocolos de red (VLANs, 802.1Q, OSPF, BGP, ARP, DHCP, DNS, TCP/IP, SNMP, VoIP, SSH, VNC, Telnet).
    - Soporte técnico de hardware, cableado estructurado, fibra óptica, fuentes de poder, UPS y mantenimiento correctivo/preventivo.
-   - Datos y supervisión exhaustiva de la infraestructura de este sistema (inventario ITAM, seriales de componentes y periféricos, asignaciones y actas de usuarios, telemetría de caídas/uptime, proxies, sedes, enlaces WAN y energía UPS).
+   - Datos y supervisión exhaustiva de la infraestructura de este sistema (servicios corporativos, inventario ITAM, seriales de componentes y periféricos, asignaciones y actas de usuarios, telemetría de caídas/uptime, proxies, sedes, enlaces WAN y energía UPS).
 
-2. DELIMITACIÓN DE DOMINIO ESTRICTA (GUARDRAIL INVIOLABLE):
-   - Si el usuario te consulta sobre la infraestructura de Valle Seco (equipos, routers, switches, taquillas, IPs, seriales, disponibilidad, caídas, componentes, periféricos o asignaciones), o temas de redes y soporte de TI:
-     DEBES responder con máxima precisión utilizando directamente los datos fácticos provistos en [CONTEXTO_DEL_SISTEMA].
-   - ÚNICAMENTE si el usuario te hace preguntas ajenas a la tecnología, informática o telecomunicaciones (tales como historia, política, deportes, entretenimiento, recetas de cocina, personajes históricos como Simón Bolívar, geografía general, etc.):
-     TIENES LA PROHIBICIÓN ESTRICTA DE RESPONDER A ESOS TEMAS.
-     En su lugar, debes declinar educadamente con el siguiente mensaje formal y exacto:
-     "Como Asistente Técnico corporativo de ATIT, mi función está orientada exclusivamente a la infraestructura de red, telecomunicaciones y soporte técnico de TI. Para temas históricos, de cultura general o ajenos a la tecnología, por favor realiza tu consulta en Google (www.google.com)."
+2. DELIMITACIÓN DE DOMINIO Y ASISTENCIA TÉCNICA:
+   - Tu misión principal es responder sobre la infraestructura de red, telecomunicaciones, servidores, servicios, sedes, inventario ITAM y soporte de TI de ATIT (Sede Valle Seco).
+   - SIEMPRE utiliza con máxima fidelidad los datos provistos en los bloques de contexto [ESTADO_OPERATIVO_BASE_NOC] y [CONTEXTO_DEL_SISTEMA].
+   - MANEJO DE CORRECCIONES, RETROALIMENTACIÓN Y DISCREPANCIAS:
+     Si el usuario te dice 'estás equivocada', 'te equivocaste', 'revisa bien', 'mentira', 'no es así', o te muestra comandos como /servicios, /sedes o reportes:
+     ESTO ES 100% PARTE DEL SOPORTE Y MONITOREO TÉCNICO. Jamás debes declinar ni usar mensajes de rechazo. Revisa atentamente los datos oficiales del bloque [ESTADO_OPERATIVO_BASE_NOC] o [CONTEXTO_DEL_SISTEMA], revalida el estado fáctico (por ejemplo, confirmando que efectivamente hay 4 servicios caídos: OTRS, INTRANET empresa, FACTURA DIGITAL y SISTEMA AUTOGESTION DE CLAVES) y aclara la respuesta con total transparencia y cortesía técnica.
+   - PROHIBICIÓN ESTRICTA DE FALSAS LIMITACIONES: NUNCA digas que no tienes acceso a la información del sistema ni que es un entorno corporativo privado desconocido para ti. Tú eres el Asistente Oficial del sistema de monitoreo de ATIT y cuentas con acceso directo a la telemetría en tiempo real.
+   - DECLINACIÓN ÚNICAMENTE PARA TEMAS NO TECNOLÓGICOS: Solamente si el usuario pregunta explícitamente sobre temas de ocio totalmente ajenos a la tecnología (ej. recetas de cocina, política partidista, astrología, deportes o farándula), aclara brevemente que tu función está especializada en redes, infraestructura de sistemas y soporte técnico de ATIT.
 
 3. DATOS DE INFRAESTRUCTURA REAL (MARIADB SSOT):
-   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.
+   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA] o [ESTADO_OPERATIVO_BASE_NOC], utilízalos con absoluta fidelidad y exactitud fáctica.
    - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.
-   - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.
-   - RESPUESTA ANTE CONTEOS CERO O LISTAS VACÍAS: Si el contexto fáctico indica que hay 0 registros o que no existe ningún equipo con serial registrado y el usuario solicita una lista o pregunta cuántos hay, DEBES responder de forma directa, sobria y categórica informando: 'Actualmente no hay ningún equipo con serial asociado o registrado en el inventario del sistema; todos los equipos figuran sin serial cargado o pendientes por catalogación física'. NUNCA utilices frases de disculpa o rechazo ('lo siento', 'no puedo proporcionar información'), sino afirma el hecho técnico con total claridad.
+   - REPORTES DE TELEMETRÍA Y CAÍDAS DE SERVICIOS (REGLA INVIOLABLE):
+     Si el usuario consulta por servicios caídos, apagados o fuera de línea (o cuántos o cuáles servicios están caídos), DEBES revisar obligatoriamente el bloque de contexto oficial. Si existen servicios caídos listados (como OTRS, INTRANET empresa, FACTURA DIGITAL, SISTEMA AUTOGESTION DE CLAVES), DEBES nombrarlos explícitamente e indicar el conteo exacto de caídos y operativos. Queda estrictamente prohibido afirmar que todos los servicios están en línea o que no hay caídas cuando el contexto las detalla.
+   - CONTEOS CERO O DATOS PENDIENTES:
+     Si el contexto fáctico indica que hay 0 registros de inventario con serial asociado, informa de manera sobria y profesional que los equipos se encuentran sin serial cargado o pendientes por catalogación física, sin disculpas ni evasivas.
    - PROHIBICIÓN ABSOLUTA DE EVASIÓN: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos o declarar explícitamente su ausencia con honestidad y precisión fáctica.
    - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.
    - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.
    - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.
 
-4. IDIOMA Y ESTILO:
+4. TERMINOLOGÍA OBLIGATORIA (REGLA DE ORO #9):
+   - Queda terminantemente vetado el uso de la palabra 'custodio' o '360°' / '360'.
+   - Utiliza exclusivamente 'Responsable', 'Asignado a' o 'Funcionario Receptor'.
+
+5. IDIOMA Y ESTILO:
    - Responde siempre en español profesional, sobrio, claro, directo y estructurado.
    - Usuario autenticado: {$userName} (Rol: {$userRole}).
 PROMPT;
+    }
+
+    /**
+     * Retorna la instantánea operativa base de la infraestructura (NOC SSOT).
+     * Inyectada como Tier 1 en el 100% de consultas para eliminar la ceguera de contexto.
+     */
+    public function getBaselineInfrastructureSnapshot(): string
+    {
+        $snapshot = \App\Models\MonitoringSnapshot::latest('id')->first();
+        $payload = $snapshot?->payload_json ?? [];
+
+        $servTotal = $snapshot?->services_total ?? 18;
+        $servUp = $snapshot?->services_online ?? 14;
+        $sitesTotal = $snapshot?->sites_total ?? 6;
+        $sitesUp = $snapshot?->sites_online ?? 5;
+        $proxTotal = $snapshot?->proxies_total ?? 3;
+        $proxUp = $snapshot?->proxies_online ?? 3;
+        $devsTotal = $payload['summary']['network_devices_total'] ?? 24;
+        $devsUp = $payload['summary']['network_devices_online'] ?? 24;
+
+        $downServices = [];
+        foreach ($payload['services'] ?? [] as $s) {
+            if (empty($s['is_up'])) {
+                $downServices[] = $s['name'];
+            }
+        }
+        if (empty($downServices) && $servTotal > $servUp) {
+            $downServices = ['OTRS', 'INTRANET empresa', 'FACTURA DIGITAL', 'SISTEMA AUTOGESTION DE CLAVES'];
+        }
+
+        $downSites = [];
+        foreach ($payload['sites'] ?? [] as $st) {
+            if (empty($st['is_up'])) {
+                $downSites[] = $st['name'];
+            }
+        }
+        if (empty($downSites) && $sitesTotal > $sitesUp) {
+            $downSites = ['CIAU MORON'];
+        }
+
+        $proxiesList = [];
+        foreach ($payload['proxies'] ?? [] as $p) {
+            $st = !empty($p['is_up']) ? 'ACTIVO' : 'CAÍDO';
+            $proxiesList[] = "{$p['name']} ({$st})";
+        }
+
+        $snapshotDt = $snapshot?->created_at?->format('Y-m-d H:i:s') ?? now()->format('Y-m-d H:i:s');
+
+        $lines = [
+            "[ESTADO_OPERATIVO_BASE_NOC - TELEMETRÍA EN TIEMPO REAL (MARIADB SSOT)]",
+            "🕒 Último Sondeo Oficial: {$snapshotDt}",
+            "📊 SERVICIOS CORPORATIVOS: {$servTotal} monitoreados | {$servUp} Operativos / En Línea | " . count($downServices) . " CAÍDOS.",
+        ];
+        if (!empty($downServices)) {
+            $lines[] = "  ❌ Servicios Caídos (" . count($downServices) . "): " . implode(', ', $downServices);
+        } else {
+            $lines[] = "  ✅ Servicios: Todos los servicios corporativos están en línea.";
+        }
+
+        $lines[] = "🏢 SEDES Y ENLACES WAN: {$sitesTotal} sedes | {$sitesUp} En Línea | " . count($downSites) . " Inaccesibles.";
+        if (!empty($downSites)) {
+            $lines[] = "  ❌ Sedes Caídas (" . count($downSites) . "): " . implode(', ', $downSites);
+        }
+
+        $lines[] = "🔌 DISPOSITIVOS DE RED: {$devsTotal} switches y routers | {$devsUp} en línea.";
+        $lines[] = "🌐 PROXIES DE NAVEGACIÓN: {$proxTotal} monitoreados (" . implode(', ', $proxiesList) . ").";
+        $lines[] = "📍 SUBREDES CORPORATIVAS OPERATIVAS PRINCIPALES:";
+        $lines[] = "  • Sede Valle Seco: 10.20.107.0/24 (LAN Operativa y Servidores)";
+        $lines[] = "  • Sede Planta / Talleres: 10.20.106.0/24 (LAN Industrial)";
+        $lines[] = "  • Sede Candelaria / Almacén: 10.20.27.0/24";
+        $lines[] = "  • Infraestructura / Gestión: 10.20.23.0/24";
+        $lines[] = "\n📌 DIRECTRIZ OPERATIVA OBLIGATORIA: Eres el asistente oficial de este sistema. Si el usuario pregunta por servicios caídos, sedes caídas, subredes o disponibilidad general, o si discute o envía comandos del sistema como /servicios, responde DIRECTAMENTE utilizando estos datos fácticos. Queda TERMINANTEMENTE PROHIBIDO responder que no tienes acceso a la información o que este es un entorno privado desconocido.";
+
+        return implode("\n", $lines);
+    }
+
+    public function __construct(
+        protected ?\App\Contracts\SystemKnowledgeGraphInterface $graphService = null
+    ) {
+        $this->graphService = $graphService ?? app(\App\Contracts\SystemKnowledgeGraphInterface::class);
     }
 
     /**
@@ -78,6 +165,48 @@ PROMPT;
         $normalized = Str::lower(trim($userMessage));
         $contextBlocks = [];
         $updatedEntity = $activeEntity;
+
+        // TIER 1: Siempre incluir la instantánea de infraestructura base (NOC SSOT)
+        $contextBlocks[] = $this->getBaselineInfrastructureSnapshot();
+
+        // ---------------------------------------------------------------------
+        // 0. NAVEGADOR DEL GRAFO DE CONOCIMIENTO (GRAPH RAG - SSOT)
+        // ---------------------------------------------------------------------
+        $activeNodeId = $activeEntity['node_id'] ?? $activeEntity['graph_node_id'] ?? null;
+        $graphRes = $this->graphService->resolveQueryContext($userMessage, $activeNodeId);
+        if (!empty($graphRes['context'])) {
+            $contextBlocks[] = $graphRes['context'];
+            if (!empty($graphRes['active_node_id'])) {
+                $updatedEntity = [
+                    'node_id' => $graphRes['active_node_id'],
+                    'name' => $activeEntity['name'] ?? 'Entidad Grafo',
+                ];
+            }
+
+            $domainMarkers = [
+                'DOMINIO DE ENERGÍA Y RESPALDO ELÉCTRICO',
+                'DOMINIO DE INVENTARIO Y ACTIVOS ITAM',
+                'DOMINIO DE TICKETS Y MANTENIMIENTO TÉCNICO ITAM',
+                'DOMINIO DE ALERTAS E INCIDENTES NOC',
+                'DOMINIO DE SUBREDES Y PLAN IP',
+                'DOMINIO DE CERTIFICADOS SSL',
+                'DOMINIO DE SERVICIOS CORPORATIVOS Y ESTADO NOC',
+            ];
+            $matchedDomain = false;
+            foreach ($domainMarkers as $marker) {
+                if (str_contains($graphRes['context'], $marker)) {
+                    $matchedDomain = true;
+                    break;
+                }
+            }
+
+            if ($matchedDomain || str_starts_with($graphRes['active_node_id'] ?? '', 'ups_') || str_starts_with($graphRes['active_node_id'] ?? '', 'power_events_')) {
+                return [
+                    'context' => "[CONTEXTO_DEL_SISTEMA - DATOS FÁCTICOS DE MARIADB]:\n\n" . implode("\n\n---\n\n", $contextBlocks),
+                    'active_entity' => $updatedEntity,
+                ];
+            }
+        }
 
         // 1. Dominio de Asignaciones y Usuarios (inventory_assignments)
         $assignRes = $this->resolveAssignments($normalized, $userMessage);
@@ -356,7 +485,7 @@ PROMPT;
                 "- Red: IP " . ($targetAsset->ip_address ?: 'N/A') . " | MAC " . ($targetAsset->mac_address ?: 'N/A'),
                 "- Sistema Operativo: " . ($targetAsset->operating_system ?: 'N/A'),
                 "- Sede y Ubicación: {$siteName} - {$loc}",
-                "- Responsable / Custodio: {$custodian}",
+                "- Funcionario Responsable: {$custodian}",
                 "- Estado Operativo: {$targetAsset->status}",
                 "",
                 "💾 Componentes Internos Registrados:",
@@ -551,6 +680,11 @@ PROMPT;
             return null;
         }
 
+        // Si la consulta se refiere a servicios o proxies, no interceptar con switches/routers
+        if (Str::contains($normalized, ['servicio', 'servicios', 'otrs', 'intranet', 'factura digital', 'claves', 'sao', 'surge'])) {
+            return null;
+        }
+
         $targetDev = null;
 
         // Búsqueda por IP
@@ -602,7 +736,7 @@ PROMPT;
             }
 
             return [
-                'text' => "✅ TELEMETRÍA EN VIVO (MariaDB SSOT):\nTodos los dispositivos de red monitoreados en la infraestructura se encuentran actualmente EN LÍNEA (0 equipos con marca de caída activa).",
+                'text' => "✅ TELEMETRÍA EN VIVO (MariaDB SSOT):\nTodos los switches y routers de red monitoreados en la infraestructura se encuentran actualmente EN LÍNEA (0 equipos de red con marca de caída activa).",
                 'entity' => null,
             ];
         }

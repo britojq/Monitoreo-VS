@@ -153,7 +153,11 @@ log "${GREEN}✓ Transferencia de archivos ejecutables completada sin tocar conf
 log "${BOLD}▶ FASE 4: Ejecutando migraciones, purgas de caché y recarga de servicios...${NC}"
 
 ssh "$REMOTE_HOST" "
-    set -e
+    echo '--> Sincronizando dependencias Python en venv...'
+    if [ -f '$REMOTE_BOT_DIR/requirements.txt' ] && [ -x '$REMOTE_BOT_DIR/venv/bin/pip' ]; then
+        $REMOTE_BOT_DIR/venv/bin/pip install -q -r $REMOTE_BOT_DIR/requirements.txt || true
+    fi
+
     echo '--> Ejecutando migraciones de base de datos (si aplican)...'
     sudo php $REMOTE_WEB_DIR/artisan migrate --force
 
@@ -177,21 +181,25 @@ ssh "$REMOTE_HOST" "
 log "${GREEN}✓ Migraciones, cachés y servicios ejecutados con éxito.${NC}"
 
 # ------------------------------------------------------------------------------
-# FASE 5: SMOKE TEST Y CERTIFICACIÓN EN PRODUCCIÓN
+# FASE 5: SMOKE TEST Y CERTIFICACIÓN FUNCIONAL REAL EN PRODUCCIÓN (ERROR #31)
 # ------------------------------------------------------------------------------
-log "${BOLD}▶ FASE 5: Ejecutando Smoke Test y verificación de salud en Producción...${NC}"
+log "${BOLD}▶ FASE 5: Ejecutando Smoke Test y Certificación Funcional Real en Producción...${NC}"
 
 ssh "$REMOTE_HOST" "
     set -e
-    echo '--> Verificando estado de tg-admin-bot.service...'
-    systemctl is-active --quiet tg-admin-bot.service || (echo 'FALLO: tg-admin-bot inactivo'; exit 1)
+    echo '--> 1. Verificando estado del servicio systemd...'
+    systemctl is-active --quiet tg-admin-bot.service || (echo 'FALLO: tg-admin-bot.service inactivo'; exit 1)
 
-    echo '--> Verificando motor local de IA...'
+    echo '--> 2. Verificando integridad de paquetes y dependencias en venv...'
+    $REMOTE_BOT_DIR/venv/bin/python -m pip check || (echo 'FALLO: Dependencias de Python corruptas o incompletas'; exit 1)
+
+    echo '--> 3. Ejecutando certificación funcional de los extractores del Grafo de Conocimiento...'
+    cd "$REMOTE_BOT_DIR" && ./venv/bin/python tools/verify_production_health.py
+
+    echo '--> 4. Verificando conectividad con el motor local de IA...'
     curl -s --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null || (echo 'FALLO: Motor de IA no responde en 11434'; exit 1)
-
-    echo '--> Verificando API de estatus local (en mantenimiento devuelve 503 controlado)...'
 "
-log "${GREEN}✓ Verificaciones internas de salud aprobadas.${NC}"
+log "${GREEN}✓ Verificaciones funcionales de salud aprobadas al 100%.${NC}"
 
 # ------------------------------------------------------------------------------
 # FASE 6: RESTABLECIMIENTO DEL SERVICIO (php artisan up)

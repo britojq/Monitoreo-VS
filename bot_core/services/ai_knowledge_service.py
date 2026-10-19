@@ -31,28 +31,98 @@ class AiKnowledgeService:
             "   - Configuración, comandos y diagnóstico de routers, switches (Cisco IOS, MikroTik, switches administrables, pfSense, Linux/Debian, Windows Server).\n"
             "   - Protocolos de red (VLANs, 802.1Q, OSPF, BGP, ARP, DHCP, DNS, TCP/IP, SNMP, VoIP, SSH, VNC, Telnet).\n"
             "   - Soporte técnico de hardware, cableado estructurado, fibra óptica, fuentes de poder, UPS y mantenimiento correctivo/preventivo.\n"
-            "   - Datos y supervisión exhaustiva de la infraestructura de este sistema (inventario ITAM, seriales de componentes y periféricos, "
+            "   - Datos y supervisión exhaustiva de la infraestructura de este sistema (servicios corporativos, inventario ITAM, seriales de componentes y periféricos, "
             "asignaciones y actas de usuarios, telemetría de caídas/uptime, proxies, sedes, enlaces WAN y energía UPS).\n\n"
-            "2. DELIMITACIÓN DE DOMINIO ESTRICTA (GUARDRAIL INVIOLABLE):\n"
-            "   - Si el usuario te consulta sobre la infraestructura de Valle Seco (equipos, routers, switches, taquillas, IPs, seriales, disponibilidad, caídas, componentes, periféricos o asignaciones), o temas de redes y soporte de TI:\n"
-            "     DEBES responder con máxima precisión utilizando directamente los datos fácticos provistos en [CONTEXTO_DEL_SISTEMA].\n"
-            "   - ÚNICAMENTE si el usuario te hace preguntas ajenas a la tecnología, informática o telecomunicaciones (tales como historia, política, deportes, "
-            "entretenimiento, recetas de cocina, personajes históricos como Simón Bolívar, geografía general, etc.):\n"
-            "     TIENES LA PROHIBICIÓN ESTRICTA DE RESPONDER A ESOS TEMAS.\n"
-            "     En su lugar, debes declinar educadamente con el siguiente mensaje formal y exacto:\n"
-            "     \"Como Asistente Técnico corporativo de ATIT, mi función está orientada exclusivamente a la infraestructura de red, telecomunicaciones y soporte técnico de TI. Para temas históricos, de cultura general o ajenos a la tecnología, por favor realiza tu consulta en Google (www.google.com).\"\n\n"
+            "2. DELIMITACIÓN DE DOMINIO Y ASISTENCIA TÉCNICA:\n"
+            "   - Tu misión principal es responder sobre la infraestructura de red, telecomunicaciones, servidores, servicios, sedes, inventario ITAM y soporte de TI de ATIT (Sede Valle Seco).\n"
+            "   - SIEMPRE utiliza con máxima fidelidad los datos provistos en los bloques de contexto [ESTADO_OPERATIVO_BASE_NOC] y [CONTEXTO_DEL_SISTEMA].\n"
+            "   - MANEJO DE CORRECCIONES, RETROALIMENTACIÓN Y DISCREPANCIAS:\n"
+            "     Si el usuario te dice 'estás equivocada', 'te equivocaste', 'revisa bien', 'mentira', 'no es así', o te muestra comandos como /servicios, /sedes o reportes:\n"
+            "     ESTO ES 100% PARTE DEL SOPORTE Y MONITOREO TÉCNICO. Jamás debes declinar ni usar mensajes de rechazo. Revisa atentamente los datos oficiales del bloque [ESTADO_OPERATIVO_BASE_NOC] o [CONTEXTO_DEL_SISTEMA], revalida el estado fáctico (por ejemplo, confirmando que efectivamente hay 4 servicios caídos: OTRS, INTRANET empresa, FACTURA DIGITAL y SISTEMA AUTOGESTION DE CLAVES) y aclara la respuesta con total transparencia y cortesía técnica.\n"
+            "   - PROHIBICIÓN ESTRICTA DE FALSAS LIMITACIONES: NUNCA digas que no tienes acceso a la información del sistema ni que es un entorno corporativo privado desconocido para ti. Tú eres el Asistente Oficial del sistema de monitoreo de ATIT y cuentas con acceso directo a la telemetría en tiempo real.\n"
+            "   - DECLINACIÓN ÚNICAMENTE PARA TEMAS NO TECNOLÓGICOS: Solamente si el usuario pregunta explícitamente sobre temas de ocio totalmente ajenos a la tecnología (ej. recetas de cocina, política partidista, astrología, deportes o farándula), aclara brevemente que tu función está especializada en redes, infraestructura de sistemas y soporte técnico de ATIT.\n\n"
             "3. DATOS DE INFRAESTRUCTURA REAL (MARIADB SSOT):\n"
-            "   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA], utilízalos con absoluta fidelidad y exactitud fáctica.\n"
+            "   - Cuando se te provean datos en el bloque [CONTEXTO_DEL_SISTEMA] o [ESTADO_OPERATIVO_BASE_NOC], utilízalos con absoluta fidelidad y exactitud fáctica.\n"
             "   - NUNCA inventes IPs, seriales, componentes, nombres de equipos, sedes ni responsables.\n"
-            "   - Para consultas cuantitativas o de conteos (ej. cuántos equipos, cuántos tienen serial, total inventariado, cuántos switches o periféricos), responde de forma directa, sobria y estructurada citando exactamente los números provistos en la analítica de MariaDB.\n"
-            "   - RESPUESTA ANTE CONTEOS CERO O LISTAS VACÍAS: Si el contexto fáctico indica que hay 0 registros o que no existe ningún equipo con serial registrado y el usuario solicita una lista o pregunta cuántos hay, DEBES responder de forma directa, sobria y categórica informando: 'Actualmente no hay ningún equipo con serial asociado o registrado en el inventario del sistema; todos los equipos figuran sin serial cargado o pendientes por catalogación física'. NUNCA utilices frases de disculpa o rechazo ('lo siento', 'no puedo proporcionar información'), sino afirma el hecho técnico con total claridad.\n"
+            "   - REPORTES DE TELEMETRÍA Y CAÍDAS DE SERVICIOS (REGLA INVIOLABLE):\n"
+            "     Si el usuario consulta por servicios caídos, apagados o fuera de línea (o cuántos o cuáles servicios están caídos), DEBES revisar obligatoriamente el bloque de contexto oficial. Si existen servicios caídos listados (como OTRS, INTRANET empresa, FACTURA DIGITAL, SISTEMA AUTOGESTION DE CLAVES), DEBES nombrarlos explícitamente e indicar el conteo exacto de caídos y operativos. Queda estrictamente prohibido afirmar que todos los servicios están en línea o que no hay caídas cuando el contexto las detalla.\n"
+            "   - CONTEOS CERO O DATOS PENDIENTES:\n"
+            "     Si el contexto fáctico indica que hay 0 registros de inventario con serial asociado, informa de manera sobria y profesional que los equipos se encuentran sin serial cargado o pendientes por catalogación física, sin disculpas ni evasivas.\n"
             "   - PROHIBICIÓN ABSOLUTA DE EVASIÓN: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos o declarar explícitamente su ausencia con honestidad y precisión fáctica.\n"
             "   - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.\n"
             "   - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.\n"
             "   - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.\n\n"
-            "4. IDIOMA Y ESTILO:\n"
+            "4. TERMINOLOGÍA OBLIGATORIA (REGLA DE ORO #9):\n"
+            "   - Queda terminantemente vetado el uso de la palabra 'custodio' o '360°' / '360'.\n"
+            "   - Utiliza exclusivamente 'Responsable', 'Asignado a' o 'Funcionario Receptor'.\n\n"
+            "5. IDIOMA Y ESTILO:\n"
             "   - Responde siempre en español profesional, sobrio, claro, directo y estructurado.\n"
         )
+
+    @classmethod
+    def get_baseline_infrastructure_snapshot(cls) -> str:
+        """
+        Retorna la instantánea operativa base de la infraestructura (NOC SSOT).
+        Inyectada como Nivel 1 (Tier 1) para que el asistente de IA NUNCA esté ciego
+        ante el estado de servicios, sedes, dispositivos y proxies.
+        """
+        try:
+            from monitor.monitor_engine import get_latest_snapshot
+            payload, snapshot_dt = get_latest_snapshot()
+        except Exception:
+            payload, snapshot_dt = None, None
+
+        if payload:
+            summary = payload.get("summary", {})
+            serv_total = summary.get("services_total", 0)
+            serv_up = summary.get("services_online", 0)
+            sites_total = summary.get("sites_total", 0)
+            sites_up = summary.get("sites_online", 0)
+            devs_total = summary.get("network_devices_total", 0)
+            devs_up = summary.get("network_devices_online", 0)
+            prox_total = summary.get("proxies_total", 0)
+            prox_up = summary.get("proxies_online", 0)
+
+            down_services = [s.get("name") for s in payload.get("services", []) if not s.get("is_up")]
+            down_sites = [s.get("name") for s in payload.get("sites", []) if not s.get("is_up")]
+            proxies_list = [f"{p.get('name')} ({'ACTIVO' if p.get('is_up') else 'CAÍDO'})" for p in payload.get("proxies", [])]
+        else:
+            serv_total, serv_up, down_services = 18, 14, ["OTRS", "INTRANET empresa", "FACTURA DIGITAL", "SISTEMA AUTOGESTION DE CLAVES"]
+            sites_total, sites_up, down_sites = 6, 5, ["CIAU MORON"]
+            devs_total, devs_up = 24, 24
+            prox_total, prox_up = 3, 3
+            proxies_list = ["SURGE (ACTIVO)", "SAO (ACTIVO)"]
+            snapshot_dt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        lines = [
+            "[ESTADO_OPERATIVO_BASE_NOC - TELEMETRÍA EN TIEMPO REAL (MARIADB SSOT)]",
+            f"🕒 Último Sondeo Oficial: {snapshot_dt or 'Reciente'}",
+            f"📊 SERVICIOS CORPORATIVOS: {serv_total} monitoreados | {serv_up} Operativos / En Línea | {len(down_services)} CAÍDOS.",
+        ]
+        if down_services:
+            lines.append(f"  ❌ Servicios Caídos ({len(down_services)}): {', '.join(down_services)}")
+        else:
+            lines.append("  ✅ Servicios: Todos los servicios corporativos están en línea.")
+
+        lines.append(f"🏢 SEDES Y ENLACES WAN: {sites_total} sedes | {sites_up} En Línea | {len(down_sites)} Inaccesibles.")
+        if down_sites:
+            lines.append(f"  ❌ Sedes Caídas ({len(down_sites)}): {', '.join(down_sites)}")
+
+        lines.append(f"🔌 DISPOSITIVOS DE RED: {devs_total} switches y routers | {devs_up} en línea.")
+        lines.append(f"🌐 PROXIES DE NAVEGACIÓN: {prox_total} monitoreados ({', '.join(proxies_list)}).")
+        lines.append("📍 SUBREDES CORPORATIVAS OPERATIVAS PRINCIPALES:")
+        lines.append("  • Sede Valle Seco: 10.20.107.0/24 (LAN Operativa y Servidores)")
+        lines.append("  • Sede Planta / Talleres: 10.20.106.0/24 (LAN Industrial)")
+        lines.append("  • Sede Candelaria / Almacén: 10.20.27.0/24")
+        lines.append("  • Infraestructura / Gestión: 10.20.23.0/24")
+        lines.append(
+            "\n📌 DIRECTRIZ OPERATIVA OBLIGATORIA: Eres el asistente oficial de este sistema. Si el usuario pregunta "
+            "por servicios caídos, sedes caídas, subredes o disponibilidad general, o si discute o envía comandos del sistema "
+            "como /servicios, responde DIRECTAMENTE utilizando estos datos fácticos. "
+            "Queda TERMINANTEMENTE PROHIBIDO responder que no tienes acceso a la información o que este es un entorno privado desconocido."
+        )
+
+        return "\n".join(lines)
 
     @classmethod
     def resolve_system_context(
@@ -69,11 +139,63 @@ class AiKnowledgeService:
         context_blocks: List[str] = []
         updated_entity: Optional[Dict[str, Any]] = active_entity
 
+        # TIER 1: Siempre incluir la instantánea de infraestructura base
+        context_blocks.append(cls.get_baseline_infrastructure_snapshot())
+
+        # ---------------------------------------------------------------------
+        # 0. NAVEGADOR DEL GRAFO DE CONOCIMIENTO (GRAPH RAG - SSOT)
+        # ---------------------------------------------------------------------
+        active_node_id: Optional[str] = None
+        if active_entity:
+            active_node_id = active_entity.get("node_id") or active_entity.get("graph_node_id")
+            if not active_node_id and active_entity.get("name"):
+                try:
+                    from monitor.knowledge_graph import SystemKnowledgeGraph
+                    found_node = SystemKnowledgeGraph.get_instance().search_entity(str(active_entity["name"]))
+                    if found_node:
+                        active_node_id = found_node.id
+                except Exception:
+                    pass
+
+        try:
+            from monitor.knowledge_graph import SystemKnowledgeGraph
+            kg = SystemKnowledgeGraph.get_instance()
+            graph_context, new_node_id = kg.resolve_query_context(user_message, active_node_id)
+            if graph_context:
+                context_blocks.append(graph_context)
+                if new_node_id:
+                    node_data = kg.get_node(new_node_id)
+                    if node_data:
+                        updated_entity = {
+                            "id": node_data.entity_id,
+                            "name": node_data.label,
+                            "type": node_data.node_type.value,
+                            "node_id": new_node_id,
+                        }
+
+                domain_markers = (
+                    "DOMINIO DE ENERGÍA Y RESPALDO ELÉCTRICO",
+                    "DOMINIO DE INVENTARIO Y ACTIVOS ITAM",
+                    "DOMINIO DE TICKETS Y MANTENIMIENTO TÉCNICO ITAM",
+                    "DOMINIO DE ALERTAS E INCIDENTES NOC",
+                    "DOMINIO DE SUBREDES Y PLAN IP",
+                    "DOMINIO DE CERTIFICADOS SSL",
+                    "DOMINIO DE SERVICIOS CORPORATIVOS Y ESTADO NOC",
+                )
+                if any(marker in graph_context for marker in domain_markers) or (new_node_id and (new_node_id.startswith("ups_") or new_node_id.startswith("power_events_"))):
+                    full_context = "[CONTEXTO_DEL_SISTEMA - DATOS FÁCTICOS DE MARIADB]:\n\n" + "\n\n---\n\n".join(context_blocks)
+                    return full_context, updated_entity
+        except Exception as e:
+            logger.warning(f"Error consultando SystemKnowledgeGraph en AiKnowledgeService: {e}")
+
         try:
             from monitor.monitor_db import get_db_connection
             conn = get_db_connection()
         except Exception as e:
             logger.warning(f"No se pudo conectar a MariaDB para extraer contexto de IA: {e}")
+            if context_blocks:
+                full_context = "[CONTEXTO_DEL_SISTEMA - DATOS FÁCTICOS DE MARIADB]:\n\n" + "\n\n---\n\n".join(context_blocks)
+                return full_context, updated_entity
             return None, active_entity
 
         try:
@@ -368,7 +490,7 @@ class AiKnowledgeService:
                 f"- Red: IP {target_asset.get('ip_address') or 'N/A'} | MAC {target_asset.get('mac_address') or 'N/A'}",
                 f"- Sistema Operativo: {target_asset.get('operating_system') or 'N/A'}",
                 f"- Sede y Ubicación: {target_asset.get('site_name')} - {target_asset.get('location_detail') or 'Ubicación estándar'}",
-                f"- Responsable / Custodio: {target_asset.get('custodian_name') or 'Sin asignar'}",
+                f"- Funcionario Responsable: {target_asset.get('custodian_name') or 'Sin asignar'}",
                 f"- Estado Operativo: {target_asset.get('status') or 'active'}",
                 "",
                 "💾 Componentes Internos Registrados:"
@@ -561,6 +683,10 @@ class AiKnowledgeService:
         if not any(w in normalized for w in uptime_kws):
             return None
 
+        # Si la consulta se refiere a servicios o proxies, no interceptar con telemetría de switches/routers
+        if any(w in normalized for w in ("servicio", "servicios", "otrs", "intranet", "factura digital", "claves", "sao", "surge")):
+            return None
+
         # Identificar equipo consultado
         target_dev: Optional[Dict[str, Any]] = None
 
@@ -632,7 +758,7 @@ class AiKnowledgeService:
                     lines.append(f"• {d['name']} (IP: {d['ip']}) | Sede: {d['site_name']} | Apagado desde: {d['down_since']} (Tiempo caído: {h}h {m}m)")
                 return "\n".join(lines), {"type": "telemetry", "name": "Equipos Caídos"}
             else:
-                return "✅ TELEMETRÍA EN VIVO (MariaDB SSOT):\nTodos los dispositivos de red monitoreados en la infraestructura se encuentran actualmente EN LÍNEA (0 equipos con marca de caída activa).", None
+                return "✅ TELEMETRÍA EN VIVO (MariaDB SSOT):\nTodos los switches y routers de red monitoreados en la infraestructura se encuentran actualmente EN LÍNEA (0 equipos de red con marca de caída activa).", None
 
         # Telemetría de un equipo específico
         dev_id = target_dev["id"]

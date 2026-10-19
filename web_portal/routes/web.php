@@ -71,28 +71,48 @@ Route::get('/preview-403', function () {
 });
 
 // --- RUTAS DE AUTO-DESPLIEGUE AGENTE GLPI (ITAM) ---
-Route::get('/deploy/win', function () {
+Route::get('/deploy/win', function (\Illuminate\Http\Request $request, \App\Contracts\GlpiEndpointConfigInterface $endpointConfig) {
     $path = public_path('instaladores/glpi-win.ps1');
     if (!file_exists($path)) abort(404, 'Script de despliegue Windows no encontrado.');
-    return response()->file($path, ['Content-Type' => 'text/plain; charset=utf-8']);
+    $content = file_get_contents($path);
+    $cfg = $endpointConfig->getEndpointsConfig();
+    $targetUrl = $request->query('server_url', $cfg['current_url']);
+    $deployBase = $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
+    $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
+    return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 })->name('deploy.win');
 
-Route::get('/deploy/linux', function () {
+Route::get('/deploy/linux', function (\Illuminate\Http\Request $request, \App\Contracts\GlpiEndpointConfigInterface $endpointConfig) {
     $path = public_path('instaladores/glpi-linux.sh');
     if (!file_exists($path)) abort(404, 'Script de despliegue Linux no encontrado.');
-    return response()->file($path, ['Content-Type' => 'text/x-sh; charset=utf-8']);
+    $content = file_get_contents($path);
+    $cfg = $endpointConfig->getEndpointsConfig();
+    $targetUrl = $request->query('server_url', $cfg['current_url']);
+    $deployBase = $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
+    $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
+    return response($content, 200, ['Content-Type' => 'text/x-sh; charset=utf-8']);
 })->name('deploy.linux');
 
-Route::get('/deploy/switch/win', function () {
+Route::get('/deploy/switch/win', function (\Illuminate\Http\Request $request, \App\Contracts\GlpiEndpointConfigInterface $endpointConfig) {
     $path = public_path('instaladores/glpi-switch.ps1');
     if (!file_exists($path)) abort(404, 'Script de conmutación Windows no encontrado.');
-    return response()->file($path, ['Content-Type' => 'text/plain; charset=utf-8']);
+    $content = file_get_contents($path);
+    $cfg = $endpointConfig->getEndpointsConfig();
+    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['prod_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['dev_url'], $content);
+    return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 })->name('deploy.switch.win');
 
-Route::get('/deploy/switch/linux', function () {
+Route::get('/deploy/switch/linux', function (\Illuminate\Http\Request $request, \App\Contracts\GlpiEndpointConfigInterface $endpointConfig) {
     $path = public_path('instaladores/glpi-switch.sh');
     if (!file_exists($path)) abort(404, 'Script de conmutación Linux no encontrado.');
-    return response()->file($path, ['Content-Type' => 'text/x-sh; charset=utf-8']);
+    $content = file_get_contents($path);
+    $cfg = $endpointConfig->getEndpointsConfig();
+    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['prod_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['dev_url'], $content);
+    return response($content, 200, ['Content-Type' => 'text/x-sh; charset=utf-8']);
 })->name('deploy.switch.linux');
 
 // --- AUTENTICACIÓN ---
@@ -271,6 +291,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('inventory/deploy/trigger-agent', [AdminGlpiDeployController::class, 'triggerAgent'])->name('inventory.deploy.trigger-agent')->middleware(['permission:inventory.deploy']);
     Route::get('inventory/deploy/drift-summary', [AdminGlpiDeployController::class, 'driftSummary'])->name('inventory.deploy.drift-summary')->middleware(['permission:inventory.view', 'telemetry.stateless']);
     Route::post('inventory/deploy/drift-acknowledge', [AdminGlpiDeployController::class, 'acknowledgeDrift'])->name('inventory.deploy.drift-acknowledge')->middleware(['permission:inventory.manage']);
+    Route::post('inventory/deploy/endpoints', [AdminGlpiDeployController::class, 'updateEndpoints'])->name('inventory.deploy.endpoints')->middleware(['node.master', 'permission:inventory.manage']);
 
     // Auditoría Forense y Trazabilidad Cronológica de Activos (Fase C ITAM)
     Route::get('inventory/audit', [AdminInventoryAuditController::class, 'index'])->name('inventory.audit.index')->middleware('permission:inventory.view');

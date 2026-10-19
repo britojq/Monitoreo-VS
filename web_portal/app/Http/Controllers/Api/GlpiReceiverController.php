@@ -36,8 +36,8 @@ class GlpiReceiverController extends Controller
             );
         }
 
-        // 2. Validación de Token Criptográfico (si está configurado)
-        $expectedToken = config('inventory.glpi_token');
+        // 2. Validación de Token Criptográfico (MariaDB SSOT con fallback a config)
+        $expectedToken = (string) (\App\Models\BotSetting::get('glpi_receiver_token') ?: config('inventory.glpi_token'));
         if (!empty($expectedToken)) {
             $sentToken = $request->header('X-Glpi-Agent-Token')
                 ?? $request->bearerToken()

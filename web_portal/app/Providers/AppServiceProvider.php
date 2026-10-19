@@ -24,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Contracts\NetworkTopologyInterface::class, \App\Services\Topology\NetworkTopologyService::class);
         $this->app->singleton(\App\Contracts\AssetTimelineInterface::class, \App\Services\Inventory\AssetTimelineService::class);
         $this->app->singleton(\App\Contracts\ExecutiveReportInterface::class, \App\Services\Reports\ExecutiveReportService::class);
+        $this->app->singleton(\App\Contracts\SystemKnowledgeGraphInterface::class, \App\Services\Ai\SystemKnowledgeGraphService::class);
+        $this->app->singleton(\App\Contracts\GlpiEndpointConfigInterface::class, \App\Services\Deployment\GlpiEndpointConfigService::class);
 
         // Repositorios de Dominio (Principios SOLID)
         $this->app->bind(\App\Contracts\Repositories\InventoryAssetRepositoryInterface::class, \App\Repositories\Eloquent\EloquentInventoryAssetRepository::class);

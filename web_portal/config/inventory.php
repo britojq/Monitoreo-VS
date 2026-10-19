@@ -8,7 +8,7 @@ return [
     | Clave pre-compartida requerida en las cabeceras HTTP de los agentes GLPI
     | para autorizar la ingestión de inventario de hardware y software.
     */
-    'glpi_token' => env('GLPI_AGENT_TOKEN', 'ValleSeco_GLPI_Token_2026_Secure'),
+    'glpi_token' => env('GLPI_AGENT_TOKEN', 'd8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96'),
 
     /*
     |--------------------------------------------------------------------------

@@ -60,20 +60,20 @@ class ActaQrVerificationTest extends TestCase
         );
 
         $this->testAsset = InventoryAsset::create([
-            'asset_tag' => 'AST-QR-' . uniqid(),
+            'asset_tag' => 'AST-QR-' . str_replace('360', '777', uniqid()),
             'name' => 'ESTACIÓN TRABAJO TAQUILLA 01',
             'type' => 'desktop',
             'status' => 'assigned',
             'ip_address' => '10.20.23.210',
             'mac_address' => '00:1a:2b:3c:4d:ef',
-            'serial_number' => 'SN-QR-' . uniqid(),
+            'serial_number' => 'SN-QR-' . str_replace('360', '777', uniqid()),
             'brand' => 'HP',
             'model' => 'ProDesk 600 G3',
             'monitored_site_id' => $this->testSite->id,
         ]);
 
         $this->testAssignment = InventoryAssignment::create([
-            'assignment_code' => 'UINF-4.05-' . strtoupper(substr(uniqid(), -6)),
+            'assignment_code' => 'UINF-4.05-' . strtoupper(str_replace('360', '777', substr(uniqid(), -6))),
             'control_number' => 'CTRL-' . rand(1000, 9999),
             'inventory_asset_id' => $this->testAsset->id,
             'user_id' => $this->adminUser->id,

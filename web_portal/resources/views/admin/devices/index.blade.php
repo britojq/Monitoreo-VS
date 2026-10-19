@@ -1027,6 +1027,20 @@
                                             </div>
                                         </div>
 
+                                        @if($d->notes)
+                                            <!-- NOTAS TÉCNICAS & OBSERVACIONES DEL PUESTO -->
+                                            <div class="p-3 rounded-xl bg-[#040a17] border border-cyan-500/30 mb-4 space-y-1.5 font-mono text-xs">
+                                                <div class="flex items-center justify-between pb-1 border-b border-obsidian-border/50">
+                                                    <span class="text-[10.5px] uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+                                                        <span class="material-symbols-outlined text-sm">sticky_note_2</span>
+                                                        <span>Notas Técnicas &amp; Observaciones</span>
+                                                    </span>
+                                                    <span class="text-[9.5px] text-obsidian-muted">Metadatos de Puesto / NetBIOS</span>
+                                                </div>
+                                                <div class="p-2.5 rounded-lg bg-black/40 border border-obsidian-border/40 text-slate-200 whitespace-pre-line leading-relaxed text-[11px]">{!! nl2br(e($d->notes)) !!}</div>
+                                            </div>
+                                        @endif
+
                                         <!-- CUADRO DE 4 PERIFÉRICOS ASOCIADOS AL PUESTO DE TRABAJO -->
                                         <div class="space-y-2 mb-4">
                                             <div class="flex items-center justify-between">
@@ -1236,6 +1250,11 @@
                                                                     <div class="text-[9.5px] text-obsidian-muted truncate">
                                                                         Tag: {{ $ep->asset_tag }}
                                                                     </div>
+                                                                    @if($ep->notes)
+                                                                        <div class="text-[9px] text-amber-300/80 truncate font-mono" title="{{ $ep->notes }}">
+                                                                            Obs: {{ $ep->notes }}
+                                                                        </div>
+                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         @endforeach
@@ -1815,6 +1834,20 @@
                                             </div>
                                         </div>
 
+                                        @if($d->notes)
+                                            <!-- NOTAS TÉCNICAS & MAPEO DE PUERTOS FÍSICOS -->
+                                            <div class="p-3.5 rounded-xl bg-[#040a17] border border-cyan-500/40 space-y-2 mt-3">
+                                                <div class="flex items-center justify-between pb-1.5 border-b border-obsidian-border/50">
+                                                    <h5 class="text-xs font-mono uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+                                                        <span class="material-symbols-outlined text-sm">hub</span>
+                                                        <span>Notas Técnicas &amp; Mapeo de Puertos Físicos</span>
+                                                    </h5>
+                                                    <span class="text-[10px] font-mono text-cyan-400/80">Distribución de Cableado &amp; Enlaces de Sede</span>
+                                                </div>
+                                                <div class="p-3 rounded-lg bg-black/60 border border-cyan-500/20 font-mono text-xs text-slate-200 whitespace-pre-line leading-relaxed shadow-inner">{!! nl2br(e($d->notes)) !!}</div>
+                                            </div>
+                                        @endif
+
                                         <!-- RESGUARDO CORPORATIVO / ACTA DE ASIGNACIÓN PARA EQUIPO DE RED -->
                                         <div class="p-3.5 rounded-xl border {{ $activeAssignment ? 'bg-[#051410] border-emerald-500/40' : 'bg-[#040914] border-obsidian-border' }} flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
                                             <div class="flex items-center gap-3">
@@ -1891,6 +1924,11 @@
                                                                 <div class="text-white font-medium truncate">{{ $ep->brand }} {{ $ep->model ?: 'Estándar' }}</div>
                                                                 <div class="text-[10px] text-slate-400 truncate">S/N: <code>{{ $ep->serial_number ?: 'Sin Serial' }}</code></div>
                                                                 <div class="text-[9.5px] text-obsidian-muted truncate">Tag: {{ $ep->asset_tag }}</div>
+                                                                @if($ep->notes)
+                                                                    <div class="text-[9px] text-cyan-300/80 truncate font-mono" title="{{ $ep->notes }}">
+                                                                        Obs: {{ $ep->notes }}
+                                                                    </div>
+                                                                @endif
                                                             </div>
                                                         </div>
                                                     @endforeach

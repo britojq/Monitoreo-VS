@@ -932,21 +932,38 @@ async def sync_from_master() -> bool:
                             last_alert_state=VALUES(last_alert_state), down_since=VALUES(down_since),
                             updated_at=VALUES(updated_at)
                         """
-                        net_dev_records = [
-                            (nd["id"], nd.get("monitored_site_id"), nd.get("device_number", 1),
-                             nd.get("name"), nd.get("ip"), nd.get("mac"), nd.get("vendor_data"),
-                             nd.get("access_type", "SSH"), nd.get("access_port", 22),
-                             nd.get("model"), nd.get("serial"),
-                             None if str(nd.get("ports") or "").strip() == "1x GE" else nd.get("ports"),
-                             nd.get("notes"),
-                             nd.get("normal_state_msg"), nd.get("error_state_msg"),
-                             1 if nd.get("is_active", True) else 0, nd.get("sort_order", 0),
-                             1 if nd.get("telegram_alert_enabled") else 0,
-                             nd.get("telegram_alert_target", "owner"), nd.get("last_alert_state"),
-                             _clean_mysql_dt(nd.get("down_since")), _clean_mysql_dt(nd.get("created_at")),
-                             _clean_mysql_dt(nd.get("updated_at") or nd.get("created_at")))
-                            for nd in cfg_net_devs if "id" in nd and "name" in nd
-                        ]
+                        legacy_dev_map = {
+                            11519: 1,  # Router Principal oficial
+                            11502: 8, 11503: 9, 11504: 10, 11505: 11, 11506: 12,
+                            11507: 13, 11508: 14, 11509: 15, 11510: 16, 11511: 17,
+                            11512: 18, 11513: 19, 11514: 20, 11515: 21, 11516: 22,
+                            11517: 23, 11518: 24,
+                        }
+                        net_dev_records = []
+                        for nd in cfg_net_devs:
+                            if "id" in nd and "name" in nd:
+                                dev_id = nd["id"]
+                                # Blindaje de paridad: Si el master envía el Router Principal con ID legado 11519,
+                                # o IDs duplicados viejos, remapear a sus IDs canónicos para proteger CENCARATIT (ID 11519).
+                                if dev_id == 11519 and (nd.get("ip") == "10.20.23.1" or "ROUTER" in str(nd.get("name", "")).upper()):
+                                    dev_id = 1
+                                elif dev_id in legacy_dev_map and dev_id != 11519:
+                                    dev_id = legacy_dev_map[dev_id]
+
+                                net_dev_records.append((
+                                    dev_id, nd.get("monitored_site_id"), nd.get("device_number", 1),
+                                    nd.get("name"), nd.get("ip"), nd.get("mac"), nd.get("vendor_data"),
+                                    nd.get("access_type", "SSH"), nd.get("access_port", 22),
+                                    nd.get("model"), nd.get("serial"),
+                                    None if str(nd.get("ports") or "").strip() == "1x GE" else nd.get("ports"),
+                                    nd.get("notes"),
+                                    nd.get("normal_state_msg"), nd.get("error_state_msg"),
+                                    1 if nd.get("is_active", True) else 0, nd.get("sort_order", 0),
+                                    1 if nd.get("telegram_alert_enabled") else 0,
+                                    nd.get("telegram_alert_target", "owner"), nd.get("last_alert_state"),
+                                    _clean_mysql_dt(nd.get("down_since")), _clean_mysql_dt(nd.get("created_at")),
+                                    _clean_mysql_dt(nd.get("updated_at") or nd.get("created_at"))
+                                ))
                         if net_dev_records:
                             cursor.executemany(net_dev_sql, net_dev_records)
 
@@ -1041,14 +1058,21 @@ async def sync_from_master() -> bool:
                     """
                     net_hist_records = []
                     for nd in all_net_devices:
-                        if "id" in nd and nd["id"] in valid_net_ids:
-                            status_msg = "Dispositivo Operativo / Enlace Activo" if nd.get("is_up") else "Dispositivo Caído / Inalcanzable"
-                            net_hist_records.append((
-                                nd["id"],
-                                1 if nd.get("is_up") else 0,
-                                float(nd.get("latency_ms", 0.0) or 0.0),
-                                status_msg
-                            ))
+                        if "id" in nd:
+                            dev_id = nd["id"]
+                            if dev_id == 11519 and (nd.get("ip") == "10.20.23.1" or "ROUTER" in str(nd.get("name", "")).upper()):
+                                dev_id = 1
+                            elif dev_id in legacy_dev_map and dev_id != 11519:
+                                dev_id = legacy_dev_map[dev_id]
+
+                            if dev_id in valid_net_ids:
+                                status_msg = "Dispositivo Operativo / Enlace Activo" if nd.get("is_up") else "Dispositivo Caído / Inalcanzable"
+                                net_hist_records.append((
+                                    dev_id,
+                                    1 if nd.get("is_up") else 0,
+                                    float(nd.get("latency_ms", 0.0) or 0.0),
+                                    status_msg
+                                ))
                     if net_hist_records:
                         cursor.executemany(net_hist_sql, net_hist_records)
                     cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")

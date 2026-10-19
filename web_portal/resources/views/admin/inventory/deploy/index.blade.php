@@ -125,6 +125,21 @@
             </div>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+            <!-- BOTÓN CONFIGURACIÓN DE ENDPOINTS GLPI (REGLA DE ORO #11: ICONO COMPACTO CON TOOLTIP) -->
+            <div class="relative group">
+                <button type="button" onclick="openEndpointsConfigModal()" class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-obsidian-panel border border-purple-500/40 text-purple-300 hover:bg-purple-600 hover:text-white font-mono text-xs font-bold transition shadow-xs cursor-pointer" title="Configuración de Servidores GLPI (MariaDB SSOT)">
+                    <span class="material-symbols-outlined text-base">settings_ethernet</span>
+                </button>
+                <div class="absolute right-0 top-full mt-1.5 hidden group-hover:flex flex-col items-end z-50 pointer-events-none transition-all duration-200">
+                    <div class="px-2.5 py-1.5 rounded-lg bg-[#06111f] border border-purple-500/50 shadow-xl shadow-purple-950/70 text-white text-[11px] font-mono whitespace-nowrap flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs text-purple-400">settings_ethernet</span>
+                        <span class="font-bold text-purple-200">Servidores GLPI</span>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- BOTÓN GUÍA DE INSTALACIÓN & COMANDOS 1-CLIC -->
             <div class="relative group">
                 <button type="button" onclick="openOneLinerModal()" class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-xs font-bold transition shadow-md shadow-cyan-500/20 cursor-pointer" title="Guía de Instalación GLPI (1-Clic y Manual)">
@@ -753,7 +768,7 @@
 <!-- ============================================================================== -->
 @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.deploy'))
 <div id="modal-bulk-deploy" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-obsidian-panel border border-cyan-500/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[88vh]">
+    <div class="bg-obsidian-panel border border-cyan-500/40 rounded-2xl w-full max-w-3xl lg:max-w-4xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[88vh]">
         <!-- MODAL HEADER -->
         <div class="p-4 bg-obsidian-card border-b border-obsidian-border flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
@@ -772,7 +787,7 @@
 
         <!-- MODAL BODY -->
         <form id="form-bulk-deploy" onsubmit="executeSequentialBulkDeploy(event)" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
-            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll">
+            <div class="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 custom-scroll">
                 <!-- CHIPS DE EQUIPOS SELECCIONADOS -->
                 <div class="space-y-1">
                     <label class="block text-obsidian-muted text-[11px] uppercase font-bold">Equipos seleccionados para la operación:</label>
@@ -820,23 +835,72 @@
 
                 <!-- SELECTOR DE SERVIDOR OBJETIVO -->
                 <div class="space-y-1.5">
-                    <label class="block text-obsidian-muted text-[11px] uppercase font-bold">Servidor Destino GLPI:</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border border-cyan-500/40 bg-cyan-950/20 cursor-pointer flex items-center gap-2 text-white hover:bg-cyan-950/40 transition">
-                            <input type="radio" name="bulk_target" value="dev" checked class="text-cyan-500 focus:ring-0">
-                            <div>
-                                <div class="font-bold text-cyan-300">Desarrollo (Pruebas)</div>
-                                <div class="text-[10px] text-obsidian-muted">10.20.23.221</div>
+                    <div class="flex items-center justify-between">
+                        <label class="block text-obsidian-muted text-[11px] uppercase font-bold">Servidor Destino GLPI:</label>
+                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                            <button type="button" onclick="openEndpointsConfigModal()" class="text-purple-400 hover:text-purple-300 text-[11px] font-mono flex items-center gap-1 hover:underline cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">settings_ethernet</span>
+                                <span>Configurar IPs de Servidores</span>
+                            </button>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <!-- OPCIÓN 1: AUTO-DETECTADO (ESTE SERVIDOR) -->
+                        <label class="p-2.5 rounded-xl border border-cyan-500/50 bg-cyan-950/30 cursor-pointer flex items-center gap-2 text-white hover:bg-cyan-950/50 transition">
+                            <input type="radio" name="bulk_target" value="auto" checked onchange="toggleCustomEndpointInput('bulk', this.value)" class="text-cyan-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-cyan-300 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                    <span>Este Servidor</span>
+                                </div>
+                                <div class="text-[10px] text-obsidian-muted truncate" title="{{ $glpiEndpoints['current_host'] }} (Auto-detectado)">
+                                    {{ $glpiEndpoints['current_host'] }}
+                                </div>
                             </div>
                         </label>
 
+                        <!-- OPCIÓN 2: PRODUCCIÓN (MARIADB) -->
                         <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-red-500/40 transition">
-                            <input type="radio" name="bulk_target" value="prod" class="text-red-500 focus:ring-0">
-                            <div>
-                                <div class="font-bold text-red-300">Producción</div>
-                                <div class="text-[10px] text-obsidian-muted">10.20.23.252</div>
+                            <input type="radio" name="bulk_target" value="prod" onchange="toggleCustomEndpointInput('bulk', this.value)" class="text-red-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-red-300">Producción</div>
+                                <div class="text-[10px] text-obsidian-muted truncate label-prod-host" title="{{ $glpiEndpoints['prod_host'] }}">
+                                    {{ $glpiEndpoints['prod_host'] }}
+                                </div>
                             </div>
                         </label>
+
+                        <!-- OPCIÓN 3: DESARROLLO (MARIADB) -->
+                        <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-purple-500/40 transition">
+                            <input type="radio" name="bulk_target" value="dev" onchange="toggleCustomEndpointInput('bulk', this.value)" class="text-purple-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-purple-300">Desarrollo</div>
+                                <div class="text-[10px] text-obsidian-muted truncate label-dev-host" title="{{ $glpiEndpoints['dev_host'] }}">
+                                    {{ $glpiEndpoints['dev_host'] }}
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- OPCIÓN 4: PERSONALIZADO / MANUAL -->
+                        <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-amber-500/40 transition">
+                            <input type="radio" name="bulk_target" value="custom" onchange="toggleCustomEndpointInput('bulk', this.value)" class="text-amber-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-amber-300 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-xs">edit</span>
+                                    <span>Manual / Otra IP</span>
+                                </div>
+                                <div class="text-[10px] text-obsidian-muted truncate">
+                                    Ingresar IP / Host
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- CAMPO MANUAL REVELABLE -->
+                    <div id="field-custom-endpoint-bulk" class="hidden mt-2 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 space-y-1">
+                        <label class="block text-amber-300 text-[10.5px] font-bold">Dirección IP o Dominio del Servidor Objetivo:</label>
+                        <input type="text" id="bulk-custom-ip" name="bulk_custom_ip" placeholder="ej: 10.20.23.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
+                        <p class="text-[10px] text-amber-300/80">Los equipos se configurarán para reportar hacia http://[IP_INGRESADA]/api/v1/inventory/receiver/...</p>
                     </div>
                 </div>
 
@@ -922,7 +986,7 @@
 <!-- ============================================================================== -->
 @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.deploy'))
 <div id="modal-deploy" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-obsidian-panel border border-cyan-500/40 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[88vh]">
+    <div class="bg-obsidian-panel border border-cyan-500/40 rounded-2xl w-full max-w-3xl lg:max-w-4xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[88vh]">
         <!-- MODAL HEADER -->
         <div class="p-4 bg-obsidian-card border-b border-obsidian-border flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
@@ -941,29 +1005,78 @@
 
         <!-- MODAL BODY FORM -->
         <form id="form-deploy-action" onsubmit="executeRemoteDeploy(event)" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
-            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scroll">
+            <div class="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 custom-scroll">
                 <input type="hidden" id="deploy-host" name="host">
                 <input type="hidden" id="deploy-action" name="action" value="install">
 
                 <!-- SELECTOR DE SERVIDOR OBJETIVO -->
                 <div class="space-y-1.5">
-                    <label class="block text-obsidian-muted text-[11px] uppercase font-bold">Servidor Destino GLPI:</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border border-cyan-500/40 bg-cyan-950/20 cursor-pointer flex items-center gap-2 text-white hover:bg-cyan-950/40 transition">
-                            <input type="radio" name="target" value="dev" checked class="text-cyan-500 focus:ring-0">
-                            <div>
-                                <div class="font-bold text-cyan-300">Desarrollo (Pruebas)</div>
-                                <div class="text-[10px] text-obsidian-muted">10.20.23.221</div>
+                    <div class="flex items-center justify-between">
+                        <label class="block text-obsidian-muted text-[11px] uppercase font-bold">Servidor Destino GLPI:</label>
+                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                            <button type="button" onclick="openEndpointsConfigModal()" class="text-purple-400 hover:text-purple-300 text-[11px] font-mono flex items-center gap-1 hover:underline cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">settings_ethernet</span>
+                                <span>Configurar IPs de Servidores</span>
+                            </button>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <!-- OPCIÓN 1: AUTO-DETECTADO (ESTE SERVIDOR) -->
+                        <label class="p-2.5 rounded-xl border border-cyan-500/50 bg-cyan-950/30 cursor-pointer flex items-center gap-2 text-white hover:bg-cyan-950/50 transition">
+                            <input type="radio" name="target" value="auto" checked onchange="toggleCustomEndpointInput('single', this.value)" class="text-cyan-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-cyan-300 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                    <span>Este Servidor</span>
+                                </div>
+                                <div class="text-[10px] text-obsidian-muted truncate" title="{{ $glpiEndpoints['current_host'] }} (Auto-detectado)">
+                                    {{ $glpiEndpoints['current_host'] }}
+                                </div>
                             </div>
                         </label>
 
+                        <!-- OPCIÓN 2: PRODUCCIÓN (MARIADB) -->
                         <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-red-500/40 transition">
-                            <input type="radio" name="target" value="prod" class="text-red-500 focus:ring-0">
-                            <div>
-                                <div class="font-bold text-red-300">Producción</div>
-                                <div class="text-[10px] text-obsidian-muted">10.20.23.252</div>
+                            <input type="radio" name="target" value="prod" onchange="toggleCustomEndpointInput('single', this.value)" class="text-red-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-red-300">Producción</div>
+                                <div class="text-[10px] text-obsidian-muted truncate label-prod-host" title="{{ $glpiEndpoints['prod_host'] }}">
+                                    {{ $glpiEndpoints['prod_host'] }}
+                                </div>
                             </div>
                         </label>
+
+                        <!-- OPCIÓN 3: DESARROLLO (MARIADB) -->
+                        <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-purple-500/40 transition">
+                            <input type="radio" name="target" value="dev" onchange="toggleCustomEndpointInput('single', this.value)" class="text-purple-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-purple-300">Desarrollo</div>
+                                <div class="text-[10px] text-obsidian-muted truncate label-dev-host" title="{{ $glpiEndpoints['dev_host'] }}">
+                                    {{ $glpiEndpoints['dev_host'] }}
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- OPCIÓN 4: PERSONALIZADO / MANUAL -->
+                        <label class="p-2.5 rounded-xl border border-obsidian-border bg-obsidian-card cursor-pointer flex items-center gap-2 text-white hover:border-amber-500/40 transition">
+                            <input type="radio" name="target" value="custom" onchange="toggleCustomEndpointInput('single', this.value)" class="text-amber-500 focus:ring-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-xs text-amber-300 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-xs">edit</span>
+                                    <span>Manual / Otra IP</span>
+                                </div>
+                                <div class="text-[10px] text-obsidian-muted truncate">
+                                    Ingresar IP / Host
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- CAMPO MANUAL REVELABLE -->
+                    <div id="field-custom-endpoint-single" class="hidden mt-2 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 space-y-1">
+                        <label class="block text-amber-300 text-[10.5px] font-bold">Dirección IP o Dominio del Servidor Objetivo:</label>
+                        <input type="text" id="deploy-custom-ip" name="custom_ip" placeholder="ej: 10.20.23.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
+                        <p class="text-[10px] text-amber-300/80">El agente se configurará para reportar hacia http://[IP_INGRESADA]/api/v1/inventory/receiver/...</p>
                     </div>
                 </div>
 
@@ -1010,6 +1123,87 @@
                 <button type="submit" id="btn-submit-deploy" class="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
                     <span class="material-symbols-outlined text-sm" id="btn-deploy-icon">rocket_launch</span>
                     <span id="btn-deploy-text">Lanzar Despliegue</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
+<!-- ============================================================================== -->
+<!-- MODAL DE CONFIGURACIÓN DE ENDPOINTS GLPI (MARIADB SSOT)                         -->
+<!-- ============================================================================== -->
+@if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+<div id="modal-endpoints-config" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-obsidian-panel border border-purple-500/40 rounded-2xl w-full max-w-2xl sm:max-w-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[88vh]">
+        <!-- MODAL HEADER -->
+        <div class="p-4 bg-obsidian-card border-b border-obsidian-border flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+                <span class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                    <span class="material-symbols-outlined text-lg">settings_ethernet</span>
+                </span>
+                <div>
+                    <h3 class="text-sm font-bold text-white font-mono">Configuración de Servidores GLPI</h3>
+                    <p class="text-[11px] font-mono text-obsidian-muted">Endpoints y Token de Inventario GLPI (MariaDB SSOT)</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeEndpointsConfigModal()" class="text-obsidian-muted hover:text-white transition p-1">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+        </div>
+
+        <!-- MODAL BODY FORM -->
+        <form id="form-endpoints-config" onsubmit="saveEndpointsConfig(event)" class="flex flex-col flex-1 min-h-0 overflow-hidden font-mono text-xs">
+            <div class="p-4 space-y-3.5 overflow-y-auto flex-1 custom-scroll">
+                
+                <!-- HOST DETECTADO EN VIVO -->
+                <div class="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30 flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-cyan-400 text-base shrink-0 mt-0.5">dns</span>
+                    <div class="min-w-0">
+                        <span class="text-cyan-300 font-bold block text-xs">Host actual detectado en vivo: <span class="text-white">{{ $glpiEndpoints['current_host'] }}</span></span>
+                        <span class="text-obsidian-muted text-[10px] leading-tight block mt-0.5">La opción 'Este Servidor' en los despliegues utiliza automáticamente la IP o nombre de host desde donde se navega.</span>
+                    </div>
+                </div>
+
+                <!-- ENDPOINT PRODUCCIÓN -->
+                <div class="space-y-1">
+                    <label class="block text-red-300 text-[11px] uppercase font-bold">
+                        Endpoint Servidor Producción: <span class="text-red-400">*</span>
+                    </label>
+                    <input type="url" id="cfg-prod-url" name="glpi_receiver_prod_url" required value="{{ $glpiEndpoints['prod_url'] }}" placeholder="http://10.20.23.252/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-red-500">
+                    <p class="text-[10px] text-obsidian-muted">URL completa del endpoint receptor en el servidor Master/Producción.</p>
+                </div>
+
+                <!-- ENDPOINT DESARROLLO -->
+                <div class="space-y-1">
+                    <label class="block text-purple-300 text-[11px] uppercase font-bold">
+                        Endpoint Servidor Desarrollo: <span class="text-purple-400">*</span>
+                    </label>
+                    <input type="url" id="cfg-dev-url" name="glpi_receiver_dev_url" required value="{{ $glpiEndpoints['dev_url'] }}" placeholder="http://10.20.23.221/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-purple-500">
+                    <p class="text-[10px] text-obsidian-muted">URL completa del endpoint receptor en el servidor Esclavo/Desarrollo.</p>
+                </div>
+
+                <!-- TOKEN DE RECEPCIÓN -->
+                <div class="space-y-1">
+                    <label class="block text-amber-300 text-[11px] uppercase font-bold">
+                        Token de Autorización GLPI Receiver: <span class="text-amber-400">*</span>
+                    </label>
+                    <input type="text" id="cfg-token" name="glpi_receiver_token" required value="{{ $glpiEndpoints['token'] }}" placeholder="Token secreto..." class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-amber-500">
+                    <p class="text-[10px] text-obsidian-muted">Token de validación para los agentes que reportan hacia el concentrador web.</p>
+                </div>
+
+                <!-- FEEDBACK ALERT -->
+                <div id="endpoints-config-feedback" class="hidden p-3 rounded-lg border text-xs font-mono max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-all"></div>
+            </div>
+
+            <!-- MODAL ACTIONS -->
+            <div class="p-3.5 bg-obsidian-card/80 border-t border-obsidian-border flex items-center justify-end gap-2 shrink-0">
+                <button type="button" onclick="closeEndpointsConfigModal()" class="px-3.5 py-1.5 rounded-lg border border-obsidian-border text-obsidian-muted hover:text-white transition cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-submit-endpoints-config" class="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold transition flex items-center gap-1.5 shadow-md shadow-purple-600/20 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm" id="btn-endpoints-config-icon">save</span>
+                    <span id="btn-endpoints-config-text">Guardar Configuración</span>
                 </button>
             </div>
         </form>
@@ -1075,13 +1269,13 @@
                             <span class="material-symbols-outlined text-base">desktop_windows</span>
                             Windows (PowerShell como Administrador):
                         </span>
-                        <button type="button" onclick="copyToClipboard('(New-Object System.Net.WebClient).DownloadString(\'http://10.20.23.221/deploy/win\') | iex')" class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[11px] flex items-center gap-1 cursor-pointer">
+                        <button type="button" onclick="copyToClipboard('(New-Object System.Net.WebClient).DownloadString(\'{{ url('/deploy/win') }}\') | iex')" class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[11px] flex items-center gap-1 cursor-pointer">
                             <span class="material-symbols-outlined text-xs">content_copy</span>
                             Copiar
                         </button>
                     </div>
                     <div class="p-2.5 rounded-lg bg-black/90 border border-obsidian-border text-cyan-300 select-all break-all text-[11.5px]">
-                        (New-Object System.Net.WebClient).DownloadString('http://10.20.23.221/deploy/win') | iex
+                        (New-Object System.Net.WebClient).DownloadString('{{ url('/deploy/win') }}') | iex
                     </div>
                     <div class="text-[10px] text-obsidian-muted flex items-center gap-1">
                         <span class="material-symbols-outlined text-xs text-blue-400">check</span>
@@ -1096,13 +1290,13 @@
                             <span class="material-symbols-outlined text-base">terminal</span>
                             Linux / Xubuntu / Debian (Terminal con sudo):
                         </span>
-                        <button type="button" onclick="copyToClipboard('(which curl >/dev/null 2>&1 &amp;&amp; curl -sSL http://10.20.23.221/deploy/linux || wget -qO- http://10.20.23.221/deploy/linux) | sudo bash')" class="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 transition text-[11px] flex items-center gap-1 cursor-pointer">
+                        <button type="button" onclick="copyToClipboard('(which curl >/dev/null 2>&1 &amp;&amp; curl -sSL {{ url('/deploy/linux') }} || wget -qO- {{ url('/deploy/linux') }}) | sudo bash')" class="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 transition text-[11px] flex items-center gap-1 cursor-pointer">
                             <span class="material-symbols-outlined text-xs">content_copy</span>
                             Copiar
                         </button>
                     </div>
                     <div class="p-2.5 rounded-lg bg-black/90 border border-obsidian-border text-emerald-300 select-all break-all text-[11.5px]">
-                        (which curl &gt;/dev/null 2&gt;&amp;1 &amp;&amp; curl -sSL http://10.20.23.221/deploy/linux || wget -qO- http://10.20.23.221/deploy/linux) | sudo bash
+                        (which curl &gt;/dev/null 2&gt;&amp;1 &amp;&amp; curl -sSL {{ url('/deploy/linux') }} || wget -qO- {{ url('/deploy/linux') }}) | sudo bash
                     </div>
                     <div class="text-[10px] text-obsidian-muted flex items-center gap-1">
                         <span class="material-symbols-outlined text-xs text-emerald-400">check</span>
@@ -1116,29 +1310,29 @@
                         <span class="material-symbols-outlined text-base">swap_horiz</span>
                         <span>Conmutación Rápida a Producción (Sin Reinstalar):</span>
                     </div>
-                    <p class="text-[10.5px] text-obsidian-muted">Si el equipo ya tiene el agente instalado y deseas cambiar su destino a Producción (10.20.23.252):</p>
+                    <p class="text-[10.5px] text-obsidian-muted">Si el equipo ya tiene el agente instalado y deseas cambiar su destino a Producción ({{ $glpiEndpoints['prod_host'] }}):</p>
                     
                     <div class="space-y-1.5">
                         <div class="flex items-center justify-between text-[11px]">
                             <span class="text-blue-300 font-bold">Windows (PowerShell Admin):</span>
-                            <button type="button" onclick="copyToClipboard('(New-Object System.Net.WebClient).DownloadString(\'http://10.20.23.221/deploy/switch/win\') | iex')" class="text-purple-300 hover:underline flex items-center gap-0.5 cursor-pointer">
+                            <button type="button" onclick="copyToClipboard('(New-Object System.Net.WebClient).DownloadString(\'{{ url('/deploy/switch/win') }}\') | iex')" class="text-purple-300 hover:underline flex items-center gap-0.5 cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">content_copy</span> Copiar
                             </button>
                         </div>
                         <div class="p-2 rounded bg-black/90 border border-obsidian-border text-purple-200 select-all break-all text-[11px]">
-                            (New-Object System.Net.WebClient).DownloadString('http://10.20.23.221/deploy/switch/win') | iex
+                            (New-Object System.Net.WebClient).DownloadString('{{ url('/deploy/switch/win') }}') | iex
                         </div>
                     </div>
 
                     <div class="space-y-1.5">
                         <div class="flex items-center justify-between text-[11px]">
                             <span class="text-emerald-300 font-bold">Linux (Terminal con sudo):</span>
-                            <button type="button" onclick="copyToClipboard('(which curl >/dev/null 2>&1 &amp;&amp; curl -sSL http://10.20.23.221/deploy/switch/linux || wget -qO- http://10.20.23.221/deploy/switch/linux) | sudo bash -s prod')" class="text-purple-300 hover:underline flex items-center gap-0.5 cursor-pointer">
+                            <button type="button" onclick="copyToClipboard('(which curl >/dev/null 2>&1 &amp;&amp; curl -sSL {{ url('/deploy/switch/linux') }} || wget -qO- {{ url('/deploy/switch/linux') }}) | sudo bash -s prod')" class="text-purple-300 hover:underline flex items-center gap-0.5 cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">content_copy</span> Copiar
                             </button>
                         </div>
                         <div class="p-2 rounded bg-black/90 border border-obsidian-border text-purple-200 select-all break-all text-[11px]">
-                            (which curl &gt;/dev/null 2&gt;&amp;1 &amp;&amp; curl -sSL http://10.20.23.221/deploy/switch/linux || wget -qO- http://10.20.23.221/deploy/switch/linux) | sudo bash -s prod
+                            (which curl &gt;/dev/null 2&gt;&amp;1 &amp;&amp; curl -sSL {{ url('/deploy/switch/linux') }} || wget -qO- {{ url('/deploy/switch/linux') }}) | sudo bash -s prod
                         </div>
                     </div>
                 </div>
@@ -1159,10 +1353,10 @@
                             Procedimiento Manual para Windows
                         </span>
                         <div class="flex items-center gap-2">
-                            <a href="http://10.20.23.221/instaladores/GLPI-Agent-x86.msi" download class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[10px] font-bold flex items-center gap-1">
+                            <a href="{{ url('/instaladores/GLPI-Agent-x86.msi') }}" download class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[10px] font-bold flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs">download</span> MSI 32-bit (x86)
                             </a>
-                            <a href="http://10.20.23.221/instaladores/GLPI-Agent-x64.msi" download class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[10px] font-bold flex items-center gap-1">
+                            <a href="{{ url('/instaladores/GLPI-Agent-x64.msi') }}" download class="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500 hover:text-black text-blue-300 transition text-[10px] font-bold flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs">download</span> MSI 64-bit (x64)
                             </a>
                         </div>
@@ -1171,7 +1365,7 @@
                     <div class="space-y-2 text-[11px]">
                         <p class="text-white font-bold">1. Instalación desatendida desde Símbolo del Sistema (cmd como Administrador):</p>
                         <div class="p-2.5 rounded-lg bg-black/90 border border-obsidian-border text-cyan-300 select-all break-all">
-                            msiexec.exe /i GLPI-Agent-x86.msi /quiet /qn SERVER="http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure" ADD_FIREWALL_EXCEPTION=1 RUNNOW=1 TAG="ValleSeco-ITAM"
+                            msiexec.exe /i GLPI-Agent-x86.msi /quiet /qn SERVER="{{ $glpiEndpoints['current_url'] }}" ADD_FIREWALL_EXCEPTION=1 RUNNOW=1 TAG="ValleSeco-ITAM"
                         </div>
                         <p class="text-[10px] text-obsidian-muted">* Sustituya GLPI-Agent-x86.msi por GLPI-Agent-x64.msi en sistemas de 64 bits.</p>
 
@@ -1179,7 +1373,7 @@
                         <p class="text-obsidian-muted">En el Registro de Windows (<code class="text-amber-300">regedit</code>):</p>
                         <div class="p-2 rounded bg-black/90 border border-obsidian-border text-amber-200 text-[10.5px]">
                             Ruta: HKLM\SOFTWARE\GLPI-Agent (o WOW6432Node)<br>
-                            Valor de cadena 'server' = http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure
+                            Valor de cadena 'server' = {{ $glpiEndpoints['current_url'] }}
                         </div>
                         <p class="text-obsidian-muted">Reiniciar el servicio en cmd: <code class="text-cyan-300">net stop glpi-agent &amp;&amp; net start glpi-agent</code></p>
 
@@ -1198,7 +1392,7 @@
                             <span class="material-symbols-outlined">terminal</span>
                             Procedimiento Manual para Linux / Xubuntu
                         </span>
-                        <a href="http://10.20.23.221/instaladores/glpi-agent_all.deb" download class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 transition text-[10px] font-bold flex items-center gap-1">
+                        <a href="{{ url('/instaladores/glpi-agent_all.deb') }}" download class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 transition text-[10px] font-bold flex items-center gap-1">
                             <span class="material-symbols-outlined text-xs">download</span> Paquete DEB
                         </a>
                     </div>
@@ -1206,7 +1400,7 @@
                     <div class="space-y-2 text-[11px]">
                         <p class="text-white font-bold">1. Descargar paquete .deb desde el repositorio local:</p>
                         <div class="p-2.5 rounded-lg bg-black/90 border border-obsidian-border text-emerald-300 select-all break-all">
-                            wget http://10.20.23.221/instaladores/glpi-agent_all.deb
+                            wget {{ url('/instaladores/glpi-agent_all.deb') }}
                         </div>
 
                         <p class="text-white font-bold pt-1">2. Instalar el paquete y resolver dependencias de Perl:</p>
@@ -1216,7 +1410,7 @@
 
                         <p class="text-white font-bold pt-1">3. Configurar el archivo <code class="text-cyan-300">/etc/glpi-agent/agent.cfg</code>:</p>
                         <div class="p-2.5 rounded-lg bg-black/90 border border-obsidian-border text-cyan-200 text-[10.5px]">
-                            server = http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure<br>
+                            server = {{ $glpiEndpoints['current_url'] }}<br>
                             tag = ValleSeco-ITAM
                         </div>
 
@@ -1247,25 +1441,25 @@
                         <tbody class="divide-y divide-obsidian-border/60">
                             <tr>
                                 <td class="p-3 text-obsidian-muted">IP Central</td>
-                                <td class="p-3 font-bold text-cyan-300">10.20.23.221</td>
-                                <td class="p-3 font-bold text-purple-300">10.20.23.252</td>
+                                <td class="p-3 font-bold text-cyan-300 label-dev-host">{{ $glpiEndpoints['dev_host'] }}</td>
+                                <td class="p-3 font-bold text-purple-300 label-prod-host">{{ $glpiEndpoints['prod_host'] }}</td>
                             </tr>
                             <tr>
                                 <td class="p-3 text-obsidian-muted">Endpoint Receptor GLPI</td>
-                                <td class="p-3 text-cyan-300 select-all break-all text-[10.5px]">/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure</td>
-                                <td class="p-3 text-purple-300 select-all break-all text-[10.5px]">/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure</td>
+                                <td class="p-3 text-cyan-300 select-all break-all text-[10.5px]">{{ parse_url($glpiEndpoints['dev_url'], PHP_URL_PATH) }}</td>
+                                <td class="p-3 text-purple-300 select-all break-all text-[10.5px]">{{ parse_url($glpiEndpoints['prod_url'], PHP_URL_PATH) }}</td>
                             </tr>
                             <tr>
                                 <td class="p-3 text-obsidian-muted">Repositorio Instaladores</td>
-                                <td class="p-3 text-cyan-300 select-all text-[10.5px]">http://10.20.23.221/instaladores</td>
-                                <td class="p-3 text-purple-300 select-all text-[10.5px]">http://10.20.23.252/instaladores</td>
+                                <td class="p-3 text-cyan-300 select-all text-[10.5px]">http://{{ $glpiEndpoints['dev_host'] }}/instaladores</td>
+                                <td class="p-3 text-purple-300 select-all text-[10.5px]">http://{{ $glpiEndpoints['prod_host'] }}/instaladores</td>
                             </tr>
                             <tr>
                                 <td class="p-3 text-obsidian-muted">Token de Autorización</td>
                                 <td class="p-3 text-amber-300 font-bold select-all" colspan="2">
                                     <div class="flex items-center gap-2">
-                                        <span>ValleSeco_GLPI_Token_2026_Secure</span>
-                                        <button type="button" onclick="copyToClipboard('ValleSeco_GLPI_Token_2026_Secure')" class="text-cyan-400 hover:underline text-[10px] flex items-center gap-0.5 cursor-pointer">
+                                        <span class="label-glpi-token">{{ $glpiEndpoints['token'] }}</span>
+                                        <button type="button" onclick="copyToClipboard('{{ $glpiEndpoints['token'] }}')" class="text-cyan-400 hover:underline text-[10px] flex items-center gap-0.5 cursor-pointer">
                                             <span class="material-symbols-outlined text-xs">content_copy</span> Copiar
                                         </button>
                                     </div>
@@ -1639,6 +1833,121 @@
 
 <!-- JAVASCRIPT LOGIC -->
 <script>
+    // ==============================================================================
+    // GESTIÓN DE ENDPOINTS GLPI Y SELECCIÓN PERSONALIZADA (MARIADB SSOT)
+    // ==============================================================================
+    function toggleCustomEndpointInput(mode, val) {
+        if (mode === 'single') {
+            const field = document.getElementById('field-custom-endpoint-single');
+            if (field) {
+                if (val === 'custom') {
+                    field.classList.remove('hidden');
+                    document.getElementById('deploy-custom-ip')?.focus();
+                } else {
+                    field.classList.add('hidden');
+                }
+            }
+        } else if (mode === 'bulk') {
+            const field = document.getElementById('field-custom-endpoint-bulk');
+            if (field) {
+                if (val === 'custom') {
+                    field.classList.remove('hidden');
+                    document.getElementById('bulk-custom-ip')?.focus();
+                } else {
+                    field.classList.add('hidden');
+                }
+            }
+        }
+    }
+
+    function openEndpointsConfigModal() {
+        const modal = document.getElementById('modal-endpoints-config');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeEndpointsConfigModal() {
+        const modal = document.getElementById('modal-endpoints-config');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveEndpointsConfig(event) {
+        event.preventDefault();
+        const form = document.getElementById('form-endpoints-config');
+        const btn = document.getElementById('btn-submit-endpoints-config');
+        const btnText = document.getElementById('btn-endpoints-config-text');
+        const btnIcon = document.getElementById('btn-endpoints-config-icon');
+        const feedback = document.getElementById('endpoints-config-feedback');
+
+        btn.disabled = true;
+        btnText.innerText = 'Guardando en MariaDB...';
+        btnIcon.innerText = 'hourglass_top';
+
+        feedback.className = 'p-3 rounded-lg border border-purple-500/40 bg-purple-950/30 text-purple-300 font-mono text-xs flex items-center gap-2';
+        feedback.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando configuración en MariaDB (bot_settings)...';
+        feedback.classList.remove('hidden');
+
+        const payload = {
+            glpi_receiver_prod_url: document.getElementById('cfg-prod-url').value.trim(),
+            glpi_receiver_dev_url: document.getElementById('cfg-dev-url').value.trim(),
+            glpi_receiver_token: document.getElementById('cfg-token').value.trim(),
+        };
+
+        try {
+            const resp = await fetch('{{ route('admin.inventory.deploy.endpoints') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+
+            if (data.success) {
+                feedback.className = 'p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 font-mono text-xs flex items-center gap-2';
+                feedback.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-400">check_circle</span> ${data.message}`;
+
+                if (data.data) {
+                    if (data.data.prod_host) {
+                        document.querySelectorAll('.label-prod-host').forEach(el => {
+                            el.innerText = data.data.prod_host;
+                            el.setAttribute('title', data.data.prod_host);
+                        });
+                    }
+                    if (data.data.dev_host) {
+                        document.querySelectorAll('.label-dev-host').forEach(el => {
+                            el.innerText = data.data.dev_host;
+                            el.setAttribute('title', data.data.dev_host);
+                        });
+                    }
+                    if (data.data.token) {
+                        document.querySelectorAll('.label-glpi-token').forEach(el => {
+                            el.innerText = data.data.token;
+                        });
+                    }
+                }
+
+                setTimeout(() => {
+                    closeEndpointsConfigModal();
+                    feedback.classList.add('hidden');
+                }, 1200);
+            } else {
+                feedback.className = 'p-3 rounded-lg border border-red-500/40 bg-red-950/40 text-red-300 font-mono text-xs max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-all block';
+                feedback.innerHTML = `<span class="material-symbols-outlined text-sm text-red-400">error</span> ${data.message || data.error || 'Error al guardar.'}`;
+            }
+        } catch (err) {
+            feedback.className = 'p-3 rounded-lg border border-red-500/40 bg-red-950/40 text-red-300 font-mono text-xs max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-all block';
+            feedback.innerHTML = `Error de red: ${err.message}`;
+        } finally {
+            btn.disabled = false;
+            btnText.innerText = 'Guardar Configuración';
+            btnIcon.innerText = 'save';
+        }
+    }
+
     function openScanSubnetModal() {
         const modal = document.getElementById('modal-scan-subnet');
         if (modal) modal.classList.remove('hidden');
@@ -1899,9 +2208,10 @@
     }
 
     function copyOneLiner(osType, ip) {
+        let baseUrl = window.location.origin;
         let cmd = osType === 'linux' 
-            ? '(which curl >/dev/null 2>&1 && curl -sSL http://10.20.23.221/deploy/linux || wget -qO- http://10.20.23.221/deploy/linux) | sudo bash'
-            : '(New-Object System.Net.WebClient).DownloadString(\'http://10.20.23.221/deploy/win\') | iex';
+            ? `(which curl >/dev/null 2>&1 && curl -sSL ${baseUrl}/deploy/linux || wget -qO- ${baseUrl}/deploy/linux) | sudo bash`
+            : `(New-Object System.Net.WebClient).DownloadString('${baseUrl}/deploy/win') | iex`;
         copyToClipboard(cmd);
         openOneLinerModal('oneliner');
     }
@@ -1910,6 +2220,15 @@
         e.preventDefault();
 
         const form = document.getElementById('form-deploy-action');
+        const targetVal = form.querySelector('input[name="target"]:checked')?.value || 'auto';
+        if (targetVal === 'custom') {
+            const customIpVal = document.getElementById('deploy-custom-ip')?.value.trim();
+            if (!customIpVal) {
+                alert('Por favor ingrese la dirección IP o host del servidor GLPI personalizado.');
+                return;
+            }
+        }
+
         const btn = document.getElementById('btn-submit-deploy');
         const btnText = document.getElementById('btn-deploy-text');
         const btnIcon = document.getElementById('btn-deploy-icon');
@@ -2413,8 +2732,25 @@
         terminal.innerText = `>>> INICIANDO ${opTitle} EN ${devices.length} EQUIPOS <<<\n\n`;
 
         const targetRadio = document.querySelector('input[name="bulk_target"]:checked');
-        const target = targetRadio ? targetRadio.value : 'dev';
-        const targetLabel = (target === 'prod') ? 'PRODUCCIÓN (10.20.23.252)' : 'DESARROLLO (10.20.23.221)';
+        const target = targetRadio ? targetRadio.value : 'auto';
+        const bulkCustomIp = document.getElementById('bulk-custom-ip')?.value.trim() || '';
+
+        if (target === 'custom' && !bulkCustomIp) {
+            alert('Por favor ingrese la dirección IP o host del servidor GLPI personalizado.');
+            btn.disabled = false;
+            btnCancel.disabled = false;
+            btnText.innerText = isSwitch ? 'Iniciar Conmutación Secuencial' : 'Iniciar Despliegue Secuencial';
+            btnIcon.innerText = 'rocket_launch';
+            progressContainer.classList.add('hidden');
+            terminal.classList.add('hidden');
+            return;
+        }
+
+        let targetLabel = 'ESTE SERVIDOR (Auto)';
+        if (target === 'prod') targetLabel = 'PRODUCCIÓN (MariaDB)';
+        else if (target === 'dev') targetLabel = 'DESARROLLO (MariaDB)';
+        else if (target === 'custom') targetLabel = `PERSONALIZADO (${bulkCustomIp})`;
+
         terminal.innerText += `-> Destino seleccionado: ${targetLabel}\n`;
         terminal.innerText += `-> Modo de operación: ${isSwitch ? 'Reconfiguración y reinicio en caliente (sin reinstalar)' : 'Instalación completa desatendida'}\n\n`;
 
@@ -2445,6 +2781,9 @@
             formData.append('host', dev.ip);
             formData.append('action', action);
             formData.append('target', target);
+            if (target === 'custom' && bulkCustomIp) {
+                formData.append('custom_ip', bulkCustomIp);
+            }
             formData.append('os', os);
             formData.append('user', user);
             formData.append('password', password);

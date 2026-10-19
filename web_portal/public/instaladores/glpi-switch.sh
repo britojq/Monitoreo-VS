@@ -14,9 +14,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 if [ "$TARGET" = "prod" ]; then
-    SERVER_URL="http://10.20.23.252/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
+    SERVER_URL="http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
 else
-    SERVER_URL="http://10.20.23.221/api/v1/inventory/receiver/ValleSeco_GLPI_Token_2026_Secure"
+    SERVER_URL="http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
 fi
 
 CFG_FILE="/etc/glpi-agent/agent.cfg"

@@ -298,6 +298,15 @@
                                                 Puertos: {{ $dev->ports }}
                                             </div>
                                         @endif
+                                        @if($dev->notes)
+                                            <div class="mt-1.5 p-1.5 rounded bg-black/40 border border-obsidian-border/50 text-[10px] text-slate-300 font-mono whitespace-pre-line leading-relaxed max-h-24 overflow-y-auto custom-scroll" title="Notas Técnicas y Mapeo de Puertos">
+                                                <div class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                                                    <span class="material-symbols-outlined text-[11px]">hub</span>
+                                                    <span>Mapeo / Notas:</span>
+                                                </div>
+                                                {!! nl2br(e($dev->notes)) !!}
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <!-- CUADRO CON LA GRÁFICA HISTÓRICA DEBAJO DEL DISPOSITIVO -->

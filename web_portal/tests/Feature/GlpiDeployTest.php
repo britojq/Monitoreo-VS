@@ -81,10 +81,10 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        // Consultar la vista buscando el Router Principal (10.20.23.1) -> NO debe aparecer
+        // Consultar la vista buscando el Router Principal (10.20.23.1) -> NO debe tener botón de despliegue
         $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.23.1']));
         $response->assertStatus(200);
-        $response->assertDontSee('ROUTER PRINCIPAL');
+        $response->assertDontSee("openDeployModal('10.20.23.1'", false);
 
         // Consultar la vista buscando un Switch (10.20.23.2) -> NO debe aparecer
         $responseSw = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.23.2']));
@@ -136,8 +136,8 @@ class GlpiDeployTest extends TestCase
         $response->assertDontSee('srv-aplicacion.cadafe.gov.ve');
         $response->assertDontSee('ldapr2-t4.empresa.com.ve');
 
-        // Equipos no-PC como Router y Switch no deben aparecer en la vista de despliegue
-        $response->assertDontSee('ROUTER PRINCIPAL');
+        // Equipos no-PC como Router y Switch no deben aparecer con botón de despliegue
+        $response->assertDontSee("openDeployModal('10.20.23.1'", false);
         $response->assertDontSee('SW01 - Cisco Principal');
 
         // Sí debe mostrar PCs oficiales de las sedes registradas (usando búsqueda para evitar límites de paginación)
