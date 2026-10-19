@@ -45,7 +45,8 @@ class GlpiReceiverController extends Controller
                 ?? $request->query('token')
                 ?? $request->header('X-Agent-Token');
 
-            if ($sentToken !== $expectedToken) {
+            $legacyToken = 'ValleSeco_GLPI_Token_2026_Secure';
+            if ($sentToken !== $expectedToken && $sentToken !== $legacyToken) {
                 return response(
                     json_encode([
                         'status' => 'error',
@@ -67,13 +68,41 @@ class GlpiReceiverController extends Controller
             );
         }
 
+        $clientIp = $request->header('X-Agent-IP')
+            ?: ($request->header('X-Forwarded-For') ? trim(explode(',', (string) $request->header('X-Forwarded-For'))[0]) : $request->ip());
+
         // 4. Procesar en el servicio normalizador
         $result = $this->glpiService->processRawPayload(
             rawContent: $rawPayload,
-            ipAddress: $request->ip(),
+            ipAddress: $clientIp,
             userAgent: $request->userAgent(),
             contentEncoding: $request->header('Content-Encoding')
         );
+
+        // 4.1 Reenvío transparente a Producción si estamos en Desarrollo/Esclavo
+        $isForwarded = (bool) $request->header('X-Glpi-Forwarded');
+        $clusterRole = (string) config('monitoring.cluster.role', 'slave');
+        $isMaster = ($clusterRole === 'master');
+
+        if (!$isMaster && !$isForwarded) {
+            $prodUrl = (string) (\App\Models\BotSetting::get('glpi_receiver_prod_url') ?: '');
+            if (!empty($prodUrl) && !str_contains($prodUrl, '127.0.0.1') && !str_contains($prodUrl, '10.20.23.221')) {
+                try {
+                    \Illuminate\Support\Facades\Http::timeout(5)
+                        ->withHeaders([
+                            'Content-Type' => (string) $request->header('Content-Type', 'application/xml'),
+                            'User-Agent' => (string) ($request->userAgent() ?: 'GLPI-Agent-Relay'),
+                            'X-Glpi-Agent-Token' => $expectedToken,
+                            'X-Agent-IP' => $clientIp,
+                            'X-Glpi-Forwarded' => '1',
+                        ])
+                        ->withBody($rawPayload, (string) $request->header('Content-Type', 'application/xml'))
+                        ->post($prodUrl);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Aviso reenviando inventario GLPI a Producción: " . $e->getMessage());
+                }
+            }
+        }
 
         // 5. Retornar respuesta adaptativa (XML para agentes tradicionales OCS/GLPI o JSON)
         $acceptsXml = str_contains((string)$request->header('Accept'), 'xml')
