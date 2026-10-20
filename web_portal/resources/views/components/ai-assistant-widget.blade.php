@@ -1,9 +1,13 @@
 @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasPermission('ai.chat') || in_array(auth()->user()->role, ['operator', 'operador'], true)))
 <div id="ai-assistant-root" class="font-sans antialiased">
-    <!-- BOTÓN FLOTANTE ANIMADO (ORB ATIT IA) -->
-    <div id="ai-widget-orb-container" class="fixed bottom-6 right-6 z-[9999] flex items-center gap-3">
-        <!-- Indicador de bienvenida / llamada a la acción flotante (se oculta al abrir) -->
-        <div id="ai-widget-badge-cta" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-obsidian-surface/90 border border-cyan-500/40 backdrop-blur-md shadow-lg shadow-cyan-950/40 text-[11px] font-mono text-cyan-300 animate-bounce duration-1000 cursor-pointer" onclick="toggleAiAssistantDrawer()">
+    <!-- BOTÓN FLOTANTE ANIMADO Y ARRASTRABLE (ORB ATIT IA) -->
+    <div id="ai-widget-orb-container" 
+         class="fixed z-[9999] flex items-center gap-3 select-none touch-none"
+         style="top: calc(50% - 28px); right: 24px;">
+        
+        <!-- Indicador de llamada a la acción flotante (se oculta al abrir) -->
+        <div id="ai-widget-badge-cta" 
+             class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-obsidian-surface/90 border border-cyan-500/40 backdrop-blur-md shadow-lg shadow-cyan-950/40 text-[11px] font-mono text-cyan-300 animate-bounce duration-1000 cursor-grab active:cursor-grabbing">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Asistente ATIT</span>
             <span class="text-[9px] text-cyan-400/70 font-sans">| IA</span>
@@ -11,29 +15,28 @@
 
         <button type="button" 
                 id="ai-widget-orb-btn" 
-                onclick="toggleAiAssistantDrawer()" 
-                title="Asistente Virtual Técnico ATIT - Consultas de Red & Inventario" 
-                class="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-cyan-600 via-cyan-800 to-obsidian-base border-2 border-cyan-400/80 text-white shadow-xl shadow-cyan-500/30 hover:shadow-cyan-400/50 hover:scale-110 active:scale-95 transition-all duration-300 group cursor-pointer focus:outline-none">
+                title="Asistente Virtual Corporativo - Arrastra para mover o clic para abrir" 
+                class="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-cyan-600 via-cyan-800 to-obsidian-base border-2 border-cyan-400/80 text-white shadow-xl shadow-cyan-500/30 hover:shadow-cyan-400/50 hover:scale-105 transition-all duration-200 group cursor-grab active:cursor-grabbing focus:outline-none select-none">
             <!-- Anillo de radar pulsante de fondo -->
             <span class="absolute inset-0 rounded-full border border-cyan-400/60 animate-ping opacity-60 pointer-events-none"></span>
             <span class="absolute -inset-1 rounded-full bg-cyan-500/20 blur-sm group-hover:bg-cyan-400/30 transition pointer-events-none"></span>
 
             <!-- Icono Central Inteligente -->
-            <span id="ai-widget-icon" class="material-symbols-outlined text-2xl text-cyan-200 group-hover:text-white group-hover:rotate-12 transition-transform duration-300">
+            <span id="ai-widget-icon" class="material-symbols-outlined text-2xl text-cyan-200 group-hover:text-white group-hover:rotate-12 transition-transform duration-300 pointer-events-none">
                 smart_toy
             </span>
 
             <!-- LED de Estado En Línea -->
-            <span class="absolute top-0 right-0 flex h-3.5 w-3.5">
+            <span class="absolute top-0 right-0 flex h-3.5 w-3.5 pointer-events-none">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-obsidian-base"></span>
             </span>
         </button>
     </div>
 
-    <!-- PANEL FLOTANTE DE CHAT (DRAWER / OFFCANVAS) -->
+    <!-- PANEL FLOTANTE DE CHAT (DRAWER) -->
     <div id="ai-assistant-drawer" 
-         class="fixed bottom-24 right-4 sm:right-6 z-[10000] w-[94vw] sm:w-[440px] h-[580px] max-h-[82vh] bg-[#050e1b]/95 border border-cyan-500/40 rounded-2xl shadow-2xl shadow-cyan-950/70 backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300 ease-out translate-y-8 opacity-0 pointer-events-none">
+         class="fixed top-14 right-3 sm:right-6 z-[10000] w-[94vw] sm:w-[440px] h-[calc(100vh-4.5rem)] max-h-[640px] bg-[#050e1b]/95 border border-cyan-500/40 rounded-2xl shadow-2xl shadow-cyan-950/70 backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300 ease-out -translate-y-4 opacity-0 pointer-events-none">
         
         <!-- CABECERA DEL ASISTENTE -->
         <div class="px-4 py-3 bg-gradient-to-r from-obsidian-card via-[#061933] to-obsidian-card border-b border-cyan-500/30 flex items-center justify-between shrink-0">
@@ -134,26 +137,184 @@
         const drawer = document.getElementById('ai-assistant-drawer');
         const badge = document.getElementById('ai-widget-badge-cta');
         const icon = document.getElementById('ai-widget-icon');
+        const topbarIcon = document.getElementById('topbar-ai-icon');
         if (!drawer) return;
 
         isAiDrawerOpen = !isAiDrawerOpen;
 
         if (isAiDrawerOpen) {
-            drawer.classList.remove('translate-y-8', 'opacity-0', 'pointer-events-none');
+            drawer.classList.remove('-translate-y-4', 'opacity-0', 'pointer-events-none');
             drawer.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
             if (badge) badge.classList.add('hidden');
             if (icon) icon.textContent = 'close';
+            if (topbarIcon) topbarIcon.textContent = 'close';
             setTimeout(() => {
                 const input = document.getElementById('ai-drawer-input');
                 if (input) input.focus();
             }, 150);
         } else {
-            drawer.classList.add('translate-y-8', 'opacity-0', 'pointer-events-none');
+            drawer.classList.add('-translate-y-4', 'opacity-0', 'pointer-events-none');
             drawer.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
             if (badge) badge.classList.remove('hidden');
             if (icon) icon.textContent = 'smart_toy';
+            if (topbarIcon) topbarIcon.textContent = 'smart_toy';
         }
     }
+
+    // Cerrar drawer al hacer clic fuera del panel o botón/orbe
+    document.addEventListener('click', function(e) {
+        if (!isAiDrawerOpen) return;
+        const drawer = document.getElementById('ai-assistant-drawer');
+        const orbContainer = document.getElementById('ai-widget-orb-container');
+        const btn = document.getElementById('btn-open-ai-chat');
+        if (drawer && !drawer.contains(e.target) && (!orbContainer || !orbContainer.contains(e.target)) && (!btn || !btn.contains(e.target))) {
+            toggleAiAssistantDrawer();
+        }
+    });
+
+    // Cerrar drawer con tecla Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isAiDrawerOpen) {
+            toggleAiAssistantDrawer();
+        }
+    });
+
+    // =========================================================================
+    // LÓGICA DE ARRASTRE LIBRE (DRAGGABLE) CON MEMORIA PERSISTENTE
+    // =========================================================================
+    (function initDraggableAiWidget() {
+        const orbContainer = document.getElementById('ai-widget-orb-container');
+        const orbBtn = document.getElementById('ai-widget-orb-btn');
+        if (!orbContainer) return;
+
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let initialLeft = 0;
+        let initialTop = 0;
+        let hasMoved = false;
+
+        function restoreOrbPosition() {
+            try {
+                const saved = localStorage.getItem('ai_widget_pos');
+                if (saved) {
+                    const pos = JSON.parse(saved);
+                    const maxLeft = Math.max(10, window.innerWidth - (orbContainer.offsetWidth || 70) - 10);
+                    const maxTop = Math.max(10, window.innerHeight - (orbContainer.offsetHeight || 70) - 10);
+                    const validLeft = Math.min(Math.max(10, pos.left), maxLeft);
+                    const validTop = Math.min(Math.max(10, pos.top), maxTop);
+
+                    orbContainer.style.left = validLeft + 'px';
+                    orbContainer.style.top = validTop + 'px';
+                    orbContainer.style.right = 'auto';
+                    orbContainer.style.bottom = 'auto';
+                    return;
+                }
+            } catch (e) {}
+
+            // Posición por defecto: Lateral derecho a media altura (segura y no invasiva)
+            orbContainer.style.top = 'calc(50% - 28px)';
+            orbContainer.style.right = '24px';
+            orbContainer.style.left = 'auto';
+            orbContainer.style.bottom = 'auto';
+        }
+
+        function onDragStart(e) {
+            if (e.type === 'mousedown' && e.button !== 0) return;
+
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+
+            const rect = orbContainer.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            dragStartX = clientX;
+            dragStartY = clientY;
+            hasMoved = false;
+            isDragging = true;
+
+            if (e.type === 'mousedown') {
+                document.addEventListener('mousemove', onDragMove);
+                document.addEventListener('mouseup', onDragEnd);
+            } else if (e.type === 'touchstart') {
+                document.addEventListener('touchmove', onDragMove, { passive: false });
+                document.addEventListener('touchend', onDragEnd);
+            }
+        }
+
+        function onDragMove(e) {
+            if (!isDragging) return;
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+
+            const dx = clientX - dragStartX;
+            const dy = clientY - dragStartY;
+
+            if (Math.hypot(dx, dy) > 5) {
+                hasMoved = true;
+                if (e.cancelable) e.preventDefault();
+                orbContainer.classList.add('cursor-grabbing');
+
+                const maxLeft = Math.max(10, window.innerWidth - orbContainer.offsetWidth - 10);
+                const maxTop = Math.max(10, window.innerHeight - orbContainer.offsetHeight - 10);
+
+                const targetLeft = Math.min(Math.max(10, initialLeft + dx), maxLeft);
+                const targetTop = Math.min(Math.max(10, initialTop + dy), maxTop);
+
+                orbContainer.style.left = targetLeft + 'px';
+                orbContainer.style.top = targetTop + 'px';
+                orbContainer.style.right = 'auto';
+                orbContainer.style.bottom = 'auto';
+            }
+        }
+
+        function onDragEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            orbContainer.classList.remove('cursor-grabbing');
+
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('mouseup', onDragEnd);
+            document.removeEventListener('touchmove', onDragMove);
+            document.removeEventListener('touchend', onDragEnd);
+
+            if (hasMoved) {
+                const rect = orbContainer.getBoundingClientRect();
+                try {
+                    localStorage.setItem('ai_widget_pos', JSON.stringify({
+                        left: Math.round(rect.left),
+                        top: Math.round(rect.top)
+                    }));
+                } catch (err) {}
+            } else {
+                // Fue un clic sin arrastre: alternar apertura del panel
+                toggleAiAssistantDrawer();
+            }
+        }
+
+        orbContainer.addEventListener('mousedown', onDragStart);
+        orbContainer.addEventListener('touchstart', onDragStart, { passive: true });
+
+        // Soporte de accesibilidad por teclado
+        if (orbBtn) {
+            orbBtn.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleAiAssistantDrawer();
+                }
+            });
+        }
+
+        window.addEventListener('resize', restoreOrbPosition);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', restoreOrbPosition);
+        } else {
+            restoreOrbPosition();
+        }
+    })();
+
+    window.toggleAiAssistantDrawer = toggleAiAssistantDrawer;
+    window.handleAiChatClick = toggleAiAssistantDrawer;
 
     function sendQuickPrompt(promptText) {
         const input = document.getElementById('ai-drawer-input');

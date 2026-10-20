@@ -79,30 +79,6 @@ class GlpiReceiverController extends Controller
             contentEncoding: $request->header('Content-Encoding')
         );
 
-        // 4.1 Reenvío transparente a Producción si estamos en Desarrollo/Esclavo
-        $isForwarded = (bool) $request->header('X-Glpi-Forwarded');
-        $clusterRole = (string) config('monitoring.cluster.role', 'slave');
-        $isMaster = ($clusterRole === 'master');
-
-        if (!$isMaster && !$isForwarded) {
-            $prodUrl = (string) (\App\Models\BotSetting::get('glpi_receiver_prod_url') ?: '');
-            if (!empty($prodUrl) && !str_contains($prodUrl, '127.0.0.1') && !str_contains($prodUrl, '10.20.23.221')) {
-                try {
-                    \Illuminate\Support\Facades\Http::timeout(5)
-                        ->withHeaders([
-                            'Content-Type' => (string) $request->header('Content-Type', 'application/xml'),
-                            'User-Agent' => (string) ($request->userAgent() ?: 'GLPI-Agent-Relay'),
-                            'X-Glpi-Agent-Token' => $expectedToken,
-                            'X-Agent-IP' => $clientIp,
-                            'X-Glpi-Forwarded' => '1',
-                        ])
-                        ->withBody($rawPayload, (string) $request->header('Content-Type', 'application/xml'))
-                        ->post($prodUrl);
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning("Aviso reenviando inventario GLPI a Producción: " . $e->getMessage());
-                }
-            }
-        }
 
         // 5. Retornar respuesta adaptativa (XML para agentes tradicionales OCS/GLPI o JSON)
         $acceptsXml = str_contains((string)$request->header('Accept'), 'xml')

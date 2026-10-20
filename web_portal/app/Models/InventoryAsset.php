@@ -400,6 +400,19 @@ class InventoryAsset extends Model
 
         $savedPeripherals = collect($assignment->peripherals_json ?? []);
 
+        // Si el acta previa no registró snapshot de periféricos (acta legada o inicial),
+        // no generar falsas alertas salvo que existan periféricos agregados/modificados posterior al acta
+        if ($savedPeripherals->isEmpty()) {
+            if ($currentPeripherals->isEmpty()) {
+                return false;
+            }
+            return $currentPeripherals->contains(function ($p) use ($benchmarkDate) {
+                $created = $p->created_at ? \Carbon\Carbon::parse($p->created_at) : null;
+                $updated = $p->updated_at ? \Carbon\Carbon::parse($p->updated_at) : null;
+                return ($created && $created->gt($benchmarkDate)) || ($updated && $updated->gt($benchmarkDate));
+            });
+        }
+
         if ($currentPeripherals->count() !== $savedPeripherals->count()) {
             return true;
         }

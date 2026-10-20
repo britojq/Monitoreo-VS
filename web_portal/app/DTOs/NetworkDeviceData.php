@@ -9,7 +9,7 @@ readonly class NetworkDeviceData
     public function __construct(
         public ?int $id,
         public int $monitoredSiteId,
-        public int $deviceNumber,
+        public ?int $deviceNumber = null,
         public string $name, // Nombre Etiqueta (Identidad Operativa Principal)
         public string $ip,
         public ?string $mac = null,
@@ -41,7 +41,7 @@ readonly class NetworkDeviceData
         return new self(
             id: isset($data['id']) ? (int) $data['id'] : null,
             monitoredSiteId: (int) ($data['monitored_site_id'] ?? 0),
-            deviceNumber: (int) ($data['device_number'] ?? 1),
+            deviceNumber: isset($data['device_number']) && $data['device_number'] !== '' ? (int) $data['device_number'] : null,
             name: (string) ($data['name'] ?? ''),
             ip: (string) ($data['ip'] ?? ''),
             mac: $data['mac'] ?? null,

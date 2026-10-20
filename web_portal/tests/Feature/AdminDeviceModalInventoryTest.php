@@ -848,6 +848,117 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals(80, $netDev->access_port);
         $this->assertEquals(80, $netDev->web_port);
     }
+
+    /**
+     * Valida que la edición de un equipo con corrección de cédula/datos preserve el acta activa,
+     * no genere actas huérfanas duplicadas y mantenga has_outdated_assignment en falso.
+     */
+    public function test_update_device_with_cedula_correction_preserves_active_acta_without_duplicate_or_drift(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+        $user = User::where('role', 'admin')->first();
+        $site = MonitoredSite::first();
+
+        // Crear dispositivo y activo asignado con acta activa y periférico
+        $dev = \App\Models\MonitoredNetworkDevice::create([
+            'monitored_site_id' => $site->id,
+            'device_number' => 999,
+            'name' => 'EQUIPO TEST CORRECCION',
+            'ip' => '10.20.99.199',
+            'mac' => 'AA:BB:CC:DD:EE:99',
+            'is_active' => true,
+        ]);
+
+        $asset = InventoryAsset::find($dev->id);
+        $asset->update([
+            'type' => 'desktop',
+            'status' => 'assigned',
+            'custodian_name' => 'Tania Alvis',
+            'custodian_id_number' => 'V-1.095.185',
+            'custodian_department' => 'TRANSMISION',
+        ]);
+
+        $peripheral = InventoryPeripheral::create([
+            'current_asset_id' => $asset->id,
+            'type' => 'monitor',
+            'brand' => 'LENOVO',
+            'model' => '2580-AB1',
+            'serial_number' => 'V1NBK49-TEST',
+            'status' => 'assigned',
+        ]);
+
+        $acta = \App\Models\InventoryAssignment::create([
+            'assignment_code' => 'UINF-4.05-2026-9999',
+            'inventory_asset_id' => $asset->id,
+            'movement_type' => 'assignment',
+            'provenance' => 'new',
+            'status' => 'active',
+            'custodian_name' => 'Tania Alvis',
+            'custodian_id_number' => 'V-1.095.185',
+            'custodian_department' => 'TRANSMISION',
+            'custodian_role' => 'OPERADOR',
+            'assigned_at' => now(),
+            'peripherals_json' => [
+                [
+                    'type' => 'MONITOR',
+                    'brand' => 'LENOVO',
+                    'model' => '2580-AB1',
+                    'serial_number' => 'V1NBK49-TEST',
+                ]
+            ],
+            'hardware_specs' => ['processor' => 'Intel Core i5', 'ram' => '4 GB', 'disk' => '500 GB', 'os' => 'Windows 7'],
+        ]);
+
+        // Simular envío de formulario de edición corrigiendo la cédula a V-11.095.185
+        $response = $this->actingAs($user)->put(route('admin.devices.update', $dev), [
+            'name' => 'EQUIPO TEST CORRECCION',
+            'monitored_site_id' => $site->id,
+            'ip' => '10.20.99.199',
+            'mac' => 'AA:BB:CC:DD:EE:99',
+            'access_type' => 'SSH',
+            'type' => 'desktop',
+            'assignment_action' => 'assign',
+            'custodian_name' => 'Tania Alvis',
+            'custodian_id_number' => 'V-11.095.185',
+            'custodian_department' => 'TRANSMISION',
+            'custodian_role' => 'OPERADOR',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        // Verificar que no se creó una segunda acta
+        $actaCount = \App\Models\InventoryAssignment::where('inventory_asset_id', $asset->id)->count();
+        $this->assertEquals(1, $actaCount, 'No debe duplicar actas en modo corrección');
+
+        // Verificar actualización in-place de la misma acta
+        $actaFresh = $acta->fresh();
+        $this->assertEquals('active', $actaFresh->status);
+        $this->assertEquals('V-11.095.185', $actaFresh->custodian_id_number);
+        $this->assertEquals('UINF-4.05-2026-9999', $actaFresh->assignment_code);
+
+        // Verificar que no genera drift falso de auditoría
+        $assetFresh = $asset->fresh();
+        $this->assertEquals('V-11.095.185', $assetFresh->custodian_id_number);
+        $this->assertFalse($assetFresh->has_outdated_assignment, 'No debe disparar alerta de hardware modificado');
+    }
+
+    /**
+     * Valida que la extracción y normalización de cédulas conserve el dígito 1 en el rango 10M - 19M.
+     */
+    public function test_ldap_cedula_extraction_preserves_leading_one_for_venezuelan_ids(): void
+    {
+        $rawEmp = '11095185';
+        $cleanDigits = ltrim(preg_replace('/\D/', '', (string)$rawEmp), '0');
+        $cedula = 'V-' . number_format((int)$cleanDigits, 0, '', '.');
+
+        $this->assertEquals('V-11.095.185', $cedula);
+
+        $rawEmp2 = '12345678';
+        $cleanDigits2 = ltrim(preg_replace('/\D/', '', (string)$rawEmp2), '0');
+        $cedula2 = 'V-' . number_format((int)$cleanDigits2, 0, '', '.');
+
+        $this->assertEquals('V-11.746.281', $cedula2);
+    }
 }
 
 

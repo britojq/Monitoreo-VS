@@ -444,12 +444,11 @@ class LdapAuthService
         $telephone = $entry['telephonenumber'][0] ?? '';
         $st = $entry['st'][0] ?? '';
 
-        // Extracción y normalización de cédula de identidad desde employeenumber o UID
-        $rawEmp = $entry['employeenumber'][0] ?? null;
+        // Extracción y normalización de cédula de identidad desde employeenumber, carlicense o UID
+        $rawEmp = $entry['employeenumber'][0] ?? ($entry['carlicense'][0] ?? null);
         $cedula = '';
         if ($rawEmp) {
-            $cleanDigits = preg_replace('/^1(?=\d{7,8}$)/', '', trim($rawEmp));
-            $cleanDigits = preg_replace('/\D/', '', $cleanDigits);
+            $cleanDigits = ltrim(preg_replace('/\D/', '', (string)$rawEmp), '0');
             if (!empty($cleanDigits)) {
                 $cedula = 'V-' . number_format((int)$cleanDigits, 0, '', '.');
             }
@@ -540,7 +539,7 @@ class LdapAuthService
         }
 
         $filter = "(|" . implode('', $filterParts) . ")";
-        $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn', 'employeenumber', 'title', 'department'];
+        $attributes = ['uid', 'cn', 'mail', 'description', 'o', 'st', 'telephonenumber', 'givenname', 'sn', 'employeenumber', 'carlicense', 'title', 'department'];
 
         $search = @ldap_search($conn, $baseDn, $filter, $attributes, 0, 20, 4);
         if (!$search) {
@@ -563,12 +562,11 @@ class LdapAuthService
                 $sede = $e['o'][0] ?? 'No especificada';
                 $st = $e['st'][0] ?? '';
 
-                // Extraer cédula de identidad desde employeenumber o UID
-                $rawEmp = $e['employeenumber'][0] ?? null;
+                // Extraer cédula de identidad desde employeenumber, carlicense o UID
+                $rawEmp = $e['employeenumber'][0] ?? ($e['carlicense'][0] ?? null);
                 $cedula = '';
                 if ($rawEmp) {
-                    $cleanDigits = preg_replace('/^1(?=\d{7,8}$)/', '', trim($rawEmp));
-                    $cleanDigits = preg_replace('/\D/', '', $cleanDigits);
+                    $cleanDigits = ltrim(preg_replace('/\D/', '', (string)$rawEmp), '0');
                     if (!empty($cleanDigits)) {
                         $cedula = 'V-' . number_format((int)$cleanDigits, 0, '', '.');
                     }

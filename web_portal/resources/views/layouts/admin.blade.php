@@ -522,15 +522,17 @@
                 </div>
 
                 @if(request()->routeIs('admin.dashboard'))
-                    <!-- BOTÓN ASISTENTE IA -->
+                    <!-- BOTÓN ASISTENTE IA (DASHBOARD) -->
                     <button type="button" 
                             id="btn-open-ai-chat" 
                             onclick="handleAiChatClick()" 
-                            title="{{ ($isAiEnabled ?? true) ? 'Asistente Virtual IA - Sede Valle Seco' : 'Asistente Virtual IA - Desactivado por el módulo administrativo' }}" 
+                            title="{{ ($isAiEnabled ?? true) ? 'Asistente Virtual Corporativo - Consultas de Red & Inventario' : 'Asistente Virtual IA - Desactivado' }}" 
                             class="flex items-center justify-center w-8 h-8 rounded-full border {{ ($isAiEnabled ?? true) ? 'border-cyan-500/50 bg-cyan-950/40 text-obsidian-cyan hover:bg-obsidian-cyan hover:text-black shadow-cyan-500/25' : 'border-slate-700/60 bg-slate-900/60 text-slate-500 opacity-60 hover:border-slate-600 hover:text-slate-400' }} font-mono transition-all duration-200 shadow-sm hover:scale-105 cursor-pointer group">
-                        <span class="material-symbols-outlined text-base {{ ($isAiEnabled ?? true) ? 'group-hover:rotate-12 transition-transform' : '' }}">smart_toy</span>
+                        <span id="topbar-ai-icon" class="material-symbols-outlined text-base {{ ($isAiEnabled ?? true) ? 'group-hover:rotate-12 transition-transform' : '' }}">smart_toy</span>
                     </button>
+                @endif
 
+                @if(request()->routeIs('admin.dashboard'))
                     <!-- BADGE GLOBAL (SOLO ICONO CON TOOLTIP E INDICADOR) -->
                     @php
                         $gStatus = $latestSnapshot ? $latestSnapshot->global_status : 'OPERACIONAL';
@@ -982,7 +984,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-950/80 text-obsidian-cyan border border-cyan-500/40">
-                            v5.19.70
+                            v5.22.60
                         </span>
                         <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold {{ $isClusterDev ? 'bg-purple-950/80 text-purple-300 border border-purple-500/40' : ($isClusterSlave ? 'bg-blue-950/80 text-blue-300 border border-blue-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40') }}">
                             {{ $isClusterDev ? 'MODO DESARROLLO (SANDBOX)' : ($isClusterSlave ? 'MODO ESCLAVO (RÉPLICA)' : 'MODO MAESTRO (MASTER)') }}
@@ -1029,7 +1031,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Versión del Sistema:</span>
-                                <span class="text-obsidian-cyan font-bold">v5.19.70</span>
+                                <span class="text-obsidian-cyan font-bold">v5.22.60</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-obsidian-muted">Módulos de la Plataforma:</span>

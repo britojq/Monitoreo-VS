@@ -429,6 +429,11 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('bot/settings', [AdminBotCommandController::class, 'updateSettings'])->name('bot.settings.update')->middleware('permission:telegram.commands');
     });
 
+    // Búsqueda Unificada de Personal y Usuarios (MariaDB SSOT + LDAP)
+    Route::get('users/ldap/search', [AdminUserController::class, 'searchLdapUsers'])
+        ->name('users.ldap.search')
+        ->middleware('permission:infra.view|infra.manage_devices|inventory.view|inventory.manage|users.view|admin');
+
     // =========================================================================
     // 3. RUTAS EXCLUSIVAS DE ADMINISTRACIÓN Y GOBERNANZA (Middleware 'admin')
     // =========================================================================
@@ -438,8 +443,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('terms/{user}/reset', [AdminTermsController::class, 'reset'])->name('terms.reset');
         Route::post('terms/reset-all', [AdminTermsController::class, 'resetAll'])->name('terms.resetAll');
 
-        // Búsqueda y Autorización Manual de Usuarios LDAP
-        Route::get('users/ldap/search', [AdminUserController::class, 'searchLdapUsers'])->name('users.ldap.search');
+        // Autorización Manual de Usuarios LDAP
         Route::post('users/ldap/authorize', [AdminUserController::class, 'authorizeLdapUser'])->name('users.ldap.authorize');
 
         // Gestión de Usuarios (CRUD)

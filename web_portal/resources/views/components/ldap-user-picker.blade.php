@@ -63,12 +63,12 @@
         </div>
         <div class="flex items-center gap-2">
             @if($canRelease)
-                <button type="button" onclick="{{ $id }}_setReleaseAction()" class="px-2.5 py-1.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white transition text-[10.5px] font-bold flex items-center gap-1 cursor-pointer shadow-xs" title="Liberar este equipo a Stock Disponible">
+                <button type="button" onclick="window['{{ $id }}_setReleaseAction']()" class="px-2.5 py-1.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white transition text-[10.5px] font-bold flex items-center gap-1 cursor-pointer shadow-xs" title="Liberar este equipo a Stock Disponible">
                     <span class="material-symbols-outlined text-sm">person_off</span>
                     <span>Liberar a Stock</span>
                 </button>
             @endif
-            <button type="button" onclick="{{ $id }}_toggleSearch()" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-slate-300 hover:text-white hover:border-cyan-400 transition text-[10.5px] font-bold flex items-center gap-1 cursor-pointer">
+            <button type="button" onclick="window['{{ $id }}_toggleSearch']()" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-slate-300 hover:text-white hover:border-cyan-400 transition text-[10.5px] font-bold flex items-center gap-1 cursor-pointer">
                 <span class="material-symbols-outlined text-sm">swap_horiz</span>
                 <span>Cambiar</span>
             </button>
@@ -81,7 +81,7 @@
             <span class="material-symbols-outlined text-red-400 text-base">warning</span>
             <span>El equipo se devolverá a <strong>Stock Disponible</strong> al guardar los cambios.</span>
         </div>
-        <button type="button" onclick="{{ $id }}_cancelRelease()" class="text-xs text-red-300 underline hover:text-white font-bold cursor-pointer">Deshacer</button>
+        <button type="button" onclick="window['{{ $id }}_cancelRelease']()" class="text-xs text-red-300 underline hover:text-white font-bold cursor-pointer">Deshacer</button>
     </div>
 
     <!-- BUSCADOR LDAP INTERACTIVO -->
@@ -94,15 +94,24 @@
             <span class="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/30 text-cyan-300">Directorio Activo</span>
         </div>
 
-        <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">badge</span>
+        <div class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm pointer-events-none">badge</span>
             <input type="text" 
                    id="{{ $id }}-ldap-input" 
                    placeholder="{{ $placeholder }}" 
-                   class="w-full pl-9 pr-9 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/50 {{ $themeFocus }} focus:outline-none transition shadow-inner"
+                   class="w-full pl-9 pr-16 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/50 {{ $themeFocus }} focus:outline-none transition shadow-inner"
                    autocomplete="off" 
-                   oninput="{{ $id }}_handleSearch(this.value)">
-            <span id="{{ $id }}-spinner" class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 {{ $themeText }} text-sm animate-spin hidden">progress_activity</span>
+                   oninput="window['{{ $id }}_handleSearch'](this.value)"
+                   onkeydown="if(event.key === 'Enter') { event.preventDefault(); window['{{ $id }}_triggerSearch'](); }">
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <span id="{{ $id }}-spinner" class="material-symbols-outlined {{ $themeText }} text-sm animate-spin hidden">progress_activity</span>
+                <button type="button" 
+                        onclick="window['{{ $id }}_triggerSearch']()" 
+                        class="w-7 h-7 rounded-lg {{ $themeBg }} border {{ $themeBorder }} {{ $themeText }} hover:bg-white/10 hover:border-cyan-400 flex items-center justify-center transition cursor-pointer shadow-xs" 
+                        title="Buscar trabajador">
+                    <span class="material-symbols-outlined text-sm">search</span>
+                </button>
+            </div>
         </div>
 
         <!-- DROPDOWN FLOTANTE ABSOLUTO (CERO DEFORMACIÓN DE MODAL) -->
@@ -121,7 +130,7 @@
                 <div class="text-[10px] text-obsidian-muted" id="{{ $id }}-selected-detail">--</div>
             </div>
         </div>
-        <button type="button" onclick="{{ $id }}_clearSelection()" class="text-obsidian-muted hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Quitar o cambiar selección">
+        <button type="button" onclick="window['{{ $id }}_clearSelection']()" class="text-obsidian-muted hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Quitar o cambiar selección">
             <span class="material-symbols-outlined text-base">close</span>
         </button>
     </div>
@@ -142,12 +151,21 @@
                 </div>
                 <div>
                     <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cédula de Identidad</label>
-                    <input type="text" 
-                           name="{{ $fieldName('custodian_id_number') }}" 
-                           id="{{ $id }}-custodian-id" 
-                           value="{{ old($fieldName('custodian_id_number'), $currentIdNumber) }}" 
-                           placeholder="V-12.345.678" 
-                           class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono {{ $themeFocus }} focus:outline-none">
+                    <div class="relative flex items-center">
+                        <input type="text" 
+                               name="{{ $fieldName('custodian_id_number') }}" 
+                               id="{{ $id }}-custodian-id" 
+                               value="{{ old($fieldName('custodian_id_number'), $currentIdNumber) }}" 
+                               placeholder="V-12.345.678" 
+                               onkeydown="if(event.key === 'Enter') { event.preventDefault(); window['{{ $id }}_searchByCedula'](); }"
+                               class="w-full pl-2.5 pr-8 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono {{ $themeFocus }} focus:outline-none">
+                        <button type="button" 
+                                onclick="window['{{ $id }}_searchByCedula']()" 
+                                class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-obsidian-muted hover:text-cyan-400 hover:bg-white/10 transition cursor-pointer" 
+                                title="Buscar datos asociados a esta Cédula">
+                            <span class="material-symbols-outlined text-xs">search</span>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Departamento / Gerencia</label>
@@ -180,12 +198,21 @@
                 </div>
                 <div>
                     <label class="block text-obsidian-muted mb-0.5 text-[10.5px]">Cédula del Técnico</label>
-                    <input type="text" 
-                           name="{{ $fieldName('technician_id_number') }}" 
-                           id="{{ $id }}-technician-id" 
-                           value="{{ old($fieldName('technician_id_number'), $currentIdNumber) }}" 
-                           placeholder="V-12.345.678" 
-                           class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono {{ $themeFocus }} focus:outline-none">
+                    <div class="relative flex items-center">
+                        <input type="text" 
+                               name="{{ $fieldName('technician_id_number') }}" 
+                               id="{{ $id }}-technician-id" 
+                               value="{{ old($fieldName('technician_id_number'), $currentIdNumber) }}" 
+                               placeholder="V-12.345.678" 
+                               onkeydown="if(event.key === 'Enter') { event.preventDefault(); window['{{ $id }}_searchByCedula'](); }"
+                               class="w-full pl-2.5 pr-8 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono {{ $themeFocus }} focus:outline-none">
+                        <button type="button" 
+                                onclick="window['{{ $id }}_searchByCedula']()" 
+                                class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-obsidian-muted hover:text-amber-400 hover:bg-white/10 transition cursor-pointer" 
+                                title="Buscar datos asociados a esta Cédula">
+                            <span class="material-symbols-outlined text-xs">search</span>
+                        </button>
+                    </div>
                 </div>
             @endif
         </div>
@@ -202,12 +229,14 @@
     const mode = "{{ $mode }}";
     let debounceTimer = null;
     let lastResults = [];
+    let isDirectCedulaSearch = false;
 
-    window[id + '_handleSearch'] = function(query) {
+    window[id + '_handleSearch'] = function(query, immediate = false, isCedula = false) {
         if (debounceTimer) clearTimeout(debounceTimer);
         const q = (query || '').trim();
         const dropdown = document.getElementById(id + '-dropdown');
         const spinner = document.getElementById(id + '-spinner');
+        isDirectCedulaSearch = isCedula;
 
         if (q.length < 2) {
             if (dropdown) { dropdown.innerHTML = ''; dropdown.classList.add('hidden'); }
@@ -217,7 +246,7 @@
 
         if (spinner) spinner.classList.remove('hidden');
 
-        debounceTimer = setTimeout(async () => {
+        const doSearch = async () => {
             try {
                 const res = await fetch(`/admin/users/ldap/search?q=${encodeURIComponent(q)}`, {
                     headers: {
@@ -231,17 +260,53 @@
                 window[id + '_renderDropdown'](lastResults);
             } catch (err) {
                 if (spinner) spinner.classList.add('hidden');
-                console.error('Error buscando en LDAP:', err);
+                console.error('Error buscando trabajador:', err);
             }
-        }, 250);
+        };
+
+        if (immediate) {
+            doSearch();
+        } else {
+            debounceTimer = setTimeout(doSearch, 250);
+        }
+    };
+
+    window[id + '_triggerSearch'] = function(customQuery = null, isCedula = false) {
+        const searchInput = document.getElementById(id + '-ldap-input');
+        const q = customQuery !== null ? customQuery : (searchInput ? searchInput.value : '');
+        if (searchInput && customQuery !== null) {
+            searchInput.value = customQuery;
+        }
+        window[id + '_handleSearch'](q, true, isCedula);
+    };
+
+    window[id + '_searchByCedula'] = function() {
+        const cedulaInput = document.getElementById(id + '-custodian-id') || document.getElementById(id + '-technician-id');
+        const cedula = cedulaInput ? cedulaInput.value.trim() : '';
+        if (cedula.length >= 2) {
+            const currentCard = document.getElementById(id + '-current-card');
+            const selCard = document.getElementById(id + '-selected-card');
+            if (currentCard) currentCard.classList.add('hidden');
+            if (selCard) selCard.classList.add('hidden');
+            const searchWrap = document.getElementById(id + '-search-wrapper');
+            if (searchWrap) searchWrap.classList.remove('hidden');
+            window[id + '_triggerSearch'](cedula, true, true);
+        }
     };
 
     window[id + '_renderDropdown'] = function(users) {
         const dropdown = document.getElementById(id + '-dropdown');
         if (!dropdown) return;
 
+        if (users && users.length === 1 && isDirectCedulaSearch) {
+            isDirectCedulaSearch = false;
+            window[id + '_selectUser'](0);
+            return;
+        }
+        isDirectCedulaSearch = false;
+
         if (!users || users.length === 0) {
-            dropdown.innerHTML = '<div class="p-3 text-center text-obsidian-muted font-mono text-[11px]">Sin coincidencias en LDAP corporativo ni usuarios locales.</div>';
+            dropdown.innerHTML = '<div class="p-3 text-center text-obsidian-muted font-mono text-[11px]">Sin coincidencias en MariaDB ni Directorio Activo LDAP.</div>';
             dropdown.classList.remove('hidden');
             return;
         }
@@ -510,6 +575,48 @@
         if (dropdown) dropdown.classList.add('hidden');
         if (searchInput) searchInput.value = '';
     };
+
+    // Sincronización en tiempo real de campos manuales con las tarjetas visuales
+    function syncCardFromInputs() {
+        const nameEl = document.getElementById(id + '-custodian-name') || document.getElementById(id + '-technician-name');
+        const idEl = document.getElementById(id + '-custodian-id') || document.getElementById(id + '-technician-id');
+        const deptEl = document.getElementById(id + '-custodian-dept');
+        const roleEl = document.getElementById(id + '-custodian-role');
+
+        const nameVal = nameEl ? nameEl.value.trim() : '';
+        const idVal = idEl ? idEl.value.trim() : '';
+        const deptVal = deptEl ? deptEl.value.trim() : '';
+        const roleVal = roleEl ? roleEl.value.trim() : '';
+
+        // Actualizar tarjeta seleccionada si está visible
+        const selName = document.getElementById(id + '-selected-name');
+        const selDetail = document.getElementById(id + '-selected-detail');
+        if (selName && nameVal) selName.textContent = nameVal;
+        if (selDetail) {
+            selDetail.textContent = `C.I: ${idVal || 'N/A'}${deptVal ? ' • ' + deptVal : ''}${roleVal ? ' • ' + roleVal : ''}`;
+        }
+
+        // Actualizar tarjeta de asignación actual si está visible
+        const curName = document.getElementById(id + '-current-name-display');
+        const curDetail = document.getElementById(id + '-current-detail-display');
+        if (curName && nameVal) curName.textContent = nameVal;
+        if (curDetail) {
+            curDetail.textContent = `C.I: ${idVal || 'N/A'}${deptVal ? ' • ' + deptVal : ''}${roleVal ? ' • ' + roleVal : ''}`;
+        }
+
+        // Si el usuario escribe o corrige manualmente, asegurar acción de asignación
+        const actionInput = document.getElementById(id + '-assignment-action');
+        if (actionInput && actionInput.value !== 'release') {
+            actionInput.value = 'assign';
+        }
+    }
+
+    ['custodian-name', 'custodian-id', 'custodian-dept', 'custodian-role', 'technician-name', 'technician-id'].forEach(fieldKey => {
+        const el = document.getElementById(id + '-' + fieldKey);
+        if (el) {
+            el.addEventListener('input', syncCardFromInputs);
+        }
+    });
 
     // Cerrar dropdown al hacer click fuera
     document.addEventListener('click', function(e) {

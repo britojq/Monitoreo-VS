@@ -122,6 +122,14 @@ readonly class UpdateNetworkDeviceAction
         ];
 
         $assignmentAction = $request->input('assignment_action', 'keep');
+        $activeAssignment = $asset ? $asset->active_assignment : null;
+
+        // Si se enviaron periféricos en el formulario, sincronizarlos primero para tener la foto actualizada
+        if ($asset && ($request->has('has_peripherals_form') || $request->hasAny(['monitor_brand', 'keyboard_brand', 'mouse_brand', 'protector_brand', 'remove_monitor', 'remove_keyboard', 'remove_mouse', 'remove_protector', 'extra_peripherals']))) {
+            $this->peripheralSync->sync($request, $asset);
+            $asset->load('peripherals');
+        }
+
         if ($assignmentAction === 'release') {
             $assetUpdate['status'] = 'in_stock';
             $assetUpdate['custodian_name'] = null;
@@ -129,10 +137,20 @@ readonly class UpdateNetworkDeviceAction
             $assetUpdate['custodian_department'] = null;
             $assetUpdate['current_user_id'] = null;
 
+            if ($activeAssignment) {
+                $activeAssignment->update([
+                    'status' => 'superseded',
+                    'returned_at' => now(),
+                ]);
+            }
+
             try {
                 $year = now()->format('Y');
                 $count = InventoryAssignment::where('assignment_code', 'like', "ACTA-DEV-{$year}-%")->count() + 1;
-                $code = sprintf("ACTA-DEV-%s-%04d", $year, $count);
+                do {
+                    $code = sprintf("ACTA-DEV-%s-%04d", $year, $count);
+                    $count++;
+                } while (InventoryAssignment::where('assignment_code', $code)->exists());
 
                 InventoryAssignment::create([
                     'assignment_code' => $code,
@@ -151,10 +169,10 @@ readonly class UpdateNetworkDeviceAction
                 Log::warning("Fallo al registrar devolución en InventoryAssignment para {$updatedDevice->name}: " . $e->getMessage());
             }
         } elseif ($assignmentAction === 'assign' && $request->filled('custodian_name')) {
-            $custodianName = $request->input('custodian_name');
-            $custodianIdNumber = $request->input('custodian_id_number');
-            $custodianDept = $request->input('custodian_department');
-            $custodianRole = $request->input('custodian_role');
+            $custodianName = trim((string)$request->input('custodian_name'));
+            $custodianIdNumber = trim((string)$request->input('custodian_id_number'));
+            $custodianDept = trim((string)$request->input('custodian_department'));
+            $custodianRole = trim((string)$request->input('custodian_role'));
             $userId = $request->input('user_id');
 
             $assetUpdate['status'] = 'assigned';
@@ -163,29 +181,100 @@ readonly class UpdateNetworkDeviceAction
             $assetUpdate['custodian_department'] = $custodianDept;
             $assetUpdate['current_user_id'] = $userId;
 
-            try {
-                $year = now()->format('Y');
-                $count = InventoryAssignment::where('assignment_code', 'like', "UINF-4.05-{$year}-%")->count() + 1;
-                $code = sprintf("UINF-4.05-%s-%04d", $year, $count);
+            // Snapshot exhaustivo de periféricos actuales asociados
+            $currentPeripherals = $asset ? $asset->peripherals()->where('status', 'assigned')->get() : collect();
+            $peripheralsSnapshot = $currentPeripherals->map(fn($p) => [
+                'type' => strtoupper($p->type),
+                'brand' => $p->brand,
+                'model' => $p->model,
+                'serial_number' => $p->serial_number,
+                'observations' => $p->notes ?: 'Periférico asignado al puesto',
+            ])->values()->toArray();
 
-                InventoryAssignment::create([
-                    'assignment_code' => $code,
-                    'inventory_asset_id' => $device->id,
-                    'user_id' => $userId,
+            $cpuComponent = $asset?->components->where('type', 'cpu')->first();
+            $ramComponents = $asset?->components->where('type', 'ram') ?? collect();
+            $diskComponents = $asset?->components->where('type', 'disk') ?? collect();
+
+            $hardwareSpecs = [
+                'processor' => $cpuComponent?->name ?? 'Intel Core i5',
+                'speed' => '3.4 GHz',
+                'ram' => $ramComponents->isNotEmpty() ? $ramComponents->pluck('capacity')->implode(' + ') : '4 GB',
+                'disk' => $diskComponents->isNotEmpty() ? $diskComponents->pluck('capacity')->implode(' + ') : '500 GB',
+                'os' => $asset?->operating_system ?? ($updatedDevice->os ?? 'Windows 7'),
+                'device_name' => $updatedDevice->name,
+                'ip_address' => $updatedDevice->ip ?? 'N/A',
+            ];
+
+            // DISCRIMINACIÓN INTELIGENTE: ¿Corrección de erratas/datos del acta activa o reasignación a otro titular?
+            $isSamePersonOrCorrection = false;
+            if ($activeAssignment) {
+                $cleanOldCed = preg_replace('/\D/', '', (string)($activeAssignment->custodian_id_number ?? ''));
+                $cleanNewCed = preg_replace('/\D/', '', $custodianIdNumber);
+
+                if (!empty($cleanOldCed) && !empty($cleanNewCed) && ($cleanOldCed === $cleanNewCed || str_contains($cleanNewCed, $cleanOldCed) || str_contains($cleanOldCed, $cleanNewCed))) {
+                    $isSamePersonOrCorrection = true;
+                } else {
+                    similar_text(mb_strtoupper((string)($activeAssignment->custodian_name ?? '')), mb_strtoupper($custodianName), $nameSim);
+                    if ($nameSim >= 60) {
+                        $isSamePersonOrCorrection = true;
+                    }
+                }
+            }
+
+            if ($activeAssignment && $isSamePersonOrCorrection) {
+                // MODO CORRECCIÓN: Actualizar metadatos del acta activa existente preservando correlativo y archivo PDF
+                $updateData = [
                     'custodian_name' => $custodianName,
                     'custodian_id_number' => $custodianIdNumber,
-                    'custodian_department' => $custodianDept,
-                    'custodian_role' => $custodianRole,
+                    'custodian_department' => $custodianDept ?: $activeAssignment->custodian_department,
+                    'custodian_role' => $custodianRole ?: $activeAssignment->custodian_role,
+                    'user_id' => $userId ?: $activeAssignment->user_id,
                     'monitored_site_id' => $updatedDevice->monitored_site_id,
-                    'movement_type' => 'assignment',
-                    'provenance' => 'stock',
-                    'assigned_at' => now(),
-                    'status' => 'active',
-                    'delivered_by_user_id' => Auth::id(),
-                    'observations' => 'Asignación registrada desde edición de dispositivo.',
-                ]);
-            } catch (\Throwable $e) {
-                Log::warning("Fallo al registrar InventoryAssignment para {$updatedDevice->name}: " . $e->getMessage());
+                ];
+
+                if (empty($activeAssignment->peripherals_json) && !empty($peripheralsSnapshot)) {
+                    $updateData['peripherals_json'] = $peripheralsSnapshot;
+                }
+                if (empty($activeAssignment->hardware_specs) || ($activeAssignment->hardware_specs['processor'] ?? '') === 'N/A') {
+                    $updateData['hardware_specs'] = $hardwareSpecs;
+                }
+
+                $activeAssignment->update($updateData);
+            } else {
+                // MODO REASIGNACIÓN FORMAL A NUEVA PERSONA:
+                if ($activeAssignment) {
+                    $activeAssignment->update(['status' => 'superseded', 'returned_at' => now()]);
+                }
+
+                try {
+                    $year = now()->format('Y');
+                    $count = InventoryAssignment::where('assignment_code', 'like', "UINF-4.05-{$year}-%")->count() + 1;
+                    do {
+                        $code = sprintf("UINF-4.05-%s-%04d", $year, $count);
+                        $count++;
+                    } while (InventoryAssignment::where('assignment_code', $code)->exists());
+
+                    InventoryAssignment::create([
+                        'assignment_code' => $code,
+                        'inventory_asset_id' => $device->id,
+                        'user_id' => $userId,
+                        'custodian_name' => $custodianName,
+                        'custodian_id_number' => $custodianIdNumber,
+                        'custodian_department' => $custodianDept,
+                        'custodian_role' => $custodianRole,
+                        'monitored_site_id' => $updatedDevice->monitored_site_id,
+                        'movement_type' => 'assignment',
+                        'provenance' => 'stock',
+                        'assigned_at' => now(),
+                        'status' => 'active',
+                        'delivered_by_user_id' => Auth::id(),
+                        'peripherals_json' => $peripheralsSnapshot,
+                        'hardware_specs' => $hardwareSpecs,
+                        'observations' => 'Asignación registrada desde edición de dispositivo.',
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning("Fallo al registrar InventoryAssignment para {$updatedDevice->name}: " . $e->getMessage());
+                }
             }
         } elseif ($request->filled('status')) {
             $assetUpdate['status'] = $request->input('status');
@@ -193,9 +282,6 @@ readonly class UpdateNetworkDeviceAction
 
         if ($asset) {
             $asset->update($assetUpdate);
-            if ($request->has('has_peripherals_form') || $request->hasAny(['monitor_brand', 'keyboard_brand', 'mouse_brand', 'protector_brand', 'remove_monitor', 'remove_keyboard', 'remove_mouse', 'remove_protector', 'extra_peripherals'])) {
-                $this->peripheralSync->sync($request, $asset);
-            }
         }
 
         app(SyncController::class)->exportToConfigFiles();

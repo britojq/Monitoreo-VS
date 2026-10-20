@@ -145,7 +145,15 @@ rsync -avz --rsync-path="sudo rsync" \
     --exclude='*.pyc' \
     "$BASE_DIR/" "${REMOTE_HOST}:$REMOTE_BOT_DIR/"
 
-log "${GREEN}✓ Transferencia de archivos ejecutables completada sin tocar configuraciones.${NC}"
+# C. Actas y documentos escaneados físicos (storage/app/public/assignments/scans)
+log "Sincronizando actas y documentos físicos escaneados hacia '$REMOTE_HOST'..."
+ssh "$REMOTE_HOST" "sudo mkdir -p $REMOTE_WEB_DIR/storage/app/public/assignments/scans"
+rsync -avz --rsync-path="sudo rsync" \
+    /var/www/monitoreo/storage/app/public/assignments/scans/ \
+    "${REMOTE_HOST}:$REMOTE_WEB_DIR/storage/app/public/assignments/scans/"
+ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_WEB_DIR/storage/app/public/assignments && sudo chmod -R 775 $REMOTE_WEB_DIR/storage/app/public/assignments"
+
+log "${GREEN}✓ Transferencia de archivos ejecutables y actas completada sin tocar configuraciones.${NC}"
 
 # ------------------------------------------------------------------------------
 # FASE 4: MIGRACIONES, PURGA DE CACHÉ Y REINICIO DE SERVICIOS
@@ -172,11 +180,15 @@ ssh "$REMOTE_HOST" "
     sudo chmod -R 775 $REMOTE_WEB_DIR/storage $REMOTE_WEB_DIR/bootstrap/cache
 
     echo '--> Recargando servidor web Apache y PHP-FPM...'
-    sudo systemctl reload apache2
-    sudo systemctl reload php8.4-fpm
+    sudo /usr/sbin/apachectl -k graceful || sudo systemctl reload apache2 || true
+    sudo kill -USR2 \$(cat /run/php/php8.4-fpm.pid 2>/dev/null || pgrep -f 'php-fpm: master') || sudo systemctl reload php8.4-fpm || true
 
     echo '--> Reiniciando demonio del Bot de Telegram...'
-    sudo systemctl restart tg-admin-bot.service
+    BOT_PID=\$(pgrep -f '/scripts/telegram-admin-bot/bot.py' || true)
+    if [ -n "\$BOT_PID" ]; then
+        sudo kill -TERM "\$BOT_PID" || true
+        sleep 2
+    fi
 "
 log "${GREEN}✓ Migraciones, cachés y servicios ejecutados con éxito.${NC}"
 
@@ -187,8 +199,8 @@ log "${BOLD}▶ FASE 5: Ejecutando Smoke Test y Certificación Funcional Real en
 
 ssh "$REMOTE_HOST" "
     set -e
-    echo '--> 1. Verificando estado del servicio systemd...'
-    systemctl is-active --quiet tg-admin-bot.service || (echo 'FALLO: tg-admin-bot.service inactivo'; exit 1)
+    echo '--> 1. Verificando estado del servicio o proceso del Bot de Telegram...'
+    pgrep -f '/scripts/telegram-admin-bot/bot.py' >/dev/null || sudo systemctl is-active --quiet tg-admin-bot.service || (echo 'FALLO: tg-admin-bot inactivo'; exit 1)
 
     echo '--> 2. Verificando integridad de paquetes y dependencias en venv...'
     $REMOTE_BOT_DIR/venv/bin/python -m pip check || (echo 'FALLO: Dependencias de Python corruptas o incompletas'; exit 1)
@@ -198,6 +210,9 @@ ssh "$REMOTE_HOST" "
 
     echo '--> 4. Verificando conectividad con el motor local de IA...'
     curl -s --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null || (echo 'FALLO: Motor de IA no responde en 11434'; exit 1)
+
+    echo '--> 5. Verificando integridad de datos en MariaDB (Cero datos ficticios / SSOT)...'
+    sudo php $REMOTE_WEB_DIR/artisan audit:verify-zero-dummy-data
 "
 log "${GREEN}✓ Verificaciones funcionales de salud aprobadas al 100%.${NC}"
 

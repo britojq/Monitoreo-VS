@@ -949,9 +949,17 @@ async def sync_from_master() -> bool:
                                     dev_id = 1
                                 elif dev_id in legacy_dev_map and dev_id != 11519:
                                     dev_id = legacy_dev_map[dev_id]
+                                dev_num = nd.get("device_number")
+                                if dev_num is not None:
+                                    try:
+                                        dev_num = int(dev_num)
+                                    except (ValueError, TypeError):
+                                        dev_num = None
+                                if dev_id >= 104950 and nd.get("monitored_site_id") == 1 and dev_num == 1:
+                                    dev_num = None
 
                                 net_dev_records.append((
-                                    dev_id, nd.get("monitored_site_id"), nd.get("device_number", 1),
+                                    dev_id, nd.get("monitored_site_id"), dev_num,
                                     nd.get("name"), nd.get("ip"), nd.get("mac"), nd.get("vendor_data"),
                                     nd.get("access_type", "SSH"), nd.get("access_port", 22),
                                     nd.get("model"), nd.get("serial"),

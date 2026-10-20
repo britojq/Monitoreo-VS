@@ -226,7 +226,10 @@ class InventoryAssignmentController extends Controller
         $year = $assignedAt->format('Y');
         $prefix = ($validated['movement_type'] === 'return') ? "ACTA-DEV-{$year}" : "UINF-4.05-{$year}";
         $countThisYear = InventoryAssignment::where('assignment_code', 'like', "{$prefix}-%")->count() + 1;
-        $code = sprintf("%s-%04d", $prefix, $countThisYear);
+        do {
+            $code = sprintf("%s-%04d", $prefix, $countThisYear);
+            $countThisYear++;
+        } while (InventoryAssignment::where('assignment_code', $code)->exists());
 
         DB::beginTransaction();
         try {
