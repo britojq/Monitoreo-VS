@@ -24,7 +24,7 @@ class AdminNetworkDeviceLiveFilterTest extends TestCase
         $this->site = MonitoredSite::first() ?? MonitoredSite::create(['name' => 'Sede Prueba Test', 'ip' => '10.20.99.1', 'is_active' => true]);
 
         $this->testAsset = InventoryAsset::firstOrCreate(
-            ['ip_address' => '10.20.23.199'],
+            ['ip_address' => '192.168.1.199'],
             [
                 'name' => 'TAQUILLA-TEST-01',
                 'normal_state_msg' => 'TAQUILLA OPERATIVA 01',
@@ -81,7 +81,7 @@ class AdminNetworkDeviceLiveFilterTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('TAQUILLA OPERATIVA 01');
-        $response->assertSee('10.20.23.199');
+        $response->assertSee('192.168.1.199');
     }
 
     public function test_devices_live_filter_by_site_and_type_and_status(): void

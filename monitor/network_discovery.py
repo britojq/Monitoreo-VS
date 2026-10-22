@@ -59,7 +59,7 @@ logger = logging.getLogger("discovery")
 def get_local_interfaces_map() -> Dict[str, str]:
     """
     Retorna un diccionario {ip: mac_normalizada} de las interfaces locales del propio servidor.
-    Esto previene que la propia máquina (ej. 10.20.23.221) se registre con MAC sintética 'IP:10.20.23.221'.
+    Esto previene que la propia máquina (ej. 192.168.1.220) se registre con MAC sintética 'IP:192.168.1.220'.
     """
     local_map: Dict[str, str] = {}
     try:
@@ -728,7 +728,7 @@ def scan_all_active_subnets(executed_by: str = "cron", force: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description="Motor de Auto-Discovery y Detección Anti-Rogue")
-    parser.add_argument("--subnet", type=str, help="Subred específica a escanear (ej: 10.20.23.0/24)")
+    parser.add_argument("--subnet", type=str, help="Subred específica a escanear (ej: 192.168.1.0/24)")
     parser.add_argument("--all", action="store_true", help="Escanear todas las subredes activas pendientes de escaneo")
     parser.add_argument("--force", action="store_true", help="Forzar escaneo de subredes ignorando intervalo")
     parser.add_argument("--manual", action="store_true", help="Marca la ejecución como manual")
@@ -742,7 +742,7 @@ def main():
         scan_all_active_subnets(executed_by=executed_by, force=args.force)
     else:
         # Por defecto escanea la subred local de Valle Seco
-        scan_subnet("10.20.23.0/24", executed_by=executed_by)
+        scan_subnet("192.168.1.0/24", executed_by=executed_by)
 
 
 if __name__ == "__main__":

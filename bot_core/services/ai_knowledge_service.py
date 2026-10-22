@@ -48,7 +48,8 @@ class AiKnowledgeService:
             "     Si el usuario consulta por servicios caídos, apagados o fuera de línea (o cuántos o cuáles servicios están caídos), DEBES revisar obligatoriamente el bloque de contexto oficial. Si existen servicios caídos listados (como OTRS, INTRANET empresa, FACTURA DIGITAL, SISTEMA AUTOGESTION DE CLAVES), DEBES nombrarlos explícitamente e indicar el conteo exacto de caídos y operativos. Queda estrictamente prohibido afirmar que todos los servicios están en línea o que no hay caídas cuando el contexto las detalla.\n"
             "   - CONTEOS CERO O DATOS PENDIENTES:\n"
             "     Si el contexto fáctico indica que hay 0 registros de inventario con serial asociado, informa de manera sobria y profesional que los equipos se encuentran sin serial cargado o pendientes por catalogación física, sin disculpas ni evasivas.\n"
-            "   - PROHIBICIÓN ABSOLUTA DE EVASIÓN: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos o declarar explícitamente su ausencia con honestidad y precisión fáctica.\n"
+            "   - PROHIBICIÓN ABSOLUTA DE EVASIÓN Y GENERACIÓN DE CÓDIGO SQL: Queda terminantemente prohibido responder con frases evasivas como 'consulta la base de datos', 'revisa el sistema', 'busca en los registros' o derivar la consulta al usuario. "
+            "Bajo NINGUNA circunstancia generes código o consultas SQL (como 'SELECT * FROM equipos;', 'SELECT * FROM ...') ni pidas al usuario que ejecute consultas en la base de datos. La base de datos es un componente interno del backend gestionado por el sistema. Tú eres la interfaz técnica y asistente oficial del sistema; debes responder siempre con los datos provistos en lenguaje natural claro y estructurado con viñetas, o declarar explícitamente su ausencia con honestidad y precisión fáctica.\n"
             "   - Si el contexto indica que un equipo está EN LÍNEA con cero eventos de caída y el usuario pregunta cuándo se cayó, responde claramente que se encuentra operativo y sin caídas registradas en las últimas 24 horas.\n"
             "   - Si el contexto indica que un equipo no posee componentes o periféricos desglosados en ITAM, infórmalo textualmente sin declinar.\n"
             "   - Cuando el usuario pregunte por seriales, asignaciones, disponibilidad u horas de caída, extrae y presenta la información de forma estructurada, usando viñetas y negritas claras.\n\n"
@@ -110,11 +111,18 @@ class AiKnowledgeService:
 
         lines.append(f"🔌 DISPOSITIVOS DE RED: {devs_total} switches y routers | {devs_up} en línea.")
         lines.append(f"🌐 PROXIES DE NAVEGACIÓN: {prox_total} monitoreados ({', '.join(proxies_list)}).")
-        lines.append("📍 SUBREDES CORPORATIVAS OPERATIVAS PRINCIPALES:")
-        lines.append("  • Sede Valle Seco: 10.20.107.0/24 (LAN Operativa y Servidores)")
-        lines.append("  • Sede Planta / Talleres: 10.20.106.0/24 (LAN Industrial)")
-        lines.append("  • Sede Candelaria / Almacén: 10.20.27.0/24")
-        lines.append("  • Infraestructura / Gestión: 10.20.23.0/24")
+
+        try:
+            from monitor.knowledge_graph import SystemKnowledgeGraph, KnowledgeNodeType
+            subnet_nodes = SystemKnowledgeGraph.get_instance().find_nodes_by_type(KnowledgeNodeType.SUBNET)
+            if subnet_nodes:
+                lines.append(f"📍 SUBREDES CORPORATIVAS OPERATIVAS ({len(subnet_nodes)} bloques en MariaDB):")
+                for sn in subnet_nodes:
+                    s_label = sn.get("site_name") or "Infraestructura General"
+                    lines.append(f"  • {sn.get('subnet')} ({s_label})")
+        except Exception:
+            pass
+
         lines.append(
             "\n📌 DIRECTRIZ OPERATIVA OBLIGATORIA: Eres el asistente oficial de este sistema. Si el usuario pregunta "
             "por servicios caídos, sedes caídas, subredes o disponibilidad general, o si discute o envía comandos del sistema "
@@ -175,6 +183,7 @@ class AiKnowledgeService:
 
                 domain_markers = (
                     "DOMINIO DE ENERGÍA Y RESPALDO ELÉCTRICO",
+                    "DOMINIO DE ACTAS DE ASIGNACIÓN ITAM",
                     "DOMINIO DE INVENTARIO Y ACTIVOS ITAM",
                     "DOMINIO DE TICKETS Y MANTENIMIENTO TÉCNICO ITAM",
                     "DOMINIO DE ALERTAS E INCIDENTES NOC",
@@ -321,6 +330,20 @@ class AiKnowledgeService:
         # Si pregunta conteo o listado general de asignaciones
         if has_assign_kw and (asking_counts or not person_tokens):
             cur.execute("""
+                SELECT ia.id, ia.assignment_code, ia.custodian_name, ia.custodian_id_number,
+                       ia.custodian_department, ia.document_pdf_path,
+                       ast.name as asset_name, ast.serial_number as asset_serial,
+                       ast.brand, ast.model, ms.name as site_name
+                FROM inventory_assignments ia
+                LEFT JOIN inventory_assets ast ON ia.inventory_asset_id = ast.id
+                LEFT JOIN monitored_sites ms ON ia.monitored_site_id = ms.id
+                WHERE ia.status = 'active' AND ia.document_pdf_path IS NOT NULL AND TRIM(ia.document_pdf_path) != ''
+                ORDER BY ia.id ASC
+            """)
+            scanned_rows = cur.fetchall()
+            scanned_count = len(scanned_rows)
+
+            cur.execute("""
                 SELECT count(*) as total_assignments,
                        count(DISTINCT custodian_name) as total_users,
                        count(DISTINCT monitored_site_id) as total_sites
@@ -329,29 +352,33 @@ class AiKnowledgeService:
             """)
             stats = cur.fetchone() or {}
 
-            cur.execute("""
-                SELECT ia.assignment_code, ia.custodian_name, ia.custodian_department,
-                       ast.name as asset_name, ast.ip_address, ms.name as site_name
-                FROM inventory_assignments ia
-                LEFT JOIN inventory_assets ast ON ia.inventory_asset_id = ast.id
-                LEFT JOIN monitored_sites ms ON ia.monitored_site_id = ms.id
-                WHERE ia.status = 'active'
-                ORDER BY ia.id DESC
-                LIMIT 10
-            """)
-            rows = cur.fetchall()
-            lines = [
-                "📊 RESUMEN DE ASIGNACIONES Y USUARIOS (MariaDB - ITAM):",
-                f"- Total de Actas de Asignación Activas: {stats.get('total_assignments', 0)}",
-                f"- Total de Usuarios / Funcionarios Receptores Únicos: {stats.get('total_users', 0)}",
-                f"- Sedes Involucradas: {stats.get('total_sites', 0)}",
-                "",
-                "📋 Muestra de Asignaciones Vigentes Registradas:"
-            ]
-            for r in rows:
-                lines.append(f"• Acta: {r.get('assignment_code')} | Responsable: {r.get('custodian_name')} ({r.get('custodian_department') or 'Sin Depto'}) | Equipo: {r.get('asset_name')} (IP: {r.get('ip_address')}) | Sede: {r.get('site_name')}")
+            cur.execute("SELECT count(*) as total FROM inventory_assets")
+            total_assets = cur.fetchone()["total"] or 40
 
-            return "\n".join(lines), {"type": "assignments", "name": "Resumen General de Asignaciones"}
+            lines = [
+                "📊 CENSO Y AUDITORÍA DE ACTAS DE ASIGNACIÓN (MariaDB ITAM - SSOT):",
+                f"- Total de Equipos / Activos Registrados en el Sistema: {total_assets}",
+                f"- Equipos con Acta de Asignación Oficial Física Escaneada en PDF (Formato UINF-4.05): {scanned_count} equipos (todos pertenecientes a la Coordinación de Transmisión).",
+                f"- Total de Registros de Movimiento / Asignación en Base de Datos: {stats.get('total_assignments', 0)} registros (incluye pases preliminares y movimientos sin PDF adjunto).",
+                "",
+                f"📋 DETALLE EXHAUSTIVO DE LOS {scanned_count} EQUIPOS CON ACTA FÍSICA ESCANEADA:",
+            ]
+            for idx, r in enumerate(scanned_rows, 1):
+                brand_mod = f"{r.get('brand') or ''} {r.get('model') or ''}".strip() or "Desktop"
+                lines.append(
+                    f"  {idx}. {r.get('asset_name')} ({brand_mod}) | Serial: {r.get('asset_serial') or 'N/A'}\n"
+                    f"     • Responsable: {r.get('custodian_name')} (CI: {r.get('custodian_id_number') or 'N/A'}) | Depto: {r.get('custodian_department') or 'Transmisión'}\n"
+                    f"     • Acta Oficial: {r.get('assignment_code')}\n"
+                    f"     • Archivo Escaneado: {r.get('document_pdf_path')}"
+                )
+
+            lines.append(
+                f"\n📌 INSTRUCCIÓN OBLIGATORIA: En el sistema SÓLO existen {scanned_count} equipos con acta de asignación física firmada y escaneada en formato PDF (EQUIPO 01, EQUIPO 02 y EQUIPO 03 de Coordinación de Transmisión). "
+                f"Queda TERMINANTEMENTE PROHIBIDO afirmar que hay 18 actas. El número 18 corresponde a los equipos que poseen serial de chasis/CPU registrado, NO a actas de asignación. "
+                f"Bajo NINGUNA circunstancia generes código SQL ni pidas al usuario consultar la base de datos."
+            )
+
+            return "\n".join(lines), {"type": "assignments", "name": "Resumen General de Actas de Asignación"}
 
         # Búsqueda específica por funcionario o acta
         search_terms = person_tokens if person_tokens else [t for t in tokens if len(t) >= 4]

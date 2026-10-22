@@ -605,7 +605,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
-                        <input type="text" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        <input type="text" name="ip_address" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Versión SNMP *</label>
@@ -692,7 +692,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
-                        <input type="text" id="edit_ip_address" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                        <input type="text" id="edit_ip_address" name="ip_address" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Puerto SNMP *</label>
@@ -785,7 +785,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP Destino *</label>
-                            <input type="text" id="act-ip" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <input type="text" id="act-ip" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-mono text-obsidian-muted mb-1">Método de Conexión *</label>

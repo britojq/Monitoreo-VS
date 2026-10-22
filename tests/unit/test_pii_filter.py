@@ -28,9 +28,9 @@ class TestPiiFilter:
 
     def test_no_false_positives_on_technical_data(self):
         """Verifica que métricas técnicas o IPs no sean alteradas erróneamente."""
-        text = "El servidor 10.20.23.252 tiene 64GB de RAM y 4 núcleos a 3200MHz."
+        text = "El servidor 192.168.1.250 tiene 64GB de RAM y 4 núcleos a 3200MHz."
         result = sanitizar_pii(text)
-        assert "10.20.23.252" in result
+        assert "192.168.1.250" in result
         assert "64GB" in result
         assert "3200MHz" in result
 

@@ -96,7 +96,7 @@ async def cmd_alertas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 ],
                 [
                     InlineKeyboardButton("🏁 Resolver", callback_data=f"alert_act:resolve:{aid}"),
-                    InlineKeyboardButton("🌐 Portal Web", url=f"http://10.20.23.221/admin/alerts?search={aid}")
+                    InlineKeyboardButton("🌐 Portal Web", url=f"http://192.168.1.220/admin/alerts?search={aid}")
                 ]
             ]
             await _reply(update.message, msg, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -433,7 +433,7 @@ async def handle_alert_action_callback(update: Update, context: ContextTypes.DEF
 
     from monitor.alert_engine import AlertEngine
     engine = AlertEngine()
-    portal_url = "http://10.20.23.221/admin/alerts"
+    portal_url = "http://192.168.1.220/admin/alerts"
 
     if action == "ack":
         ok = engine.acknowledge_alert(aid, user_id=user_id, notes=f"Reconocido en Telegram por {user_name}")

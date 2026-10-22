@@ -78,7 +78,7 @@ def load_config() -> Dict[str, Any]:
         "ollama_allow_all": False,
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         "ollama_model": os.getenv("OLLAMA_MODEL", "qwen-empresa"),
-        "ollama_timeout": 180,
+        "ollama_timeout": 300,
         "ollama_temperature": 0.3,
         "ollama_num_ctx": 4096,
         "ollama_max_history": 12,

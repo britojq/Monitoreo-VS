@@ -37,7 +37,7 @@ class GlpiPrinterFilteringTest extends TestCase
 
         $this->site = MonitoredSite::first() ?? MonitoredSite::create([
             'name' => 'Sede Prueba',
-            'ip_range' => '10.20.23.0/24',
+            'ip_range' => '192.168.1.0/24',
         ]);
 
         $this->syncService = app(GlpiAssetSyncService::class);
@@ -57,7 +57,7 @@ class GlpiPrinterFilteringTest extends TestCase
             'brand' => 'LENOVO',
             'model' => 'ThinkCentre M910s',
             'monitored_site_id' => $this->site->id,
-            'ip_address' => '10.20.23.199',
+            'ip_address' => '192.168.1.199',
         ]);
 
         // Simular que existían colas fantasmas previas
@@ -101,7 +101,7 @@ class GlpiPrinterFilteringTest extends TestCase
             ],
         ];
 
-        $norm = $this->normalizer->normalize($rawContent, '10.20.23.199');
+        $norm = $this->normalizer->normalize($rawContent, '192.168.1.199');
         $result = $this->syncService->sync($norm);
 
         $this->assertEquals($asset->id, $result['asset']->id);

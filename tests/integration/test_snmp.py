@@ -88,10 +88,10 @@ class TestSnmpIntegration(unittest.TestCase):
         self.assertFalse(res["success"])
 
     def test_live_gateway_poll(self):
-        """Prueba sondeo real contra el router gateway Carabobo (10.20.0.1)."""
+        """Prueba sondeo real contra el router gateway Carabobo (192.168.0.1)."""
         live_device = {
             "id": 4,
-            "ip_address": "10.20.0.1",
+            "ip_address": "192.168.0.1",
             "community": "public",
             "snmp_port": 161,
             "snmp_timeout_seconds": 3,
@@ -107,9 +107,9 @@ class TestSnmpIntegration(unittest.TestCase):
             self.assertEqual(res["status"], "success")
             self.assertIsNotNone(res["sys_name"])
             self.assertGreater(res["sys_uptime"], 0)
-            print(f"\n[OK] Sondeo en vivo 10.20.0.1 exitoso: {res['sys_name']} (Uptime: {res['sys_uptime']})")
+            print(f"\n[OK] Sondeo en vivo 192.168.0.1 exitoso: {res['sys_name']} (Uptime: {res['sys_uptime']})")
         else:
-            print(f"\n[INFO] 10.20.0.1 no respondió en ventana de test: {res['error']}")
+            print(f"\n[INFO] 192.168.0.1 no respondió en ventana de test: {res['error']}")
 
 
 if __name__ == "__main__":

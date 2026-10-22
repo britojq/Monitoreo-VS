@@ -85,6 +85,7 @@ class UpdateNetworkDeviceRequest extends FormRequest
         $deviceId = (int) ($this->route('device')?->id ?? $this->route('device'));
         $data = $this->validated();
         $data['id'] = $deviceId;
+        $data['telegram_alert_enabled'] = $this->boolean('telegram_alert_enabled');
         return NetworkDeviceData::fromArray($data);
     }
 }

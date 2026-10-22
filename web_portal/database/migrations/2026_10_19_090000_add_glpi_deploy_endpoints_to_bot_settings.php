@@ -17,7 +17,7 @@ return new class extends Migration
         $settings = [
             [
                 'setting_key' => 'glpi_receiver_prod_url',
-                'setting_value' => 'http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
+                'setting_value' => 'http://192.168.1.250/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
                 'setting_group' => 'glpi_deploy',
                 'title' => 'URL Receptor GLPI - Producción',
                 'description' => 'URL del endpoint receptor de inventario GLPI para el entorno de Producción.',
@@ -25,7 +25,7 @@ return new class extends Migration
             ],
             [
                 'setting_key' => 'glpi_receiver_dev_url',
-                'setting_value' => 'http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
+                'setting_value' => 'http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
                 'setting_group' => 'glpi_deploy',
                 'title' => 'URL Receptor GLPI - Desarrollo',
                 'description' => 'URL del endpoint receptor de inventario GLPI para el entorno de Desarrollo.',

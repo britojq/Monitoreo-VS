@@ -17,7 +17,7 @@ class DiscoverySubnetsSeeder extends Seeder
 
         $subnets = [
             [
-                'subnet' => '10.20.23.0/24',
+                'subnet' => '192.168.1.0/24',
                 'site_id' => $valleSecoSite?->id,
                 'scan_method' => 'arp_sweep',
                 'scan_interval_minutes' => 15,
@@ -27,7 +27,7 @@ class DiscoverySubnetsSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'subnet' => '10.20.0.0/24',
+                'subnet' => '192.168.0.0/24',
                 'site_id' => null, // Red Central / Servidores (No asociado a sede comercial física específica)
                 'scan_method' => 'arp_sweep',
                 'scan_interval_minutes' => 30,
@@ -37,7 +37,7 @@ class DiscoverySubnetsSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'subnet' => '10.100.94.0/24',
+                'subnet' => '192.168.94.0/24',
                 'site_id' => $moronSite?->id,
                 'scan_method' => 'arp_sweep',
                 'scan_interval_minutes' => 30,
@@ -47,7 +47,7 @@ class DiscoverySubnetsSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'subnet' => '10.20.106.0/24',
+                'subnet' => '192.168.106.0/24',
                 'site_id' => $pasMarianoSite?->id,
                 'scan_method' => 'arp_sweep',
                 'scan_interval_minutes' => 60,

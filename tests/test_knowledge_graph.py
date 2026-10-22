@@ -25,7 +25,7 @@ def test_knowledge_graph_build():
 
     ups = ups_nodes[0]
     assert "ZTG" in ups.get("model", ""), "El modelo de UPS debe contener ZTG"
-    assert ups.get("serial_number") == "LV6KL-VS-01", "El serial del UPS debe ser LV6KL-VS-01"
+    assert ups.get("serial_number") == "UPS-DEMO-01", "El serial del UPS debe ser UPS-DEMO-01"
 
 
 def test_knowledge_graph_ups_power_events():
@@ -36,7 +36,7 @@ def test_knowledge_graph_ups_power_events():
     assert active_ent == "ups_1"
     assert "HISTORIAL DE AVERÍAS Y EVENTOS ELÉCTRICOS" in ctx
     assert "incidencias registradas en MariaDB (SSOT)" in ctx
-    assert "LV6KL-VS-01" in ctx
+    assert "UPS-DEMO-01" in ctx
 
 
 def test_knowledge_graph_disambiguation():
@@ -51,7 +51,7 @@ def test_knowledge_graph_disambiguation():
     # Luego pregunta por el UPS manteniendo la memoria previa
     ctx_ups, active_ups = kg.resolve_query_context("cuál es el serial del UPS", active_node_id=active_sw)
     assert active_ups == "ups_1"
-    assert "LV6KL-VS-01" in ctx_ups
+    assert "UPS-DEMO-01" in ctx_ups
     # Asegurar que en la cabecera de identidad del UPS NO aparezca SW03
     identity_line = [l for l in ctx_ups.splitlines() if "⚡ IDENTIDAD DEL EQUIPO:" in l][0]
     assert "SW03" not in identity_line, f"Contaminación detectada: {identity_line}"
@@ -66,7 +66,7 @@ def test_ai_knowledge_service_integration():
     assert ctx is not None
     assert ent is not None
     assert ent.get("type") == "ups"
-    assert "LV6KL-VS-01" in ctx
+    assert "UPS-DEMO-01" in ctx
     assert "HISTORIAL DE AVERÍAS Y EVENTOS ELÉCTRICOS" in ctx
 
     # 2. Desambiguación con SW03 previo
@@ -78,7 +78,7 @@ def test_ai_knowledge_service_integration():
         active_entity=sw_ent
     )
     assert ups_ent.get("type") == "ups"
-    assert "LV6KL-VS-01" in ups_ctx
+    assert "UPS-DEMO-01" in ups_ctx
     identity_line = [l for l in ups_ctx.splitlines() if "⚡ IDENTIDAD DEL EQUIPO:" in l][0]
     assert "SW03" not in identity_line, f"Contaminación detectada: {identity_line}"
 
@@ -101,7 +101,7 @@ def test_knowledge_graph_all_domains_coverage():
     ctx_s, _ = AiKnowledgeService.resolve_system_context("qué subredes y bloques IP están configurados")
     assert ctx_s is not None
     assert "DOMINIO DE SUBREDES Y PLAN IP" in ctx_s
-    assert "10.20.23.0/24" in ctx_s
+    assert "192.168.1.0/24" in ctx_s
 
     # 4. Certificados SSL
     ctx_c, _ = AiKnowledgeService.resolve_system_context("cuándo vence el certificado SSL o TLS")
@@ -145,9 +145,9 @@ def test_output_guardrail_sanitizes_false_refusals_and_contradictions():
     # Caso 1: Falsa declinación sobre segmentos
     canned_refusal = "Lo siento, pero no tengo acceso a la información específica sobre los segmentos de red..."
     fixed = _validate_and_sanitize_response(canned_refusal, "Dame los segmentos de red de las sedes en el sistema", None)
-    assert "10.20.107.0/24" in fixed
-    assert "10.20.106.0/24" in fixed
-    assert "10.20.23.0/24" in fixed
+    assert "192.168.107.0/24" in fixed
+    assert "192.168.106.0/24" in fixed
+    assert "192.168.1.0/24" in fixed
 
     # Caso 2: Contradicción fáctica sobre servicios caídos (dice que no hay ninguno cuando sí hay 4)
     hallucination = "Actualmente no hay ningún servicio caído registrado en el sistema. Todos están operativos."
@@ -155,6 +155,60 @@ def test_output_guardrail_sanitizes_false_refusals_and_contradictions():
     assert "4 servicios caídos" in fixed_outage
     assert "OTRS" in fixed_outage
     assert "INTRANET empresa" in fixed_outage
+
+
+def test_knowledge_graph_person_subgraph_resolution():
+    """Valida la resolución relacional del subgrafo de una persona (Anais Colmenarez)."""
+    kg = SystemKnowledgeGraph.get_instance()
+    ctx, active_ent = kg.resolve_query_context("Qué equipo tiene Anais?")
+
+    assert active_ent == "person_anais_c_colmenarez_g"
+    assert "ANAIS C. COLMENAREZ G." in ctx
+    assert "EQUIPO 01" in ctx
+    assert "MXL52434KR" in ctx
+    assert "V1PAF51" in ctx  # Monitor Lenovo
+    assert "assignments/scans/UINF-4.05-2026-0014_ACTA_EQUIPO_01_TRANSMISION.pdf" in ctx
+
+
+def test_knowledge_graph_scanned_actas_resolution():
+    """Valida la resolución estricta de las 3 actas físicas escaneadas en PDF."""
+    kg = SystemKnowledgeGraph.get_instance()
+    ctx, active_ent = kg.resolve_query_context("dame un listado de los equipos que tienen acta de asignacion")
+
+    assert "UINF-4.05-2026-0014" in ctx
+    assert "UINF-4.05-2026-0015" in ctx
+    assert "UINF-4.05-2026-0016" in ctx
+    assert "ANAIS C. COLMENAREZ G." in ctx
+    assert "SORANGEL A. ORTIZ S." in ctx
+    assert "TANIA ALVIS" in ctx
+
+
+def test_knowledge_graph_peripheral_matching():
+    """Valida la búsqueda transversal de periféricos (monitores HP)."""
+    kg = SystemKnowledgeGraph.get_instance()
+    ctx, active_ent = kg.resolve_query_context("Cuántos monitores HP tenemos registrados?")
+
+    assert "DOMINIO DE PERIFÉRICOS DE HARDWARE ITAM" in ctx
+    assert "Periféricos Coincidentes con la Consulta: 8 unidades" in ctx
+    assert "HP V193b" in ctx
+
+
+def test_knowledge_graph_cencaratit_and_router():
+    """Valida la resolución relacional de activos clave (CENCARATIT y Router Principal)."""
+    kg = SystemKnowledgeGraph.get_instance()
+
+    # CENCARATIT
+    ctx_c, act_c = kg.resolve_query_context("Qué componentes tiene el equipo CENCARATIT?")
+    assert act_c == "asset_11519"
+    assert "CENCARATIT (Servidor Desarrollo)" in ctx_c
+    assert "MJ09RSFL" in ctx_c
+    assert "192.168.1.220" in ctx_c
+
+    # Router Principal
+    ctx_r, act_r = kg.resolve_query_context("A qué switch y puerto está conectado el Router Principal?")
+    assert "ROUTER PRINCIPAL" in ctx_r
+    assert "192.168.1.1" in ctx_r
+
 
 
 

@@ -8,20 +8,21 @@
 [![Cytoscape.js](https://img.shields.io/badge/Cytoscape.js-3.30-navy?style=flat)](https://js.cytoscape.org/)
 [![Apache](https://img.shields.io/badge/Apache-2.4-D22128?style=flat&logo=apache&logoColor=white)](https://httpd.apache.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Version](https://img.shields.io/badge/Version-v5.26.30-0ea5e9?style=flat)](https://github.com/britojq/Monitoreo-VS)
 [![License](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 
-> **Trayectoria Institucional:** Proyecto Inicial: 2018 | Versión Enterprise Mejorada: 2018 - 2026 (`v3.0.0 Release`)  
-> **Arquitectura Modular:** Módulos de la Plataforma: [1 / 5] Activo (Módulo Actual: Sistema de Monitoreo)  
-> **Misión:** Módulo concebido y optimizado para supervisar la continuidad operativa e infraestructura crítica de la red corporativa.  
+> **Trayectoria Institucional:** Proyecto Inicial: 2018 | Versión Enterprise Unificada: 2018 - 2026 (`v5.26.x`)  
+> **Arquitectura Modular:** Ecosistema Concentrador ITAM, Monitoreo de Red, Grafo de Conocimiento y Motor Local de IA  
+> **Misión:** Supervisión integral de continuidad operativa, telemetría de infraestructura crítica y gestión de activos tecnológicos.  
 > **Autor / Administrador:** Operador ATIT ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
 
 ---
 
 ## 🌟 Descripción General
 
-Esta plataforma es una solución integral de supervisión tecnológica, telemetría de servicios de red, diagnóstico proactivo y administración remota concebida para entornos corporativos y de misión crítica.
+Esta plataforma es una solución integral de supervisión tecnológica, gestión de inventario de activos TI (ITAM), telemetría de servicios de red, diagnóstico proactivo y administración remota concebida para entornos corporativos y de misión crítica.
 
-El sistema unifica un portal web interactivo de alta reactividad en **Laravel 13**, demonios concurrentes de escaneo y telemetría en **Python 3.11+**, asistentes de gestión cifrada vía **Telegram**, un motor local de inteligencia artificial predictiva y soporte nativo para arquitecturas de clúster distribuido (**Master / Slave**).
+El sistema unifica un portal web interactivo de alta reactividad en **Laravel 13**, demonios concurrentes de escaneo y telemetría en **Python 3.11+**, asistentes de gestión cifrada vía **Telegram**, un Grafo de Conocimiento (Knowledge Graph) para asistencia técnica contextual, un motor local de inteligencia artificial predictiva y soporte nativo para arquitecturas de clúster distribuido (**Master / Slave**).
 
 ---
 
@@ -33,6 +34,7 @@ flowchart TD
         Dashboard["Dashboard Reactivo"] --> Controllers["Controladores Web / API"]
         Controllers --> DB[(MariaDB 10.11+)]
         Controllers --> RBAC["Seguridad & RBAC"]
+        Controllers --> ITAM["Gestión de Activos & Puestos"]
     end
     
     subgraph Demonios["📡 Demonios de Monitoreo (Python 3.11+)"]
@@ -45,7 +47,7 @@ flowchart TD
     
     subgraph TelegramBot["🤖 Asistente de Gestión Telegram"]
         Bot["bot.py (Gestión y Alertas)"] --> DB
-        Bot --> LocalIA["Motor Local de IA (Análisis Proactivo)"]
+        Bot --> LocalIA["Motor Local de IA (Análisis Proactivo & RAG)"]
         Bot --> ClusterAPI["API de Clúster (Master / Slave)"]
     end
     
@@ -63,15 +65,17 @@ flowchart TD
 ## 🚀 Capacidades y Módulos del Sistema
 
 1. **Tablero de Control Web en Tiempo Real:** Visualización instantánea del estado de servicios corporativos, sedes remotas y proxies con refresco asíncrono y gráficas de disponibilidad continua (24h).
-2. **Topología de Red Interactiva:** Renderizado de mapas de red mediante motor gráfico embebido 100% local (Cytoscape.js, sin dependencias de CDNs externas). Algoritmos de auto-distribución (COSE, Jerárquico, Concéntrico) e inspección de interfaces en tiempo real.
-3. **Encendido Remoto Wake-on-LAN (WOL):** Despacho de paquetes *Magic Packet* para encendido de estaciones y servidores remotos desde la interfaz web o mediante comandos de Telegram (`/wol`).
-4. **Motor de IA Predictiva y Análisis Proactivo:** Algoritmos estadísticos de regresión lineal ($y = mx + b$) y detección de anomalías por desvío estándar (>3σ) mediante el motor local de IA, anticipando saturación de almacenamiento, latencias anómalas o caídas de enlaces.
-5. **Gestor de Ciclo de Vida de Hardware:** Supervisión de fechas de compra, vigencia de garantías (alerta verde >60d, amarilla ≤60d, roja vencida), obsolescencia (EOL/EOS) y salud SMART de discos duros.
-6. **NET Radar y Descubrimiento Automático (Auto-Discovery):** Captura pasiva de tráfico, detección de equipos en red y clasificación automática de dispositivos autorizados frente a intrusos (*Rogue Devices*).
-7. **Monitoreo de Infraestructura y Certificados SSL:** Verificación continua de puertos TCP/UDP, ICMP, agentes SNMP v2c/v3 y alerta temprana de expiración de certificados SSL/TLS con cálculo de días restantes.
-8. **Blindaje de Seguridad y Contención:** Integración en PAM para notificación de accesos SSH, contención de sesiones `sudo` y `su / su -`, reglas perimetrales Fail2ban y Sentinel Terminal Shield.
-9. **Guardián Térmico de Hardware:** Supervisión continua de sensores de temperatura de CPU con protocolo de contención y apagado seguro automático ante sobrecalentamiento crítico (≥75°C).
-10. **Clúster de Alta Disponibilidad (Master / Slave):** Sincronización continua de telemetría e históricos mediante tokens criptográficos, con modo solo lectura garantizado en nodos esclavos para evitar saturación de firewalls.
+2. **Gestor Integral de Activos ITAM y Puestos de Trabajo:** Censo maestro de equipos de red y computación, componentes internos (CPU, memoria RAM, discos duros), periféricos asociados (monitores, teclados, protectores), historial de mantenimiento y trazabilidad documental de actas de asignación oficiales en PDF.
+3. **Topología de Red Interactiva:** Renderizado de mapas de red mediante motor gráfico embebido 100% local (Cytoscape.js, sin dependencias de CDNs externas). Algoritmos de auto-distribución (COSE, Jerárquico, Concéntrico) e inspección de interfaces en tiempo real.
+4. **Encendido Remoto Wake-on-LAN (WOL):** Despacho de paquetes *Magic Packet* para encendido de estaciones y servidores remotos desde la interfaz web o mediante comandos de Telegram (`/wol`).
+5. **Grafo de Conocimiento y Asistente de IA Local:** Motor relacional de infraestructura (Knowledge Graph) con inyección contextual determinista (RAG) sobre MariaDB como Única Fuente de Verdad (SSOT), permitiendo consultas conversacionales de telemetría, asignaciones, seriales y averías sin dependencias externas.
+6. **Motor de IA Predictiva y Análisis Proactivo:** Algoritmos estadísticos de regresión lineal ($y = mx + b$) y detección de anomalías por desvío estándar (>3σ) mediante el motor local de IA, anticipando saturación de almacenamiento, latencias anómalas o caídas de enlaces.
+7. **Gestor de Ciclo de Vida de Hardware:** Supervisión de fechas de compra, vigencia de garantías (alerta verde >60d, amarilla ≤60d, roja vencida), obsolescencia (EOL/EOS) y salud SMART de discos duros.
+8. **NET Radar y Descubrimiento Automático (Auto-Discovery):** Captura pasiva de tráfico, detección de equipos en red y clasificación automática de dispositivos autorizados frente a intrusos (*Rogue Devices*).
+9. **Monitoreo de Infraestructura y Certificados SSL:** Verificación continua de puertos TCP/UDP, ICMP, agentes SNMP v2c/v3 y alerta temprana de expiración de certificados SSL/TLS con cálculo de días restantes.
+10. **Blindaje de Seguridad y Contención:** Integración en PAM para notificación de accesos SSH, contención de sesiones `sudo` y `su / su -`, reglas perimetrales Fail2ban y Sentinel Terminal Shield.
+11. **Guardián Térmico de Hardware:** Supervisión continua de sensores de temperatura de CPU con protocolo de contención y apagado seguro automático ante sobrecalentamiento crítico (≥75°C).
+12. **Clúster de Alta Disponibilidad (Master / Slave):** Sincronización continua de telemetría e históricos mediante tokens criptográficos, con modo solo lectura garantizado en nodos esclavos para evitar saturación de firewalls.
 
 ---
 

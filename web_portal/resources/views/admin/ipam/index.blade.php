@@ -206,7 +206,7 @@
                     <span class="material-symbols-outlined text-lg" id="modal-cell-icon">info</span>
                 </span>
                 <div>
-                    <h3 class="text-sm font-bold text-white font-mono" id="modal-cell-ip">10.20.23.0</h3>
+                    <h3 class="text-sm font-bold text-white font-mono" id="modal-cell-ip">192.168.1.0</h3>
                     <p class="text-[10px] text-obsidian-muted" id="modal-cell-status-label">Estado de la dirección IP</p>
                 </div>
             </div>
@@ -344,7 +344,7 @@
 
     async function refreshCurrentGrid() {
         const selector = document.getElementById('subnet-selector');
-        const cidr = selector.value || '10.20.23.0/24';
+        const cidr = selector.value || '192.168.1.0/24';
         loadSubnetGrid(cidr);
     }
 

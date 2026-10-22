@@ -449,7 +449,7 @@ def sync_ups_to_inventory(conn, device_id: int, model: str, serial_number: Optio
 
             if not asset_id:
                 try:
-                    cur.execute("SELECT id FROM inventory_assets WHERE ip_address = '10.20.23.252' OR name LIKE '%MONITOREO%' LIMIT 1")
+                    cur.execute("SELECT id FROM inventory_assets WHERE ip_address = '192.168.1.250' OR name LIKE '%MONITOREO%' LIMIT 1")
                     asset_row = cur.fetchone()
                     if asset_row:
                         asset_id = asset_row["id"]

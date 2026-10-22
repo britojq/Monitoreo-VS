@@ -24,7 +24,7 @@ class AdminIpamController extends Controller
     public function index(Request $request): View
     {
         $subnets = $this->ipamService->getAvailableSubnets();
-        $defaultSubnet = $subnets[0]['cidr'] ?? '10.20.23.0/24';
+        $defaultSubnet = $subnets[0]['cidr'] ?? '192.168.1.0/24';
         $selectedSubnet = trim($request->query('subnet', $defaultSubnet));
 
         $grid = $this->ipamService->getSubnetGrid($selectedSubnet);
@@ -37,7 +37,7 @@ class AdminIpamController extends Controller
      */
     public function grid(Request $request): JsonResponse
     {
-        $subnet = trim((string) $request->query('subnet', '10.20.23.0/24'));
+        $subnet = trim((string) $request->query('subnet', '192.168.1.0/24'));
         $grid = $this->ipamService->getSubnetGrid($subnet);
 
         return response()->json($grid);

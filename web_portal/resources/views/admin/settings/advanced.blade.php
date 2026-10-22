@@ -523,7 +523,7 @@
                         URL / Dirección del Servidor Master
                     </label>
                     <div class="flex items-center gap-2">
-                        <input type="url" name="master_api_url" id="input_master_url" value="{{ $clusterConfig['master_api_url'] }}" placeholder="http://10.20.23.252"
+                        <input type="url" name="master_api_url" id="input_master_url" value="{{ $clusterConfig['master_api_url'] }}" placeholder="http://192.168.1.250"
                             class="flex-1 bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-obsidian-cyan">
                         <button type="button" onclick="testMasterConnection()" id="btn-test-connection" class="px-3 py-2.5 rounded-lg bg-obsidian-panel border border-obsidian-border text-obsidian-cyan hover:bg-cyan-950/60 font-bold text-xs font-mono flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap">
                             <span class="material-symbols-outlined text-sm">wifi_tethering</span>
@@ -708,8 +708,8 @@
                             <span class="material-symbols-outlined text-xs">dns</span>
                             Servidor Host LDAP / IP:
                         </label>
-                        <input type="text" name="ldap_host" id="input_ldap_host" value="{{ $ldapConfig['host'] ?? '10.20.0.22' }}" required
-                            placeholder="10.20.0.22"
+                        <input type="text" name="ldap_host" id="input_ldap_host" value="{{ $ldapConfig['host'] ?? '192.168.0.22' }}" required
+                            placeholder="192.168.0.22"
                             class="w-full bg-[#040d1a] border border-obsidian-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-obsidian-cyan focus:ring-1 focus:ring-obsidian-cyan focus:outline-none">
                     </div>
                     <div class="space-y-1.5">
@@ -797,7 +797,7 @@
                 </div>
                 <div class="flex justify-between py-1 border-b border-obsidian-border/40">
                     <span class="text-obsidian-muted">Servidor actual:</span>
-                    <span class="text-white">{{ $ldapConfig['host'] ?? '10.20.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</span>
+                    <span class="text-white">{{ $ldapConfig['host'] ?? '192.168.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</span>
                 </div>
                 <div class="flex justify-between py-1 border-b border-obsidian-border/40">
                     <span class="text-obsidian-muted">Rol inicial:</span>

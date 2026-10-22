@@ -625,6 +625,15 @@
                                             @endif
                                         @endif
 
+                                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                                            <button type="button" 
+                                                    onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}', {{ $activeAssignment->document_pdf_path ? 'true' : 'false' }})"
+                                                    class="p-1 rounded bg-teal-500/20 border border-teal-500/40 text-teal-300 hover:bg-teal-500 hover:text-black transition cursor-pointer" 
+                                                    title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                <span class="material-symbols-outlined text-[12px]">manage_accounts</span>
+                                            </button>
+                                        @endif
+
                                         <!-- Descargar Acta Digital UINF-4.05 generada por sistema -->
                                         <a href="{{ route('admin.inventory.assignments.pdf', $activeAssignment->id) }}" target="_blank" 
                                            class="p-1 rounded bg-red-950/40 border border-red-800/60 text-red-400 hover:bg-red-500 hover:text-white transition" 
@@ -659,6 +668,12 @@
                                                 <span class="material-symbols-outlined text-[12px]">upload_file</span>
                                             </button>
                                             <button type="button" 
+                                                    onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($d->custodian_name) }}', '{{ addslashes($d->custodian_id_number ?? '') }}', '{{ addslashes($d->custodian_department ?? '') }}', true)"
+                                                    class="p-1 rounded bg-teal-500/20 border border-teal-500/40 text-teal-300 hover:bg-teal-500 hover:text-black transition cursor-pointer" 
+                                                    title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                <span class="material-symbols-outlined text-[12px]">manage_accounts</span>
+                                            </button>
+                                            <button type="button" 
                                                     onclick="openQuickAssignModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($d->ip ?? '') }}', '{{ addslashes($d->serial_number ?? $d->serial ?? '') }}', '{{ addslashes($d->custodian_name) }}', '{{ addslashes($d->custodian_id_number ?? '') }}', '{{ addslashes($d->custodian_department ?? '') }}')" 
                                                     class="p-1 rounded bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-black transition cursor-pointer" 
                                                     title="Formalizar / Reasignar con LDAP (Actualmente: {{ $d->custodian_name }})">
@@ -681,6 +696,12 @@
                                                     class="p-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500 hover:text-black transition cursor-pointer" 
                                                     title="Cargar Hoja Física de Asignación Escaneada">
                                                 <span class="material-symbols-outlined text-[12px]">upload_file</span>
+                                            </button>
+                                            <button type="button" 
+                                                    onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '', '', '', false)" 
+                                                    class="p-1 rounded bg-teal-500/15 border border-teal-500/30 text-teal-400 hover:bg-teal-500 hover:text-black transition cursor-pointer" 
+                                                    title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                <span class="material-symbols-outlined text-[12px]">manage_accounts</span>
                                             </button>
                                             <button type="button" 
                                                     onclick="openQuickAssignModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($d->ip ?? '') }}', '{{ addslashes($d->serial_number ?? $d->serial ?? '') }}')" 
@@ -1345,58 +1366,76 @@
                                                 </div>
                                             </div>
 
-                                            <!-- ACCIONES DE ASIGNACIÓN Y DOCUMENTO -->
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                @if($activeAssignment && $activeAssignment->document_pdf_path)
-                                                    <a href="{{ route('admin.inventory.assignments.view-scan', $activeAssignment->id) }}" target="_blank" 
-                                                       class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
-                                                        <span class="material-symbols-outlined text-base">visibility</span>
-                                                        <span>Ver Hoja Escaneada</span>
-                                                    </a>
-                                                    <a href="{{ route('admin.inventory.assignments.pdf', $activeAssignment->id) }}" target="_blank" 
-                                                       class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-400 hover:bg-red-500 hover:text-white transition flex items-center gap-1 text-xs" title="Descargar Acta UINF-4.05 (PDF)">
-                                                        <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                                                        <span>Acta Digital</span>
-                                                    </a>
-                                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
-                                                    <button type="button" 
-                                                            onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}')"
-                                                            class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1 text-xs" title="Reemplazar archivo digitalizado">
-                                                        <span class="material-symbols-outlined text-base">sync</span>
-                                                        <span>Reemplazar</span>
-                                                    </button>
-                                                    @endif
-                                                @elseif($activeAssignment)
-                                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
-                                                    <button type="button" 
-                                                            onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}')"
-                                                            class="px-3 py-1.5 rounded-xl {{ $activeAssignment->scan_compliance_status === 'overdue' ? 'bg-rose-500 hover:bg-rose-400 text-white' : 'bg-amber-500 hover:bg-amber-400 text-black' }} font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
-                                                        <span class="material-symbols-outlined text-base">upload_file</span>
-                                                        <span>{{ $activeAssignment->scan_compliance_status === 'overdue' ? 'Subir Soporte Escaneado' : 'Subir Hoja Física Escaneada' }}</span>
-                                                    </button>
-                                                    @endif
-                                                    <a href="{{ route('admin.inventory.assignments.pdf', $activeAssignment->id) }}" target="_blank" 
-                                                        class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-400 hover:bg-red-500 hover:text-white transition flex items-center gap-1 text-xs">
-                                                        <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                                                        <span>Acta Digital UINF-4.05</span>
-                                                    </a>
-                                                @else
-                                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.assign') || auth()->user()->hasPermission('inventory.manage'))
-                                                    <button type="button" 
-                                                            onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}')"
-                                                            class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
-                                                        <span class="material-symbols-outlined text-base">upload_file</span>
-                                                        <span>Subir Hoja Física Existente</span>
-                                                    </button>
-                                                    <a href="{{ route('admin.inventory.assignments.create', ['asset_id' => $d->id, 'return_to' => url()->full()]) }}" 
-                                                        class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/40 text-cyan-300 hover:text-black font-bold transition flex items-center gap-1.5 text-xs">
-                                                        <span class="material-symbols-outlined text-base">assignment_add</span>
-                                                        <span>Emitir Acta en Sistema</span>
-                                                    </a>
-                                                    @endif
-                                                @endif
-                                            </div>
-                                        </div>
+                                             <!-- ACCIONES DE ASIGNACIÓN Y DOCUMENTO -->
+                                             <div class="flex items-center gap-2 flex-wrap">
+                                                 @if($activeAssignment && $activeAssignment->document_pdf_path)
+                                                     <a href="{{ route('admin.inventory.assignments.view-scan', $activeAssignment->id) }}" target="_blank" 
+                                                        class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
+                                                         <span class="material-symbols-outlined text-base">visibility</span>
+                                                         <span>Ver Hoja Escaneada</span>
+                                                     </a>
+                                                     <a href="{{ route('admin.inventory.assignments.pdf', $activeAssignment->id) }}" target="_blank" 
+                                                        class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-400 hover:bg-red-500 hover:text-white transition flex items-center gap-1 text-xs" title="Descargar Acta UINF-4.05 (PDF)">
+                                                         <span class="material-symbols-outlined text-base">picture_as_pdf</span>
+                                                         <span>Acta Digital</span>
+                                                     </a>
+                                                     @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                                                     <button type="button" 
+                                                             onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}', true)"
+                                                             class="px-2.5 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 hover:bg-cyan-500 hover:text-black font-semibold transition flex items-center gap-1 text-xs" title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                         <span class="material-symbols-outlined text-base">manage_accounts</span>
+                                                         <span>Conciliar LDAP</span>
+                                                     </button>
+                                                     <button type="button" 
+                                                             onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}')"
+                                                             class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1 text-xs" title="Reemplazar archivo digitalizado">
+                                                         <span class="material-symbols-outlined text-base">sync</span>
+                                                         <span>Reemplazar</span>
+                                                     </button>
+                                                     @endif
+                                                 @elseif($activeAssignment)
+                                                     @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                                                     <button type="button" 
+                                                             onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}')"
+                                                             class="px-3 py-1.5 rounded-xl {{ $activeAssignment->scan_compliance_status === 'overdue' ? 'bg-rose-500 hover:bg-rose-400 text-white' : 'bg-amber-500 hover:bg-amber-400 text-black' }} font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
+                                                         <span class="material-symbols-outlined text-base">upload_file</span>
+                                                         <span>{{ $activeAssignment->scan_compliance_status === 'overdue' ? 'Subir Soporte Escaneado' : 'Subir Hoja Física Escaneada' }}</span>
+                                                     </button>
+                                                     <button type="button" 
+                                                             onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($activeAssignment->custodian_name) }}', '{{ addslashes($activeAssignment->custodian_id_number ?? '') }}', '{{ addslashes($activeAssignment->custodian_department ?? '') }}', false)"
+                                                             class="px-2.5 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 hover:bg-cyan-500 hover:text-black font-semibold transition flex items-center gap-1 text-xs" title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                         <span class="material-symbols-outlined text-base">manage_accounts</span>
+                                                         <span>Conciliar LDAP</span>
+                                                     </button>
+                                                     @endif
+                                                     <a href="{{ route('admin.inventory.assignments.pdf', $activeAssignment->id) }}" target="_blank" 
+                                                         class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-400 hover:bg-red-500 hover:text-white transition flex items-center gap-1 text-xs">
+                                                         <span class="material-symbols-outlined text-base">picture_as_pdf</span>
+                                                         <span>Acta Digital UINF-4.05</span>
+                                                     </a>
+                                                 @else
+                                                     @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.assign') || auth()->user()->hasPermission('inventory.manage'))
+                                                     <button type="button" 
+                                                             onclick="openUploadPhysicalScanModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}')"
+                                                             class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition flex items-center gap-1.5 text-xs shadow-sm">
+                                                         <span class="material-symbols-outlined text-base">upload_file</span>
+                                                         <span>Subir Hoja Física Existente</span>
+                                                     </button>
+                                                     <button type="button" 
+                                                             onclick="openReconcileLdapModal({{ $d->id }}, '{{ addslashes($d->display_identity) }}', '{{ addslashes($d->assigned_to ?? '') }}', '', '', false)"
+                                                             class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-cyan-500 hover:text-black font-semibold transition flex items-center gap-1 text-xs" title="Conciliar responsable con Directorio Activo (LDAP)">
+                                                         <span class="material-symbols-outlined text-base">manage_accounts</span>
+                                                         <span>Conciliar LDAP</span>
+                                                     </button>
+                                                     <a href="{{ route('admin.inventory.assignments.create', ['asset_id' => $d->id, 'return_to' => url()->full()]) }}" 
+                                                         class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/40 text-cyan-300 hover:text-black font-bold transition flex items-center gap-1.5 text-xs">
+                                                         <span class="material-symbols-outlined text-base">assignment_add</span>
+                                                         <span>Emitir Acta en Sistema</span>
+                                                     </a>
+                                                     @endif
+                                                 @endif
+                                             </div>
+                                         </div>
 
                                         <!-- HISTÓRICO DE ACTAS ASIGNACION/MOVILIZACION -->
                                         @php
@@ -2566,7 +2605,7 @@
                             </label>
                             <div class="relative">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">wifi</span>
-                                <input type="text" name="ip" id="create-ip" required placeholder="Ej: 10.20.23.10" class="w-full pl-9 pr-3 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/60 focus:border-cyan-400 focus:outline-none transition">
+                                <input type="text" name="ip" id="create-ip" required placeholder="Ej: 192.168.1.10" class="w-full pl-9 pr-3 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/60 focus:border-cyan-400 focus:outline-none transition">
                             </div>
                         </div>
 
@@ -2923,8 +2962,8 @@
                                 <div>
                                     <label class="block text-[10.5px] font-mono text-cyan-300 mb-1">Servidor Inventario Destino</label>
                                     <select name="glpi_target" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-cyan-500/40 text-white text-xs font-mono focus:outline-none">
-                                        <option value="dev" selected>Servidor Local Desarrollo (10.20.23.221)</option>
-                                        <option value="prod">Servidor Producción (10.20.23.252)</option>
+                                        <option value="dev" selected>Servidor Local Desarrollo (192.168.1.220)</option>
+                                        <option value="prod">Servidor Producción (192.168.1.250)</option>
                                     </select>
                                 </div>
                             </div>
@@ -2980,6 +3019,7 @@
                                         <span class="text-[10px] font-mono text-obsidian-muted">Despacho de alertas de caídas</span>
                                     </div>
                                 </div>
+                                <input type="hidden" name="telegram_alert_enabled" value="0">
                                 <input type="checkbox" id="create-device-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-device-target-wrapper').classList.toggle('hidden', !this.checked)" class="w-4 h-4 rounded bg-obsidian-panel border-obsidian-border text-cyan-400 cursor-pointer focus:ring-0"/>
                             </div>
                             <div id="create-device-target-wrapper" class="hidden pt-1.5 border-t border-cyan-500/20">
@@ -3056,7 +3096,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10.5px] font-mono text-obsidian-muted mb-1 font-semibold uppercase">IP Enlace / Gateway</label>
-                        <input type="text" id="quick-site-ip" placeholder="Ej: 10.20.23.1" class="w-full px-3 py-1.5 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/60 focus:border-purple-400 focus:outline-none transition">
+                        <input type="text" id="quick-site-ip" placeholder="Ej: 192.168.1.1" class="w-full px-3 py-1.5 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono placeholder-obsidian-muted/60 focus:border-purple-400 focus:outline-none transition">
                     </div>
                     <div>
                         <label class="block text-[10.5px] font-mono text-obsidian-muted mb-1 font-semibold uppercase">Teléfono Contacto</label>
@@ -3220,7 +3260,7 @@
                             </label>
                             <div class="relative">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-obsidian-muted text-sm">wifi</span>
-                                <input type="text" name="ip" id="edit-ip" required placeholder="Ej: 10.20.23.10" class="w-full pl-9 pr-3 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none transition">
+                                <input type="text" name="ip" id="edit-ip" required placeholder="Ej: 192.168.1.10" class="w-full pl-9 pr-3 py-2 rounded-xl bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none transition">
                             </div>
                         </div>
 
@@ -3613,6 +3653,7 @@
                                         <span class="text-[10px] font-mono text-obsidian-muted">Avisos de caídas y recuperaciones</span>
                                     </div>
                                 </div>
+                                <input type="hidden" name="telegram_alert_enabled" value="0">
                                 <input type="checkbox" id="edit-device-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-device-target-wrapper').classList.toggle('hidden', !this.checked)" class="w-4 h-4 rounded bg-obsidian-panel border-obsidian-border text-cyan-400 cursor-pointer focus:ring-0"/>
                             </div>
                             <div id="edit-device-target-wrapper" class="hidden pt-1.5 border-t border-cyan-500/20">
@@ -3680,7 +3721,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
-                        <input type="text" name="ip" placeholder="ej. 10.20.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        <input type="text" name="ip" placeholder="ej. 192.168.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
@@ -4314,7 +4355,7 @@
                             <span class="material-symbols-outlined text-sm">search</span>
                             <span>Buscar Trabajador en Directorio Activo (LDAP)</span>
                         </label>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/30 text-cyan-300">10.20.0.22</span>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/30 text-cyan-300">192.168.0.22</span>
                     </div>
                     <div class="relative">
                         <input type="text" id="quick-assign-ldap-search" 
@@ -4393,6 +4434,9 @@
         </form>
     </div>
 </div>
+
+{{-- MODAL REUTILIZABLE: CONCILIACIÓN CON DIRECTORIO ACTIVO (LDAP) --}}
+@include('admin.inventory.partials.reconcile_ldap_modal')
 
 <script>
     let currentDeviceId = null;
@@ -5340,7 +5384,7 @@
         } else {
             if (ipInput) {
                 ipInput.setAttribute('required', 'required');
-                ipInput.placeholder = 'Ej: 10.20.23.10';
+                ipInput.placeholder = 'Ej: 192.168.1.10';
             }
             if (ipReq) ipReq.classList.remove('hidden');
             if (ipBadge) {
@@ -6480,6 +6524,7 @@
             closeMaintenanceModal();
             closeUploadPhysicalScanModal();
             closeQuickAssignModal();
+            if (typeof closeReconcileLdapModal === 'function') closeReconcileLdapModal();
         }
     });
 

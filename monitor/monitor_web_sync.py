@@ -758,12 +758,12 @@ async def sync_from_master() -> bool:
     guardando el archivo local y actualizando la base de datos MySQL sin realizar escaneos de red directos.
     """
     config_file = BASE_DIR / "config" / "config.json"
-    master_url = "http://10.20.23.252"
+    master_url = "http://192.168.1.250"
     cluster_token = ""
     if config_file.exists():
         try:
             cfg = json.loads(config_file.read_text(encoding="utf-8"))
-            master_url = cfg.get("master_api_url", "http://10.20.23.252").rstrip("/")
+            master_url = cfg.get("master_api_url", "http://192.168.1.250").rstrip("/")
             cluster_token = cfg.get("cluster_token", "")
         except Exception:
             pass
@@ -945,7 +945,7 @@ async def sync_from_master() -> bool:
                                 dev_id = nd["id"]
                                 # Blindaje de paridad: Si el master envía el Router Principal con ID legado 11519,
                                 # o IDs duplicados viejos, remapear a sus IDs canónicos para proteger CENCARATIT (ID 11519).
-                                if dev_id == 11519 and (nd.get("ip") == "10.20.23.1" or "ROUTER" in str(nd.get("name", "")).upper()):
+                                if dev_id == 11519 and (nd.get("ip") == "192.168.1.1" or "ROUTER" in str(nd.get("name", "")).upper()):
                                     dev_id = 1
                                 elif dev_id in legacy_dev_map and dev_id != 11519:
                                     dev_id = legacy_dev_map[dev_id]
@@ -1068,7 +1068,7 @@ async def sync_from_master() -> bool:
                     for nd in all_net_devices:
                         if "id" in nd:
                             dev_id = nd["id"]
-                            if dev_id == 11519 and (nd.get("ip") == "10.20.23.1" or "ROUTER" in str(nd.get("name", "")).upper()):
+                            if dev_id == 11519 and (nd.get("ip") == "192.168.1.1" or "ROUTER" in str(nd.get("name", "")).upper()):
                                 dev_id = 1
                             elif dev_id in legacy_dev_map and dev_id != 11519:
                                 dev_id = legacy_dev_map[dev_id]

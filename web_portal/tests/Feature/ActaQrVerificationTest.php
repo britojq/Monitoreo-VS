@@ -53,7 +53,7 @@ class ActaQrVerificationTest extends TestCase
         $this->testSite = MonitoredSite::firstOrCreate(
             ['name' => 'SEDE CENTRAL VALLE SECO'],
             [
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'is_active' => true,
                 'sort_order' => 1,
             ]
@@ -64,7 +64,7 @@ class ActaQrVerificationTest extends TestCase
             'name' => 'ESTACIÓN TRABAJO TAQUILLA 01',
             'type' => 'desktop',
             'status' => 'assigned',
-            'ip_address' => '10.20.23.210',
+            'ip_address' => '192.168.1.210',
             'mac_address' => '00:1a:2b:3c:4d:ef',
             'serial_number' => 'SN-QR-' . str_replace('360', '777', uniqid()),
             'brand' => 'HP',
@@ -92,7 +92,7 @@ class ActaQrVerificationTest extends TestCase
                 'disk' => '512 GB SSD NVMe',
                 'os' => 'Debian GNU/Linux 12 (Bookworm)',
                 'device_name' => 'CENCARCOM012010',
-                'ip_address' => '10.20.23.210',
+                'ip_address' => '192.168.1.210',
             ],
             'peripherals_json' => [
                 ['type' => 'MONITOR', 'brand' => 'HP', 'model' => 'V214a', 'serial_number' => '6CM8191234', 'observations' => 'Operativo'],

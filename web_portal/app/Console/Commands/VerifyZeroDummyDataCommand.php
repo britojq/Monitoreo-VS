@@ -52,8 +52,8 @@ class VerifyZeroDummyDataCommand extends Command
         foreach ($tables as $tableObj) {
             $table = $tableObj->$colName;
 
-            // Omitir tablas del framework o migraciones
-            if (in_array($table, ['migrations', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs'], true)) {
+            // Omitir tablas del framework, migraciones o telemetría masiva en crudo (JSON)
+            if (in_array($table, ['migrations', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'monitoring_snapshots'], true)) {
                 continue;
             }
 
@@ -211,24 +211,24 @@ class VerifyZeroDummyDataCommand extends Command
         // Chequeo de integridad de activos troncales (Router Principal ID 1 y Servidor Desarrollo ID 11519)
         try {
             $router = DB::table('inventory_assets')->where('id', 1)->first();
-            if (!$router || $router->name !== 'ROUTER PRINCIPAL' || $router->ip_address !== '10.20.23.1' || $router->access_type !== 'TELNET' || (int) $router->access_port !== 23) {
+            if (!$router || $router->name !== 'ROUTER PRINCIPAL' || $router->ip_address !== '192.168.1.1' || $router->access_type !== 'TELNET' || (int) $router->access_port !== 23) {
                 $violations[] = [
                     'table' => 'inventory_assets',
                     'column' => 'id=1 (ROUTER PRINCIPAL)',
                     'pattern' => 'CORRUPCIÓN DE ACTIVO CRÍTICO (Error #8)',
                     'id' => '1',
-                    'snippet' => 'Router Principal no tiene los parámetros legítimos (TELNET:23, 10.20.23.1, tipo router)',
+                    'snippet' => 'Router Principal no tiene los parámetros legítimos (TELNET:23, 192.168.1.1, tipo router)',
                 ];
             }
 
             $devServer = DB::table('inventory_assets')->where('id', 11519)->first();
-            if (!$devServer || $devServer->ip_address !== '10.20.23.221' || !str_contains($devServer->name, 'CENCARATIT')) {
+            if (!$devServer || $devServer->ip_address !== '192.168.1.220' || !str_contains($devServer->name, 'CENCARATIT')) {
                 $violations[] = [
                     'table' => 'inventory_assets',
                     'column' => 'id=11519 (CENCARATIT)',
                     'pattern' => 'CORRUPCIÓN DE SERVIDOR DE DESARROLLO',
                     'id' => '11519',
-                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 10.20.23.221 o nombre CENCARATIT',
+                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 192.168.1.220 o nombre CENCARATIT',
                 ];
             }
         } catch (\Throwable) {

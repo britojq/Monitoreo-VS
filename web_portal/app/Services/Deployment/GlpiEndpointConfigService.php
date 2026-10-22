@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
 {
     protected const DEFAULT_TOKEN = 'd8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
-    protected const DEFAULT_PROD_URL = 'http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
-    protected const DEFAULT_DEV_URL = 'http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
+    protected const DEFAULT_PROD_URL = 'http://192.168.1.250/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
+    protected const DEFAULT_DEV_URL = 'http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
 
     /**
      * Valida si un host o IP es enrutable por clientes remotos en la red (rechaza loopback y local).
@@ -67,9 +67,9 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
             $output = @shell_exec('hostname -I 2>/dev/null');
             if ($output) {
                 $ips = preg_split('/\s+/', trim($output));
-                // Prioridad 1: Buscar IP en el segmento de gestión corporativo (10.20.23.X)
+                // Prioridad 1: Buscar IP en el segmento de gestión corporativo (192.168.1.X)
                 foreach ($ips as $ip) {
-                    if (str_starts_with($ip, '10.20.23.') && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                    if (str_starts_with($ip, '192.168.1.') && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                         return $ip;
                     }
                 }
@@ -86,7 +86,7 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
 
         // 4. Fallback según el rol del nodo en cluster o IP estándar de desarrollo
         $nodeRole = (string) BotSetting::get('cluster_node_role', 'dev');
-        return ($nodeRole === 'master') ? '10.20.23.252' : '10.20.23.221';
+        return ($nodeRole === 'master') ? '192.168.1.250' : '192.168.1.220';
     }
 
     /**
@@ -110,8 +110,8 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
         $prodUrl = (string) BotSetting::get('glpi_receiver_prod_url', self::DEFAULT_PROD_URL);
         $devUrl = (string) BotSetting::get('glpi_receiver_dev_url', self::DEFAULT_DEV_URL);
 
-        $prodHost = $this->extractHostFromUrl($prodUrl, '10.20.23.252');
-        $devHost = $this->extractHostFromUrl($devUrl, '10.20.23.221');
+        $prodHost = $this->extractHostFromUrl($prodUrl, '192.168.1.250');
+        $devHost = $this->extractHostFromUrl($devUrl, '192.168.1.220');
 
         return [
             'current_host' => $currentHost,
@@ -119,10 +119,10 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
             'current_deploy_base' => "http://{$currentHost}",
             'prod_url' => $prodUrl,
             'prod_host' => $prodHost,
-            'prod_deploy_base' => $this->extractDeployBase($prodUrl, 'http://10.20.23.252'),
+            'prod_deploy_base' => $this->extractDeployBase($prodUrl, 'http://192.168.1.250'),
             'dev_url' => $devUrl,
             'dev_host' => $devHost,
-            'dev_deploy_base' => $this->extractDeployBase($devUrl, 'http://10.20.23.221'),
+            'dev_deploy_base' => $this->extractDeployBase($devUrl, 'http://192.168.1.220'),
             'token' => $token,
         ];
     }

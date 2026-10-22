@@ -42,7 +42,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         $this->assertStringStartsWith('vnc_', $token);
 
         // Registrar token
-        $this->tokenService->registerToken($token, '10.20.23.100', 5900);
+        $this->tokenService->registerToken($token, '192.168.1.100', 5900);
 
         // Validar token
         $this->assertTrue($this->tokenService->isTokenValid($token));
@@ -51,7 +51,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         // Resolver destino
         $target = $this->tokenService->resolveTarget($token);
         $this->assertNotNull($target);
-        $this->assertEquals('10.20.23.100', $target['ip']);
+        $this->assertEquals('192.168.1.100', $target['ip']);
         $this->assertEquals(5900, $target['port']);
 
         // Revocar token
@@ -63,7 +63,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
     {
         // Registrar 15 tokens cuando el límite es 10
         for ($i = 1; $i <= 15; $i++) {
-            $this->tokenService->registerToken("tok_{$i}", "10.20.23.{$i}", 5900);
+            $this->tokenService->registerToken("tok_{$i}", "192.168.1.{$i}", 5900);
         }
 
         $lines = file($this->tempTokensFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -84,12 +84,12 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
             'name' => 'TAQUILLA-01',
             'type' => 'desktop',
             'status' => 'in_stock',
-            'ip_address' => '10.20.23.41',
+            'ip_address' => '192.168.1.41',
             'vnc_port' => 5900,
         ]);
 
         $response = $this->actingAs($admin)->postJson(route('admin.vnc.session'), [
-            'ip' => '10.20.23.41',
+            'ip' => '192.168.1.41',
             'port' => 5900,
             'name' => 'TAQUILLA-01',
             'site' => 'Sede Central',
@@ -115,7 +115,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         $this->assertEquals('Escritorio Web VNC', $audit->event_label);
         $this->assertEquals('Acceso Remoto', $audit->module_label);
         $this->assertStringContainsString('TAQUILLA-01', $audit->description);
-        $this->assertEquals('10.20.23.41', $audit->new_values['target_ip']);
+        $this->assertEquals('192.168.1.41', $audit->new_values['target_ip']);
     }
 
     public function test_telnet_session_creation_registers_token_and_audits_to_mariadb(): void
@@ -128,7 +128,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         ]);
 
         $response = $this->actingAs($operator)->postJson(route('admin.telnet.session'), [
-            'ip' => '10.20.23.1',
+            'ip' => '192.168.1.1',
             'port' => 23,
             'name' => 'ROUTER-PRINCIPAL',
             'site' => 'Sede Central',
@@ -163,7 +163,7 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         ]);
 
         $response = $this->actingAs($operator)->postJson(route('admin.ssh.session'), [
-            'ip' => '10.20.23.10',
+            'ip' => '192.168.1.10',
             'port' => 22,
             'name' => 'SERVIDOR-BD',
             'site' => 'Sede Central',
@@ -195,17 +195,17 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         ]);
 
         $vncResponse = $this->actingAs($userWithoutPerms)->postJson(route('admin.vnc.session'), [
-            'ip' => '10.20.23.41',
+            'ip' => '192.168.1.41',
         ]);
         $vncResponse->assertStatus(403);
 
         $telnetResponse = $this->actingAs($userWithoutPerms)->postJson(route('admin.telnet.session'), [
-            'ip' => '10.20.23.1',
+            'ip' => '192.168.1.1',
         ]);
         $telnetResponse->assertStatus(403);
 
         $sshResponse = $this->actingAs($userWithoutPerms)->postJson(route('admin.ssh.session'), [
-            'ip' => '10.20.23.10',
+            'ip' => '192.168.1.10',
         ]);
         $sshResponse->assertStatus(403);
     }
@@ -219,19 +219,19 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         ]);
 
         $token = $this->tokenService->generateToken('vnc');
-        $this->tokenService->registerToken($token, '10.20.23.41', 5900);
+        $this->tokenService->registerToken($token, '192.168.1.41', 5900);
 
         // Con token válido: 200
         $response = $this->actingAs($admin)->get(route('admin.vnc.viewer', [
             'token' => $token,
-            'ip' => '10.20.23.41',
+            'ip' => '192.168.1.41',
         ]));
         $response->assertStatus(200);
 
         // Con token inválido: 404
         $invalidResponse = $this->actingAs($admin)->get(route('admin.vnc.viewer', [
             'token' => 'token_falso_expirado',
-            'ip' => '10.20.23.41',
+            'ip' => '192.168.1.41',
         ]));
         $invalidResponse->assertStatus(404);
     }
@@ -245,19 +245,19 @@ class RemoteSessionAuditAndWebsockifyTest extends TestCase
         ]);
 
         $token = $this->tokenService->generateToken('telnet');
-        $this->tokenService->registerToken($token, '10.20.23.1', 23);
+        $this->tokenService->registerToken($token, '192.168.1.1', 23);
 
         // Con token válido: 200
         $response = $this->actingAs($admin)->get(route('admin.telnet.terminal', [
             'token' => $token,
-            'ip' => '10.20.23.1',
+            'ip' => '192.168.1.1',
         ]));
         $response->assertStatus(200);
 
         // Con token inválido: 404
         $invalidResponse = $this->actingAs($admin)->get(route('admin.telnet.terminal', [
             'token' => 'token_falso_expirado',
-            'ip' => '10.20.23.1',
+            'ip' => '192.168.1.1',
         ]));
         $invalidResponse->assertStatus(404);
     }

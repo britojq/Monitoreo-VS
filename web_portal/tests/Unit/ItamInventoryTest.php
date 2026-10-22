@@ -167,7 +167,7 @@ class ItamInventoryTest extends TestCase
                 'networks' => [
                     [
                         'mac' => 'A0:B1:C2:D3:E4:F5',
-                        'ipaddress' => '10.20.23.150',
+                        'ipaddress' => '192.168.1.150',
                         'status' => 'up',
                     ]
                 ],
@@ -191,7 +191,7 @@ class ItamInventoryTest extends TestCase
         $this->assertEquals('ProBook 450 G8', $norm['model']);
         $this->assertEquals('laptop', $norm['type']);
         $this->assertEquals('A0:B1:C2:D3:E4:F5', $norm['mac_address']);
-        $this->assertEquals('10.20.23.150', $norm['ip_address']);
+        $this->assertEquals('192.168.1.150', $norm['ip_address']);
         $this->assertEquals('Windows 11 Pro 23H2', $norm['operating_system']);
         $this->assertCount(1, $norm['cpus']);
         $this->assertCount(1, $norm['memories']);

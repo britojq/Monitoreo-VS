@@ -86,7 +86,7 @@ class TestDeviceServiceNotifier:
     def test_build_device_alert_message_down(self):
         device = {
             "name": "Switch Core <1>",
-            "ip": "10.20.23.1",
+            "ip": "192.168.1.1",
             "access_type": "SSH",
             "access_port": 22,
             "site_name": "Sede Principal",
@@ -94,14 +94,14 @@ class TestDeviceServiceNotifier:
         msg = build_device_alert_message(device, is_down=True)
         assert "ALERTA: EQUIPO DESCONECTADO" in msg
         assert "Switch Core &lt;1&gt;" in msg
-        assert "10.20.23.1" in msg
+        assert "192.168.1.1" in msg
         assert "SSH (Puerto 22)" in msg
         assert "Sede Principal" in msg
 
     def test_build_device_alert_message_up(self):
         device = {
             "name": "Switch Core",
-            "ip": "10.20.23.1",
+            "ip": "192.168.1.1",
             "access_type": "ICMP",
             "site_name": "Sede Principal",
             "latency_ms": 1.2,
@@ -168,7 +168,7 @@ class TestDeviceServiceNotifier:
             {
                 "id": 5,
                 "name": "Router Borde",
-                "ip": "10.20.23.254",
+                "ip": "192.168.1.254",
                 "access_type": "ICMP",
                 "access_port": None,
                 "telegram_alert_enabled": 1,

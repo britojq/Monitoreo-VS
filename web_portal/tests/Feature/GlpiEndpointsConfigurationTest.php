@@ -48,9 +48,9 @@ class GlpiEndpointsConfigurationTest extends TestCase
         $this->assertStringContainsString('Desarrollo', $dev['target_label']);
 
         // Test custom resolution with manual IP
-        $custom = $service->resolveTargetUrl('custom', '10.20.23.244');
-        $this->assertStringContainsString('10.20.23.244', $custom['server_url']);
-        $this->assertStringContainsString('Personalizado (10.20.23.244)', $custom['target_label']);
+        $custom = $service->resolveTargetUrl('custom', '192.168.1.244');
+        $this->assertStringContainsString('192.168.1.244', $custom['server_url']);
+        $this->assertStringContainsString('Personalizado (192.168.1.244)', $custom['target_label']);
     }
 
     public function test_admin_can_update_glpi_endpoints_via_api(): void
@@ -58,8 +58,8 @@ class GlpiEndpointsConfigurationTest extends TestCase
         $admin = User::where('role', 'admin')->first() ?? User::factory()->create(['role' => 'admin', 'is_active' => true, 'terms_accepted_at' => now()]);
 
         $newToken = 'a8f94e2b6c1d73a0e5f812349b6d8c07e2a419f85c3b17d0d8f58b76e1039c94';
-        $newProdUrl = 'http://10.20.23.244/api/v1/inventory/receiver/' . $newToken;
-        $newDevUrl = 'http://10.20.23.221/api/v1/inventory/receiver/' . $newToken;
+        $newProdUrl = 'http://192.168.1.244/api/v1/inventory/receiver/' . $newToken;
+        $newDevUrl = 'http://192.168.1.220/api/v1/inventory/receiver/' . $newToken;
 
         $response = $this->actingAs($admin)->postJson(route('admin.inventory.deploy.endpoints'), [
             'glpi_receiver_prod_url' => $newProdUrl,
@@ -84,8 +84,8 @@ class GlpiEndpointsConfigurationTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->postJson(route('admin.inventory.deploy.endpoints'), [
-            'glpi_receiver_prod_url' => 'http://10.20.23.244/api',
-            'glpi_receiver_dev_url' => 'http://10.20.23.221/api',
+            'glpi_receiver_prod_url' => 'http://192.168.1.244/api',
+            'glpi_receiver_dev_url' => 'http://192.168.1.220/api',
             'glpi_receiver_token' => 'ValidToken_12345',
         ]);
 

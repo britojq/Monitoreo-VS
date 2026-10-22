@@ -154,7 +154,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP</label>
-                        <input type="text" name="ip_address" value="{{ old('ip_address', $asset->ip_address) }}" placeholder="Ej. 10.20.107.155" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                        <input type="text" name="ip_address" value="{{ old('ip_address', $asset->ip_address) }}" placeholder="Ej. 192.168.107.155" class="w-full px-3 py-2 bg-[#040b15] border border-obsidian-border rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
                     </div>
 
                     <div>

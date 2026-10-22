@@ -461,7 +461,7 @@ def ensure_ups_service():
                     UPDATE ups_devices
                     SET name = 'UPS ZTG LV6KL - Sede Valle Seco',
                         model = 'ZTG LV6KL 6kVA',
-                        serial_number = 'LV6KL-VS-01',
+                        serial_number = 'UPS-DEMO-01',
                         firmware_version = 'R1.01.55'
                     WHERE name LIKE '%222222%' OR model LIKE '%222222%' OR firmware_version = '(';
                 """)
@@ -469,7 +469,7 @@ def ensure_ups_service():
                     UPDATE inventory_peripherals
                     SET brand = 'ZTG',
                         model = 'LV6KL 6kVA',
-                        serial_number = 'LV6KL-VS-01'
+                        serial_number = 'UPS-DEMO-01'
                     WHERE type = 'ups' AND (model LIKE '%222222%' OR brand = 'Genérico');
                 """)
                 conn.commit()

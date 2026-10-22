@@ -52,7 +52,7 @@ class TestCheckersPolymorphic:
             letter="A",
             name="Portal Web Corporativo",
             service_type="WEB",
-            web_url="http://10.20.23.221",
+            web_url="http://192.168.1.220",
         )
 
         with patch("monitor.checkers.web_checker.check_web", new_callable=AsyncMock) as mock_check:
@@ -73,7 +73,7 @@ class TestCheckersPolymorphic:
             letter="B",
             name="DNS Local",
             service_type="DNS",
-            ip_host="10.20.0.1",
+            ip_host="192.168.0.1",
             dns_test_host="empresa.local",
         )
 

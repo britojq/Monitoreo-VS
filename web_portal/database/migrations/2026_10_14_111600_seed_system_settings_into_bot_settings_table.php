@@ -43,7 +43,7 @@ return new class extends Migration
             ],
             [
                 'setting_key' => 'cluster_master_api_url',
-                'setting_value' => (string) ($data['master_api_url'] ?? 'http://10.20.23.252'),
+                'setting_value' => (string) ($data['master_api_url'] ?? 'http://192.168.1.250'),
                 'setting_group' => 'cluster',
                 'title' => 'URL API del Nodo Maestro',
                 'description' => 'Dirección base del servidor de producción / master para sincronización.',
@@ -87,7 +87,7 @@ return new class extends Migration
                 'setting_key' => 'ldap_config',
                 'setting_value' => json_encode($data['ldap_config'] ?? [
                     'enabled' => true,
-                    'host' => '10.20.0.22',
+                    'host' => '192.168.0.22',
                     'port' => 389,
                     'base_dn' => base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ=='),
                     'allowed_areas' => 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES',

@@ -467,7 +467,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="input_ups_serial" class="text-[10px] font-mono text-obsidian-muted block mb-1">Número de Serie:</label>
-                                <input type="text" name="serial_number" id="input_ups_serial" value="{{ $device->serial_number }}" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500" placeholder="Ej: LV6KL-VS-01">
+                                <input type="text" name="serial_number" id="input_ups_serial" value="{{ $device->serial_number }}" {{ $isClusterSlave ? 'disabled' : '' }} class="w-full bg-[#030914] border border-obsidian-border/70 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500" placeholder="Ej: UPS-DEMO-01">
                             </div>
                             <div>
                                 <label for="select_inventory_asset" class="text-[10px] font-mono text-obsidian-muted block mb-1">Servidor Anfitrión Asociado (ITAM):</label>
@@ -685,7 +685,7 @@
 
             <div class="pt-3 mt-3 border-t border-obsidian-border/50 flex items-center justify-between text-[10px] font-mono text-obsidian-muted">
                 <span>Estado de Alarma Sonora (Buzzer): <strong class="text-white">{{ $device->beeper_on ? 'Habilitado' : 'Silenciado' }}</strong></span>
-                <span>Serial: <strong class="text-cyan-300">{{ $device->serial_number ?? 'LV6KL-VS-01' }}</strong></span>
+                <span>Serial: <strong class="text-cyan-300">{{ $device->serial_number ?? 'UPS-DEMO-01' }}</strong></span>
             </div>
         </div>
 

@@ -12,9 +12,9 @@ class Fail2banService
     protected const WHITELIST_IPS = [
         '127.0.0.1',
         '::1',
-        '10.20.23.221',
-        '10.20.23.252',
-        '10.20.23.1',
+        '192.168.1.220',
+        '192.168.1.250',
+        '192.168.1.1',
     ];
 
     /**
@@ -187,7 +187,7 @@ class Fail2banService
         }
 
         // Verificación de protección contra bloqueo de IPs vitales
-        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '10.20.23.')) {
+        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '192.168.1.')) {
             return ['success' => false, 'message' => 'Acción denegada: La IP pertenece a la red corporativa o al cluster de administración.'];
         }
 

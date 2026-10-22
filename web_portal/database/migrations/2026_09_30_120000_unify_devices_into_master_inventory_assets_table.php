@@ -105,8 +105,8 @@ return new class extends Migration
                 }
             }
 
-            // Servidor de desarrollo local (10.20.23.221)
-            $devAsset = DB::table('inventory_assets')->where('ip_address', '10.20.23.221')->first();
+            // Servidor de desarrollo local (192.168.1.220)
+            $devAsset = DB::table('inventory_assets')->where('ip_address', '192.168.1.220')->first();
             if ($devAsset) {
                 DB::table('inventory_assets')->where('id', $devAsset->id)->update([
                     'device_number' => 8,

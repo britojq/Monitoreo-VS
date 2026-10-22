@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('auditable_type')->nullable();
             $table->unsignedBigInteger('auditable_id')->nullable();
             $table->string('entity_name')->nullable(); // Servicio, Sede, Dispositivo, etc.
-            $table->string('entity_label')->nullable(); // OTRS, 10.20.23.2, etc.
+            $table->string('entity_label')->nullable(); // OTRS, 192.168.1.2, etc.
             $table->text('description')->nullable();
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();

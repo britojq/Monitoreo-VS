@@ -12,10 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Reclasificar en inventory_assets el activo 10.20.23.232 (ID 7)
+        // 1. Reclasificar en inventory_assets el activo 192.168.1.232 (ID 7)
         DB::table('inventory_assets')
             ->where('id', 7)
-            ->orWhere('ip_address', '10.20.23.232')
+            ->orWhere('ip_address', '192.168.1.232')
             ->update([
                 'name' => 'CENCARCOMG206',
                 'type' => 'desktop',
@@ -37,7 +37,7 @@ return new class extends Migration
 
         // 2. Sincronizar discovered_devices para mantener coherencia de ecosistema (Regla de Oro #8)
         DB::table('discovered_devices')
-            ->where('ip_address', '10.20.23.232')
+            ->where('ip_address', '192.168.1.232')
             ->update([
                 'hostname' => 'CENCARCOMG206',
                 'device_type' => 'workstation',

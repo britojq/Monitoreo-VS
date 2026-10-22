@@ -189,7 +189,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-mono text-obsidian-muted uppercase mb-1">Dirección IP</label>
-                        <input type="text" name="specs[ip_address]" id="specIp" placeholder="Ej: 10.20.23.100" class="w-full px-2.5 py-1.5 bg-[#040b15] border border-obsidian-border rounded-lg text-xs text-white font-mono placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none">
+                        <input type="text" name="specs[ip_address]" id="specIp" placeholder="Ej: 192.168.1.100" class="w-full px-2.5 py-1.5 bg-[#040b15] border border-obsidian-border rounded-lg text-xs text-white font-mono placeholder-obsidian-muted/60 focus:border-obsidian-cyan focus:outline-none">
                     </div>
                 </div>
             </div>

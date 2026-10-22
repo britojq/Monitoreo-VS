@@ -63,7 +63,7 @@ class TestDiscoveryIntegration(unittest.TestCase):
         self.assertEqual(infer_device_type("HP Inc", "laserjet-pro-m404"), "printer")
         self.assertEqual(infer_device_type("Ubiquiti Inc", "ap-valle-seco"), "ap")
         self.assertEqual(infer_device_type("APC by Schneider", "ups-datacenter"), "ups")
-        self.assertEqual(infer_device_type("Hon Hai Precision Industry", "Host-10-20-23-249"), "workstation")
+        self.assertEqual(infer_device_type("Hon Hai Precision Industry", "Host-192-168-1-249"), "workstation")
         self.assertEqual(infer_device_type("Foxconn", "pc-01"), "workstation")
         self.assertEqual(infer_device_type("Unknown", "unknown-device", inferred_type="printer"), "printer")
         self.assertEqual(infer_device_type("Unknown", "unknown-device"), "unknown")

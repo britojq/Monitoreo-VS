@@ -8,7 +8,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      * Restaura la identidad de 'SEDE VALLE SECO' como edificio principal (ID: 1)
-     * e incorpora 'CIAU VALLE SECO' como oficina comercial (ID: 2) compartiendo el segmento 10.20.23.0/24.
+     * e incorpora 'CIAU VALLE SECO' como oficina comercial (ID: 2) compartiendo el segmento 192.168.1.0/24.
      */
     public function up(): void
     {
@@ -16,7 +16,7 @@ return new class extends Migration
         DB::table('monitored_sites')->where('id', 1)->update([
             'letter' => 'A',
             'name' => 'SEDE VALLE SECO',
-            'ip' => '10.20.23.1',
+            'ip' => '192.168.1.1',
             'address' => 'Urb. Colinas de Valle Seco, final Av. Bolívar. Edificio CALIFE., Puerto Cabello',
             'normal_state_msg' => '✅ - SEDE VALLE SECO',
             'error_state_msg' => '❌ - SEDE VALLE SECO',
@@ -31,7 +31,7 @@ return new class extends Migration
             DB::table('monitored_sites')->where('id', $existingCiau->id)->update([
                 'letter' => 'B',
                 'name' => 'CIAU VALLE SECO',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'phone_1' => '0242-3610061',
                 'phone_2' => '0242-3613722',
                 'phone_3' => '0242-3612410',
@@ -55,7 +55,7 @@ return new class extends Migration
             $insertData = [
                 'letter' => 'B',
                 'name' => 'CIAU VALLE SECO',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'phone_1' => '0242-3610061',
                 'phone_2' => '0242-3613722',
                 'phone_3' => '0242-3612410',

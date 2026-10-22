@@ -22,7 +22,7 @@ class GlpiDeployTest extends TestCase
         $device = DiscoveredDevice::firstOrCreate(
             ['mac_address' => '00:11:22:33:44:55'],
             [
-                'ip_address' => '10.20.23.199',
+                'ip_address' => '192.168.1.199',
                 'hostname' => 'PC-TEST-DEPLOY',
                 'vendor' => 'Dell Inc.',
                 'device_type' => 'workstation',
@@ -39,19 +39,19 @@ class GlpiDeployTest extends TestCase
 
         // Buscar específicamente el dispositivo de prueba vía escaneo de subred
         $searchResponse = $this->actingAs($admin)->get(route('admin.inventory.deploy', [
-            'search' => '10.20.23.199',
-            'scan_subnet' => '10.20.23.0/24',
+            'search' => '192.168.1.199',
+            'scan_subnet' => '192.168.1.0/24',
         ]));
         $searchResponse->assertStatus(200);
         $searchResponse->assertSee('PC-TEST-DEPLOY');
-        $searchResponse->assertSee('10.20.23.199');
+        $searchResponse->assertSee('192.168.1.199');
         $searchResponse->assertSee('Windows 10 Pro (x86)');
         $searchResponse->assertSee('Instalar');
 
         // Filtrar por sede CIAU CONSOLIDADO (Sede ID: 3)
         $siteResponse = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['site' => 3]));
         $siteResponse->assertStatus(200);
-        $siteResponse->assertSee('10.20.107.154');
+        $siteResponse->assertSee('192.168.107.154');
         $siteResponse->assertSee('JEFE OFICINA');
         $siteResponse->assertSee('CIAU CONSOLIDADO');
 
@@ -67,7 +67,7 @@ class GlpiDeployTest extends TestCase
         }
 
         $response = $this->actingAs($admin)->postJson(route('admin.inventory.deploy.status'), [
-            'ip' => '10.20.23.999',
+            'ip' => '192.168.1.999',
         ]);
 
         $response->assertStatus(200);
@@ -81,27 +81,27 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        // Consultar la vista buscando el Router Principal (10.20.23.1) -> NO debe tener botón de despliegue
-        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.23.1']));
+        // Consultar la vista buscando el Router Principal (192.168.1.1) -> NO debe tener botón de despliegue
+        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '192.168.1.1']));
         $response->assertStatus(200);
-        $response->assertDontSee("openDeployModal('10.20.23.1'", false);
+        $response->assertDontSee("openDeployModal('192.168.1.1'", false);
 
-        // Consultar la vista buscando un Switch (10.20.23.2) -> NO debe aparecer
-        $responseSw = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.23.2']));
+        // Consultar la vista buscando un Switch (192.168.1.2) -> NO debe aparecer
+        $responseSw = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '192.168.1.2']));
         $responseSw->assertStatus(200);
         $responseSw->assertDontSee('SW01 - Cisco Principal');
 
-        // Consultar la vista buscando una Impresora registrada (10.20.106.253) -> NO debe aparecer
-        $responseImp = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.106.253']));
+        // Consultar la vista buscando una Impresora registrada (192.168.106.253) -> NO debe aparecer
+        $responseImp = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '192.168.106.253']));
         $responseImp->assertStatus(200);
         $responseImp->assertDontSee('IMPRESORA RED');
 
-        // Consultar un equipo PC (10.20.106.240 - TAQUILLA 01) -> SÍ debe aparecer con botón de instalación
-        $responsePc = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '10.20.106.240']));
+        // Consultar un equipo PC (192.168.106.240 - TAQUILLA 01) -> SÍ debe aparecer con botón de instalación
+        $responsePc = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['search' => '192.168.106.240']));
         $responsePc->assertStatus(200);
         $responsePc->assertSee('TAQUILLA 01');
         $responsePc->assertSee('Sin Agente GLPI');
-        $responsePc->assertSee("openDeployModal('10.20.106.240'", false);
+        $responsePc->assertSee("openDeployModal('192.168.106.240'", false);
     }
 
     public function test_header_compact_buttons_rendered(): void
@@ -132,12 +132,12 @@ class GlpiDeployTest extends TestCase
         $response->assertStatus(200);
 
         // No debe mostrar equipos desconocidos de la WAN central ajenos a las sedes
-        $response->assertDontSee('Host-10-20-0-0');
+        $response->assertDontSee('Host-192-168-0-0');
         $response->assertDontSee('srv-aplicacion.cadafe.gov.ve');
         $response->assertDontSee('ldapr2-t4.empresa.com.ve');
 
         // Equipos no-PC como Router y Switch no deben aparecer con botón de despliegue
-        $response->assertDontSee("openDeployModal('10.20.23.1'", false);
+        $response->assertDontSee("openDeployModal('192.168.1.1'", false);
         $response->assertDontSee('SW01 - Cisco Principal');
 
         // Sí debe mostrar PCs oficiales de las sedes registradas (usando búsqueda para evitar límites de paginación)
@@ -152,7 +152,7 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        $ip = '10.20.23.188';
+        $ip = '192.168.1.188';
         DiscoveredDevice::create([
             'ip_address' => $ip,
             'mac_address' => '00:11:22:33:44:88',
@@ -202,7 +202,7 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        $ip = '10.20.23.187';
+        $ip = '192.168.1.187';
         DiscoveredDevice::create([
             'ip_address' => $ip,
             'mac_address' => '00:11:22:33:44:87',
@@ -253,17 +253,17 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '10.20.106.0/24']));
+        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.106.0/24']));
         $response->assertStatus(200);
         $response->assertSee('Resultados de Escaneo en Subred:');
-        $response->assertSee('10.20.106.0/24');
+        $response->assertSee('192.168.106.0/24');
         $response->assertSee('Cerrar Escaneo (Ver Solo Inventario)');
 
         // Debe contener equipos de Morón
-        $response->assertSee('10.20.106.240');
-        // No debe contener equipos de Valle Seco (10.20.23.x)
+        $response->assertSee('192.168.106.240');
+        // No debe contener equipos de Valle Seco (192.168.1.x)
         $response->assertDontSee('ROUTER WIFI SIGECOM');
-        $response->assertDontSee('10.20.23.64');
+        $response->assertDontSee('192.168.1.64');
     }
 
     public function test_scan_subnet_api_endpoint_validation(): void
@@ -281,7 +281,7 @@ class GlpiDeployTest extends TestCase
 
         // Validación de subred demasiado amplia (/16)
         $respWide = $this->actingAs($admin)->postJson(route('admin.inventory.deploy.scan-subnet'), [
-            'subnet' => '10.20.0.0/16',
+            'subnet' => '192.168.0.0/16',
         ]);
         $respWide->assertStatus(422);
     }
@@ -294,8 +294,8 @@ class GlpiDeployTest extends TestCase
         }
 
         $mac = 'AA:BB:CC:DD:EE:11';
-        $oldIp = '10.20.23.190';
-        $newIp = '10.20.23.195';
+        $oldIp = '192.168.1.190';
+        $newIp = '192.168.1.195';
 
         // Crear activo existente
         $asset = InventoryAsset::create([
@@ -389,7 +389,7 @@ class GlpiDeployTest extends TestCase
             'name' => 'ESTACION BULK 01',
             'type' => 'desktop',
             'status' => 'in_stock',
-            'ip_address' => '10.20.23.211',
+            'ip_address' => '192.168.1.211',
             'mac_address' => $mac1,
             'monitored_site_id' => 1,
             'is_active' => true,
@@ -398,13 +398,13 @@ class GlpiDeployTest extends TestCase
         $payload = [
             'devices' => [
                 [
-                    'ip' => '10.20.23.212', // Cambió de 211 a 212
+                    'ip' => '192.168.1.212', // Cambió de 211 a 212
                     'mac' => $mac1,
                     'hostname' => 'PC-REASSIGNED',
                     'vendor' => 'HP Inc.',
                 ],
                 [
-                    'ip' => '10.20.23.213', // Nuevo
+                    'ip' => '192.168.1.213', // Nuevo
                     'mac' => $mac2,
                     'hostname' => 'PC-BRAND-NEW',
                     'vendor' => 'Dell Inc.',
@@ -427,12 +427,12 @@ class GlpiDeployTest extends TestCase
         // El activo 1 no se duplicó y actualizó su IP a 212
         $this->assertEquals(1, InventoryAsset::where('mac_address', $mac1)->count());
         $asset1->refresh();
-        $this->assertEquals('10.20.23.212', $asset1->ip_address);
+        $this->assertEquals('192.168.1.212', $asset1->ip_address);
 
         // El activo 2 se creó
         $this->assertDatabaseHas('inventory_assets', [
             'mac_address' => $mac2,
-            'ip_address' => '10.20.23.213',
+            'ip_address' => '192.168.1.213',
             'type' => 'desktop',
         ]);
     }
@@ -445,7 +445,7 @@ class GlpiDeployTest extends TestCase
         }
 
         $macPhone = '00:04:0D:AA:BB:CC';
-        $ipPhone = '10.20.23.181';
+        $ipPhone = '192.168.1.181';
 
         DiscoveredDevice::create([
             'ip_address' => $ipPhone,
@@ -493,8 +493,8 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        $activeIp = '10.20.23.218';
-        $offlineIp = '10.20.23.219';
+        $activeIp = '192.168.1.218';
+        $offlineIp = '192.168.1.219';
 
         DiscoveredDevice::create([
             'ip_address' => $activeIp,
@@ -516,11 +516,11 @@ class GlpiDeployTest extends TestCase
             'is_active' => false,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '10.20.23.0/24', 'search' => 'PC-ACTIVE-TEST']));
+        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.1.0/24', 'search' => 'PC-ACTIVE-TEST']));
         $response->assertStatus(200);
         $response->assertSee($activeIp);
 
-        $responseOffline = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '10.20.23.0/24', 'search' => 'PC-OFFLINE-TEST']));
+        $responseOffline = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.1.0/24', 'search' => 'PC-OFFLINE-TEST']));
         $responseOffline->assertStatus(200);
         $responseOffline->assertDontSee($offlineIp);
     }
@@ -532,7 +532,7 @@ class GlpiDeployTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'terms_accepted' => true]);
         }
 
-        $ip = '10.20.23.217';
+        $ip = '192.168.1.217';
         DiscoveredDevice::create([
             'ip_address' => $ip,
             'mac_address' => '00:11:22:33:44:77',
@@ -545,7 +545,7 @@ class GlpiDeployTest extends TestCase
             'classification_status' => 'pendiente',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '10.20.23.0/24', 'search' => 'CENCARDIS-0200']));
+        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.1.0/24', 'search' => 'CENCARDIS-0200']));
         $response->assertStatus(200);
         $response->assertSee('CENCARDIS-0200');
         $response->assertSee('Windows 7 Ultimate SP1');

@@ -98,7 +98,7 @@ class RbacSecurityMatrixTest extends TestCase
     {
         // Intento de desplegar agente vía POST
         $responseDeploy = $this->actingAs($this->operatorUser)->postJson(route('admin.inventory.deploy.execute'), [
-            'host' => '10.20.23.200',
+            'host' => '192.168.1.200',
             'os' => 'windows',
             'user' => 'Administrator',
             'password' => 'secret',
@@ -109,7 +109,7 @@ class RbacSecurityMatrixTest extends TestCase
 
         // Intento de escanear subred vía POST
         $responseScan = $this->actingAs($this->operatorUser)->postJson(route('admin.inventory.deploy.scan-subnet'), [
-            'subnet' => '10.20.23.0/24',
+            'subnet' => '192.168.1.0/24',
         ]);
         $responseScan->assertStatus(403);
     }
@@ -126,7 +126,7 @@ class RbacSecurityMatrixTest extends TestCase
         $this->assertTrue($this->operatorUser->hasPermission('inventory.deploy'));
 
         $responseScan = $this->actingAs($this->operatorUser)->postJson(route('admin.inventory.deploy.scan-subnet'), [
-            'subnet' => '10.20.23.0/24',
+            'subnet' => '192.168.1.0/24',
         ]);
         // Debe procesarse o responder exitoso (200)
         $responseScan->assertStatus(200);

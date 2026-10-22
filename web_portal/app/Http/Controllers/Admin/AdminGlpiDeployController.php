@@ -59,12 +59,12 @@ class AdminGlpiDeployController extends Controller
             }
         }
         // Segmentos prioritarios de infraestructura
-        $siteSubnets[1] = '10.20.23.0/24';   // SEDE VALLE SECO (Edificio Central)
-        $siteSubnets[2] = '10.20.23.0/24';   // CIAU VALLE SECO (Oficina Comercial)
-        $siteSubnets[3] = '10.20.107.0/24';  // CIAU CONSOLIDADO
-        $siteSubnets[4] = '10.20.107.0/24';  // CIAU PASEO MARIÑO
-        $siteSubnets[5] = '10.20.106.0/24';  // CIAU MORON
-        $siteSubnets[7] = '10.20.27.0/24';   // CORDINACION TRASMISION
+        $siteSubnets[1] = '192.168.1.0/24';   // SEDE VALLE SECO (Edificio Central)
+        $siteSubnets[2] = '192.168.1.0/24';   // CIAU VALLE SECO (Oficina Comercial)
+        $siteSubnets[3] = '192.168.107.0/24';  // CIAU CONSOLIDADO
+        $siteSubnets[4] = '192.168.107.0/24';  // CIAU PASEO MARIÑO
+        $siteSubnets[5] = '192.168.106.0/24';  // CIAU MORON
+        $siteSubnets[7] = '192.168.27.0/24';   // CORDINACION TRASMISION
 
         // 2. Activos de inventario existentes para cotejar estado GLPI por IP y por MAC (Deduplicación DHCP)
         $inventoryAssets = InventoryAsset::all()->keyBy('ip_address');

@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\AdminInventoryAuditController;
 use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\MaintenanceTicketController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminCustodianReconciliationController;
 use App\Http\Controllers\Admin\HelpController;
 use App\Http\Controllers\Admin\MyDevicesController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -253,7 +254,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::delete('inventory/assets/{id}/peripherals/{peripheralId}', [InventoryAssetController::class, 'disassociatePeripheral'])->name('inventory.assets.peripherals.destroy')->middleware(['node.master', 'permission:inventory.manage']);
     Route::post('inventory/assets/{id}/upload-assignment-scan', [InventoryAssetController::class, 'uploadAssignmentScan'])->name('inventory.assets.upload-assignment-scan')->middleware(['node.master', 'permission:inventory.manage']);
 
-    // Periféricos Independientes & Stock de Hardware (ITAM)
+    // Conciliación Oficial de Custodio vía LDAP (ITAM)
+    Route::get('inventory/custodian/search-ldap', [AdminCustodianReconciliationController::class, 'search'])->name('inventory.custodian.search-ldap')->middleware('permission:inventory.view');
+    Route::post('inventory/custodian/reconcile', [AdminCustodianReconciliationController::class, 'reconcile'])->name('inventory.custodian.reconcile')->middleware(['node.master', 'permission:inventory.manage']);
+
     Route::get('inventory/peripherals', [AdminPeripheralController::class, 'index'])->name('inventory.peripherals.index')->middleware('permission:inventory.view');
     Route::post('inventory/peripherals', [AdminPeripheralController::class, 'store'])->name('inventory.peripherals.store')->middleware(['node.master', 'permission:inventory.manage']);
     Route::put('inventory/peripherals/{peripheral}', [AdminPeripheralController::class, 'update'])->name('inventory.peripherals.update')->middleware(['node.master', 'permission:inventory.manage']);

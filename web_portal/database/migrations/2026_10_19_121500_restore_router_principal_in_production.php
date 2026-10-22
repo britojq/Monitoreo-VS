@@ -9,7 +9,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * Garantiza la restauración y paridad absoluta del ROUTER PRINCIPAL (ID 1, IP 10.20.23.1, TELNET:23)
+     * Garantiza la restauración y paridad absoluta del ROUTER PRINCIPAL (ID 1, IP 192.168.1.1, TELNET:23)
      * y la correcta etiqueta de activo (asset_tag) del Servidor de Desarrollo CENCARATIT (ID 11519)
      * en monitored_network_devices e inventory_assets tanto en Producción como en Desarrollo.
      */
@@ -29,7 +29,7 @@ return new class extends Migration
                     'monitored_site_id' => 1,
                     'device_number' => 1,
                     'name' => 'ROUTER PRINCIPAL',
-                    'ip' => '10.20.23.1',
+                    'ip' => '192.168.1.1',
                     'mac' => '00:1A:2B:3C:4D:5E',
                     'vendor_data' => 'Cisco Systems',
                     'access_type' => 'TELNET',
@@ -68,7 +68,7 @@ return new class extends Migration
                     'model' => 'Router Gateway',
                     'serial_number' => 'SN-NET-00001',
                     'mac_address' => '00:1A:2B:3C:4D:5E',
-                    'ip_address' => '10.20.23.1',
+                    'ip_address' => '192.168.1.1',
                     'monitored_site_id' => 1,
                     'device_number' => 1,
                     'access_type' => 'TELNET',

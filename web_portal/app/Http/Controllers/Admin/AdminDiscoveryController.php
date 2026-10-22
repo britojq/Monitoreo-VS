@@ -295,7 +295,7 @@ class AdminDiscoveryController extends Controller
             'scan_interval_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
             'rate_limit_pps' => ['required', 'integer', 'min:10', 'max:500'],
         ], [
-            'subnet.regex' => 'La subred debe tener formato CIDR válido (ej: 10.20.23.0/24).',
+            'subnet.regex' => 'La subred debe tener formato CIDR válido (ej: 192.168.1.0/24).',
             'subnet.unique' => 'Esta subred ya está registrada.',
         ]);
 

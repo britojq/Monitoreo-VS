@@ -49,10 +49,10 @@ class NotificationArchitectureTest extends TestCase
             'role' => 'operator',
         ]);
 
-        $htmlLogin = $authFormatter->formatUserLogin($user, '10.20.23.100', 'local');
+        $htmlLogin = $authFormatter->formatUserLogin($user, '192.168.1.100', 'local');
         $this->assertStringContainsString('INICIO DE SESIÓN', $htmlLogin);
         $this->assertStringContainsString('Usuario Test', $htmlLogin);
-        $this->assertStringContainsString('10.20.23.100', $htmlLogin);
+        $this->assertStringContainsString('192.168.1.100', $htmlLogin);
 
         $glpiFormatter = new GlpiNotificationFormatter();
         $asset = new InventoryAsset([
@@ -60,7 +60,7 @@ class NotificationArchitectureTest extends TestCase
             'brand' => 'Dell',
             'model' => 'OptiPlex 7050',
             'serial_number' => 'SN123456',
-            'ip_address' => '10.20.23.50',
+            'ip_address' => '192.168.1.50',
             'operating_system' => 'Debian 12',
         ]);
         $htmlAsset = $glpiFormatter->formatNewAsset($asset);

@@ -574,7 +574,7 @@ EOF
 
     cat << 'EOF' > /etc/fail2ban/jail.d/monitoreo_security.local
 [DEFAULT]
-ignoreip = 127.0.0.1/8 ::1 10.20.23.221 10.20.23.252 10.20.23.1 10.20.23.0/24
+ignoreip = 127.0.0.1/8 ::1 192.168.1.220 192.168.1.250 192.168.1.1 192.168.1.0/24
 bantime  = 3600
 findtime = 600
 maxretry = 4

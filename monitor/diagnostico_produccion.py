@@ -2,7 +2,7 @@
 """
 ==============================================================================
 📊 DIAGNÓSTICO EN TIEMPO REAL VÍA API CLUSTER: diagnostico_produccion.py
-Permite auditar el estado del servidor Master/Producción (10.20.23.252)
+Permite auditar el estado del servidor Master/Producción (192.168.1.250)
 o local de forma instantánea (<50ms) vía HTTP REST API sin usar SSH
 ni disparar alertas PAM al Telegram del Administrador.
 Ubicación: /scripts/telegram-admin-bot/monitor/diagnostico_produccion.py
@@ -25,12 +25,12 @@ CONFIG_FILE = BASE_DIR / "config" / "config.json"
 
 
 def get_cluster_credentials():
-    master_url = "http://10.20.23.252"
+    master_url = "http://192.168.1.250"
     cluster_token = ""
     if CONFIG_FILE.exists():
         try:
             cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-            master_url = cfg.get("master_api_url", "http://10.20.23.252").rstrip("/")
+            master_url = cfg.get("master_api_url", "http://192.168.1.250").rstrip("/")
             cluster_token = cfg.get("cluster_token", "")
         except Exception:
             pass

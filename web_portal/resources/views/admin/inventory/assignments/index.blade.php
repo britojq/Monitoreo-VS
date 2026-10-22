@@ -362,6 +362,15 @@
                                 </button>
                                 @endif
 
+                                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                                <button type="button" 
+                                        onclick="openReconcileLdapModal({{ $assignment->inventory_asset_id }}, '{{ addslashes($assignment->asset?->display_identity ?: $assignment->assignment_code) }}', '{{ addslashes($assignment->custodian_name) }}', '{{ addslashes($assignment->custodian_id_number ?? '') }}', '{{ addslashes($assignment->custodian_department ?? '') }}', {{ $assignment->has_signed_scan ? 'true' : 'false' }})" 
+                                        class="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition cursor-pointer" 
+                                        title="Conciliar responsable con Directorio Activo (LDAP)">
+                                    <span class="material-symbols-outlined text-base">manage_accounts</span>
+                                </button>
+                                @endif
+
                                 <!-- Imprimir / Ver Acta UINF-4.05 -->
                                 <a href="{{ route('admin.inventory.assignments.pdf', $assignment->id) }}" target="_blank" class="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 transition" title="Imprimir / Ver Acta UINF-4.05">
                                     <span class="material-symbols-outlined text-base">print</span>
@@ -470,4 +479,6 @@
         document.getElementById('uploadScanModal').classList.add('hidden');
     }
 </script>
+
+@include('admin.inventory.partials.reconcile_ldap_modal')
 @endsection

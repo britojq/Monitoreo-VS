@@ -56,7 +56,7 @@ class GlpiHardwareDriftTest extends TestCase
             'name' => 'EQUIPO DRIFT TEST',
             'type' => 'desktop',
             'status' => 'assigned',
-            'ip_address' => '10.20.23.245',
+            'ip_address' => '192.168.1.245',
             'mac_address' => '00:aa:bb:cc:dd:ee',
             'monitored_site_id' => 1,
             'custodian_name' => 'Funcionario Prueba Drift',
@@ -158,11 +158,11 @@ class GlpiHardwareDriftTest extends TestCase
     {
         // 1. Simular agente remoto respondiendo 200 OK en puerto 62354
         Http::fake([
-            '10.20.23.245:62354/now' => Http::response('OK: Inventory scheduled', 200),
+            '192.168.1.245:62354/now' => Http::response('OK: Inventory scheduled', 200),
         ]);
 
         $response = $this->actingAs($this->adminUser)->postJson(route('admin.inventory.deploy.trigger-agent'), [
-            'ip' => '10.20.23.245',
+            'ip' => '192.168.1.245',
         ]);
 
         $response->assertStatus(200);
@@ -171,13 +171,13 @@ class GlpiHardwareDriftTest extends TestCase
 
         // 2. Simular agente inalcanzable (puerto cerrado)
         Http::fake([
-            '10.20.23.246:62354/now' => function () {
+            '192.168.1.246:62354/now' => function () {
                 throw new \Illuminate\Http\Client\ConnectionException('Connection refused');
             },
         ]);
 
         $failResponse = $this->actingAs($this->adminUser)->postJson(route('admin.inventory.deploy.trigger-agent'), [
-            'ip' => '10.20.23.246',
+            'ip' => '192.168.1.246',
         ]);
 
         $failResponse->assertStatus(422);
@@ -190,7 +190,7 @@ class GlpiHardwareDriftTest extends TestCase
     public function test_operator_without_deploy_permission_cannot_trigger_agent(): void
     {
         $response = $this->actingAs($this->operatorUser)->postJson(route('admin.inventory.deploy.trigger-agent'), [
-            'ip' => '10.20.23.245',
+            'ip' => '192.168.1.245',
         ]);
 
         $response->assertStatus(403);

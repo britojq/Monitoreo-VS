@@ -34,7 +34,7 @@ class StatelessTelemetryMiddlewareTest extends TestCase
     public function test_unauthenticated_quick_status_does_not_pollute_intended_session(): void
     {
         $response = $this->withSession(['url.intended' => 'http://localhost/admin/inventory/deploy/quick-status'])
-            ->postJson('/admin/inventory/deploy/quick-status', ['ip' => '10.20.23.1']);
+            ->postJson('/admin/inventory/deploy/quick-status', ['ip' => '192.168.1.1']);
 
         $response->assertStatus(401);
         $this->assertNull(session('url.intended'));

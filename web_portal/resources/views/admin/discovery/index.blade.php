@@ -647,7 +647,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
-                            <input type="text" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                            <input type="text" name="ip_address" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-mono text-obsidian-muted mb-1">Versión SNMP *</label>
@@ -733,7 +733,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP *</label>
-                                <input type="text" id="edit_ip_address" name="ip_address" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                                <input type="text" id="edit_ip_address" name="ip_address" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-mono text-obsidian-muted mb-1">Puerto SNMP *</label>
@@ -825,7 +825,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-mono text-obsidian-muted mb-1">Dirección IP Destino *</label>
-                                <input type="text" id="act-ip" required placeholder="10.20.23.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                                <input type="text" id="act-ip" required placeholder="192.168.1.X" class="w-full px-3 py-2 rounded-lg bg-obsidian-bg border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-mono text-obsidian-muted mb-1">Método de Conexión *</label>
@@ -1312,7 +1312,7 @@
                     <span class="text-white font-bold">{{ $sub->subnet }}</span>
                     @if($sub->site)
                         <span class="text-[10px] text-cyan-400">({{ $sub->site->name }})</span>
-                    @elseif($sub->subnet === '10.20.0.0/24')
+                    @elseif($sub->subnet === '192.168.0.0/24')
                         <span class="text-[10px] text-blue-400 font-bold">(Red Central / Servidores)</span>
                     @else
                         <span class="text-[10px] text-obsidian-muted">(Sin Asignar)</span>
@@ -1482,7 +1482,7 @@
                                         <span class="material-symbols-outlined text-[10px]">domain</span>
                                         <span>{{ $assetObj->site->name }}</span>
                                     </span>
-                                @elseif(str_starts_with($dev->ip_address, '10.20.0.'))
+                                @elseif(str_starts_with($dev->ip_address, '192.168.0.'))
                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-950/70 border border-blue-500/30 text-blue-300 text-[9.5px] font-semibold" title="Segmento de Red Central / Servidores Corporativos">
                                         <span class="material-symbols-outlined text-[10px]">dns</span>
                                         <span>Red Central / Servidores</span>
@@ -1666,7 +1666,7 @@
                 <div class="p-5 space-y-3 overflow-y-auto flex-1 custom-table-scroll">
                     <div class="space-y-1">
                         <label class="text-xs font-mono text-gray-300 block">Subred (Formato CIDR):</label>
-                        <input type="text" name="subnet" placeholder="10.20.23.0/24" required
+                        <input type="text" name="subnet" placeholder="192.168.1.0/24" required
                             class="w-full bg-[#040d1a] border border-obsidian-border text-white text-xs font-mono rounded-lg px-3 py-2 focus:border-purple-400">
                     </div>
                     <div class="space-y-1">

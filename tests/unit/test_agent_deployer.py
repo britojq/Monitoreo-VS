@@ -22,11 +22,11 @@ class TestAgentDeployer:
     def test_get_target_url(self):
         url_dev, base_dev = get_target_url("dev")
         assert url_dev == DEV_SERVER_URL
-        assert base_dev == "http://10.20.23.221"
+        assert base_dev == "http://192.168.1.220"
 
         url_prod, base_prod = get_target_url("prod")
         assert url_prod == PROD_SERVER_URL
-        assert base_prod == "http://10.20.23.252"
+        assert base_prod == "http://192.168.1.250"
 
     def test_deploy_linux_ssh_mocked(self):
         mock_client = MagicMock()
@@ -44,7 +44,7 @@ class TestAgentDeployer:
 
         with patch("paramiko.SSHClient", return_value=mock_client):
             res = deploy_linux_ssh(
-                host="10.20.23.100",
+                host="192.168.1.100",
                 user="admin_soporte",
                 password="secret_password",
                 target="dev",
@@ -52,7 +52,7 @@ class TestAgentDeployer:
             )
 
         assert res["success"] is True
-        assert res["host"] == "10.20.23.100"
+        assert res["host"] == "192.168.1.100"
         assert res["os"] == "linux"
         assert "Despliegue finalizado" in res["stdout"]
 
@@ -71,7 +71,7 @@ class TestAgentDeployer:
 
         with patch("paramiko.SSHClient", return_value=mock_client):
             res = deploy_linux_ssh(
-                host="10.20.23.100",
+                host="192.168.1.100",
                 user="admin_soporte",
                 target="prod",
                 action="switch",
@@ -92,7 +92,7 @@ class TestAgentDeployer:
 
         with patch("winrm.Session", return_value=mock_session) as mock_winrm_cls:
             res = deploy_windows_winrm(
-                host="10.20.23.150",
+                host="192.168.1.150",
                 user="administrador",
                 password="DomainPassword123",
                 domain="CORP",
@@ -101,7 +101,7 @@ class TestAgentDeployer:
             )
 
         assert res["success"] is True
-        assert res["host"] == "10.20.23.150"
+        assert res["host"] == "192.168.1.150"
         assert res["os"] == "windows"
         assert "FINALIZADO" in res["stdout"]
 
@@ -117,7 +117,7 @@ class TestAgentDeployer:
         fake_row = {
             "id": 42,
             "name": "PC-FINANZAS-01",
-            "ip_address": "10.20.23.150",
+            "ip_address": "192.168.1.150",
             "operating_system": "Windows 10 Pro (x86)",
             "model": "HP Compaq Pro 6300",
             "serial_number": "MXL24519FF",
@@ -125,7 +125,7 @@ class TestAgentDeployer:
         mock_cur.fetchone.return_value = fake_row
 
         with patch("monitor.monitor_db.get_db_connection", return_value=mock_conn):
-            v = verify_asset_in_db("10.20.23.150")
+            v = verify_asset_in_db("192.168.1.150")
 
         assert v["verified"] is True
         assert v["asset"]["id"] == 42
@@ -133,12 +133,12 @@ class TestAgentDeployer:
 
     def test_run_deployment_full_flow(self):
         with patch("monitor.agent_deployer.deploy_linux_ssh") as mock_deploy:
-            mock_deploy.return_value = {"success": True, "host": "10.20.23.100", "os": "linux"}
+            mock_deploy.return_value = {"success": True, "host": "192.168.1.100", "os": "linux"}
             with patch("monitor.agent_deployer.verify_asset_in_db") as mock_verify:
                 mock_verify.return_value = {"verified": True, "asset": {"id": 10}}
                 with patch("time.sleep"):
                     res = run_deployment(
-                        host="10.20.23.100",
+                        host="192.168.1.100",
                         os_type="linux",
                         user="root",
                         action="install",
@@ -157,7 +157,7 @@ class TestAgentDeployer:
 
         with patch("subprocess.run", return_value=mock_proc) as mock_run:
             res = deploy_windows_rpc(
-                host="10.20.23.245",
+                host="192.168.1.245",
                 user="admin_soporte",
                 password="password123",
                 target="dev",
@@ -184,7 +184,7 @@ class TestAgentDeployer:
 
         with patch("subprocess.run", return_value=mock_proc):
             res = deploy_windows_rpc(
-                host="10.20.23.245",
+                host="192.168.1.245",
                 user="admin_soporte",
                 password="password123",
                 target="dev",

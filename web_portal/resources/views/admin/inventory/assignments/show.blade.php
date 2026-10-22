@@ -41,6 +41,15 @@
             </button>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+            <button type="button" 
+                    onclick="openReconcileLdapModal({{ $assignment->inventory_asset_id }}, '{{ addslashes($assignment->asset?->display_identity ?: $assignment->assignment_code) }}', '{{ addslashes($assignment->custodian_name) }}', '{{ addslashes($assignment->custodian_id_number ?? '') }}', '{{ addslashes($assignment->custodian_department ?? '') }}', {{ $assignment->has_signed_scan ? 'true' : 'false' }})" 
+                    class="w-10 h-10 rounded-xl bg-cyan-950/60 hover:bg-cyan-500 border border-cyan-500/50 text-cyan-400 hover:text-black flex items-center justify-center transition shadow-sm cursor-pointer" 
+                    title="Conciliar responsable con Directorio Activo (LDAP)">
+                <span class="material-symbols-outlined text-xl">manage_accounts</span>
+            </button>
+            @endif
+
             <!-- Imprimir Acta UINF-4.05 -->
             <a href="{{ route('admin.inventory.assignments.pdf', $assignment->id) }}" target="_blank" 
                class="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition shadow-lg shadow-emerald-500/25 cursor-pointer" 
@@ -150,9 +159,19 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Responsable / Trabajador -->
         <div class="bg-obsidian-panel/30 border border-obsidian-border p-5 rounded-2xl">
-            <div class="text-xs font-mono uppercase text-obsidian-cyan font-bold flex items-center gap-1.5 mb-3">
-                <span class="material-symbols-outlined text-base">person</span>
-                Responsable Asignado
+            <div class="text-xs font-mono uppercase text-obsidian-cyan font-bold flex items-center justify-between gap-1.5 mb-3">
+                <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">person</span>
+                    Responsable Asignado
+                </span>
+                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('inventory.manage'))
+                <button type="button" 
+                        onclick="openReconcileLdapModal({{ $assignment->inventory_asset_id }}, '{{ addslashes($assignment->asset?->display_identity ?: $assignment->assignment_code) }}', '{{ addslashes($assignment->custodian_name) }}', '{{ addslashes($assignment->custodian_id_number ?? '') }}', '{{ addslashes($assignment->custodian_department ?? '') }}', {{ $assignment->has_signed_scan ? 'true' : 'false' }})" 
+                        class="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition cursor-pointer" 
+                        title="Conciliar responsable con Directorio Activo (LDAP)">
+                    <span class="material-symbols-outlined text-sm">manage_accounts</span>
+                </button>
+                @endif
             </div>
             <div class="text-lg font-bold text-white">{{ $assignment->custodian_name }}</div>
             <div class="text-xs text-obsidian-muted font-mono mt-1">C.I: {{ $assignment->custodian_id_number ?? 'N/A' }}</div>
@@ -433,6 +452,9 @@
         </form>
     </div>
 </div>
+
+{{-- MODAL REUTILIZABLE: CONCILIACIÓN CON DIRECTORIO ACTIVO (LDAP) --}}
+@include('admin.inventory.partials.reconcile_ldap_modal')
 
 <script>
     const previewUrls = {

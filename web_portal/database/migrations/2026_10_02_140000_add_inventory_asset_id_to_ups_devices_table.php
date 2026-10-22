@@ -21,9 +21,9 @@ return new class extends Migration
                     ->nullOnDelete();
             });
 
-            // Asociar automáticamente con el servidor de producción (EQUIPO MONITOREO ATIT / 10.20.23.252)
+            // Asociar automáticamente con el servidor de producción (EQUIPO MONITOREO ATIT / 192.168.1.250)
             $prodAsset = DB::table('inventory_assets')
-                ->where('ip_address', '10.20.23.252')
+                ->where('ip_address', '192.168.1.250')
                 ->orWhere('name', 'like', '%MONITOREO%')
                 ->first();
 

@@ -58,7 +58,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
                 $nodeIps[$nodeId] = $d->ip_address;
             }
 
-            $isCore = str_contains(strtolower($d->name), 'core') || str_contains(strtolower($d->model ?? ''), '3750') || $d->ip_address === '10.20.23.1';
+            $isCore = str_contains(strtolower($d->name), 'core') || str_contains(strtolower($d->model ?? ''), '3750') || $d->ip_address === '192.168.1.1';
             $isFirewall = ($d->device_type === 'firewall') || str_contains(strtolower($d->name), 'pfsense') || str_contains(strtolower($d->vendor ?? ''), 'pfsense');
             $isRouter = ($d->device_type === 'router') || str_contains(strtolower($d->name), 'router') || str_contains(strtolower($d->model ?? ''), '2901');
 
@@ -114,7 +114,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
             $assetsQuery->where('monitored_site_id', $siteId);
         } else {
             // En vista global, mostrar puestos principales de Valle Seco (hasta 30)
-            $assetsQuery->where('ip_address', 'like', '10.20.23.%')->take(30);
+            $assetsQuery->where('ip_address', 'like', '192.168.1.%')->take(30);
         }
 
         $assets = $assetsQuery->get();
@@ -273,13 +273,13 @@ class NetworkTopologyService implements NetworkTopologyInterface
                 $tIp = $nodeIps[$targetId] ?? '';
 
                 $edgeLabel = '';
-                if (($sIp === '10.20.0.1' && $tIp === '10.20.23.1') || ($sIp === '10.20.23.1' && $tIp === '10.20.0.1')) $edgeLabel = 'WAN Troncal';
-                elseif (($sIp === '10.20.0.1' && $tIp === '10.20.106.193') || ($sIp === '10.20.106.193' && $tIp === '10.20.0.1')) $edgeLabel = 'WAN Morón';
-                elseif (($sIp === '10.20.23.1' && $tIp === '10.20.23.2') || ($sIp === '10.20.23.2' && $tIp === '10.20.23.1')) $edgeLabel = 'P48 (Uplink)';
-                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.4') || ($sIp === '10.20.23.4' && $tIp === '10.20.23.2')) $edgeLabel = 'P47 (SW02)';
-                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.23.5') || ($sIp === '10.20.23.5' && $tIp === '10.20.23.2')) $edgeLabel = 'P43 (SW03)';
-                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.27.83') || ($sIp === '10.20.27.83' && $tIp === '10.20.23.2')) $edgeLabel = 'P46 (Transmisión)';
-                elseif (($sIp === '10.20.23.2' && $tIp === '10.20.107.131') || ($sIp === '10.20.107.131' && $tIp === '10.20.23.2')) {
+                if (($sIp === '192.168.0.1' && $tIp === '192.168.1.1') || ($sIp === '192.168.1.1' && $tIp === '192.168.0.1')) $edgeLabel = 'WAN Troncal';
+                elseif (($sIp === '192.168.0.1' && $tIp === '192.168.106.193') || ($sIp === '192.168.106.193' && $tIp === '192.168.0.1')) $edgeLabel = 'WAN Morón';
+                elseif (($sIp === '192.168.1.1' && $tIp === '192.168.1.2') || ($sIp === '192.168.1.2' && $tIp === '192.168.1.1')) $edgeLabel = 'P48 (Uplink)';
+                elseif (($sIp === '192.168.1.2' && $tIp === '192.168.1.4') || ($sIp === '192.168.1.4' && $tIp === '192.168.1.2')) $edgeLabel = 'P47 (SW02)';
+                elseif (($sIp === '192.168.1.2' && $tIp === '192.168.1.5') || ($sIp === '192.168.1.5' && $tIp === '192.168.1.2')) $edgeLabel = 'P43 (SW03)';
+                elseif (($sIp === '192.168.1.2' && $tIp === '192.168.27.83') || ($sIp === '192.168.27.83' && $tIp === '192.168.1.2')) $edgeLabel = 'P46 (Transmisión)';
+                elseif (($sIp === '192.168.1.2' && $tIp === '192.168.107.131') || ($sIp === '192.168.107.131' && $tIp === '192.168.1.2')) {
                     $targetHost = strtolower($l->target_hostname ?? '');
                     if (str_contains($targetHost, 'mariño') || str_contains($targetHost, 'marino')) {
                         $edgeLabel = 'P44 (Paseo Mariño)';
@@ -289,7 +289,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
                         $edgeLabel = 'P44 (Paseo Mariño) / P45 (Consolidado)';
                     }
                 }
-                elseif (($sIp === '10.20.23.5' && $tIp === '10.20.23.252') || ($sIp === '10.20.23.252' && $tIp === '10.20.23.5')) $edgeLabel = 'Monitoreo';
+                elseif (($sIp === '192.168.1.5' && $tIp === '192.168.1.250') || ($sIp === '192.168.1.250' && $tIp === '192.168.1.5')) $edgeLabel = 'Monitoreo';
 
                 $edges[] = [
                     'data' => [
@@ -307,7 +307,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
 
         // 6. Si es vista macro (sin siteId), enlazar sedes remotas con el router troncal
         if (!$siteId) {
-            $rootNodeId = $addedIps['10.20.23.1'] ?? ($addedIps['10.20.0.1'] ?? 'snmp_1');
+            $rootNodeId = $addedIps['192.168.1.1'] ?? ($addedIps['192.168.0.1'] ?? 'snmp_1');
             $sites = MonitoredSite::where('is_active', true)->where('id', '>', 1)->get();
 
             foreach ($sites as $st) {
@@ -339,8 +339,8 @@ class NetworkTopologyService implements NetworkTopologyInterface
                         $linkType = 'WAN';
 
                         if (str_contains(mb_strtoupper($st->name, 'UTF-8'), 'PASEO MARIÑO') || str_contains(mb_strtoupper($st->name, 'UTF-8'), 'PASEO MARINO')) {
-                            if (isset($addedIps['10.20.23.2'])) {
-                                $sourceNodeId = $addedIps['10.20.23.2'];
+                            if (isset($addedIps['192.168.1.2'])) {
+                                $sourceNodeId = $addedIps['192.168.1.2'];
                                 $edgeLabel = 'P44 (Paseo Mariño)';
                                 $linkType = 'TRUNK';
                             }
@@ -367,7 +367,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
                 }
             }
         } else {
-            $rootNodeId = $primarySwitchNodeId ?? ($addedIps['10.20.23.1'] ?? null);
+            $rootNodeId = $primarySwitchNodeId ?? ($addedIps['192.168.1.1'] ?? null);
         }
 
         return [

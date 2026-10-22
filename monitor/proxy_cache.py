@@ -43,9 +43,9 @@ def normalize_proxy_key(proxy_str_or_url: str) -> str:
     """
     Normaliza una URL o dirección de proxy extrayendo únicamente host:puerto en minúsculas.
     Ejemplos:
-    - 'http://usuario:clave@10.20.0.119:8080' -> '10.20.0.119:8080'
-    - '10.20.0.119:8080' -> '10.20.0.119:8080'
-    - 'http://10.20.0.119:8080/' -> '10.20.0.119:8080'
+    - 'http://usuario:clave@192.168.0.119:8080' -> '192.168.0.119:8080'
+    - '192.168.0.119:8080' -> '192.168.0.119:8080'
+    - 'http://192.168.0.119:8080/' -> '192.168.0.119:8080'
     """
     if not proxy_str_or_url:
         return ""

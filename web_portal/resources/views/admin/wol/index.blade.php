@@ -305,7 +305,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="text-[10px] text-obsidian-muted uppercase block mb-1">IP Asignada (Opcional)</label>
-                        <input type="text" name="ip_address" placeholder="10.20.23.X" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
+                        <input type="text" name="ip_address" placeholder="192.168.1.X" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-bg border border-obsidian-border text-white focus:outline-none focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] text-obsidian-muted uppercase block mb-1">Broadcast</label>

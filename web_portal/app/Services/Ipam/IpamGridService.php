@@ -18,12 +18,12 @@ class IpamGridService implements IpamGridInterface
      * Subredes oficiales conocidas por ID de Sede en la infraestructura.
      */
     protected array $siteSubnetsMap = [
-        1 => '10.20.23.0/24',   // SEDE VALLE SECO (Edificio Central)
-        2 => '10.20.23.0/24',   // CIAU VALLE SECO (Oficina Comercial)
-        3 => '10.20.107.0/24',  // CIAU CONSOLIDADO
-        4 => '10.20.107.0/24',  // CIAU PASEO MARIÑO
-        5 => '10.20.106.0/24',  // CIAU MORON
-        7 => '10.20.27.0/24',   // CORDINACION TRASMISION
+        1 => '192.168.1.0/24',   // SEDE VALLE SECO (Edificio Central)
+        2 => '192.168.1.0/24',   // CIAU VALLE SECO (Oficina Comercial)
+        3 => '192.168.107.0/24',  // CIAU CONSOLIDADO
+        4 => '192.168.107.0/24',  // CIAU PASEO MARIÑO
+        5 => '192.168.106.0/24',  // CIAU MORON
+        7 => '192.168.27.0/24',   // CORDINACION TRASMISION
     ];
 
     /**
@@ -31,15 +31,15 @@ class IpamGridService implements IpamGridInterface
      */
     public function getSubnetGrid(string $cidr): array
     {
-        $cleanCidr = trim($cidr) ?: '10.20.23.0/24';
+        $cleanCidr = trim($cidr) ?: '192.168.1.0/24';
         
-        // Extraer prefijo de red /24 (ej: '10.20.23.')
+        // Extraer prefijo de red /24 (ej: '192.168.1.')
         if (preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}(\/\d{1,2})?$/', $cleanCidr, $matches)) {
             $basePrefix = $matches[1] . '.';
             $normalizedCidr = $matches[1] . '.0/24';
         } else {
-            $basePrefix = '10.20.23.';
-            $normalizedCidr = '10.20.23.0/24';
+            $basePrefix = '192.168.1.';
+            $normalizedCidr = '192.168.1.0/24';
         }
 
         // Cargar en bloque entidades de MariaDB (SSOT) pertenecientes a este prefijo
@@ -264,12 +264,12 @@ class IpamGridService implements IpamGridInterface
         }
 
         // Subred principal por defecto asegurada
-        if (!in_array('10.20.23.0/24', $seenCidrs, true)) {
+        if (!in_array('192.168.1.0/24', $seenCidrs, true)) {
             array_unshift($subnets, [
                 'site_id' => 1,
                 'site_name' => 'SEDE VALLE SECO (Edificio Central)',
-                'cidr' => '10.20.23.0/24',
-                'gateway_ip' => '10.20.23.1',
+                'cidr' => '192.168.1.0/24',
+                'gateway_ip' => '192.168.1.1',
             ]);
         }
 

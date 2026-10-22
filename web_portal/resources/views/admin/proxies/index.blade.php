@@ -179,7 +179,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-obsidian-muted mb-1">IP y Puerto (ej. 10.20.0.1:8080)</label>
+                    <label class="block text-obsidian-muted mb-1">IP y Puerto (ej. 192.168.0.1:8080)</label>
                     <input type="text" name="ip_port" id="edit_p_ip_port" required class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                 </div>
                 <div>
@@ -227,7 +227,7 @@
                         <h3 id="hist-proxy-name" class="text-base font-bold text-white font-sans truncate max-w-md">Proxy</h3>
                         <span id="hist-proxy-badge" class="text-[9px] font-mono font-bold uppercase bg-obsidian-panel text-obsidian-cyan px-1.5 py-0.5 rounded border border-obsidian-border">PROXY GATEWAY</span>
                     </div>
-                    <p id="hist-proxy-target" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">IP:Puerto: 10.20.0.1:8080</p>
+                    <p id="hist-proxy-target" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">IP:Puerto: 192.168.0.1:8080</p>
                 </div>
             </div>
 

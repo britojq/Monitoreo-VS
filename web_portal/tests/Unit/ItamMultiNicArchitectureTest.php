@@ -22,14 +22,14 @@ class ItamMultiNicArchitectureTest extends TestCase
             'type' => 'server',
             'status' => 'in_stock',
             'serial_number' => 'SN-NIC-TEST-' . uniqid(),
-            'ip_address' => '10.20.23.190',
+            'ip_address' => '192.168.1.190',
             'mac_address' => '00:11:22:AA:BB:CC',
         ]);
 
         // La interfaz primaria fue creada automáticamente por el hook
         $this->assertDatabaseHas('inventory_asset_network_interfaces', [
             'inventory_asset_id' => $asset->id,
-            'ip_address' => '10.20.23.190',
+            'ip_address' => '192.168.1.190',
             'mac_address' => '00:11:22:AA:BB:CC',
             'is_primary' => 1,
         ]);
@@ -78,7 +78,7 @@ class ItamMultiNicArchitectureTest extends TestCase
                     [
                         'description' => 'eno1',
                         'mac' => 'B4:96:91:22:33:44',
-                        'ipaddress' => '10.20.23.15',
+                        'ipaddress' => '192.168.1.15',
                         'status' => 'up',
                     ],
                     [
@@ -91,14 +91,14 @@ class ItamMultiNicArchitectureTest extends TestCase
             ]
         ];
 
-        $norm = $normalizer->normalize($rawParsed, '10.20.23.15');
+        $norm = $normalizer->normalize($rawParsed, '192.168.1.15');
 
         $this->assertArrayHasKey('network_interfaces', $norm);
         $this->assertCount(3, $norm['network_interfaces']);
 
         // Backwards compatibility preservada
         $this->assertEquals('B4:96:91:22:33:44', $norm['mac_address']);
-        $this->assertEquals('10.20.23.15', $norm['ip_address']);
+        $this->assertEquals('192.168.1.15', $norm['ip_address']);
 
         // La interfaz primaria debe ser eno1 (red corporativa 10.20.X)
         $primaryNics = array_filter($norm['network_interfaces'], fn($n) => $n['is_primary'] === true);
@@ -106,7 +106,7 @@ class ItamMultiNicArchitectureTest extends TestCase
         $primary = reset($primaryNics);
         $this->assertEquals('eno1', $primary['interface_name']);
         $this->assertEquals('B4:96:91:22:33:44', $primary['mac_address']);
-        $this->assertEquals('10.20.23.15', $primary['ip_address']);
+        $this->assertEquals('192.168.1.15', $primary['ip_address']);
         $this->assertEquals('ethernet', $primary['interface_type']);
     }
 
@@ -127,10 +127,10 @@ class ItamMultiNicArchitectureTest extends TestCase
                 [
                     'interface_name' => 'eth0',
                     'mac_address' => '11:22:33:44:55:66',
-                    'ip_address' => '10.20.23.99',
+                    'ip_address' => '192.168.1.99',
                     'subnet_mask' => '255.255.255.0',
-                    'gateway' => '10.20.23.1',
-                    'dns' => '10.20.23.2',
+                    'gateway' => '192.168.1.1',
+                    'dns' => '192.168.1.2',
                     'interface_type' => 'ethernet',
                     'speed' => '1000 Mbps',
                     'status' => 'up',
@@ -158,7 +158,7 @@ class ItamMultiNicArchitectureTest extends TestCase
             'inventory_asset_id' => $asset->id,
             'interface_name' => 'eth0',
             'mac_address' => '11:22:33:44:55:66',
-            'ip_address' => '10.20.23.99',
+            'ip_address' => '192.168.1.99',
             'is_primary' => 1,
         ]);
 

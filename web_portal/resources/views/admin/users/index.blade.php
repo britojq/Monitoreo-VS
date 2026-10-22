@@ -294,7 +294,7 @@
                 <!-- Spinner de carga -->
                 <div id="ldap-loading-state" class="hidden h-48 flex flex-col items-center justify-center text-center p-6 border border-dashed border-cyan-500/30 rounded-xl">
                     <span class="material-symbols-outlined text-4xl text-obsidian-cyan animate-spin mb-2">sync</span>
-                    <p class="text-xs font-mono text-cyan-300">Consultando servidor LDAP corporativo ({{ $ldapConfig['host'] ?? '10.20.0.22' }})...</p>
+                    <p class="text-xs font-mono text-cyan-300">Consultando servidor LDAP corporativo ({{ $ldapConfig['host'] ?? '192.168.0.22' }})...</p>
                     <p class="text-[10px] font-mono text-obsidian-muted mt-1">Buscando registros coincidentes...</p>
                 </div>
 
@@ -305,7 +305,7 @@
 
         <!-- FOOTER MODAL (FIJO) -->
         <div class="p-3.5 px-6 border-t border-obsidian-border flex items-center justify-between shrink-0 bg-[#061527]">
-            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">{{ $ldapConfig['host'] ?? '10.20.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</code> (Directorio Activo)</span>
+            <span class="text-[11px] font-mono text-obsidian-muted">Servidor LDAP: <code class="text-cyan-400 font-mono">{{ $ldapConfig['host'] ?? '192.168.0.22' }}:{{ $ldapConfig['port'] ?? 389 }}</code> (Directorio Activo)</span>
             <button type="button" onclick="closeModal('modal-ldap-search')" class="px-4 py-2 rounded-lg bg-obsidian-panel text-obsidian-muted hover:text-white text-xs font-mono cursor-pointer">Cerrar</button>
         </div>
     </div>

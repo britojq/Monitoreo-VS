@@ -81,6 +81,8 @@ class StoreNetworkDeviceRequest extends FormRequest
 
     public function toDto(): NetworkDeviceData
     {
-        return NetworkDeviceData::fromArray($this->validated());
+        $data = $this->validated();
+        $data['telegram_alert_enabled'] = $this->boolean('telegram_alert_enabled');
+        return NetworkDeviceData::fromArray($data);
     }
 }

@@ -9,8 +9,8 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * Restituye la identidad del Servidor de Desarrollo CENCARATIT (ID 11519, IP 10.20.23.221),
-     * preserva la identidad única del ROUTER PRINCIPAL (ID 1, IP 10.20.23.1, TELNET:23),
+     * Restituye la identidad del Servidor de Desarrollo CENCARATIT (ID 11519, IP 192.168.1.220),
+     * preserva la identidad única del ROUTER PRINCIPAL (ID 1, IP 192.168.1.1, TELNET:23),
      * reasigna y purga el activo parásito 111063 de GLPI,
      * y consolida los 17 pares de duplicados de oficinas comerciales (Sedes 3, 4, 5 y 7).
      */
@@ -26,7 +26,7 @@ return new class extends Migration
                 'model' => 'ThinkCentre M910s',
                 'serial_number' => 'MJ09RSFL',
                 'mac_address' => '00:D8:61:44:95:B6',
-                'ip_address' => '10.20.23.221',
+                'ip_address' => '192.168.1.220',
                 'monitored_site_id' => 1,
                 'device_number' => 8,
                 'access_type' => 'SSH+VNC',
@@ -53,7 +53,7 @@ return new class extends Migration
             DB::table('inventory_assets')->where('id', 1)->update([
                 'name' => 'ROUTER PRINCIPAL',
                 'type' => 'router',
-                'ip_address' => '10.20.23.1',
+                'ip_address' => '192.168.1.1',
                 'asset_tag' => 'NET-00001',
                 'brand' => 'Cisco Systems',
                 'model' => 'Router Gateway',

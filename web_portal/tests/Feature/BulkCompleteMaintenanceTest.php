@@ -25,7 +25,7 @@ class BulkCompleteMaintenanceTest extends TestCase
 
         $this->site = MonitoredSite::first() ?? MonitoredSite::create([
             'name' => 'Sede Prueba Maint ' . uniqid(),
-            'ip_range' => '10.20.23.0/24',
+            'ip_range' => '192.168.1.0/24',
         ]);
     }
 

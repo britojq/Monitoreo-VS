@@ -57,7 +57,7 @@ class BotSettingSsotTest extends TestCase
         $ok = $service->updateConfig([
             'node_role' => 'slave',
             'cluster_token' => 'token_de_prueba_unitario_12345',
-            'master_api_url' => 'http://10.20.23.250',
+            'master_api_url' => 'http://192.168.1.250',
             'slave_sync_interval_minutes' => 5,
         ]);
 
@@ -66,7 +66,7 @@ class BotSettingSsotTest extends TestCase
         $this->assertTrue($service->isSlave());
         $this->assertFalse($service->isMaster());
         $this->assertSame('token_de_prueba_unitario_12345', $service->getClusterToken());
-        $this->assertSame('http://10.20.23.250', $service->getMasterApiUrl());
+        $this->assertSame('http://192.168.1.250', $service->getMasterApiUrl());
 
         // Verificar directamente en la tabla bot_settings de MariaDB
         $this->assertSame('slave', BotSetting::get('cluster_node_role'));
@@ -89,7 +89,7 @@ class BotSettingSsotTest extends TestCase
         // Modificar configuración de LDAP en MariaDB
         $ok = $service->updateConfig([
             'enabled' => false,
-            'host' => '10.20.0.99',
+            'host' => '192.168.0.99',
             'port' => 636,
             'base_dn' => 'dc=test,dc=gob,dc=ve',
             'allowed_areas' => 'SISTEMAS, REDES',
@@ -99,7 +99,7 @@ class BotSettingSsotTest extends TestCase
         $this->assertTrue($ok);
         $updated = $service->getConfig();
         $this->assertFalse($updated['enabled']);
-        $this->assertSame('10.20.0.99', $updated['host']);
+        $this->assertSame('192.168.0.99', $updated['host']);
         $this->assertSame(636, $updated['port']);
         $this->assertSame('dc=test,dc=gob,dc=ve', $updated['base_dn']);
         $this->assertSame('admin', $updated['default_role']);
@@ -108,7 +108,7 @@ class BotSettingSsotTest extends TestCase
         $dbLdap = BotSetting::get('ldap_config');
         $this->assertIsArray($dbLdap);
         $this->assertFalse($dbLdap['enabled']);
-        $this->assertSame('10.20.0.99', $dbLdap['host']);
+        $this->assertSame('192.168.0.99', $dbLdap['host']);
     }
 
     /**

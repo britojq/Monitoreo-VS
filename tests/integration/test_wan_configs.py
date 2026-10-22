@@ -78,7 +78,7 @@ class TestWanQualityAndConfigsIntegration(unittest.TestCase):
             "! NVRAM config last updated at 14:20:12 UTC Fri Sep 18 2026\n"
             "hostname ROUTER-CORE\n"
             "interface GigabitEthernet0/0\n"
-            " ip address 10.20.23.1 255.255.255.0\n"
+            " ip address 192.168.1.1 255.255.255.0\n"
             "end\n"
         )
         cisco_cfg_2 = (
@@ -87,7 +87,7 @@ class TestWanQualityAndConfigsIntegration(unittest.TestCase):
             "! NVRAM config last updated at 19:45:35 UTC Fri Sep 18 2026\n"
             "hostname ROUTER-CORE\n"
             "interface GigabitEthernet0/0\n"
-            " ip address 10.20.23.1 255.255.255.0\n"
+            " ip address 192.168.1.1 255.255.255.0\n"
             "end\n"
         )
 

@@ -457,7 +457,7 @@ class SnmpOidsSeeder extends Seeder
         $devicesToSync = [
             [
                 'name' => 'Switch Core Valle Seco (C3750)',
-                'ip_address' => '10.20.23.1',
+                'ip_address' => '192.168.1.1',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'WS-C3750-24TS',
@@ -466,7 +466,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'Switch Distribución Taquilla (C2960)',
-                'ip_address' => '10.20.23.4',
+                'ip_address' => '192.168.1.4',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'WS-C2960-24TT-L',
@@ -475,7 +475,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'Firewall pfSense Valle Seco',
-                'ip_address' => '10.20.23.252',
+                'ip_address' => '192.168.1.250',
                 'device_type' => 'firewall',
                 'vendor' => 'pfSense',
                 'model' => 'Netgate SG-3100',
@@ -484,7 +484,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'Router Gateway Carabobo',
-                'ip_address' => '10.20.0.1',
+                'ip_address' => '192.168.0.1',
                 'device_type' => 'router',
                 'vendor' => 'Cisco',
                 'model' => 'Cisco 2901',
@@ -493,7 +493,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'SW01 - Cisco Principal',
-                'ip_address' => '10.20.23.2',
+                'ip_address' => '192.168.1.2',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'Catalyst 2960-X',
@@ -502,7 +502,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'SW03 - Cisco Servidores',
-                'ip_address' => '10.20.23.5',
+                'ip_address' => '192.168.1.5',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'Catalyst 2960-S',
@@ -511,7 +511,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'EQUIPO 03 - Switch Transmisión',
-                'ip_address' => '10.20.27.83',
+                'ip_address' => '192.168.27.83',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'Catalyst 2960',
@@ -520,7 +520,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'Switch CIAU Consolidado',
-                'ip_address' => '10.20.107.131',
+                'ip_address' => '192.168.107.131',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'Catalyst 2960',
@@ -529,7 +529,7 @@ class SnmpOidsSeeder extends Seeder
             ],
             [
                 'name' => 'Switch/Gateway CIAU Morón',
-                'ip_address' => '10.20.106.193',
+                'ip_address' => '192.168.106.193',
                 'device_type' => 'switch',
                 'vendor' => 'Cisco',
                 'model' => 'Cisco 2901 / Switch Sede',

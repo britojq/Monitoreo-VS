@@ -24,8 +24,8 @@ async def main():
         await page.goto("http://127.0.0.1/admin/discovery", wait_until="networkidle")
         await page.wait_for_timeout(500)
 
-        # Buscar 10.20.23.221
-        await page.fill('input[name="search"]', '10.20.23.221')
+        # Buscar 192.168.1.220
+        await page.fill('input[name="search"]', '192.168.1.220')
         await page.press('input[name="search"]', 'Enter')
         await page.wait_for_timeout(1000)
 
@@ -44,7 +44,7 @@ async def main():
         await page.wait_for_timeout(500)
 
         # Buscar CENCARATIT
-        await page.fill('input[name="search"]', '10.20.23.221')
+        await page.fill('input[name="search"]', '192.168.1.220')
         await page.press('input[name="search"]', 'Enter')
         await page.wait_for_timeout(1000)
 

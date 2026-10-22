@@ -91,10 +91,10 @@ class HardwareAndDeployArchitectureTest extends TestCase
         $endpointConfig = $this->createMock(\App\Contracts\GlpiEndpointConfigInterface::class);
         $deployService = new AgentDeployService($commandRunner, $endpointConfig);
 
-        $this->assertTrue($deployService->ipInSubnet('10.20.23.5', '10.20.23.0/24'));
-        $this->assertTrue($deployService->ipInSubnet('10.20.23.254', '10.20.23.0/24'));
-        $this->assertFalse($deployService->ipInSubnet('10.20.106.5', '10.20.23.0/24'));
-        $this->assertFalse($deployService->ipInSubnet('invalid-ip', '10.20.23.0/24'));
+        $this->assertTrue($deployService->ipInSubnet('192.168.1.5', '192.168.1.0/24'));
+        $this->assertTrue($deployService->ipInSubnet('192.168.1.254', '192.168.1.0/24'));
+        $this->assertFalse($deployService->ipInSubnet('192.168.106.5', '192.168.1.0/24'));
+        $this->assertFalse($deployService->ipInSubnet('invalid-ip', '192.168.1.0/24'));
     }
 
     public function test_agent_deploy_service_supported_device_classification(): void
@@ -132,8 +132,8 @@ class HardwareAndDeployArchitectureTest extends TestCase
             ->method('resolveTargetUrl')
             ->with('dev', null)
             ->willReturn([
-                'server_url' => 'http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
-                'deploy_base_url' => 'http://10.20.23.221',
+                'server_url' => 'http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
+                'deploy_base_url' => 'http://192.168.1.220',
             ]);
 
         $commandRunner->expects($this->once())
@@ -146,7 +146,7 @@ class HardwareAndDeployArchitectureTest extends TestCase
             ]);
 
         $deployService = new AgentDeployService($commandRunner, $endpointConfig);
-        $result = $deployService->deploy('10.20.23.199', 'windows', 'admin', 'dev', 'install', 'secret');
+        $result = $deployService->deploy('192.168.1.199', 'windows', 'admin', 'dev', 'install', 'secret');
 
         $this->assertTrue($result['success']);
         $this->assertTrue($result['installed']);

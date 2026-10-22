@@ -371,7 +371,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">IP Gateway / Enlace:</label>
-                        <input type="text" name="ip" placeholder="ej. 10.20.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        <input type="text" name="ip" placeholder="ej. 192.168.106.193" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2.5 text-white focus:border-cyan-400 focus:outline-hidden"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección Física:</label>
@@ -432,7 +432,7 @@
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección IP *</label>
-                        <input type="text" name="ip" required placeholder="ej. 10.20.106.240" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
+                        <input type="text" name="ip" required placeholder="ej. 192.168.106.240" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white focus:border-cyan-400 focus:outline-hidden"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px] font-semibold uppercase">Dirección MAC</label>
@@ -663,7 +663,7 @@
                         <h3 id="hist-site-name" class="text-base font-bold text-white font-sans truncate max-w-md">Sede</h3>
                         <span class="text-[9px] font-mono font-bold uppercase bg-obsidian-panel text-obsidian-cyan px-2 py-0.5 rounded border border-obsidian-border">ENLACE SEDE</span>
                     </div>
-                    <p id="hist-site-ip" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">IP Gateway: 10.20.0.1</p>
+                    <p id="hist-site-ip" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">IP Gateway: 192.168.0.1</p>
                 </div>
             </div>
 

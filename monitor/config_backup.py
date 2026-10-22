@@ -576,8 +576,8 @@ aaa authentication login default local
 aaa authorization exec default local
 !
 ip domain-name empresa.gob.ve
-ip name-server 10.20.0.1
-ip name-server 10.20.0.2
+ip name-server 192.168.0.1
+ip name-server 192.168.0.2
 !
 spanning-tree mode rapid-pvst
 spanning-tree extend system-id
@@ -593,17 +593,17 @@ spanning-tree extend system-id
  switchport trunk allowed vlan 10,20,30,40
 !
 interface GigabitEthernet0/1
- description Servidor Monitoreo Valle Seco (10.20.23.221)
+ description Servidor Monitoreo Valle Seco (192.168.1.220)
  switchport mode access
  switchport access vlan 10
  spanning-tree portfast
 !
 interface Vlan10
  description Segmento de Gestion Administrativa
- ip address 10.20.23.1 255.255.255.0
+ ip address 192.168.1.1 255.255.255.0
  no shutdown
 !
-ip default-gateway 10.20.23.254
+ip default-gateway 192.168.1.254
 ip http server
 ip http secure-server
 !
@@ -639,14 +639,14 @@ end
         if not devices:
             # Fallback con dispositivos virtuales
             devices = [
-                {"id": 1, "name": "SWITCH_CORE_VALLE_SECO", "ip": "10.20.23.1", "model": "Cisco Catalyst 2960-X"},
-                {"id": 2, "name": "ROUTER_BORDE_CENCAR", "ip": "10.20.0.1", "model": "Cisco ISR 4331"},
-                {"id": 3, "name": "FIREWALL_PFSENSE_VS", "ip": "10.20.23.254", "model": "pfSense Netgate 6100"},
+                {"id": 1, "name": "SWITCH_CORE_VALLE_SECO", "ip": "192.168.1.1", "model": "Cisco Catalyst 2960-X"},
+                {"id": 2, "name": "ROUTER_BORDE_CENCAR", "ip": "192.168.0.1", "model": "Cisco ISR 4331"},
+                {"id": 3, "name": "FIREWALL_PFSENSE_VS", "ip": "192.168.1.254", "model": "pfSense Netgate 6100"},
             ]
 
         for d in devices:
             d_name = d.get("name") or "Switch"
-            d_ip = d.get("ip") or "10.20.23.1"
+            d_ip = d.get("ip") or "192.168.1.1"
             d_id = d.get("id")
 
             # 1. Crear línea base inicial

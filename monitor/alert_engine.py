@@ -921,7 +921,7 @@ class AlertEngine:
                         f"<b>Detalle:</b> {html.escape(detail)}"
                     )
 
-                    portal_url = "http://10.20.23.221/admin/alerts"
+                    portal_url = "http://192.168.1.220/admin/alerts"
                     reply_markup = {
                         "inline_keyboard": [
                             [

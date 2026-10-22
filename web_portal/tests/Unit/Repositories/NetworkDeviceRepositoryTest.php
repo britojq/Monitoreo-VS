@@ -31,7 +31,7 @@ class NetworkDeviceRepositoryTest extends TestCase
             monitoredSiteId: $siteId,
             deviceNumber: $deviceNum,
             name: 'ROUTER BACKBONE SOLID',
-            ip: '10.20.23.250',
+            ip: '192.168.1.250',
             mac: 'AA:BB:CC:DD:EE:FF',
             accessType: 'SIN SOPORTE',
         );
@@ -40,13 +40,13 @@ class NetworkDeviceRepositoryTest extends TestCase
 
         $this->assertInstanceOf(MonitoredNetworkDevice::class, $created);
         $this->assertEquals('ROUTER BACKBONE SOLID', $created->name);
-        $this->assertEquals('10.20.23.250', $created->ip);
+        $this->assertEquals('192.168.1.250', $created->ip);
 
         $foundById = $this->repository->findById($created->id);
         $this->assertNotNull($foundById);
         $this->assertEquals('ROUTER BACKBONE SOLID', $foundById->name);
 
-        $foundByIp = $this->repository->findByIp('10.20.23.250');
+        $foundByIp = $this->repository->findByIp('192.168.1.250');
         $this->assertNotNull($foundByIp);
         $this->assertEquals($created->id, $foundByIp->id);
 

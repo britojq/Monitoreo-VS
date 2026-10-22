@@ -42,7 +42,7 @@ readonly class ServiceData
             errorStateMsg: $data['error_state_msg'] ?? null,
             isActive: (bool) ($data['is_active'] ?? true),
             sortOrder: (int) ($data['sort_order'] ?? 0),
-            telegramAlertEnabled: (bool) ($data['telegram_alert_enabled'] ?? true),
+            telegramAlertEnabled: (bool) ($data['telegram_alert_enabled'] ?? false),
             telegramAlertTarget: $data['telegram_alert_target'] ?? null,
         );
     }

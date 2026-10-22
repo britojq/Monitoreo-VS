@@ -18,7 +18,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'id' => 1,
                 'name' => 'CIAU VALLE SECO',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'phone_1' => '0242-3610061',
                 'phone_2' => '0242-3613722',
                 'address' => 'Urb. Colinas de Valle Seco, final Av. Bolívar. Edificio CALIFE., Puerto Cabello',
@@ -28,7 +28,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'id' => 3,
                 'name' => 'CIAU CONSOLIDADO',
-                'ip' => '10.20.107.131',
+                'ip' => '192.168.107.131',
                 'phone_1' => '0242 - 3618047',
                 'phone_2' => '0242 - 3619584',
                 'address' => 'Calle Mariño, C.C. Consolidado, Edificio Planta Alta y Baja, Local N° 1., Puerto Cabello',
@@ -38,7 +38,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'id' => 4,
                 'name' => 'CIAU PASEO MARIÑO',
-                'ip' => '10.20.107.131',
+                'ip' => '192.168.107.131',
                 'phone_1' => '0242 - 3618706',
                 'phone_2' => '0242 - 3611317',
                 'address' => 'Calle Mariño, Edificio Paseo Mariño, Puerto Cabello',
@@ -48,7 +48,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'id' => 5,
                 'name' => 'CIAU MORON',
-                'ip' => '10.20.106.193',
+                'ip' => '192.168.106.193',
                 'phone_1' => '0242 - 3724250',
                 'phone_2' => '0242 - 3720540',
                 'address' => 'Edificio empresa, Calle San José con calle Miranda Diagonal a casa de la Cultura, Morón',
@@ -58,7 +58,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'id' => 7,
                 'name' => 'CORDINACION TRASMISION',
-                'ip' => '10.20.27.65',
+                'ip' => '192.168.27.65',
                 'phone_1' => '0242-3621429',
                 'phone_2' => null,
                 'address' => 'Subestación Planta Centro / Valle Seco, Área de Transmisión',
@@ -85,7 +85,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'ROUTER PRINCIPAL',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'mac' => '00:27:0D:8E:30:16',
                 'vendor_data' => 'Cisco Systems',
                 'access_type' => 'TELNET',
@@ -99,7 +99,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'SW01 - Cisco Principal',
-                'ip' => '10.20.23.2',
+                'ip' => '192.168.1.2',
                 'mac' => 'BC:F1:F2:F5:75:C7',
                 'vendor_data' => 'Cisco Systems',
                 'access_type' => 'TELNET',
@@ -113,7 +113,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'SW02 - Cisco Piso 1',
-                'ip' => '10.20.23.4',
+                'ip' => '192.168.1.4',
                 'mac' => '00:14:1C:5A:6A:80',
                 'vendor_data' => 'Cisco Systems',
                 'access_type' => 'TELNET',
@@ -127,7 +127,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'SW03 - Cisco Servidores',
-                'ip' => '10.20.23.5',
+                'ip' => '192.168.1.5',
                 'mac' => '00:13:C4:D4:F5:40',
                 'vendor_data' => 'Cisco Systems',
                 'access_type' => 'TELNET',
@@ -141,7 +141,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'ROUTER WIFI SIGECOM',
-                'ip' => '10.20.23.64',
+                'ip' => '192.168.1.64',
                 'mac' => 'E8:48:B8:3C:4B:AD',
                 'vendor_data' => 'TP-Link Corporation',
                 'access_type' => 'WEB',
@@ -155,7 +155,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'EQUIPO MONITOREO ATIT',
-                'ip' => '10.20.23.252',
+                'ip' => '192.168.1.250',
                 'mac' => '00:0C:29:4F:8E:1A',
                 'vendor_data' => 'Debian Linux',
                 'access_type' => 'VNC',
@@ -169,7 +169,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 1,
                 'name' => 'SW04 - Hon Hai Acceso',
-                'ip' => '10.20.23.232',
+                'ip' => '192.168.1.232',
                 'mac' => 'F4:93:9F:ED:4B:B7',
                 'vendor_data' => 'Hon Hai Precision',
                 'access_type' => 'SIN SOPORTE',
@@ -185,7 +185,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 3,
                 'name' => 'JEFE OFICINA',
-                'ip' => '10.20.107.154',
+                'ip' => '192.168.107.154',
                 'mac' => '18:66:DA:33:44:11',
                 'vendor_data' => 'Dell Inc.',
                 'access_type' => 'VNC',
@@ -199,7 +199,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 3,
                 'name' => 'TAQUILLA 01',
-                'ip' => '10.20.107.150',
+                'ip' => '192.168.107.150',
                 'mac' => '18:66:DA:33:44:12',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -213,7 +213,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 3,
                 'name' => 'TAQUILLA 02',
-                'ip' => '10.20.107.151',
+                'ip' => '192.168.107.151',
                 'mac' => '18:66:DA:33:44:13',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -227,7 +227,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 3,
                 'name' => 'ATU 01',
-                'ip' => '10.20.107.153',
+                'ip' => '192.168.107.153',
                 'mac' => '18:66:DA:33:44:14',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -241,7 +241,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 3,
                 'name' => 'IMPRESORA RED',
-                'ip' => '10.20.107.136',
+                'ip' => '192.168.107.136',
                 'mac' => '00:25:B3:99:88:77',
                 'vendor_data' => 'Hewlett-Packard',
                 'access_type' => 'WEB',
@@ -257,7 +257,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 4,
                 'name' => 'JEFE OFICINA',
-                'ip' => '10.20.107.155',
+                'ip' => '192.168.107.155',
                 'mac' => '18:66:DA:55:66:21',
                 'vendor_data' => 'Dell Inc.',
                 'access_type' => 'VNC',
@@ -271,7 +271,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 4,
                 'name' => 'TAQUILLA 01',
-                'ip' => '10.20.107.148',
+                'ip' => '192.168.107.148',
                 'mac' => '18:66:DA:55:66:22',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -285,7 +285,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 4,
                 'name' => 'TAQUILLA 02',
-                'ip' => '10.20.107.152',
+                'ip' => '192.168.107.152',
                 'mac' => '18:66:DA:55:66:23',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -301,7 +301,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'JEFE OFICINA',
-                'ip' => '10.20.106.241',
+                'ip' => '192.168.106.241',
                 'mac' => '18:66:DA:77:88:31',
                 'vendor_data' => 'Dell Inc.',
                 'access_type' => 'VNC',
@@ -315,7 +315,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'TAQUILLA 01',
-                'ip' => '10.20.106.240',
+                'ip' => '192.168.106.240',
                 'mac' => '18:66:DA:77:88:32',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -329,7 +329,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'TAQUILLA 02',
-                'ip' => '10.20.106.239',
+                'ip' => '192.168.106.239',
                 'mac' => '18:66:DA:77:88:33',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -343,7 +343,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'TAQUILLA 03',
-                'ip' => '10.20.106.238',
+                'ip' => '192.168.106.238',
                 'mac' => '18:66:DA:77:88:34',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -357,7 +357,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'ATU 01',
-                'ip' => '10.20.106.242',
+                'ip' => '192.168.106.242',
                 'mac' => '18:66:DA:77:88:35',
                 'vendor_data' => 'HP Inc.',
                 'access_type' => 'VNC',
@@ -371,7 +371,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 5,
                 'name' => 'IMPRESORA RED',
-                'ip' => '10.20.106.253',
+                'ip' => '192.168.106.253',
                 'mac' => '00:25:B3:77:66:55',
                 'vendor_data' => 'Hewlett-Packard',
                 'access_type' => 'WEB',
@@ -387,7 +387,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 7,
                 'name' => 'EQUIPO 01',
-                'ip' => '10.20.27.81',
+                'ip' => '192.168.27.81',
                 'mac' => '24:B6:FD:11:22:01',
                 'vendor_data' => 'Estación PC',
                 'access_type' => 'VNC',
@@ -401,7 +401,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 7,
                 'name' => 'EQUIPO 02',
-                'ip' => '10.20.27.82',
+                'ip' => '192.168.27.82',
                 'mac' => '24:B6:FD:11:22:02',
                 'vendor_data' => 'Estación PC',
                 'access_type' => 'VNC',
@@ -415,7 +415,7 @@ class CleanMonitoringSeeder extends Seeder
             [
                 'monitored_site_id' => 7,
                 'name' => 'EQUIPO 03',
-                'ip' => '10.20.27.83',
+                'ip' => '192.168.27.83',
                 'mac' => '24:B6:FD:11:22:03',
                 'vendor_data' => 'Estación PC',
                 'access_type' => 'VNC',
@@ -505,24 +505,24 @@ class CleanMonitoringSeeder extends Seeder
             ->delete();
 
         $services = [
-            ['id' => 1, 'letter' => 'A', 'name' => 'OTRS', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.18.32.6', 'web_url' => 'http://gsatit.empresa.com.ve/otrs/index.pl', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 0],
-            ['id' => 2, 'letter' => 'B', 'name' => 'INTRANET empresa', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.16.2.28', 'web_url' => 'http://intranet.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 1],
-            ['id' => 3, 'letter' => 'C', 'name' => 'CORREO WEB', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.250.34.67', 'web_url' => 'http://correo.empresa.com.ve//login.php?phpgw_forward=%2Findex.php', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 2],
-            ['id' => 4, 'letter' => 'D', 'name' => 'SAO', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.96.0.136', 'web_url' => 'https://saocorp.empresa.com.ve:3002/login?service=https%3A%2F%2Fsaocorp.empresa.com.ve%3A6200%2F', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 3],
-            ['id' => 5, 'letter' => 'E', 'name' => 'SURGE', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.16.2.62', 'web_url' => 'http://surge.empresa.com.ve/gestion-incidencias-cliente-web/ui/FrmTablero.html', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 4],
-            ['id' => 6, 'letter' => 'F', 'name' => 'FACTURA DIGITAL', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.16.2.28', 'web_url' => 'http://facturadigital.empresa.com.ve/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 5],
-            ['id' => 7, 'letter' => 'G', 'name' => 'SISTEMA AUTOGESTION DE CLAVES', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.16.2.22', 'web_url' => 'http://cambioclaves.empresa.com.ve/gc/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 6],
+            ['id' => 1, 'letter' => 'A', 'name' => 'OTRS', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.18.6', 'web_url' => 'http://gsatit.empresa.com.ve/otrs/index.pl', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 0],
+            ['id' => 2, 'letter' => 'B', 'name' => 'INTRANET empresa', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.28', 'web_url' => 'http://intranet.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 1],
+            ['id' => 3, 'letter' => 'C', 'name' => 'CORREO WEB', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.250.67', 'web_url' => 'http://correo.empresa.com.ve//login.php?phpgw_forward=%2Findex.php', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 2],
+            ['id' => 4, 'letter' => 'D', 'name' => 'SAO', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.96.136', 'web_url' => 'https://saocorp.empresa.com.ve:3002/login?service=https%3A%2F%2Fsaocorp.empresa.com.ve%3A6200%2F', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 3],
+            ['id' => 5, 'letter' => 'E', 'name' => 'SURGE', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.62', 'web_url' => 'http://surge.empresa.com.ve/gestion-incidencias-cliente-web/ui/FrmTablero.html', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 4],
+            ['id' => 6, 'letter' => 'F', 'name' => 'FACTURA DIGITAL', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.28', 'web_url' => 'http://facturadigital.empresa.com.ve/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 5],
+            ['id' => 7, 'letter' => 'G', 'name' => 'SISTEMA AUTOGESTION DE CLAVES', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.22', 'web_url' => 'http://cambioclaves.empresa.com.ve/gc/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 6],
             ['id' => 9, 'letter' => 'I', 'name' => 'LDAPADMIN Corporativo', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.2.28.64', 'web_url' => 'https://ldapadmin.empresa.com.ve/htdocs/index.php', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 7],
-            ['id' => 10, 'letter' => 'J', 'name' => 'Sistema de Incidencia CARABOBO', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '10.18.32.33', 'web_url' => 'https://T4WINP33-SIAR.ev.com', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 8],
-            ['id' => 11, 'letter' => 'K', 'name' => 'SAP - empresa Produccion R3', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '10.100.94.230', 'web_url' => '10.100.94.230', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 9],
-            ['id' => 12, 'letter' => 'L', 'name' => 'LDAP CARABOBO', 'type' => 'LDAP', 'scope' => 'regional', 'host_ip' => '10.20.0.22', 'web_url' => 'ldapr2-t4.empresa.com.ve', 'port' => 389, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 10],
+            ['id' => 10, 'letter' => 'J', 'name' => 'Sistema de Incidencia CARABOBO', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '192.168.18.33', 'web_url' => 'https://T4WINP33-SIAR.ev.com', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 8],
+            ['id' => 11, 'letter' => 'K', 'name' => 'SAP - empresa Produccion R3', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '192.168.94.230', 'web_url' => '192.168.94.230', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 9],
+            ['id' => 12, 'letter' => 'L', 'name' => 'LDAP CARABOBO', 'type' => 'LDAP', 'scope' => 'regional', 'host_ip' => '192.168.0.22', 'web_url' => 'ldapr2-t4.empresa.com.ve', 'port' => 389, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 10],
             ['id' => 13, 'letter' => 'M', 'name' => '(DNS PRIMARIO CARABOBO - ARAGUA)', 'type' => 'DNS', 'scope' => 'regional', 'host_ip' => '100.1.1.16', 'web_url' => '100.1.1.16', 'port' => 53, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 11],
-            ['id' => 14, 'letter' => 'N', 'name' => '(DNS SECUNDARIO CARABOBO - ARAGUA)', 'type' => 'WEB', 'scope' => 'regional', 'host_ip' => '10.100.94.230', 'web_url' => 'https://ldapr2-002.ev.com:10000/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 12],
-            ['id' => 15, 'letter' => 'O', 'name' => 'DHCP CARABOBO - ARAGUA', 'type' => 'DHCP', 'scope' => 'regional', 'host_ip' => '10.18.32.38', 'web_url' => 't4linp38.empresa.com.ve', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 13],
-            ['id' => 17, 'letter' => 'Q', 'name' => 'Pfsense - CARABOBO (119)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '10.20.0.119', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 14],
-            ['id' => 18, 'letter' => 'R', 'name' => 'Pfsense - CARABOBO (89)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '10.20.0.89', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 15],
-            ['id' => 19, 'letter' => 'S', 'name' => 'Pfsense - Valle Seco (65)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '10.20.23.65', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 16],
-            ['id' => 20, 'letter' => 'T', 'name' => 'Servidor de Correo CARABOBO (thunderbird)', 'type' => 'SMTP', 'scope' => 'regional', 'host_ip' => '10.18.32.6', 'web_url' => 'mailr2-t4.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 17],
+            ['id' => 14, 'letter' => 'N', 'name' => '(DNS SECUNDARIO CARABOBO - ARAGUA)', 'type' => 'WEB', 'scope' => 'regional', 'host_ip' => '192.168.94.230', 'web_url' => 'https://ldapr2-002.ev.com:10000/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 12],
+            ['id' => 15, 'letter' => 'O', 'name' => 'DHCP CARABOBO - ARAGUA', 'type' => 'DHCP', 'scope' => 'regional', 'host_ip' => '192.168.18.38', 'web_url' => 't4linp38.empresa.com.ve', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 13],
+            ['id' => 17, 'letter' => 'Q', 'name' => 'Pfsense - CARABOBO (119)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '192.168.0.119', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 14],
+            ['id' => 18, 'letter' => 'R', 'name' => 'Pfsense - CARABOBO (89)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '192.168.0.89', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 15],
+            ['id' => 19, 'letter' => 'S', 'name' => 'Pfsense - Valle Seco (65)', 'type' => 'PROXY', 'scope' => 'regional', 'host_ip' => '192.168.1.65', 'web_url' => 'https://core.telegram.org/bots', 'port' => 8080, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 16],
+            ['id' => 20, 'letter' => 'T', 'name' => 'Servidor de Correo CARABOBO (thunderbird)', 'type' => 'SMTP', 'scope' => 'regional', 'host_ip' => '192.168.18.6', 'web_url' => 'mailr2-t4.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 17],
         ];
 
         foreach ($services as $srv) {

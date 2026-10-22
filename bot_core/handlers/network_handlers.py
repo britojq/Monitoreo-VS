@@ -398,7 +398,7 @@ async def cmd_cluster(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     role = cfg.get("node_role", "master").upper()
-    master_url = cfg.get("master_api_url", "http://10.20.23.252")
+    master_url = cfg.get("master_api_url", "http://192.168.1.250")
     token = cfg.get("cluster_token", "No configurado")
     last_sync = cfg.get("cluster_last_sync_at", "N/A")
     status = cfg.get("cluster_last_sync_status", "N/A")

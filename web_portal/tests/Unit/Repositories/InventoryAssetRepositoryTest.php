@@ -35,7 +35,7 @@ class InventoryAssetRepositoryTest extends TestCase
             model: 'OptiPlex 7090',
             serialNumber: 'SN-SOLID-101',
             macAddress: '00:11:22:33:44:55',
-            ipAddress: '10.20.23.199',
+            ipAddress: '192.168.1.199',
             monitoredSiteId: $siteId,
             responsibleName: 'Ingeniero de Sistemas',
         );
@@ -54,7 +54,7 @@ class InventoryAssetRepositoryTest extends TestCase
         $this->assertNotNull($foundByTag);
         $this->assertEquals($created->id, $foundByTag->id);
 
-        $foundByIp = $this->repository->findByIp('10.20.23.199');
+        $foundByIp = $this->repository->findByIp('192.168.1.199');
         $this->assertNotNull($foundByIp);
         $this->assertEquals($created->id, $foundByIp->id);
 

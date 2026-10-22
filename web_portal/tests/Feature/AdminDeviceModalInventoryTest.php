@@ -311,7 +311,7 @@ class AdminDeviceModalInventoryTest extends TestCase
 
         // Crear dispositivo y activo asignado
         $name = 'PC REASIGNAR ' . uniqid();
-        $ip = '10.20.23.' . rand(150, 240);
+        $ip = '192.168.1.' . rand(150, 240);
 
         $responseCreate = $this->actingAs($user)->post(route('admin.devices.store'), [
             'monitored_site_id' => $site->id,
@@ -624,7 +624,7 @@ class AdminDeviceModalInventoryTest extends TestCase
 
     /**
      * Valida que el Router Principal (ID 1) mantenga estrictamente sus parámetros legítimos
-     * en MariaDB: tipo 'router', protocolo 'TELNET' puerto 23, IP 10.20.23.1 y notas oficiales.
+     * en MariaDB: tipo 'router', protocolo 'TELNET' puerto 23, IP 192.168.1.1 y notas oficiales.
      */
     public function test_router_principal_in_mariadb_maintains_telnet_and_router_integrity(): void
     {
@@ -634,7 +634,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals('router', $asset->type);
         $this->assertEquals('TELNET', $asset->access_type);
         $this->assertEquals(23, $asset->access_port);
-        $this->assertEquals('10.20.23.1', $asset->ip_address);
+        $this->assertEquals('192.168.1.1', $asset->ip_address);
         $this->assertStringContainsString('Gateway principal de la', $asset->notes);
 
         $netDev = \App\Models\MonitoredNetworkDevice::find(1);
@@ -642,7 +642,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals('ROUTER PRINCIPAL', $netDev->name);
         $this->assertEquals('TELNET', $netDev->access_type);
         $this->assertEquals(23, $netDev->access_port);
-        $this->assertEquals('10.20.23.1', $netDev->ip);
+        $this->assertEquals('192.168.1.1', $netDev->ip);
         $this->assertStringContainsString('Gateway principal de la', $netDev->notes);
     }
 

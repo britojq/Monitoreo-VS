@@ -899,7 +899,7 @@
                     <!-- CAMPO MANUAL REVELABLE -->
                     <div id="field-custom-endpoint-bulk" class="hidden mt-2 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 space-y-1">
                         <label class="block text-amber-300 text-[10.5px] font-bold">Dirección IP o Dominio del Servidor Objetivo:</label>
-                        <input type="text" id="bulk-custom-ip" name="bulk_custom_ip" placeholder="ej: 10.20.23.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
+                        <input type="text" id="bulk-custom-ip" name="bulk_custom_ip" placeholder="ej: 192.168.1.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
                         <p class="text-[10px] text-amber-300/80">Los equipos se configurarán para reportar hacia http://[IP_INGRESADA]/api/v1/inventory/receiver/...</p>
                     </div>
                 </div>
@@ -995,7 +995,7 @@
                 </span>
                 <div>
                     <h3 class="text-sm font-bold text-white font-mono" id="modal-title">Desplegar Agente GLPI</h3>
-                    <p class="text-[11px] font-mono text-obsidian-muted" id="modal-subtitle">Equipo seleccionado: 10.20.23.X</p>
+                    <p class="text-[11px] font-mono text-obsidian-muted" id="modal-subtitle">Equipo seleccionado: 192.168.1.X</p>
                 </div>
             </div>
             <button onclick="closeDeployModal()" class="text-obsidian-muted hover:text-white transition p-1">
@@ -1075,7 +1075,7 @@
                     <!-- CAMPO MANUAL REVELABLE -->
                     <div id="field-custom-endpoint-single" class="hidden mt-2 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 space-y-1">
                         <label class="block text-amber-300 text-[10.5px] font-bold">Dirección IP o Dominio del Servidor Objetivo:</label>
-                        <input type="text" id="deploy-custom-ip" name="custom_ip" placeholder="ej: 10.20.23.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
+                        <input type="text" id="deploy-custom-ip" name="custom_ip" placeholder="ej: 192.168.1.244 o servidor-glpi.local" class="w-full px-3 py-1.5 rounded-lg bg-obsidian-card border border-amber-500/40 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
                         <p class="text-[10px] text-amber-300/80">El agente se configurará para reportar hacia http://[IP_INGRESADA]/api/v1/inventory/receiver/...</p>
                     </div>
                 </div>
@@ -1170,7 +1170,7 @@
                     <label class="block text-red-300 text-[11px] uppercase font-bold">
                         Endpoint Servidor Producción: <span class="text-red-400">*</span>
                     </label>
-                    <input type="url" id="cfg-prod-url" name="glpi_receiver_prod_url" required value="{{ $glpiEndpoints['prod_url'] }}" placeholder="http://10.20.23.252/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-red-500">
+                    <input type="url" id="cfg-prod-url" name="glpi_receiver_prod_url" required value="{{ $glpiEndpoints['prod_url'] }}" placeholder="http://192.168.1.250/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-red-500">
                     <p class="text-[10px] text-obsidian-muted">URL completa del endpoint receptor en el servidor Master/Producción.</p>
                 </div>
 
@@ -1179,7 +1179,7 @@
                     <label class="block text-purple-300 text-[11px] uppercase font-bold">
                         Endpoint Servidor Desarrollo: <span class="text-purple-400">*</span>
                     </label>
-                    <input type="url" id="cfg-dev-url" name="glpi_receiver_dev_url" required value="{{ $glpiEndpoints['dev_url'] }}" placeholder="http://10.20.23.221/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-purple-500">
+                    <input type="url" id="cfg-dev-url" name="glpi_receiver_dev_url" required value="{{ $glpiEndpoints['dev_url'] }}" placeholder="http://192.168.1.220/api/v1/inventory/receiver/Token" class="w-full px-3 py-2 rounded-lg bg-obsidian-card border border-obsidian-border text-white text-xs font-mono focus:outline-none focus:border-purple-500">
                     <p class="text-[10px] text-obsidian-muted">URL completa del endpoint receptor en el servidor Esclavo/Desarrollo.</p>
                 </div>
 
@@ -1546,9 +1546,9 @@
                     </label>
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3 top-2.5 text-obsidian-muted text-base">lan</span>
-                        <input type="text" id="scan-subnet-input" name="subnet" required placeholder="ej: 10.20.106.0/24" value="10.20.23.0/24" class="w-full pl-9 pr-3 py-2 rounded-xl bg-obsidian-card border border-obsidian-border text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="scan-subnet-input" name="subnet" required placeholder="ej: 192.168.106.0/24" value="192.168.1.0/24" class="w-full pl-9 pr-3 py-2 rounded-xl bg-obsidian-card border border-obsidian-border text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500">
                     </div>
-                    <p class="text-[10px] text-obsidian-muted/70 mt-1">Formato CIDR: /24 hasta /30 (ej. 10.20.23.0/24, 10.20.106.0/24, 10.20.107.0/24).</p>
+                    <p class="text-[10px] text-obsidian-muted/70 mt-1">Formato CIDR: /24 hasta /30 (ej. 192.168.1.0/24, 192.168.106.0/24, 192.168.107.0/24).</p>
                 </div>
 
                 <!-- SPINNER DE CARGA -->

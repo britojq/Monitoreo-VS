@@ -86,7 +86,7 @@ class InventoryAssignmentTest extends TestCase
                 'disk' => '500GB SSD',
                 'os' => 'Debian 12',
                 'device_name' => 'PC-PEDRO',
-                'ip_address' => '10.20.23.50',
+                'ip_address' => '192.168.1.50',
             ]
         ];
 

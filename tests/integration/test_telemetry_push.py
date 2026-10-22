@@ -59,8 +59,8 @@ class TestTelemetryPushIntegration(unittest.TestCase):
 
         async def run_flow_test():
             await buf.add_flow(
-                exporter_ip="10.20.0.1",
-                src_ip="10.20.23.50",
+                exporter_ip="192.168.0.1",
+                src_ip="192.168.1.50",
                 dst_ip="8.8.8.8",
                 src_port=44332,
                 dst_port=53,
@@ -70,8 +70,8 @@ class TestTelemetryPushIntegration(unittest.TestCase):
                 timestamp=1700000000.0
             )
             await buf.add_flow(
-                exporter_ip="10.20.0.1",
-                src_ip="10.20.23.50",
+                exporter_ip="192.168.0.1",
+                src_ip="192.168.1.50",
                 dst_ip="8.8.8.8",
                 src_port=44332,
                 dst_port=53,
@@ -91,8 +91,8 @@ class TestTelemetryPushIntegration(unittest.TestCase):
     def test_03_syslog_rfc5424_and_rfc3164_parsing(self):
         """Prueba el parseo de mensajes Syslog bajo ambos estándares RFC."""
         # 1. RFC 5424
-        raw_rfc5424 = "<165>1 2026-09-25T08:00:00Z router-core-01 BGP 1234 ID47 [exampleSDID@32473 iut=\"3\"] BGP neighbor 10.20.0.2 DOWN"
-        parsed_5424 = parse_syslog_message(raw_rfc5424, "10.20.0.1")
+        raw_rfc5424 = "<165>1 2026-09-25T08:00:00Z router-core-01 BGP 1234 ID47 [exampleSDID@32473 iut=\"3\"] BGP neighbor 192.168.0.2 DOWN"
+        parsed_5424 = parse_syslog_message(raw_rfc5424, "192.168.0.1")
         self.assertEqual(parsed_5424["severity"], 5)  # 165 % 8 = 5 (Notice)
         self.assertEqual(parsed_5424["facility"], 20) # 165 // 8 = 20 (local4)
         self.assertEqual(parsed_5424["hostname"], "router-core-01")
@@ -100,7 +100,7 @@ class TestTelemetryPushIntegration(unittest.TestCase):
 
         # 2. RFC 3164 (BSD / Cisco)
         raw_rfc3164 = "<189>Sep 25 08:15:30 sw-valle-seco %LINK-3-UPDOWN: Interface GigabitEthernet0/1, changed state to down"
-        parsed_3164 = parse_syslog_message(raw_rfc3164, "10.20.23.10")
+        parsed_3164 = parse_syslog_message(raw_rfc3164, "192.168.1.10")
         self.assertEqual(parsed_3164["severity"], 5)  # 189 % 8 = 5
         self.assertEqual(parsed_3164["facility"], 23) # 189 // 8 = 23 (local7)
         self.assertEqual(parsed_3164["hostname"], "sw-valle-seco")

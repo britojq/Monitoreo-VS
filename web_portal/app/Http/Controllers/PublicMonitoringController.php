@@ -21,7 +21,7 @@ class PublicMonitoringController extends Controller
     private function authenticateInternalBot(): void
     {
         $ip = request()->ip();
-        if (in_array($ip, ['127.0.0.1', '::1', '10.20.23.221', '192.168.1.107'])) {
+        if (in_array($ip, ['127.0.0.1', '::1', '192.168.1.220', '192.168.1.107'])) {
             $secret = request()->header('X-Bot-Capture-Secret');
             $appKey = config('app.key');
             if (!empty($secret) && !empty($appKey) && hash_equals($appKey, $secret)) {

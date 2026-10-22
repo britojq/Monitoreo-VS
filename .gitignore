@@ -54,3 +54,6 @@ scratch/
 .update_lock
 database/backups/*.sql.gz
 !database/backups/.gitkeep
+
+# Graphify Knowledge Graph
+graphify-out/

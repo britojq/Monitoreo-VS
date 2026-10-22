@@ -331,7 +331,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Host / IP Destino:</label>
-                        <input type="text" name="host_ip" placeholder="ej. 10.20.0.50" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                        <input type="text" name="host_ip" placeholder="ej. 192.168.0.50" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                     </div>
                     <div>
                         <label class="block text-obsidian-muted mb-1 text-[11px]">Puerto TCP (opcional):</label>
@@ -341,7 +341,7 @@
 
                 <div>
                     <label class="block text-obsidian-muted mb-1 text-[11px]">URL Completa (para WEB / PROXY):</label>
-                    <input type="text" name="web_url" placeholder="http://10.20.0.50/login" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
+                    <input type="text" name="web_url" placeholder="http://192.168.0.50/login" class="w-full bg-obsidian-panel border border-obsidian-border rounded-lg p-2 text-white"/>
                 </div>
 
                 <div>
@@ -358,6 +358,7 @@
                                 Notificar caídas y recuperaciones por Telegram
                             </label>
                         </div>
+                        <input type="hidden" name="telegram_alert_enabled" value="0">
                         <input type="checkbox" id="create-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('create-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
                     </div>
                     <div id="create-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
@@ -462,6 +463,7 @@
                                 Notificar caídas y recuperaciones por Telegram
                             </label>
                         </div>
+                        <input type="hidden" name="telegram_alert_enabled" value="0">
                         <input type="checkbox" id="edit-service-telegram-alert" name="telegram_alert_enabled" value="1" onchange="document.getElementById('edit-service-target-wrapper').classList.toggle('hidden', !this.checked)" class="rounded bg-obsidian-panel border-obsidian-border text-obsidian-cyan cursor-pointer"/>
                     </div>
                     <div id="edit-service-target-wrapper" class="hidden pt-1.5 border-t border-obsidian-border/40">
@@ -503,7 +505,7 @@
                         <h3 id="hist-service-name" class="text-base font-bold text-white font-sans truncate max-w-md">Servicio</h3>
                         <span id="hist-service-type" class="text-[10px] font-mono font-bold uppercase bg-obsidian-panel text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/40">WEB</span>
                     </div>
-                    <p id="hist-service-target" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">Destino: 10.20.0.1</p>
+                    <p id="hist-service-target" class="text-xs font-mono text-obsidian-muted mt-0.5 truncate">Destino: 192.168.0.1</p>
                 </div>
             </div>
 

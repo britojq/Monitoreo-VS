@@ -373,9 +373,9 @@ async def send_test_netflow(target_ip: str = "127.0.0.1", port: int = DEFAULT_NE
     # Flujo 1: Tráfico HTTPS a Google DNS
     rec1 = struct.pack(
         NETFLOW_V5_RECORD_FMT,
-        int(socket.inet_aton("10.20.23.50").hex(), 16),
+        int(socket.inet_aton("192.168.1.50").hex(), 16),
         int(socket.inet_aton("8.8.8.8").hex(), 16),
-        int(socket.inet_aton("10.20.23.1").hex(), 16),
+        int(socket.inet_aton("192.168.1.1").hex(), 16),
         1, 2, 15, 24500, 490000, 500000,
         51234, 443, 0, 16, 6, 0, 0, 0, 24, 24, 0
     )
@@ -383,9 +383,9 @@ async def send_test_netflow(target_ip: str = "127.0.0.1", port: int = DEFAULT_NE
     # Flujo 2: DNS queries
     rec2 = struct.pack(
         NETFLOW_V5_RECORD_FMT,
-        int(socket.inet_aton("10.20.23.88").hex(), 16),
+        int(socket.inet_aton("192.168.1.88").hex(), 16),
         int(socket.inet_aton("1.1.1.1").hex(), 16),
-        int(socket.inet_aton("10.20.23.1").hex(), 16),
+        int(socket.inet_aton("192.168.1.1").hex(), 16),
         1, 2, 4, 380, 495000, 500000,
         61111, 53, 0, 0, 17, 0, 0, 0, 24, 24, 0
     )

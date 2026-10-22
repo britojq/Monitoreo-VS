@@ -175,7 +175,7 @@ class ExecutiveReportService implements ExecutiveReportInterface
 
         $rows = [];
         for ($i = 1; $i <= 254; $i++) {
-            $ip = "10.20.23.{$i}";
+            $ip = "192.168.1.{$i}";
             $asset = $assetsByIp->get($ip);
             $netDev = $netDevicesByIp->get($ip);
             $host = $hostsByIp->get($ip);
@@ -224,7 +224,7 @@ class ExecutiveReportService implements ExecutiveReportInterface
         }
 
         return [
-            'title' => 'Catálogo de Direccionamiento IPAM • Subred 10.20.23.0/24',
+            'title' => 'Catálogo de Direccionamiento IPAM • Subred 192.168.1.0/24',
             'headers' => [
                 'Dirección IP',
                 'Estado Ping/ARP',
@@ -237,7 +237,7 @@ class ExecutiveReportService implements ExecutiveReportInterface
             ],
             'rows' => $rows,
             'summary' => [
-                'Segmento de Red' => '10.20.23.0/24 (Valle Seco)',
+                'Segmento de Red' => '192.168.1.0/24 (Valle Seco)',
                 'Total Hosts Censados' => count($rows),
                 'Fecha de Generación' => now()->format('d/m/Y H:i:s'),
             ],

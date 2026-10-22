@@ -27,7 +27,7 @@ return new class extends Migration
         if (!Schema::hasTable('discovery_subnets')) {
             Schema::create('discovery_subnets', function (Blueprint $table) {
                 $table->id();
-                $table->string('subnet', 50)->unique()->comment('Subred en formato CIDR, ej: 10.20.23.0/24');
+                $table->string('subnet', 50)->unique()->comment('Subred en formato CIDR, ej: 192.168.1.0/24');
                 $table->foreignId('site_id')->nullable()->constrained('monitored_sites')->nullOnDelete();
                 $table->enum('scan_method', ['arp_sweep', 'nmap', 'both'])->default('arp_sweep');
                 $table->unsignedInteger('scan_interval_minutes')->default(15);

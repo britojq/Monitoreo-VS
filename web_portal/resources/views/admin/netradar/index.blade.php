@@ -483,7 +483,7 @@
                 <div>
                     <h3 class="text-sm font-bold text-white font-mono flex items-center gap-2">
                         <span>Forense de Host:</span>
-                        <span id="modalHostIp" class="text-obsidian-cyan">10.20.23.X</span>
+                        <span id="modalHostIp" class="text-obsidian-cyan">192.168.1.X</span>
                     </h3>
                     <div id="modalHostSubtitle" class="text-[11px] font-mono text-obsidian-muted">Cargando información...</div>
                 </div>

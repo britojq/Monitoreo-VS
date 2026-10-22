@@ -19,7 +19,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'OTRS',
                 'type' => 'WEB',
-                'host_ip' => '10.18.32.6',
+                'host_ip' => '192.168.18.6',
                 'web_url' => 'http://gsatit.empresa.local/otrs/index.pl',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -36,7 +36,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'INTRANET CORPORATIVO',
                 'type' => 'WEB',
-                'host_ip' => '10.16.2.28',
+                'host_ip' => '192.168.16.28',
                 'web_url' => 'http://intranet.empresa.local',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -53,7 +53,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'CORREO WEB',
                 'type' => 'WEB',
-                'host_ip' => '10.250.34.67',
+                'host_ip' => '192.168.250.67',
                 'web_url' => 'http://correo.empresa.local//login.php?phpgw_forward=%2Findex.php',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -70,7 +70,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'SAO',
                 'type' => 'WEB',
-                'host_ip' => '10.96.0.136',
+                'host_ip' => '192.168.96.136',
                 'web_url' => 'https://saocorp.empresa.local:3002/login?service=https%3A%2F%2Fsaocorp.empresa.local%3A6200%2F',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -87,7 +87,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'SURGE',
                 'type' => 'WEB',
-                'host_ip' => '10.16.2.62',
+                'host_ip' => '192.168.16.62',
                 'web_url' => 'http://surge.empresa.local/gestion-incidencias-cliente-web/ui/FrmTablero.html',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -104,7 +104,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'FACTURA DIGITAL',
                 'type' => 'WEB',
-                'host_ip' => '10.16.2.28',
+                'host_ip' => '192.168.16.28',
                 'web_url' => 'http://facturadigital.empresa.local/',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -121,7 +121,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'SISTEMA AUTOGESTION DE CLAVES',
                 'type' => 'WEB',
-                'host_ip' => '10.16.2.22',
+                'host_ip' => '192.168.16.22',
                 'web_url' => 'http://cambioclaves.empresa.local/gc/',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -138,7 +138,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'CAMBIO DE CLAVE CORREO (claver1)" #DESACTIVAR PARA REPORTE',
                 'type' => 'WEB',
-                'host_ip' => '10.16.2.22',
+                'host_ip' => '192.168.16.22',
                 'web_url' => 'https://claver1-sb.empresa.local/',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -172,7 +172,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Sistema de Incidencia CARABOBO',
                 'type' => 'OTRO',
-                'host_ip' => '10.18.32.33',
+                'host_ip' => '192.168.18.33',
                 'web_url' => 'https://T4WINP33-SIAR.ev.com',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -189,8 +189,8 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'SAP - CORPORATIVO Produccion R3',
                 'type' => 'OTRO',
-                'host_ip' => '10.100.94.230',
-                'web_url' => '10.100.94.230',
+                'host_ip' => '192.168.94.230',
+                'web_url' => '192.168.94.230',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
                 'check_interface' => 'eno1',
@@ -206,7 +206,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'LDAP CARABOBO',
                 'type' => 'LDAP',
-                'host_ip' => '10.16.2.24',
+                'host_ip' => '192.168.16.24',
                 'web_url' => 'ldapr2-t4.empresa.local',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -240,7 +240,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => '(DNS SECUNDARIO CARABOBO - ARAGUA)',
                 'type' => 'WEB',
-                'host_ip' => '10.100.94.230',
+                'host_ip' => '192.168.94.230',
                 'web_url' => 'https://ldapr2-002.ev.com:10000/',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -257,7 +257,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'DHCP CARABOBO - ARAGUA',
                 'type' => 'DHCP',
-                'host_ip' => '10.18.32.38',
+                'host_ip' => '192.168.18.38',
                 'web_url' => 't4linp38.empresa.local',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -291,7 +291,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Pfsense - CARABOBO (119)',
                 'type' => 'PROXY',
-                'host_ip' => '10.20.0.119',
+                'host_ip' => '192.168.0.119',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
                 'credentials' => 'usuario_proxy:clave_proxy',
@@ -308,7 +308,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Pfsense - CARABOBO (89)',
                 'type' => 'PROXY',
-                'host_ip' => '10.20.0.89',
+                'host_ip' => '192.168.0.89',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
                 'credentials' => 'usuario_proxy:clave_proxy',
@@ -325,7 +325,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Pfsense - Valle Seco (65)',
                 'type' => 'PROXY',
-                'host_ip' => '10.20.23.65',
+                'host_ip' => '192.168.1.65',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
                 'credentials' => 'usuario_proxy:clave_proxy',
@@ -342,7 +342,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Servidor de Correo CARABOBO (thunderbird)',
                 'type' => 'SMTP',
-                'host_ip' => '10.18.32.6',
+                'host_ip' => '192.168.18.6',
                 'web_url' => 'mailr2-t4.empresa.local',
                 'port' => 25,
                 'credentials' => 'USUARIO:CLAVE',
@@ -463,7 +463,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'A'],
             [
                 'name' => 'SEDE VALLE SECO',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'phone_1' => '0242-3610061',
                 'phone_2' => '0242-3613722 (ABBA)',
                 'phone_3' => '0242-3612410',
@@ -564,7 +564,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'B'],
             [
                 'name' => 'CIAU VALLE SECO',
-                'ip' => '10.20.23.1',
+                'ip' => '192.168.1.1',
                 'phone_1' => '0242-3610061',
                 'phone_2' => '0242-3613722',
                 'phone_3' => '0242-3612410',
@@ -585,7 +585,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteB->id, 'device_number' => 1],
                 [
                     'name' => 'JEFE OFICINA',
-                    'ip' => '10.20.107.229',
+                    'ip' => '192.168.107.229',
                     'normal_state_msg' => '✅ $NAMESITEBEQUIPO1',
                     'error_state_msg' => '❌ $NAMESITEBEQUIPO1',
                     'is_active' => true,
@@ -595,7 +595,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteB->id, 'device_number' => 2],
                 [
                     'name' => 'TAQUILLA 01',
-                    'ip' => '10.20.107.223',
+                    'ip' => '192.168.107.223',
                     'normal_state_msg' => '✅ $NAMESITEBEQUIPO2',
                     'error_state_msg' => '❌ $NAMESITEBEQUIPO2',
                     'is_active' => true,
@@ -605,7 +605,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteB->id, 'device_number' => 3],
                 [
                     'name' => 'TAQUILLA 02',
-                    'ip' => '10.20.107.228',
+                    'ip' => '192.168.107.228',
                     'normal_state_msg' => '✅ $NAMESITEBEQUIPO3',
                     'error_state_msg' => '❌ $NAMESITEBEQUIPO3',
                     'is_active' => true,
@@ -615,7 +615,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteB->id, 'device_number' => 4],
                 [
                     'name' => 'IMPRESORA RED',
-                    'ip' => '10.20.107.201',
+                    'ip' => '192.168.107.201',
                     'normal_state_msg' => '✅ $NAMESITEBEQUIPO4',
                     'error_state_msg' => '❌ $NAMESITEBEQUIPO4',
                     'is_active' => true,
@@ -665,7 +665,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'C'],
             [
                 'name' => 'CIAU CONSOLIDADO',
-                'ip' => '10.20.107.131',
+                'ip' => '192.168.107.131',
                 'phone_1' => '0242 - 3618047',
                 'phone_2' => '0242 - 3619584',
                 'phone_3' => 'NO CONFIGURADO',
@@ -686,7 +686,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteC->id, 'device_number' => 1],
                 [
                     'name' => 'JEFE OFICINA',
-                    'ip' => '10.20.107.154',
+                    'ip' => '192.168.107.154',
                     'normal_state_msg' => '✅ $NAMESITECEQUIPO1',
                     'error_state_msg' => '❌ $NAMESITECEQUIPO1',
                     'is_active' => true,
@@ -696,7 +696,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteC->id, 'device_number' => 2],
                 [
                     'name' => 'TAQUILLA 01',
-                    'ip' => '10.20.107.150',
+                    'ip' => '192.168.107.150',
                     'normal_state_msg' => '✅ $NAMESITECEQUIPO2',
                     'error_state_msg' => '❌ $NAMESITECEQUIPO2',
                     'is_active' => true,
@@ -706,7 +706,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteC->id, 'device_number' => 3],
                 [
                     'name' => 'TAQUILLA 02',
-                    'ip' => '10.20.107.151',
+                    'ip' => '192.168.107.151',
                     'normal_state_msg' => '✅ $NAMESITECEQUIPO3',
                     'error_state_msg' => '❌ $NAMESITECEQUIPO3',
                     'is_active' => true,
@@ -716,7 +716,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteC->id, 'device_number' => 4],
                 [
                     'name' => 'ATU 01',
-                    'ip' => '10.20.107.153',
+                    'ip' => '192.168.107.153',
                     'normal_state_msg' => '✅ $NAMESITECEQUIPO4',
                     'error_state_msg' => '❌ $NAMESITECEQUIPO4',
                     'is_active' => true,
@@ -726,7 +726,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteC->id, 'device_number' => 5],
                 [
                     'name' => 'IMPRESORA RED',
-                    'ip' => '10.20.107.136',
+                    'ip' => '192.168.107.136',
                     'normal_state_msg' => '✅ $NAMESITECEQUIPO5',
                     'error_state_msg' => '❌ $NAMESITECEQUIPO5',
                     'is_active' => true,
@@ -766,7 +766,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'D'],
             [
                 'name' => 'CIAU PASEO MARIÑO',
-                'ip' => '10.20.107.131',
+                'ip' => '192.168.107.131',
                 'phone_1' => '0242 - 3618706',
                 'phone_2' => '0242 - 3611317',
                 'phone_3' => 'NO CONFIGURADO',
@@ -787,7 +787,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteD->id, 'device_number' => 1],
                 [
                     'name' => 'TAQUILLA 01',
-                    'ip' => '10.20.107.152',
+                    'ip' => '192.168.107.152',
                     'normal_state_msg' => '✅ $NAMESITEDEQUIPO1',
                     'error_state_msg' => '❌ $NAMESITEDEQUIPO1',
                     'is_active' => true,
@@ -797,7 +797,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteD->id, 'device_number' => 2],
                 [
                     'name' => 'TAQUILLA 02',
-                    'ip' => '10.20.107.148',
+                    'ip' => '192.168.107.148',
                     'normal_state_msg' => '✅ $NAMESITEDEQUIPO2',
                     'error_state_msg' => '❌ $NAMESITEDEQUIPO2',
                     'is_active' => true,
@@ -867,7 +867,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'E'],
             [
                 'name' => 'CIAU MORON',
-                'ip' => '10.20.106.193',
+                'ip' => '192.168.106.193',
                 'phone_1' => '0242 - 3724250',
                 'phone_2' => '0242 - 3720540',
                 'phone_3' => 'NO CONFIGURADO',
@@ -888,7 +888,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 1],
                 [
                     'name' => 'JEFE OFICINA',
-                    'ip' => '10.20.106.241',
+                    'ip' => '192.168.106.241',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO1',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO1',
                     'is_active' => true,
@@ -898,7 +898,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 2],
                 [
                     'name' => 'TAQUILLA 01',
-                    'ip' => '10.20.106.240',
+                    'ip' => '192.168.106.240',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO2',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO2',
                     'is_active' => true,
@@ -908,7 +908,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 3],
                 [
                     'name' => 'TAQUILLA 02',
-                    'ip' => '10.20.106.239',
+                    'ip' => '192.168.106.239',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO3',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO3',
                     'is_active' => true,
@@ -918,7 +918,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 4],
                 [
                     'name' => 'TAQUILLA 03',
-                    'ip' => '10.20.106.238',
+                    'ip' => '192.168.106.238',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO4',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO4',
                     'is_active' => true,
@@ -928,7 +928,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 5],
                 [
                     'name' => 'ATU 01',
-                    'ip' => '10.20.106.242',
+                    'ip' => '192.168.106.242',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO5',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO5',
                     'is_active' => true,
@@ -938,7 +938,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteE->id, 'device_number' => 6],
                 [
                     'name' => 'IMPRESORA RED',
-                    'ip' => '10.20.106.253',
+                    'ip' => '192.168.106.253',
                     'normal_state_msg' => '✅ $NAMESITEEEQUIPO6',
                     'error_state_msg' => '❌ $NAMESITEEEQUIPO6',
                     'is_active' => true,
@@ -1069,7 +1069,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'G'],
             [
                 'name' => 'CORDINACION TRASMISION',
-                'ip' => '10.20.27.65',
+                'ip' => '192.168.27.65',
                 'phone_1' => '0242-3621429',
                 'phone_2' => 'NO CONFIGURADO',
                 'phone_3' => 'NO CONFIGURADO',
@@ -1090,7 +1090,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteG->id, 'device_number' => 1],
                 [
                     'name' => 'EQUIPO 01',
-                    'ip' => '10.20.27.81',
+                    'ip' => '192.168.27.81',
                     'normal_state_msg' => '✅ $NAMESITEGEQUIPO1',
                     'error_state_msg' => '❌ $NAMESITEGEQUIPO1',
                     'is_active' => true,
@@ -1100,7 +1100,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteG->id, 'device_number' => 2],
                 [
                     'name' => 'EQUIPO 02',
-                    'ip' => '10.20.27.84',
+                    'ip' => '192.168.27.84',
                     'normal_state_msg' => '✅ $NAMESITEGEQUIPO2',
                     'error_state_msg' => '❌ $NAMESITEGEQUIPO2',
                     'is_active' => true,
@@ -1110,7 +1110,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteG->id, 'device_number' => 3],
                 [
                     'name' => 'EQUIPO 03',
-                    'ip' => '10.20.27.84',
+                    'ip' => '192.168.27.84',
                     'normal_state_msg' => '✅ $NAMESITEGEQUIPO3',
                     'error_state_msg' => '❌ $NAMESITEGEQUIPO3',
                     'is_active' => true,
@@ -1120,7 +1120,7 @@ class InitialMonitoringSeeder extends Seeder
                 ['monitored_site_id' => $siteG->id, 'device_number' => 4],
                 [
                     'name' => 'IMPRESORA HP2420',
-                    'ip' => '10.20.27.90',
+                    'ip' => '192.168.27.90',
                     'normal_state_msg' => '✅ $NAMESITEGEQUIPO4',
                     'error_state_msg' => '❌ $NAMESITEGEQUIPO4',
                     'is_active' => true,
@@ -1274,7 +1274,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'A'],
             [
                 'name' => 'Squid - Dansguardian - CARABOBO',
-                'ip_port' => '10.20.0.89:8080',
+                'ip_port' => '192.168.0.89:8080',
                 'auth_userpass' => 'usuario_proxy:clave_proxy',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,
@@ -1284,7 +1284,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'B'],
             [
                 'name' => 'Squid - Dansguardian - VALLE SECO',
-                'ip_port' => '10.20.23.65:8080',
+                'ip_port' => '192.168.1.65:8080',
                 'auth_userpass' => 'usuario_proxy:clave_proxy',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,
@@ -1294,7 +1294,7 @@ class InitialMonitoringSeeder extends Seeder
             ['letter' => 'C'],
             [
                 'name' => 'PFsense - CARABOBO (119)',
-                'ip_port' => '10.20.0.119:8080',
+                'ip_port' => '192.168.0.119:8080',
                 'auth_userpass' => 'usuario_proxy:clave_proxy',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,

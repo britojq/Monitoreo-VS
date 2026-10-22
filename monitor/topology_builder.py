@@ -98,15 +98,15 @@ class TopologyBuilder:
         # Mapeo de dispositivos por IP
         ip_to_snmp = {d["ip_address"]: d for d in snmp_devs if d.get("ip_address")}
         
-        wan_gw = ip_to_snmp.get("10.20.0.1")
-        core_switch = ip_to_snmp.get("10.20.23.1")
-        sw01 = ip_to_snmp.get("10.20.23.2")
-        sw02 = ip_to_snmp.get("10.20.23.4")
-        sw03 = ip_to_snmp.get("10.20.23.5")
-        pfsense = ip_to_snmp.get("10.20.23.252")
-        sw_trans = ip_to_snmp.get("10.20.27.83")
-        sw_consol = ip_to_snmp.get("10.20.107.131")
-        sw_moron = ip_to_snmp.get("10.20.106.193")
+        wan_gw = ip_to_snmp.get("192.168.0.1")
+        core_switch = ip_to_snmp.get("192.168.1.1")
+        sw01 = ip_to_snmp.get("192.168.1.2")
+        sw02 = ip_to_snmp.get("192.168.1.4")
+        sw03 = ip_to_snmp.get("192.168.1.5")
+        pfsense = ip_to_snmp.get("192.168.1.250")
+        sw_trans = ip_to_snmp.get("192.168.27.83")
+        sw_consol = ip_to_snmp.get("192.168.107.131")
+        sw_moron = ip_to_snmp.get("192.168.106.193")
 
         discovered_links = []
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -218,13 +218,13 @@ class TopologyBuilder:
             target_snmp = None
             parent_switch = None
 
-            if ip == "10.20.23.64" or ip == "10.20.23.232":
+            if ip == "192.168.1.64" or ip == "192.168.1.232":
                 parent_switch = sw02 or sw01
-            elif ip.startswith("10.20.27."):
+            elif ip.startswith("192.168.27."):
                 parent_switch = sw_trans or sw01
-            elif ip.startswith("10.20.107."):
+            elif ip.startswith("192.168.107."):
                 parent_switch = sw_consol or sw01
-            elif ip.startswith("10.20.106."):
+            elif ip.startswith("192.168.106."):
                 parent_switch = sw_moron or wan_gw
             else:
                 parent_switch = sw01 or core_switch

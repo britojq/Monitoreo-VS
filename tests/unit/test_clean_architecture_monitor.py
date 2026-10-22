@@ -60,7 +60,7 @@ class TestCleanArchitectureDomainEntities:
         eq = EquipmentEntity(
             id=1,
             name="Router",
-            ip_host="10.20.23.1",
+            ip_host="192.168.1.1",
             site_letter="A",
             num=1,
         )
@@ -68,7 +68,7 @@ class TestCleanArchitectureDomainEntities:
             id=10,
             name="CIAU Principal",
             letter="A",
-            ip_host="10.20.23.1",
+            ip_host="192.168.1.1",
             equipment=(eq,),
         )
         assert site.display_name == "[A] CIAU Principal"
@@ -83,7 +83,7 @@ class TestCleanArchitectureDomainEntities:
         dev = NetworkDeviceEntity(
             id=5,
             label_name="JEFE DE OFICINA",  # Nombre Etiqueta (SSOT)
-            ip_address="10.20.23.100",
+            ip_address="192.168.1.100",
             hostname="CENCARCOM012010",    # Nombre de Equipo (Secundario)
         )
         assert dev.display_identity == "JEFE DE OFICINA"
@@ -96,7 +96,7 @@ class TestCleanArchitectureDomainEntities:
             event_type="LOGIN",
             severity="WARNING",
             title="Acceso Detectado",
-            message="Login desde 10.20.23.50",
+            message="Login desde 192.168.1.50",
             target_identifier="admin",
         )
         assert alert_sec.is_security_event is True

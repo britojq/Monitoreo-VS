@@ -102,7 +102,7 @@ class AgentDeployService
         if (!preg_match('/^([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}$/', $rawSubnet)) {
             return [
                 'success' => false,
-                'error' => 'Formato de subred inválido. Utilice notación CIDR (ej: 10.20.106.0/24).',
+                'error' => 'Formato de subred inválido. Utilice notación CIDR (ej: 192.168.106.0/24).',
                 'status_code' => 422,
             ];
         }

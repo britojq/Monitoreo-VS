@@ -36,10 +36,10 @@ def is_port_open(host: str, port: int, timeout: float = 2.0) -> bool:
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
 
-DEV_SERVER_URL = "http://10.20.23.221/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
-PROD_SERVER_URL = "http://10.20.23.252/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
-DEV_DEPLOY_BASE = "http://10.20.23.221"
-PROD_DEPLOY_BASE = "http://10.20.23.252"
+DEV_SERVER_URL = "http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
+PROD_SERVER_URL = "http://192.168.1.250/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
+DEV_DEPLOY_BASE = "http://192.168.1.220"
+PROD_DEPLOY_BASE = "http://192.168.1.250"
 
 
 def get_target_url(

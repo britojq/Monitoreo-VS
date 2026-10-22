@@ -19,7 +19,7 @@ class ClusterConfigService
         $default = [
             'node_role' => $validRole,
             'cluster_token' => (string) BotSetting::get('cluster_token', ''),
-            'master_api_url' => rtrim((string) BotSetting::get('cluster_master_api_url', 'http://10.20.23.252'), '/'),
+            'master_api_url' => rtrim((string) BotSetting::get('cluster_master_api_url', 'http://192.168.1.250'), '/'),
             'cluster_last_sync_at' => BotSetting::get('cluster_last_sync_at', null),
             'cluster_last_sync_status' => (string) BotSetting::get('cluster_last_sync_status', 'master_active'),
             'slave_sync_interval_minutes' => max(1, min(1440, (int) BotSetting::get('cluster_slave_sync_interval_minutes', 2))),

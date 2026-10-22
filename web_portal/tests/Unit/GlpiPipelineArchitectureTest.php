@@ -56,7 +56,7 @@ class GlpiPipelineArchitectureTest extends TestCase
                 'networks' => [
                     [
                         'mac' => '00:11:22:33:44:55',
-                        'ipaddress' => '10.20.23.88',
+                        'ipaddress' => '192.168.1.88',
                         'status' => 'up',
                         'description' => 'eth0',
                     ]
@@ -64,13 +64,13 @@ class GlpiPipelineArchitectureTest extends TestCase
             ]
         ];
 
-        $norm = $normalizer->normalize($rawParsed, '10.20.23.88');
+        $norm = $normalizer->normalize($rawParsed, '192.168.1.88');
         $this->assertEquals('SRV-TEST', $norm['name']);
         $this->assertEquals('Dell Inc.', $norm['brand']);
         $this->assertEquals('PowerEdge R640', $norm['model']);
         $this->assertNull($norm['serial_number']);
         $this->assertEquals('00:11:22:33:44:55', $norm['mac_address']);
-        $this->assertEquals('10.20.23.88', $norm['ip_address']);
+        $this->assertEquals('192.168.1.88', $norm['ip_address']);
     }
 
     public function test_facade_exposes_submodules_cleanly(): void

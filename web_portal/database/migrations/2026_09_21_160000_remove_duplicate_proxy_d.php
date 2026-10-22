@@ -12,11 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Buscar proxy duplicado con letra 'D' o apuntando al mismo IP que Proxy A (10.20.0.89:8080) pero con id distinto de 1
+        // Buscar proxy duplicado con letra 'D' o apuntando al mismo IP que Proxy A (192.168.0.89:8080) pero con id distinto de 1
         $proxyD = DB::table('monitored_proxies')
             ->where('letter', 'D')
             ->orWhere(function ($query) {
-                $query->where('ip_port', '10.20.0.89:8080')
+                $query->where('ip_port', '192.168.0.89:8080')
                       ->where('id', '>', 1);
             })
             ->first();

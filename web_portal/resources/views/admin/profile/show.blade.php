@@ -323,7 +323,7 @@
                         <div>
                             <label class="block text-obsidian-muted mb-1 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-sm text-obsidian-cyan">pin</span>
-                                <span>N° de Personal / Ficha empresa</span>
+                                <span>N° de Personal / Ficha Corporativa</span>
                                 @if($user->isLdapUser() && !empty($user->personal_number))
                                     <span class="text-[10px] text-obsidian-cyan font-mono">(Directorio Activo)</span>
                                 @endif

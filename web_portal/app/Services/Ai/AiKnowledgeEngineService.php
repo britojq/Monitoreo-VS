@@ -137,10 +137,10 @@ PROMPT;
         $lines[] = "🔌 DISPOSITIVOS DE RED: {$devsTotal} switches y routers | {$devsUp} en línea.";
         $lines[] = "🌐 PROXIES DE NAVEGACIÓN: {$proxTotal} monitoreados (" . implode(', ', $proxiesList) . ").";
         $lines[] = "📍 SUBREDES CORPORATIVAS OPERATIVAS PRINCIPALES:";
-        $lines[] = "  • Sede Valle Seco: 10.20.107.0/24 (LAN Operativa y Servidores)";
-        $lines[] = "  • Sede Planta / Talleres: 10.20.106.0/24 (LAN Industrial)";
-        $lines[] = "  • Sede Candelaria / Almacén: 10.20.27.0/24";
-        $lines[] = "  • Infraestructura / Gestión: 10.20.23.0/24";
+        $lines[] = "  • Sede Valle Seco: 192.168.107.0/24 (LAN Operativa y Servidores)";
+        $lines[] = "  • Sede Planta / Talleres: 192.168.106.0/24 (LAN Industrial)";
+        $lines[] = "  • Sede Candelaria / Almacén: 192.168.27.0/24";
+        $lines[] = "  • Infraestructura / Gestión: 192.168.1.0/24";
         $lines[] = "\n📌 DIRECTRIZ OPERATIVA OBLIGATORIA: Eres el asistente oficial de este sistema. Si el usuario pregunta por servicios caídos, sedes caídas, subredes o disponibilidad general, o si discute o envía comandos del sistema como /servicios, responde DIRECTAMENTE utilizando estos datos fácticos. Queda TERMINANTEMENTE PROHIBIDO responder que no tienes acceso a la información o que este es un entorno privado desconocido.";
 
         return implode("\n", $lines);
@@ -185,6 +185,7 @@ PROMPT;
 
             $domainMarkers = [
                 'DOMINIO DE ENERGÍA Y RESPALDO ELÉCTRICO',
+                'DOMINIO DE ACTAS DE ASIGNACIÓN ITAM',
                 'DOMINIO DE INVENTARIO Y ACTIVOS ITAM',
                 'DOMINIO DE TICKETS Y MANTENIMIENTO TÉCNICO ITAM',
                 'DOMINIO DE ALERTAS E INCIDENTES NOC',
@@ -322,36 +323,45 @@ PROMPT;
 
         // Si es una consulta de conteo general
         if ($hasAssignKw && ($askingCounts || empty($personTokens))) {
-            $totalAssignments = InventoryAssignment::where('status', 'active')->count();
-            $totalUsers = InventoryAssignment::where('status', 'active')->distinct('custodian_name')->count('custodian_name');
-            $totalSites = InventoryAssignment::where('status', 'active')->distinct('monitored_site_id')->count('monitored_site_id');
-
-            $recent = InventoryAssignment::with(['asset', 'site'])
+            $scannedActs = InventoryAssignment::with(['asset', 'site'])
                 ->where('status', 'active')
-                ->latest('id')
-                ->take(10)
+                ->whereNotNull('document_pdf_path')
+                ->where('document_pdf_path', '!=', '')
+                ->orderBy('id', 'asc')
                 ->get();
+            $scannedCount = $scannedActs->count();
+
+            $totalAssignments = InventoryAssignment::where('status', 'active')->count();
+            $totalAssets = InventoryAsset::count();
 
             $lines = [
-                "📊 RESUMEN DE ASIGNACIONES Y USUARIOS (MariaDB - ITAM):",
-                "- Total de Actas de Asignación Activas: {$totalAssignments}",
-                "- Total de Usuarios / Funcionarios Receptores Únicos: {$totalUsers}",
-                "- Sedes Involucradas: {$totalSites}",
+                "📊 CENSO Y AUDITORÍA DE ACTAS DE ASIGNACIÓN (MariaDB ITAM - SSOT):",
+                "- Total de Equipos / Activos Registrados en el Sistema: {$totalAssets}",
+                "- Equipos con Acta de Asignación Oficial Física Escaneada en PDF (Formato UINF-4.05): {$scannedCount} equipos (todos pertenecientes a la Coordinación de Transmisión).",
+                "- Total de Registros de Movimiento / Asignación en Base de Datos: {$totalAssignments} registros (incluye pases preliminares y movimientos sin PDF adjunto).",
                 "",
-                "📋 Muestra de Asignaciones Vigentes Registradas:",
+                "📋 DETALLE EXHAUSTIVO DE LOS {$scannedCount} EQUIPOS CON ACTA FÍSICA ESCANEADA:",
             ];
 
-            foreach ($recent as $r) {
-                $assetName = $r->asset?->name ?? 'Equipo s/n';
-                $assetIp = $r->asset?->ip_address ?? 's/ip';
-                $siteName = $r->site?->name ?? 'Sede General';
-                $dept = $r->custodian_department ?: 'Sin Depto';
-                $lines[] = "• Acta: {$r->assignment_code} | Responsable: {$r->custodian_name} ({$dept}) | Equipo: {$assetName} (IP: {$assetIp}) | Sede: {$siteName}";
+            foreach ($scannedActs as $idx => $r) {
+                $num = $idx + 1;
+                $assetName = $r->asset?->name ?? 'Equipo';
+                $assetSerial = $r->asset?->serial_number ?: 'N/A';
+                $brandMod = trim(($r->asset?->brand ?? '') . ' ' . ($r->asset?->model ?? '')) ?: 'Desktop';
+                $dept = $r->custodian_department ?: 'Transmisión';
+                $ci = $r->custodian_id_number ?: 'N/A';
+                $lines[] = "  {$num}. {$assetName} ({$brandMod}) | Serial: {$assetSerial}";
+                $lines[] = "     • Responsable: {$r->custodian_name} (CI: {$ci}) | Depto: {$dept}";
+                $lines[] = "     • Acta Oficial: {$r->assignment_code}";
+                $lines[] = "     • Archivo Escaneado: {$r->document_pdf_path}";
             }
+
+            $lines[] = "";
+            $lines[] = "📌 INSTRUCCIÓN OBLIGATORIA: En el sistema SÓLO existen {$scannedCount} equipos con acta de asignación física firmada y escaneada en formato PDF (EQUIPO 01, EQUIPO 02 y EQUIPO 03 de Coordinación de Transmisión). Queda TERMINANTEMENTE PROHIBIDO afirmar que hay 18 actas. El número 18 corresponde a los equipos que poseen serial de chasis/CPU registrado, NO a actas de asignación. Bajo NINGUNA circunstancia generes código SQL ni pidas al usuario consultar la base de datos.";
 
             return [
                 'text' => implode("\n", $lines),
-                'entity' => ['type' => 'assignments', 'name' => 'Resumen General de Asignaciones'],
+                'entity' => ['type' => 'assignments', 'name' => 'Resumen General de Actas de Asignación'],
             ];
         }
 

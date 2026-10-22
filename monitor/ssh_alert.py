@@ -104,13 +104,13 @@ def get_network_context(ip: str) -> str:
     """Identifica el rol de red o la entidad asociada a la IP."""
     if not ip or ip in ("desconocida/local", "localhost", "127.0.0.1", "::1"):
         return "Consola Local / Loopback"
-    if ip == "10.20.23.221":
+    if ip == "192.168.1.220":
         return "Servidor Desarrollo (Esclavo)"
-    if ip == "10.20.23.252":
+    if ip == "192.168.1.250":
         return "Servidor Producción (Master)"
-    if ip == "10.20.23.1":
+    if ip == "192.168.1.1":
         return "Router Core / Gateway Valle Seco"
-    if ip.startswith("10.20.23."):
+    if ip.startswith("192.168.1."):
         return "Red Corporativa Valle Seco (LAN)"
     if ip.startswith("10.") or ip.startswith("192.168.") or (ip.startswith("172.") and 16 <= int(ip.split(".")[1]) <= 31):
         return "Red Privada Interna (VPN/VLAN)"
