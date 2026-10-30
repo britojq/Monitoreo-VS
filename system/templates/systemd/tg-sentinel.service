@@ -1,0 +1,18 @@
+[Unit]
+Description=Sentinel Bot - Gestion de Onboarding y Activacion de Licencia
+After=network.target network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/sonar
+ExecStart=/opt/sonar/venv/bin/python /opt/sonar/tools/sentinel_bot.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

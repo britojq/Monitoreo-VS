@@ -1,0 +1,68 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\DiscoverySubnet;
+use App\Models\MonitoredSite;
+use Illuminate\Database\Seeder;
+
+class DiscoverySubnetsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // Obtener IDs de sedes conocidas si existen
+        $valleSecoSite = MonitoredSite::where('name', 'like', '%VALLE SECO%')->first();
+        $moronSite = MonitoredSite::where('name', 'like', '%MORON%')->first();
+        $pasMarianoSite = MonitoredSite::where('name', 'like', '%MARI%')->first();
+
+        $subnets = [
+            [
+                'subnet' => '192.168.1.0/24',
+                'site_id' => $valleSecoSite?->id,
+                'scan_method' => 'arp_sweep',
+                'scan_interval_minutes' => 15,
+                'scan_window_start' => null,
+                'scan_window_end' => null,
+                'rate_limit_pps' => 150,
+                'is_active' => true,
+            ],
+            [
+                'subnet' => '192.168.0.0/24',
+                'site_id' => null, // Red Central / Servidores (No asociado a sede comercial física específica)
+                'scan_method' => 'arp_sweep',
+                'scan_interval_minutes' => 30,
+                'scan_window_start' => null,
+                'scan_window_end' => null,
+                'rate_limit_pps' => 100,
+                'is_active' => true,
+            ],
+            [
+                'subnet' => '192.168.94.0/24',
+                'site_id' => $moronSite?->id,
+                'scan_method' => 'arp_sweep',
+                'scan_interval_minutes' => 30,
+                'scan_window_start' => null,
+                'scan_window_end' => null,
+                'rate_limit_pps' => 100,
+                'is_active' => true,
+            ],
+            [
+                'subnet' => '192.168.106.0/24',
+                'site_id' => $pasMarianoSite?->id,
+                'scan_method' => 'arp_sweep',
+                'scan_interval_minutes' => 60,
+                'scan_window_start' => null,
+                'scan_window_end' => null,
+                'rate_limit_pps' => 80,
+                'is_active' => true,
+            ],
+        ];
+
+        foreach ($subnets as $s) {
+            DiscoverySubnet::updateOrCreate(
+                ['subnet' => $s['subnet']],
+                $s
+            );
+        }
+    }
+}

@@ -1,0 +1,2 @@
+# Reglas de ejecucion desatendida para NET Radar y Monitoreo Web
+www-data ALL=(ALL) NOPASSWD: /opt/sonar/venv/bin/python *, /usr/bin/tcpdump *, /usr/bin/tshark *, /bin/kill *, /usr/bin/kill *

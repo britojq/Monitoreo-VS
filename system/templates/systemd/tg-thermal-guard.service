@@ -1,0 +1,15 @@
+[Unit]
+Description=Guardián Térmico y de Protección Física de CPU
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/sonar
+ExecStart=/opt/sonar/venv/bin/python /opt/sonar/monitor/thermal_guard.py --daemon
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
