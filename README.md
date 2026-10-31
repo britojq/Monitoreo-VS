@@ -1,219 +1,381 @@
-# 🛡️ Plataforma de Monitoreo y Administración de Red (Monitoreo Valle Seco)
-### *Sistema Integral de Supervisión de Infraestructura Crítica, Telemetría y Continuidad Operativa*
+# 🛡️ Plataforma Integral de Monitoreo y Administración Valle Seco
+### *Centro de Operaciones y Monitoreo de Infraestructura de Red*
 
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/Version-v5.45.80-007acc?style=flat&logo=git&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
+[![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%2010%2F10-success?style=flat&logo=blueprint&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
+[![Quality Barrier](https://img.shields.io/badge/Quality%20Barrier-Zero--Fail-brightgreen?style=flat&logo=shield&logoColor=white)](tools/certify_system_integrity.py)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.11+-003545?style=flat&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4.x-FF6384?style=flat&logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
-[![Cytoscape.js](https://img.shields.io/badge/Cytoscape.js-3.30-navy?style=flat)](https://js.cytoscape.org/)
 [![Apache](https://img.shields.io/badge/Apache-2.4-D22128?style=flat&logo=apache&logoColor=white)](https://httpd.apache.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Version](https://img.shields.io/badge/Version-v5.26.30-0ea5e9?style=flat)](https://github.com/britojq/Monitoreo-VS)
 [![License](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 
-> **Trayectoria Institucional:** Proyecto Inicial: 2018 | Versión Enterprise Unificada: 2018 - 2026 (`v5.26.x`)  
-> **Arquitectura Modular:** Ecosistema Concentrador ITAM, Monitoreo de Red, Grafo de Conocimiento y Motor Local de IA  
-> **Misión:** Supervisión integral de continuidad operativa, telemetría de infraestructura crítica y gestión de activos tecnológicos.  
-> **Autor / Administrador:** Operador ATIT ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
+> **Organización:** Centro de Operaciones y Monitoreo de Redes  
+> **Autor / Administrador:** José A. Brito H. ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
+> **Versión Activa:** `v5.45.80` (Arquitectura Desacoplada SOLID 10/10)  
+> **Arquitectura Modular:** Módulos de la Plataforma: [1 / 5] Activo (Módulo Actual: Sistema de Monitoreo)  
+> **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
+> **Topología de Servidores:** Servidor Principal Master (`192.168.1.250`) / Servidor Réplica Slave (`192.168.1.220`)  
+> **Acceso Portal Web:** `http://monitoreo-vs.local/`  
 
 ---
 
-## 🌟 Descripción General
+## 🌟 Visión General del Ecosistema
 
-Esta plataforma es una solución integral de supervisión tecnológica, gestión de inventario de activos TI (ITAM), telemetría de servicios de red, diagnóstico proactivo y administración remota concebida para entornos corporativos y de misión crítica.
+La **Plataforma Valle Seco** es una solución de telemetría de red, supervisión de aplicativos corporativos, administración remota de host físico y blindaje de seguridad concebida para operar en entornos de misión crítica con alta demanda de disponibilidad.
 
-El sistema unifica un portal web interactivo de alta reactividad en **Laravel 13**, demonios concurrentes de escaneo y telemetría en **Python 3.11+**, asistentes de gestión cifrada vía **Telegram**, un Grafo de Conocimiento (Knowledge Graph) para asistencia técnica contextual, un motor local de inteligencia artificial predictiva y soporte nativo para arquitecturas de clúster distribuido (**Master / Slave**).
+El ecosistema integra de manera coordinada servicios web, bots de mensajería cifrada, demonios de seguridad, motores asíncronos en Python y un clúster distribuido de alta disponibilidad.
 
----
-
-## 🏗️ Arquitectura del Sistema
-
-```mermaid
-flowchart TD
-    subgraph Portal["🌐 Portal Web (Laravel 13)"]
-        Dashboard["Dashboard Reactivo"] --> Controllers["Controladores Web / API"]
-        Controllers --> DB[(MariaDB 10.11+)]
-        Controllers --> RBAC["Seguridad & RBAC"]
-        Controllers --> ITAM["Gestión de Activos & Puestos"]
-    end
-    
-    subgraph Demonios["📡 Demonios de Monitoreo (Python 3.11+)"]
-        Engine["monitor_engine (Sondeo Servicios)"] --> DB
-        SNMP["snmp_poller (Switches, Routers, UPS)"] --> Dispositivos["Dispositivos de Red"]
-        SSL["ssl_checker (Certificados TLS)"] --> ServiciosWeb["Servicios Web HTTPS"]
-        Thermal["thermal_guard (Sensores Térmicos)"] --> Sensores["Sensores Hardware"]
-        NetRadar["net_radar_engine (Auto-Discovery)"] --> DB
-    end
-    
-    subgraph TelegramBot["🤖 Asistente de Gestión Telegram"]
-        Bot["bot.py (Gestión y Alertas)"] --> DB
-        Bot --> LocalIA["Motor Local de IA (Análisis Proactivo & RAG)"]
-        Bot --> ClusterAPI["API de Clúster (Master / Slave)"]
-    end
-    
-    subgraph Seguridad["🛡️ Blindaje y Perímetro"]
-        F2B["Fail2ban Jails"] --> Firewall["Cortafuegos / iptables"]
-        Shield["Sentinel Terminal Shield"] --> PAM["PAM Hooks (SSH / Sudo / Su)"]
-    end
-    
-    Dashboard <--> ClusterAPI
-    Engine --> ClusterAPI
+```
+                              ┌────────────────────────────────────────────────────────┐
+                              │     🖥️ INFRAESTRUCTURA DISTRIBUIDA VALLE SECO         │
+                              └──────────────────────────┬─────────────────────────────┘
+                                                         │
+                ┌────────────────────────────────────────┴────────────────────────────────────────┐
+                ▼                                                                                 ▼
+   ┌──────────────────────────────┐                                                  ┌──────────────────────────────┐
+   │    👑 NODO MASTER (252)       │                                                  │     🔗 NODO SLAVE (221)      │
+   │  • Escaneo oficial de red    │                                                  │  • Réplica de sólo lectura   │
+   │  • Consultas hacia pfSense   │ ─── Telemetría Snapshot / API Cifrada ────────▶  │  • Sin colisión en pfSense   │
+   │  • Configuración mutable     │       [X-CLUSTER-TOKEN /api/cluster/*]           │  • Comandos independientes   │
+   └──────────────┬───────────────┘                                                  └──────────────┬───────────────┘
+                  │                                                                                 │
+                  └──────────────────────────────────────┬──────────────────────────────────────────┘
+                                                         │
+       ┌───────────────────────────┬─────────────────────┴─────────────┬───────────────────────────┐
+       ▼                           ▼                                   ▼                           ▼
+┌─────────────────────┐ ┌─────────────────────┐             ┌─────────────────────┐     ┌─────────────────────┐
+│   🤖 Admin Bot      │ │  🛡️ Sentinel Bot    │             │  🌐 Portal Web      │     │  🌡️ Thermal Guard   │
+│   tg-admin-bot      │ │  tg-sentinel-bot    │             │  Laravel 13+ Apache │     │  tg-thermal-guard   │
+│ (Admin & Motor IA)  │ │ (DRM & Hardware ID) │             │(monitoreo-vs.local) │     │ (Parada Segura 75°C)│
+└──────────┬──────────┘ └──────────┬──────────┘             └──────────┬──────────┘     └──────────┬──────────┘
+           │                       │                                   │                           │
+           └───────────────────────┴─────────────────┬─────────────────┴───────────────────────────┘
+                                                     ▼
+                                      ┌──────────────────────────────┐
+                                      │  🗄️ Base de Datos MariaDB    │
+                                      │  Database: monitoreo_vs      │
+                                      │  User: monitoreo_user        │
+                                      └──────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Capacidades y Módulos del Sistema
+## 🏛️ Arquitectura de Clúster de Alta Disponibilidad (Master / Slave)
 
-1. **Tablero de Control Web en Tiempo Real:** Visualización instantánea del estado de servicios corporativos, sedes remotas y proxies con refresco asíncrono y gráficas de disponibilidad continua (24h).
-2. **Gestor Integral de Activos ITAM y Puestos de Trabajo:** Censo maestro de equipos de red y computación, componentes internos (CPU, memoria RAM, discos duros), periféricos asociados (monitores, teclados, protectores), historial de mantenimiento y trazabilidad documental de actas de asignación oficiales en PDF.
-3. **Topología de Red Interactiva:** Renderizado de mapas de red mediante motor gráfico embebido 100% local (Cytoscape.js, sin dependencias de CDNs externas). Algoritmos de auto-distribución (COSE, Jerárquico, Concéntrico) e inspección de interfaces en tiempo real.
-4. **Encendido Remoto Wake-on-LAN (WOL):** Despacho de paquetes *Magic Packet* para encendido de estaciones y servidores remotos desde la interfaz web o mediante comandos de Telegram (`/wol`).
-5. **Grafo de Conocimiento y Asistente de IA Local:** Motor relacional de infraestructura (Knowledge Graph) con inyección contextual determinista (RAG) sobre MariaDB como Única Fuente de Verdad (SSOT), permitiendo consultas conversacionales de telemetría, asignaciones, seriales y averías sin dependencias externas.
-6. **Motor de IA Predictiva y Análisis Proactivo:** Algoritmos estadísticos de regresión lineal ($y = mx + b$) y detección de anomalías por desvío estándar (>3σ) mediante el motor local de IA, anticipando saturación de almacenamiento, latencias anómalas o caídas de enlaces.
-7. **Gestor de Ciclo de Vida de Hardware:** Supervisión de fechas de compra, vigencia de garantías (alerta verde >60d, amarilla ≤60d, roja vencida), obsolescencia (EOL/EOS) y salud SMART de discos duros.
-8. **NET Radar y Descubrimiento Automático (Auto-Discovery):** Captura pasiva de tráfico, detección de equipos en red y clasificación automática de dispositivos autorizados frente a intrusos (*Rogue Devices*).
-9. **Monitoreo de Infraestructura y Certificados SSL:** Verificación continua de puertos TCP/UDP, ICMP, agentes SNMP v2c/v3 y alerta temprana de expiración de certificados SSL/TLS con cálculo de días restantes.
-10. **Blindaje de Seguridad y Contención:** Integración en PAM para notificación de accesos SSH, contención de sesiones `sudo` y `su / su -`, reglas perimetrales Fail2ban y Sentinel Terminal Shield.
-11. **Guardián Térmico de Hardware:** Supervisión continua de sensores de temperatura de CPU con protocolo de contención y apagado seguro automático ante sobrecalentamiento crítico (≥75°C).
-12. **Clúster de Alta Disponibilidad (Master / Slave):** Sincronización continua de telemetría e históricos mediante tokens criptográficos, con modo solo lectura garantizado en nodos esclavos para evitar saturación de firewalls.
+Para garantizar la continuidad operativa y evitar problemas de colisión de credenciales o saturación en el firewall perimetral (**pfSense**), la plataforma implementa una arquitectura de clúster con roles diferenciados:
 
----
-
-## 📋 Requisitos del Sistema
-
-- **Sistema Operativo:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS.
-- **PHP:** Versión 8.2 o superior (extensiones: `pdo_mysql`, `curl`, `gd`, `xml`, `mbstring`, `ldap`).
-- **Python:** Versión 3.11 o superior.
-- **Base de Datos:** MariaDB 10.11+ o MySQL 8.0+.
-- **Servidor Web:** Apache 2.4 o Nginx.
-
----
-
-## 🛠️ Instalación y Pasarela de Onboarding Seguro
-
-El sistema incluye un instalador unificado desatendido diseñado para llevar el servidor de 0 a 100 de forma completamente automatizada:
-
-```bash
-# 1. Clonar el repositorio oficial
-git clone https://github.com/britojq/Monitoreo-VS.git /scripts/telegram-admin-bot
-
-# 2. Acceder al directorio de trabajo
-cd /scripts/telegram-admin-bot
-
-# 3. Ejecutar el instalador maestro
-sudo bash installer/install.sh
+```
+                      ┌───────────────────────────────────────────────────┐
+                      │              SERVIDOR FIREWALL PFSENSE            │
+                      └─────────────────────────┬─────────────────────────┘
+                                                │ (Consultas y escaneos exclusivos)
+                                                ▼
+                                   ┌─────────────────────────┐
+                                   │    👑 SERVIDOR MASTER   │
+                                   │      (192.168.1.250)     │
+                                   └────────────┬────────────┘
+                                                │
+                 Snapshot JSON vía API Cifrada  │ (X-CLUSTER-TOKEN)
+                 Cadencia configurable (1-15m)  │ Latencia interna < 0.1s
+                                                ▼
+                                   ┌─────────────────────────┐
+                                   │    🔗 SERVIDOR SLAVE    │
+                                   │      (192.168.1.220)     │
+                                   └─────────────────────────┘
 ```
 
-### 🛡️ Pasarela de Onboarding con Sentinel Bot (Cero Colisiones)
+### 1. Rol Master (Servidor Principal - `192.168.1.250`):
+- **Escaneo Oficial de Infraestructura:** Es el único nodo autorizado para consultar directamente los estados de enlaces, proxies Squid y métricas de pfSense.
+- **Autoridad de Configuración:** Las adiciones, ediciones o eliminaciones de servicios, sedes y proxies se ejecutan exclusivamente en este nodo y se persisten en MariaDB SSOT (`monitoreo_vs`).
+- **Servidor de API de Clúster:** Expone el endpoint protegido `/api/cluster/snapshot` y `/api/cluster/telemetry`, que genera instantáneas completas de telemetría validadas criptográficamente mediante el encabezado `X-CLUSTER-TOKEN`.
 
-Para prevenir cualquier interferencia o conflicto de sesión (`Conflict: terminated by other getUpdates request`) con otros servidores en línea:
-
-1. **Primer Arranque Seguro:** En toda instalación nueva, el instalador mantiene el bot principal desactivado e inicia temporalmente el demonio **Sentinel Bot** (`sentinel_bot.service`) con credenciales administrativas dedicadas.
-2. **Notificación de Bienvenida:** Sentinel Bot envía una alerta automática al chat privado del Administrador con el Hostname, IPs detectadas y el Serial de Activación del hardware.
-3. **Autorización y Aprovisionamiento:** El Administrador autoriza el servidor y asigna su propio token de Telegram mediante:
-   - **Vía Telegram (Bot Centinela):**
-     ```text
-     /activar AUTH-XXXX-XXXX-XXXX-XXXX <NUEVO_TOKEN_BOT>
-     ```
-     *(o mediante el asistente guiado `/migrar`)*
-   - **Vía Consola (Shell / SSH):**
-     ```bash
-     activar AUTH-XXXX-XXXX-XXXX-XXXX [TOKEN_BOT]
-     ```
-4. **Conmutación Automática:** Una vez validado, el hardware queda criptográficamente anclado, Sentinel Bot habilita y arranca el bot principal (`tg-admin-bot.service`) y se desactiva permanentemente para ceder el control operativo.
+### 2. Rol Slave (Servidor Réplica - `192.168.1.220`):
+- **Cero Consultas Externas al Firewall:** No realiza escaneos directos a pfSense ni a la red WAN, eliminando riesgos de baneos o bloqueos por concurrencia de credenciales.
+- **Sincronización Asíncrona Ultraligera:** El demonio `monitor_web_sync.py` descarga automáticamente el snapshot del Master en intervalos ajustables (**1, 2, 5, 10 o 15 minutos**) con latencia interna inferior a 100 ms.
+- **Interfaz Adaptativa de Solo Lectura:** El portal web desactiva automáticamente los formularios de mutación de infraestructura y despliega avisos visuales explicativos.
+- **Autonomía Operativa de Comandos:** Mantiene plena autonomía para responder comandos en Telegram (`/servicios`, `/sedes`, etc.) permitiendo a los administradores contar con dos perspectivas independientes del estado operativo.
+- **Indicador HUD en TopBar:** Muestra el rol actual (**MAESTRO** o **ESCLAVO**) con tooltip informativo de estado de enlace, latencia y cadencia de actualización.
 
 ---
 
-## 🔒 Blindaje del Sistema Operativo y Auditoría
+## 🔑 Directorio Activo (LDAP) & Autenticación Centralizada
 
-La plataforma aplica políticas estrictas de seguridad sobre el servidor anfitrión:
-- **Alertas y Contención PAM en Tiempo Real:**
-  - SSH (`/etc/pam.d/sshd`): Notificación inmediata de conexión entrante a Telegram.
-  - Sudo (`/etc/pam.d/sudo`): Auditoría obligatoria (`requisite seteuid stdout`).
-  - Su (`/etc/pam.d/su`): Cobertura estricta para elevación de privilegios (`su`, `su -`, `su -l`).
-- **Defensa Perimetral con Fail2ban:** Jails automatizadas contra fuerza bruta en SSH, Apache y escritorios remotos VNC.
-- **Sentinel Terminal Shield:** Contención de terminales interactivas y auditoría de accesos.
+La plataforma implementa un subsistema de autenticación híbrido (`LdapAuthService`) que combina la resiliencia de cuentas locales de administración con el inicio de sesión unificado corporativo:
+
+```
+                            ┌─────────────────────────────────┐
+                            │    FORMULARIO DE INICIO WEB     │
+                            └────────────────┬────────────────┘
+                                             │
+                       ¿Es cuenta local o correo administrativo?
+                                      /              \
+                                   (Sí)              (No / Usuario de Red)
+                                    /                  \
+                        ┌──────────────────┐     ┌────────────────────────┐
+                        │ Autenticación en │     │  Consulta LDAP Server  │
+                        │ MariaDB (Bcrypt) │     │     (192.168.0.22:389)   │
+                        └──────────────────┘     └───────────┬────────────┘
+                                                             │
+                                                ¿Credenciales válidas en LDAP?
+                                                             │ (Sí)
+                                                ¿Área autorizada (ATIT) o Pre-autorizado?
+                                                             │ (Sí)
+                                                 Aprovisionamiento JIT (Operador/Admin)
+```
+
+### Características Técnicas del Módulo LDAP:
+1. **Búsqueda Flexible Multi-Atributo:** El motor evalúa de forma inteligente UIDs (`A0000000`), números de cédula (`1746281`), códigos de empleado (`12345678`) y correos institucionales (`@empresa.gob.ve` / `@empresa.com.ve`).
+2. **Control de Áreas Organizacionales:** Valida automáticamente la pertenencia a dependencias técnicas autorizadas (`ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES`).
+3. **Aprovisionamiento Just-In-Time (JIT):** Los empleados autorizados que inician sesión por primera vez son registrados automáticamente en la base de datos local con el rol predeterminado configurado (`operator` o `admin`).
+4. **Pre-autorización Manual en `/admin/users`:** Los administradores pueden buscar cuentas en el Directorio Activo mediante un modal interactivo en tiempo real (<20 ms) y concederles acceso manual con roles personalizados.
+5. **Panel de Control Administrativo (En Vivo):**
+   - **Interruptor Maestro (Habilitado / Deshabilitado):** Permite activar o desactivar la autenticación externa LDAP con un solo clic, restringiendo de forma segura el portal exclusivamente a cuentas locales en caso de mantenimiento de red.
+   - **Parámetros Editables:** Host, puerto, Base DN y lista de áreas permitidas con persistencia atómica en MariaDB `bot_settings` (SSOT).
+   - **Herramienta "Probar Conexión LDAP":** Ejecuta una prueba de socket y lectura de Base DN vía AJAX con retorno inmediato de latencia (ms) antes de aplicar cambios.
 
 ---
 
-## 💻 Herramientas de Línea de Comandos (CLI)
+## 🖥️ Control Remoto en Navegador (Telnet & VNC)
 
-### 1. Herramienta `estatus`
+El portal web incorpora clientes de acceso remoto directo desde la interfaz gráfica, sin requerir software cliente adicional en las estaciones de trabajo de los operadores:
+
+### 1. Terminal Telnet Web (Xterm.js)
+- **Acceso a Switches y Routers:** Integración con switches perimetrales (`SW01`, `SW02`, `SW03`) y routers principales (`192.168.1.1`, `192.168.1.119`, etc.).
+- **Terminal Reactiva:** Emulación ANSI completa mediante Xterm.js con ajuste dinámico de dimensiones (*FitAddon*) y gestión de sesiones seguras.
+
+### 2. Visor VNC Embebido
+- **Supervisión de Estaciones Gráficas:** Visualización remota de interfaces de consolas de monitoreo locales (`192.168.1.66`).
+- **Autenticación Temporal:** Generación de tokens de sesión con expiración para prevenir accesos concurrentes no autorizados.
+
+---
+
+## 🛡️ Centinela, Guardián Térmico y Seguridad Defensiva
+
+### 1. Bot Centinela de Integridad (`tg-sentinel-bot`):
+- **Licenciamiento y DRM Criptográfico:** Vinculación estricta con el identificador único del hardware anfitrión (UUID de la placa base y número de serie del procesador).
+- **Auto-Derivación de Credenciales:** El token del bot centinela está embebido y protegido mediante hash SHA-256 en `monitor/core_shield.py`, ejecutándose como servicio independiente (`tg-sentinel-bot.service`).
+
+### 2. Guardián Térmico y Protección de CPU (`tg-thermal-guard`):
+- **Supervisión Continua a 5 Segundos:** Monitorea los sensores de temperatura del procesador (`k10temp` / `coretemp`).
+- **Protección Física Escalonada:**
+  - `65°C`: Estado de advertencia preventiva.
+  - `70°C`: Alerta crítica con notificación de alta prioridad al Owner.
+  - `75°C`: Parada segura de emergencia (`emergency_cooling`) para evitar daños permanentes en la electrónica del servidor.
+
+### 3. Sistema Anti-Tampering y Módulo de Baneo (`/admin/bans`):
+- **Detección de Manipulación No Autorizada:** Cualquier intento de un usuario de rol operador de invocar rutas o endpoints administrativos exclusivos provoca la suspensión inmediata de la cuenta y el bloqueo por IP del cliente.
+- **Pantalla de Seguridad 403:** Interfaz personalizada que notifica el motivo de la suspensión y el código de incidente de auditoría.
+- **Gestión de Desbaneo:** Panel administrativo para desbloquear direcciones IP o cuentas de usuario de forma selectiva o masiva.
+
+### 4. Alertas Nativas del Sistema Operativo:
+- **Alerta de Arranque Eléctrico (`boot-alert.service`):** Evalúa el estado del hardware al iniciar el sistema operativo para notificar al Administrador si el servidor arrancó tras un reinicio programado o tras un **corte de fluido eléctrico**.
+- **Notificador de Intrusión SSH:** Gancho (*hook*) nativo en `/etc/pam.d/sshd` que despacha a Telegram la IP, usuario, hora y geolocalización de cada inicio de sesión por consola.
+
+---
+
+## 📸 Galería Visual del Portal Web (`http://monitoreo-vs.local/`)
+
+### 1. Tablero General de Telemetría en Vivo
+Supervisión unificada en tiempo real de servicios corporativos, sedes regionales conectadas, proxies con conmutación en cascada y tarjetas ejecutivas de salud del clúster:
+
+![Tablero de Telemetría General](assets/screenshots/dashboard_overview.png)
+
+### 2. HUD Interactivo con Histórico de 24 Horas (*Osciloscopio Sparkline*)
+Al posar el cursor sobre cualquier servicio o sede, el visor técnico inteligente despliega la ficha de transporte y un micro-gráfico interactivo con la curva de latencias de las **últimas 24 horas** y marcadores destacados en cada pérdida de paquetes:
+
+![HUD con Curva de 24 Horas y Caídas](assets/screenshots/dashboard_hud_sparkline.png)
+
+### 3. Tarjeta de Administración de Clúster (Master / Slave)
+Gestión completa de roles, token criptográfico `X-CLUSTER-TOKEN`, cadencia de actualización y prueba de enlace API en vivo:
+
+![Configuración de Clúster Master Slave](assets/screenshots/cluster_admin_card.png)
+
+### 4. Directorio Activo & Autenticación LDAP
+Panel para activar/desactivar el servicio LDAP, verificar latencia en tiempo real, configurar Base DN y gestionar roles JIT:
+
+![Configuración LDAP y Diagnóstico](assets/screenshots/ldap_admin_card_test_success.png)
+
+---
+
+## 🛠️ Guía de Instalación Maestro (Desatendida)
+
+El instalador unificado (`installer/install.sh`) aprovisiona el sistema de **0 a 100** de forma completamente automatizada en un servidor limpio con Debian o Ubuntu Server.
+
+### Paso 1: Clonar el Repositorio
+Debido a que las rutas absolutas de los servicios `systemd`, los hooks PAM y las tareas cron están estandarizadas, clona el proyecto en `/scripts/telegram-admin-bot`:
+
 ```bash
-# Diagnóstico completo de infraestructura y servicios
-estatus completo
+# Crear directorio base y clonar repositorio privado
+sudo mkdir -p /scripts
+sudo git clone https://github.com/britojq/tgbot-pyt-bashfull.git /scripts/telegram-admin-bot
+```
 
-# Sincronización web y generación de snapshot
+### Paso 2: Ejecutar el Instalador Maestro
+Ejecuta el instalador con privilegios de superusuario (`sudo`):
+
+```bash
+sudo bash /scripts/telegram-admin-bot/installer/install.sh
+```
+
+---
+
+## ⚙️ Acciones Ejecutadas Automáticamente por el Instalador
+
+1. **Paquetes del Sistema:** Instala dependencias base (curl, git, apache2, mariadb-server, php8.2+ con extensiones PDO, MySQL, cURL, GD, XML, Mbstring, LDAP).
+2. **Entorno Python & Playwright:** Despliega el entorno virtual `/scripts/telegram-admin-bot/venv`, instala librerías de `requirements.txt` y aprovisiona el motor Chromium headless para pruebas de interfaz.
+3. **Base de Datos MariaDB:** Crea la base de datos `monitoreo_vs`, genera el usuario `monitoreo_user` con clave de alta entropía e importa el esquema limpio con catálogos y usuarios precargados (`database/schema_monitoreo.sql`).
+4. **Portal Web Laravel 13:** Sincroniza la aplicación en `/var/www/monitoreo`, configura el archivo `.env` de producción, genera la `APP_KEY`, ajusta permisos para `www-data` y activa el VirtualHost Apache en `http://monitoreo-vs.local/`.
+5. **Comandos Globales:** Registra en `/usr/local/bin` las herramientas CLI `estatus`, `checkpoint` y `rollback`.
+6. **Servicios Systemd:** Habilita y arranca los demonios `tg-admin-bot`, `tg-sentinel-bot`, `tg-thermal-guard`, el notificador `boot-alert.service` y el gancho PAM para alertas SSH.
+
+---
+
+## 💻 Herramientas CLI del Sistema
+
+El sistema incorpora herramientas globales de consola disponibles en el terminal:
+
+### 1. `estatus` (Motor de Monitoreo)
+```bash
+# Sincronizar telemetría web con la base de datos (ejecutado por cron)
 estatus web
 
-# Telemetría de topología, WOL y análisis predictivo
-estatus topologia
-estatus wol --list
-estatus predicciones --analyze
-estatus inventario --summary
+# Chequeo de Servicios Corporativos y reporte a Telegram
+estatus servicios
 
-# Escaneo de red y detección de intrusos
-estatus discovery --all
+# Chequeo de Sedes Regionales y Subestaciones
+estatus sedes
+
+# Chequeo Completo (Servicios + Sedes)
+estatus completo
+
+# Diagnóstico profundo de tráfico de red (.pcap + tshark)
+estatus analisis_red
+
+# Auto-Discovery de Red y Detección Anti-Rogue
+estatus discovery --all                    # Escanear todas las subredes activas
+estatus discovery --subnet 192.168.1.0/24   # Escaneo de subred específica
+
+# Ejecutar escaneo localmente sin enviar mensaje a Telegram
+estatus servicios --no-send
 ```
 
-### 2. Herramienta `activar`
+### 2. `checkpoint` (Puntos de Restauración Atómicos)
+Crea una copia de seguridad atómica del estado operativo del sistema y su base de datos:
 ```bash
-# Validación de hardware y asignación de token
-activar AUTH-XXXX-XXXX-XXXX-XXXX 123456789:ABCdef...
+checkpoint "Descripción del cambio o mantenimiento"
+```
 
-# Consulta de estado y telemetría DRM del nodo
-activar --estado
+### 3. `rollback` (Restauración Rápida)
+Revierte el sistema a un punto de control previo de forma segura:
+```bash
+# Listar checkpoints disponibles
+rollback --list
+
+# Revertir a un checkpoint específico
+rollback 20260902_122152
 ```
 
 ---
 
-## 🤖 Catálogo de Comandos de Telegram
+## 📋 Comandos del Bot de Telegram
 
-| Comando | Nivel | Descripción |
-| :--- | :---: | :--- |
-| `/servicios` | Operador | Estado consolidado y latencias de servicios monitoreados. |
-| `/sedes` | Operador | Disponibilidad de enlaces y sedes remotas. |
-| `/monitoreo` | Operador | Resumen ejecutivo del ecosistema de red. |
-| `/recursos` | Operador | Métricas en tiempo real de CPU, memoria RAM y discos. |
-| `/temperatura`| Operador | Lectura térmica de hardware y estado de protección. |
-| `/topologia` | Operador | Resumen de enlaces de red y acceso al mapa visual. |
-| `/wol` | Admin | Encendido remoto de equipos mediante Magic Packets. |
-| `/predicciones`| Admin | Alertas de saturación detectadas por el motor local de IA. |
-| `/inventario` | Admin | Estado de garantías de hardware, equipos EOL y SMART. |
-| `/discovery` | Admin | Reporte de equipos en red y detección de intrusos. |
-| `/botstatus` | Admin | Diagnóstico de conectividad de red y proxies. |
-| `/reinicia` | Owner | Reinicio seguro del host físico (notificación privada exclusiva). |
-| `/info` | Todos | Términos de servicio, versión activa e información general. |
+### 👑 Comandos de Administrador (Owner: `38914901`):
+| Comando | Descripción |
+| :--- | :--- |
+| `/emergencia` | Menú de contingencia (detención segura, modo mantenimiento, restauración). |
+| `/reboot` | Reinicio controlado del servidor anfitrión. |
+| `/botstatus` | Latencia de conexión directa, estado de proxies y diagnóstico de socket. |
+| `/permisos` | Panel interactivo para autorizar o revocar accesos de usuarios y grupos. |
+| `/limpiador` | Diagnóstico de almacenamiento, inodos y depuración de espacio en disco. |
+| `/migrar_token` | Asistente guiado para renovación y rotación del token del bot principal. |
+| `/actualizar` | Comprobación y forzado de sincronización con el repositorio oficial Git. |
+
+### 👥 Comandos de Telemetría y Operaciones:
+| Comando | Descripción |
+| :--- | :--- |
+| `/servicios` | Estado de servicios corporativos (OTRS, Intranet, Factura Digital, Correo, etc.). |
+| `/sedes` | Conectividad y latencia WAN de sedes físicas y routers corporativos. |
+| `/monitoreo` | Ejecución concurrente del reporte completo de sedes y servicios. |
+| `/analisis_red` | Análisis de tráfico LAN (.pcap), tormentas de broadcast y escaneo ARP. |
+| `/temperatura` | Lectura térmica de procesador y estado del guardián térmico. |
+| `/recursos` | Uso de memoria RAM, CPU, espacio en disco y tiempo de actividad (*uptime*). |
+| `/reset_ia` | Reinicio de la memoria de contexto del asistente conversacional con IA. |
+| `/discovery` | Reporte ejecutivo de auto-discovery, equipos detectados e intrusos (Rogue). |
+| `/info` | Información institucional, términos de servicio y aviso de confidencialidad. |
 
 ---
 
-## 🔌 API de Clúster (Master ↔ Slave)
+## 📂 Estructura Modular del Repositorio (Arquitectura SOLID)
 
-La plataforma incluye una API nativa de sincronización distribuida para comunicación segura y sincronización continua de telemetría entre nodos del clúster (**Master / Slave**).
-
-### Autenticación Criptográfica
-Todas las solicitudes hacia los endpoints de clúster requieren el encabezado HTTP `X-Cluster-Token` con un token criptográfico generado desde el portal administrativo.
-
-### Endpoints Principales
-
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET / POST` | `/api/cluster/ping` | Verificación de latencia y estado operativo del nodo. |
-| `GET / POST` | `/api/cluster/telemetry` | Sincronización masiva de telemetría e históricos (soporte nativo de compresión gzip). |
-| `GET / POST` | `/api/cluster/snapshot` | Extracción de instantánea consolidada del estado de supervisión. |
-| `GET / POST` | `/api/cluster/diagnostics` | Diagnóstico integral de salud de hardware, servicios y bases de datos. |
-
-#### Ejemplo de Consulta
-```bash
-curl -s -H "X-Cluster-Token: TU_TOKEN_DE_CLUSTER" \
-     http://master.monitoreo-vs.local/api/cluster/ping
+```text
+/opt/sonar/
+├── bot.py                            # Fachada ligera de entrada al bot Telegram (DIP puro)
+├── bot_core/                         # Núcleo modular del bot de administración (SOLID)
+│   ├── contracts/                    # Contratos e Interfaces abstractas (SecurityProvider, etc.)
+│   ├── handlers/                     # Handlers especializados (network, services, alerts, ai)
+│   │   ├── network/                  # Actions de red: ping, tcp, wan, dhcp, arp, etc.
+│   │   ├── services/                 # Actions de servicios, bases de datos y compilador HTML
+│   │   ├── alerts/                   # Actions de reglas y notificaciones de alerta
+│   │   └── ai/                       # Actions de prompts y streaming de inteligencia
+│   ├── security/                     # Proveedores de seguridad, bóveda DRM y control de acceso
+│   ├── services/                     # Servicios auxiliares desacoplados
+│   └── utils/                        # Utilidades y formateadores
+├── monitor/                          # Motor modular de telemetría y supervisión de red
+│   ├── alerts/                       # Motor y evaluadores de alertas de red
+│   ├── application/                  # Orquestador, gestor de locks y snapshots
+│   │   └── strategies/               # Patrón Strategy para tipos de monitoreo
+│   ├── checkers/                     # Pollers SNMP, SSL, Thermal Guard y Network Discovery
+│   ├── domain/                       # Entidades DTO inmutables y excepciones de dominio
+│   ├── formatters/                   # Compiladores de reportes de sedes y servicios
+│   ├── gitops/                       # Despliegues automatizados y actualización del sistema
+│   ├── infrastructure/               # Context Managers DB, cifrado Laravel y caché SHM
+│   ├── shield/                       # Blindaje criptográfico de terminal y DRM
+│   ├── sync/                         # Sincronización de clúster y replicación de tablas
+│   └── ups/                          # Supervisión Megatec y telemetría de energía
+├── web_portal/                       # Portal Web y API de Clúster (Laravel 13 / PHP 8.4)
+│   ├── app/
+│   │   ├── Actions/                  # Actions de responsabilidad única (Alert, Ups, NetRadar, etc.)
+│   │   ├── Contracts/                # Interfaces y contratos del clúster y auditoría
+│   │   ├── Http/Controllers/        # Controladores ultradelgados (<15 lín/método)
+│   │   ├── Http/Requests/           # FormRequests desacoplados para validación 100% backend
+│   │   ├── Models/                   # Modelos Eloquent con $fillable explícito
+│   │   └── Services/                 # Fachadas y servicios desacoplados (LDAP, Reportes, Clúster)
+│   ├── resources/views/admin/        # Vistas Blade aisladas con componentes Tailwind (.tw-wrapper)
+│   └── routes/web.php                # Rutas y API protegidas por tokens de hardware
+├── database/                         # Esquemas SQL, migraciones y catálogos de base de datos
+├── tools/                            # Orquestadores de barrera de calidad y control atómico
+│   ├── certify_system_integrity.py   # Barrera de calidad Zero-Fail (6 capas)
+│   ├── close_phase.py                # Orquestador atómico de cierre y sello de continuidad
+│   └── bump_version.py               # Control atómico de paridad de versión
+└── docs/                             # Documentación técnica canónica y memoria forense
+    ├── PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md # Hoja de ruta maestra de reingeniería
+    ├── ESTADO_VIVO.md                # Puntero atómico de carga ultra-rápida (<1KB)
+    └── historico_sesiones/           # Bitácora forense cronológica inversa
 ```
+
+---
+
+## 🔧 Gestión de Servicios del Sistema
+
+| Acción | Comando |
+| :--- | :--- |
+| **Estado del Bot Principal** | `sudo systemctl status tg-admin-bot.service` |
+| **Estado del Bot Centinela** | `sudo systemctl status sentinel_bot.service` |
+| **Estado del Guardián Térmico**| `sudo systemctl status tg-thermal-guard.service` |
+| **Estado de Proxy noVNC** | `sudo systemctl status websockify.service` |
+| **Estado de Alertas de Arranque** | `sudo systemctl status boot-alert.service` |
+| **Logs en tiempo real (Bot)** | `sudo journalctl -u tg-admin-bot.service -f` |
+| **Logs en tiempo real (Centinela)**| `sudo journalctl -u sentinel_bot.service -f` |
+| **Logs en tiempo real (Web Cron)**| `sudo tail -f /var/log/syslog | grep CRON` |
+| **Reiniciar todos los demonios** | `sudo systemctl restart tg-admin-bot tg-thermal-guard websockify` |
 
 ---
 
 ## ⚖️ Licencia y Créditos
 
-Desarrollado y mantenido por **Operador ATIT** ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq)).  
-Proyecto concebido en **2018** y perfeccionado de manera continua hasta su actual versión **2026**.
+Desarrollado y mantenido por **José A. Brito H.** ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq)).  
 
 Distribuido bajo la licencia **GNU Affero General Public License v3.0 (AGPLv3)**. Consulte el archivo `LICENSE` para más información.

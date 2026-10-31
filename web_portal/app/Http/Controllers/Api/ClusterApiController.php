@@ -1,41 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\MonitoredNetworkDevice;
-use App\Models\MonitoredProxy;
-use App\Models\MonitoredService;
-use App\Models\MonitoredSite;
-use App\Models\MonitoringSnapshot;
-use App\Services\ClusterConfigService;
-use App\Services\System\SonarPathService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Actions\Cluster\ProvideClusterDiagnosticsAction;
+use App\Actions\Cluster\ProvideClusterTelemetryAction;
+use App\Actions\Cluster\VerifyClusterAction;
 use App\Contracts\ClusterAuditLoggerInterface;
 use App\Contracts\ClusterVerifierInterface;
+use App\Http\Controllers\Controller;
+use App\Services\ClusterConfigService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class ClusterApiController extends Controller
 {
-    protected ClusterConfigService $clusterService;
-    protected ClusterVerifierInterface $verifier;
-    protected ClusterAuditLoggerInterface $auditLogger;
-
     public function __construct(
-        ClusterConfigService $clusterService,
-        ClusterVerifierInterface $verifier,
-        ClusterAuditLoggerInterface $auditLogger
-    ) {
-        $this->clusterService = $clusterService;
-        $this->verifier = $verifier;
-        $this->auditLogger = $auditLogger;
-    }
+        protected ClusterConfigService $clusterService,
+        protected ?ClusterVerifierInterface $verifier = null,
+        protected ?ClusterAuditLoggerInterface $auditLogger = null
+    ) {}
 
-    /**
-     * Comprueba la conectividad y validez de credenciales entre Master y Slave.
-     */
     public function ping(Request $request): JsonResponse
     {
         return response()->json([
@@ -47,284 +34,23 @@ class ClusterApiController extends Controller
         ]);
     }
 
-    /**
-     * Entrega el snapshot completo y la configuración de monitoreo al nodo Slave.
-     */
-    public function telemetry(Request $request): Response
+    public function telemetry(Request $request, ProvideClusterTelemetryAction $action): Response
     {
-        $snapshotPath = storage_path('app/public/monitoring_snapshot.json');
-        $snapshotPayload = null;
-
-        if (file_exists($snapshotPath)) {
-            $content = @file_get_contents($snapshotPath);
-            $snapshotPayload = json_decode($content, true);
-        }
-
-        if (!$snapshotPayload) {
-            $latestDb = MonitoringSnapshot::latest()->first();
-            $snapshotPayload = $latestDb ? $latestDb->payload_json : [];
-        }
-
-        $payload = [
-            'success' => true,
-            'node_role' => $this->clusterService->getNodeRole(),
-            'generated_at' => $snapshotPayload['timestamp'] ?? date('Y-m-d H:i:s'),
-            'snapshot' => $snapshotPayload,
-            'config' => [
-                'services' => MonitoredService::orderBy('sort_order')->get(),
-                'sites' => MonitoredSite::with('devices')->orderBy('sort_order')->get(),
-                'proxies' => MonitoredProxy::orderBy('letter')->get(),
-                'network_devices' => MonitoredNetworkDevice::orderBy('sort_order')->get(),
-                'discovery_subnets' => \App\Models\DiscoverySubnet::all(),
-                'discovered_devices' => \App\Models\DiscoveredDevice::all(),
-                'bot_commands' => \App\Models\BotCommand::all(),
-                'bot_message_templates' => \App\Models\BotMessageTemplate::all(),
-                'snmp_oids' => \App\Models\SnmpOid::all(),
-                'snmp_devices' => \App\Models\SnmpDevice::select([
-                    'id', 'name', 'ip_address', 'snmp_version', 'snmp_port',
-                    'snmp_timeout_seconds', 'snmp_retries', 'device_type',
-                    'vendor', 'model', 'firmware_version', 'serial_number',
-                    'sys_name', 'sys_description', 'sys_object_id', 'sys_uptime',
-                    'sys_location', 'sys_contact', 'site_id', 'discovered_device_id',
-                    'network_device_id', 'poll_interval_seconds', 'is_active',
-                    'last_poll_at', 'last_poll_status', 'consecutive_failures',
-                    'ssh_enabled', 'ssh_username', 'ssh_port', 'custom_oids',
-                    'notes', 'created_at', 'updated_at'
-                ])->get(),
-                'snmp_device_oids' => \App\Models\SnmpDeviceOid::all(),
-                'snmp_interfaces' => \App\Models\SnmpInterface::all(),
-                'ssl_certificates' => \App\Models\SslCertificate::all(),
-                'alert_rules' => \App\Models\AlertRule::all(),
-                'alert_escalation_levels' => \App\Models\AlertEscalationLevel::all(),
-                'alert_correlation_groups' => \App\Models\AlertCorrelationGroup::all(),
-                'alert_correlation_members' => \App\Models\AlertCorrelationMember::all(),
-                'maintenance_windows' => \App\Models\MaintenanceWindow::all(),
-                'wol_devices' => \App\Models\WolDevice::all(),
-                'hardware_lifecycle' => \App\Models\HardwareLifecycle::all(),
-                'ups_devices' => \App\Models\UpsDevice::all(),
-                'inventory_assets' => \App\Models\InventoryAsset::all(),
-                'inventory_components' => \App\Models\InventoryComponent::all(),
-                'inventory_peripherals' => \App\Models\InventoryPeripheral::all(),
-                'inventory_assignments' => \App\Models\InventoryAssignment::all(),
-                'maintenance_tickets' => \App\Models\MaintenanceTicket::all(),
-            ],
-            'snmp_metrics_history' => \App\Models\SnmpMetricHistory::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
-            'snmp_interface_metrics' => \App\Models\SnmpInterfaceMetric::where('collected_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
-            'ssl_certificate_history' => \App\Models\SslCertificateHistory::latest('id')->take(500)->get(),
-            'alerts' => \App\Models\Alert::whereIn('status', ['firing', 'acknowledged', 'suppressed'])->orWhere('fired_at', '>=', now()->subHours(24))->latest('id')->take(500)->get(),
-            'alert_notifications' => \App\Models\AlertNotification::latest('id')->take(200)->get(),
-            'device_configurations' => \App\Models\DeviceConfiguration::select([
-                'id', 'network_device_id', 'snmp_device_id', 'device_name', 'device_ip',
-                'device_type', 'config_hash', 'config_size_bytes', 'captured_at', 'captured_by',
-                'status', 'notes', 'created_at', 'updated_at'
-            ])->latest('captured_at')->take(100)->get(),
-            'config_change_logs' => \App\Models\ConfigChangeLog::latest('detected_at')->take(100)->get(),
-            'audit_logs' => \App\Models\AuditLog::latest()->take(100)->get(),
-            'net_radar_hosts' => \App\Models\NetRadarHost::latest('last_seen_at')->take(500)->get(),
-            'net_radar_events' => \App\Models\NetRadarEvent::latest('created_at')->take(200)->get(),
-            'net_radar_snapshots' => \App\Models\NetRadarSnapshot::latest('created_at')->take(50)->get(),
-            'snmp_traps_received' => \App\Models\SnmpTrapReceived::latest('id')->take(200)->get(),
-            'syslog_events' => \App\Models\SyslogEvent::latest('id')->take(200)->get(),
-            'netflow_top_talkers' => \App\Models\NetflowTopTalker::latest('id')->take(100)->get(),
-            'network_topology_links' => \App\Models\NetworkTopologyLink::all(),
-            'predictive_anomalies' => \App\Models\PredictiveAnomaly::latest('id')->take(100)->get(),
-            'snmp_metric_hourly_rollups' => \App\Models\SnmpMetricHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
-            'snmp_interface_hourly_rollups' => \App\Models\SnmpInterfaceHourlyRollup::where('hour_timestamp', '>=', now()->subDays(30))->latest('id')->take(1000)->get(),
-            'ups_telemetry_histories' => \App\Models\UpsTelemetryHistory::where('recorded_at', '>=', now()->subHours(24))->latest('id')->take(1000)->get(),
-            'ups_power_events' => \App\Models\UpsPowerEvent::latest('id')->take(200)->get(),
-            'inventory_components_histories' => \App\Models\InventoryComponentHistory::latest('id')->take(500)->get(),
-        ];
-
-        $this->auditLogger->logAccess(
-            $request,
-            'cluster_telemetry_sync',
-            'Sincronización de telemetría y catálogo solicitada desde ' . ($request->ip() ?: 'desconocido'),
-            ['node_role' => $this->clusterService->getNodeRole()]
-        );
-
-        $acceptGzip = $request->boolean('gzip') || str_contains($request->header('Accept-Encoding', ''), 'gzip');
-        if ($acceptGzip && function_exists('gzencode')) {
-            $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
-            return response(gzencode($json, 6), 200, [
-                'Content-Type' => 'application/json',
-                'Content-Encoding' => 'gzip',
-            ]);
-        }
-
-        return response()->json($payload);
+        return $action->execute($request);
     }
 
-    /**
-     * Entrega diagnóstico completo del sistema, censo de base de datos,
-     * estado de servicios y auditoría del último despliegue (Solo Lectura, protegido).
-     */
-    public function diagnostics(Request $request): JsonResponse
+    public function diagnostics(Request $request, ProvideClusterDiagnosticsAction $action): JsonResponse
     {
-        $baseDir = SonarPathService::baseDir();
-        $storageJsonPath = storage_path('app/last_deployment.json');
-
-        // 1. Cargar manifiesto del último despliegue si existe en storage
-        $lastDeployment = null;
-        if (file_exists($storageJsonPath)) {
-            $lastDeployment = json_decode(@file_get_contents($storageJsonPath), true);
-        }
-
-        // 2. Extraer telemetría del último despliegue desde MariaDB SSOT (audit_logs)
-        $logSnippet = '';
-        $deploymentAudit = \App\Models\AuditLog::where('event', 'DEPLOYMENT')
-            ->latest()
-            ->first();
-
-        if ($deploymentAudit) {
-            $newValues = $deploymentAudit->new_values;
-            if (is_array($newValues)) {
-                $rawText = $newValues['log_text'] ?? $newValues['log_snippet'] ?? null;
-                if (!$lastDeployment && isset($newValues['manifest']) && is_array($newValues['manifest'])) {
-                    $lastDeployment = $newValues['manifest'];
-                }
-            } elseif (is_string($newValues)) {
-                $decoded = json_decode($newValues, true);
-                if (is_array($decoded)) {
-                    $rawText = $decoded['log_text'] ?? $decoded['log_snippet'] ?? null;
-                    if (!$lastDeployment && isset($decoded['manifest']) && is_array($decoded['manifest'])) {
-                        $lastDeployment = $decoded['manifest'];
-                    }
-                } else {
-                    $rawText = $newValues;
-                }
-            } else {
-                $rawText = null;
-            }
-
-            if (!empty($rawText)) {
-                $lines = explode("\n", (string) $rawText);
-                $logSnippet = implode("\n", array_slice($lines, -35));
-            } else {
-                $logSnippet = (string) ($deploymentAudit->description ?? 'Despliegue registrado en MariaDB SSOT.');
-            }
-        }
-
-        // 3. Censo en tiempo real de entidades críticas de base de datos
-        $snmpCount = \App\Models\SnmpDevice::count();
-        $linksCount = \App\Models\NetworkTopologyLink::count();
-        $servicesCount = \App\Models\MonitoredService::count();
-        $devicesCount = \App\Models\MonitoredNetworkDevice::count();
-        $sitesCount = \App\Models\MonitoredSite::count();
-        $proxiesCount = \App\Models\MonitoredProxy::count();
-        $usersCount = \App\Models\User::count();
-        $firingAlerts = \App\Models\Alert::whereIn('status', ['firing', 'acknowledged'])->count();
-
-        // 4. Estado de servicios del sistema (systemd)
-        $services = [
-            'tg-admin-bot' => trim(@shell_exec('systemctl is-active tg-admin-bot 2>/dev/null') ?: 'unknown'),
-            'apache2' => trim(@shell_exec('systemctl is-active apache2 2>/dev/null') ?: 'unknown'),
-            'mariadb' => trim(@shell_exec('systemctl is-active mariadb 2>/dev/null') ?: 'unknown'),
-            'php-fpm' => trim(@shell_exec('systemctl is-active php8.4-fpm 2>/dev/null') ?: (@shell_exec('systemctl is-active php8.2-fpm 2>/dev/null') ?: 'unknown')),
-        ];
-
-        // 5. Metadatos de Git local
-        $gitSafe = 'git -C ' . escapeshellarg($baseDir) . ' -c safe.directory=* ';
-        $gitCommit = trim(@shell_exec($gitSafe . 'rev-parse --short HEAD 2>/dev/null') ?: 'unknown');
-        $gitBranch = trim(@shell_exec($gitSafe . 'rev-parse --abbrev-ref HEAD 2>/dev/null') ?: 'unknown');
-        $gitMsg = trim(@shell_exec($gitSafe . 'log -1 --format=%s 2>/dev/null') ?: '');
-        $gitDate = trim(@shell_exec($gitSafe . 'log -1 --format=%cd --date=iso 2>/dev/null') ?: '');
-
-        // 6. Evaluación de salud general
-        $isServicesOk = ($services['apache2'] === 'active' && $services['mariadb'] === 'active');
-        $isTopologyOk = ($linksCount >= 26);
-        $isSnmpOk = ($snmpCount >= 9);
-
-        $healthStatus = 'healthy';
-        if (!$isServicesOk) {
-            $healthStatus = 'critical';
-        } elseif (!$isTopologyOk || !$isSnmpOk) {
-            $healthStatus = 'warning';
-        }
-
-        return response()->json([
-            'success' => true,
-            'node_role' => $this->clusterService->getNodeRole(),
-            'hostname' => gethostname(),
-            'timestamp' => date('Y-m-d H:i:s'),
-            'overall_health' => $healthStatus,
-            'git' => [
-                'commit' => $gitCommit,
-                'branch' => $gitBranch,
-                'last_commit_msg' => $gitMsg,
-                'last_commit_date' => $gitDate,
-            ],
-            'database_census' => [
-                'snmp_devices' => $snmpCount,
-                'snmp_status' => $isSnmpOk ? 'ok' : 'incomplete',
-                'network_topology_links' => $linksCount,
-                'topology_status' => $isTopologyOk ? 'ok' : 'degraded',
-                'monitored_services' => $servicesCount,
-                'monitored_network_devices' => $devicesCount,
-                'monitored_sites' => $sitesCount,
-                'monitored_proxies' => $proxiesCount,
-                'users' => $usersCount,
-                'active_alerts' => $firingAlerts,
-            ],
-            'services' => $services,
-            'last_deployment' => $lastDeployment,
-            'audit_log_snippet' => $logSnippet,
-        ]);
+        return $action->diagnostics($request);
     }
 
-    /**
-     * Inspección remota de salud, paridad, agentes GLPI e instaladores.
-     * Cero SSH requerido. Registrado automáticamente en audit_logs.
-     */
-    public function verify(Request $request): JsonResponse
+    public function verify(Request $request, VerifyClusterAction $action): JsonResponse
     {
-        $scope = strtolower($request->query('scope', 'all'));
-
-        $data = match ($scope) {
-            'installers' => ['installers' => $this->verifier->verifyInstallers()],
-            'agents' => ['glpi_agents' => $this->verifier->verifyAgents()],
-            'parity' => ['runtime_parity' => $this->verifier->verifyParity()],
-            default => $this->verifier->verifyAll(),
-        };
-
-        $this->auditLogger->logAccess(
-            $request,
-            'cluster_api_verification',
-            "Inspección técnica remota (scope: {$scope}) ejecutada desde " . ($request->ip() ?: 'desconocido'),
-            ['scope' => $scope, 'status' => $data['status'] ?? 'ok']
-        );
-
-        return response()->json(array_merge([
-            'success' => true,
-            'node_role' => $this->clusterService->getNodeRole(),
-            'hostname' => gethostname(),
-            'scope' => $scope,
-        ], $data));
+        return $action->execute($request);
     }
 
-    /**
-     * Retorna la bitácora reciente de accesos y sincronizaciones de clúster.
-     */
-    public function auditTrail(Request $request): JsonResponse
+    public function auditTrail(Request $request, ProvideClusterDiagnosticsAction $action): JsonResponse
     {
-        $limit = min(100, max(1, (int) $request->query('limit', 50)));
-        $logs = \App\Models\AuditLog::where('module', 'Cluster API')
-            ->orderBy('id', 'desc')
-            ->take($limit)
-            ->get();
-
-        $this->auditLogger->logAccess(
-            $request,
-            'cluster_audit_trail_view',
-            'Consulta de bitácora forense de clúster desde ' . ($request->ip() ?: 'desconocido'),
-            ['limit' => $limit, 'count' => $logs->count()]
-        );
-
-        return response()->json([
-            'success' => true,
-            'count' => $logs->count(),
-            'logs' => $logs,
-        ]);
+        return $action->auditTrail($request);
     }
 }
-
-

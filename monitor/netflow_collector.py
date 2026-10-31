@@ -4,8 +4,8 @@
 # Captura de flujos NetFlow v5 en UDP 2055, agregación por minuto y Top Talkers
 # Ubicación: /opt/sonar/monitor/netflow_collector.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 from __future__ import annotations

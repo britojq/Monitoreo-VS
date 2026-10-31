@@ -13,7 +13,7 @@ class AdminUserSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'britojq@gmail.com'],
             [
-                'name' => 'Operador ATIT',
+                'name' => 'Jose A. Brito H.',
                 'password' => Hash::make("PeneloPe91*"),
                 'role' => 'admin',
                 'is_active' => true,

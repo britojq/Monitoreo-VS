@@ -7,7 +7,7 @@ namespace App\Actions\User;
 use App\Models\InventoryAsset;
 use App\Models\InventoryAssignment;
 use App\Models\User;
-use App\Services\Auth\LdapAuthService;
+use App\Services\LdapAuthService;
 use Illuminate\Support\Facades\Log;
 
 class SearchLdapDirectoryAction

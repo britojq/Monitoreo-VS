@@ -44,3 +44,16 @@ class MariaDBConnectionPool:
         except Exception as e:
             logger.error(f"Error de conexión a MariaDB: {e}")
             raise DatabaseConnectionException(f"No se pudo conectar a MariaDB (SSOT): {e}") from e
+
+    @staticmethod
+    def get_connection_context(**kwargs: Any):
+        """Retorna el context manager canónico db_connection."""
+        from monitor.infrastructure.db_context import db_connection
+        return db_connection(**kwargs)
+
+    @staticmethod
+    def get_cursor_context(**kwargs: Any):
+        """Retorna el context manager canónico db_cursor."""
+        from monitor.infrastructure.db_context import db_cursor
+        return db_cursor(**kwargs)
+

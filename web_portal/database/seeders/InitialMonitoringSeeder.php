@@ -277,7 +277,7 @@ class InitialMonitoringSeeder extends Seeder
                 'host_ip' => '0.0.0.0',
                 'web_url' => 'proxyr2-t4.empresa.local',
                 'port' => 25,
-                'credentials' => 'usuario_proxy:clave_proxy',
+                'credentials' => 'A0000000:clave_proxy*',
                 'check_interface' => 'eno1',
                 'dns_test_domain' => 'intranet.empresa.local',
                 'normal_state_msg' => '✅ - $NAMESERVICEP',
@@ -294,7 +294,7 @@ class InitialMonitoringSeeder extends Seeder
                 'host_ip' => '192.168.0.119',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
-                'credentials' => 'usuario_proxy:clave_proxy',
+                'credentials' => 'A0000000:clave_proxy.*',
                 'check_interface' => 'eno1',
                 'dns_test_domain' => 'intranet.empresa.local',
                 'normal_state_msg' => '✅ - $NAMESERVICEQ',
@@ -311,7 +311,7 @@ class InitialMonitoringSeeder extends Seeder
                 'host_ip' => '192.168.0.89',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
-                'credentials' => 'usuario_proxy:clave_proxy',
+                'credentials' => 'A0000000:clave_proxy.*',
                 'check_interface' => 'eno1',
                 'dns_test_domain' => 'intranet.empresa.local',
                 'normal_state_msg' => '✅ - $NAMESERVICER',
@@ -328,7 +328,7 @@ class InitialMonitoringSeeder extends Seeder
                 'host_ip' => '192.168.1.65',
                 'web_url' => 'https://core.telegram.org/bots',
                 'port' => 8080,
-                'credentials' => 'usuario_proxy:clave_proxy',
+                'credentials' => 'jbrito:clave_proxy.',
                 'check_interface' => 'eno1',
                 'dns_test_domain' => 'intranet.empresa.local',
                 'normal_state_msg' => '✅ - $NAMESERVICES',
@@ -1275,7 +1275,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Squid - Dansguardian - CARABOBO',
                 'ip_port' => '192.168.0.89:8080',
-                'auth_userpass' => 'usuario_proxy:clave_proxy',
+                'auth_userpass' => 'A0000000:clave_proxy.*',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,
             ]
@@ -1285,7 +1285,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'Squid - Dansguardian - VALLE SECO',
                 'ip_port' => '192.168.1.65:8080',
-                'auth_userpass' => 'usuario_proxy:clave_proxy',
+                'auth_userpass' => 'jbrito:clave_proxy.',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,
             ]
@@ -1295,7 +1295,7 @@ class InitialMonitoringSeeder extends Seeder
             [
                 'name' => 'PFsense - CARABOBO (119)',
                 'ip_port' => '192.168.0.119:8080',
-                'auth_userpass' => 'usuario_proxy:clave_proxy',
+                'auth_userpass' => 'A0000000:clave_proxy.*',
                 'test_url' => 'https://core.telegram.org/bots',
                 'is_active' => true,
             ]

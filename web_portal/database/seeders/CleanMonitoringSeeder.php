@@ -51,7 +51,7 @@ class CleanMonitoringSeeder extends Seeder
                 'ip' => '192.168.106.193',
                 'phone_1' => '0242 - 3724250',
                 'phone_2' => '0242 - 3720540',
-                'address' => 'Edificio empresa, Calle San José con calle Miranda Diagonal a casa de la Cultura, Morón',
+                'address' => 'Edificio EMPRESA, Calle San José con calle Miranda Diagonal a casa de la Cultura, Morón',
                 'is_active' => true,
                 'sort_order' => 4,
             ],
@@ -506,7 +506,7 @@ class CleanMonitoringSeeder extends Seeder
 
         $services = [
             ['id' => 1, 'letter' => 'A', 'name' => 'OTRS', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.18.6', 'web_url' => 'http://gsatit.empresa.com.ve/otrs/index.pl', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 0],
-            ['id' => 2, 'letter' => 'B', 'name' => 'INTRANET empresa', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.28', 'web_url' => 'http://intranet.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 1],
+            ['id' => 2, 'letter' => 'B', 'name' => 'INTRANET EMPRESA', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.28', 'web_url' => 'http://intranet.empresa.com.ve', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 1],
             ['id' => 3, 'letter' => 'C', 'name' => 'CORREO WEB', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.250.67', 'web_url' => 'http://correo.empresa.com.ve//login.php?phpgw_forward=%2Findex.php', 'port' => 25, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 2],
             ['id' => 4, 'letter' => 'D', 'name' => 'SAO', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.96.136', 'web_url' => 'https://saocorp.empresa.com.ve:3002/login?service=https%3A%2F%2Fsaocorp.empresa.com.ve%3A6200%2F', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 3],
             ['id' => 5, 'letter' => 'E', 'name' => 'SURGE', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.62', 'web_url' => 'http://surge.empresa.com.ve/gestion-incidencias-cliente-web/ui/FrmTablero.html', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 4],
@@ -514,7 +514,7 @@ class CleanMonitoringSeeder extends Seeder
             ['id' => 7, 'letter' => 'G', 'name' => 'SISTEMA AUTOGESTION DE CLAVES', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '192.168.16.22', 'web_url' => 'http://cambioclaves.empresa.com.ve/gc/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 6],
             ['id' => 9, 'letter' => 'I', 'name' => 'LDAPADMIN Corporativo', 'type' => 'WEB', 'scope' => 'corporativo', 'host_ip' => '10.2.28.64', 'web_url' => 'https://ldapadmin.empresa.com.ve/htdocs/index.php', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 7],
             ['id' => 10, 'letter' => 'J', 'name' => 'Sistema de Incidencia CARABOBO', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '192.168.18.33', 'web_url' => 'https://T4WINP33-SIAR.ev.com', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 8],
-            ['id' => 11, 'letter' => 'K', 'name' => 'SAP - empresa Produccion R3', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '192.168.94.230', 'web_url' => '192.168.94.230', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 9],
+            ['id' => 11, 'letter' => 'K', 'name' => 'SAP - EMPRESA Produccion R3', 'type' => 'OTRO', 'scope' => 'corporativo', 'host_ip' => '192.168.94.230', 'web_url' => '192.168.94.230', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 9],
             ['id' => 12, 'letter' => 'L', 'name' => 'LDAP CARABOBO', 'type' => 'LDAP', 'scope' => 'regional', 'host_ip' => '192.168.0.22', 'web_url' => 'ldapr2-t4.empresa.com.ve', 'port' => 389, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 10],
             ['id' => 13, 'letter' => 'M', 'name' => '(DNS PRIMARIO CARABOBO - ARAGUA)', 'type' => 'DNS', 'scope' => 'regional', 'host_ip' => '100.1.1.16', 'web_url' => '100.1.1.16', 'port' => 53, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 11],
             ['id' => 14, 'letter' => 'N', 'name' => '(DNS SECUNDARIO CARABOBO - ARAGUA)', 'type' => 'WEB', 'scope' => 'regional', 'host_ip' => '192.168.94.230', 'web_url' => 'https://ldapr2-002.ev.com:10000/', 'port' => null, 'credentials' => 'USUARIO:CLAVE', 'check_interface' => 'eno1', 'dns_test_domain' => 'intranet.empresa.com.ve', 'is_active' => true, 'sort_order' => 12],
@@ -529,7 +529,7 @@ class CleanMonitoringSeeder extends Seeder
             // Des-sanitización automática: si el seeder fue procesado para repositorio público con 'empresa'
             $srv['web_url'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['web_url']);
             $srv['dns_test_domain'] = str_ireplace('empresa.com.ve', 'empresa.com.ve', $srv['dns_test_domain']);
-            $srv['name'] = str_ireplace('empresa', 'empresa', $srv['name']);
+            $srv['name'] = str_ireplace('empresa', 'EMPRESA', $srv['name']);
 
             // Si la base de datos ya contiene un registro con URL operativa legítima, preservarla
             $existing = DB::table('monitored_services')->where('id', $srv['id'])->first();

@@ -4,8 +4,8 @@
 # Emisor de Magic Packets para encendido remoto de equipos de red y servidores
 # Ubicación: /opt/sonar/monitor/wol_sender.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 from __future__ import annotations

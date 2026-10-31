@@ -5,8 +5,8 @@
 # Carga dinámicamente las credenciales desde los entornos .env sin credenciales en código.
 # Ubicación: /opt/sonar/monitor/monitor_db.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 """
 
@@ -117,16 +117,42 @@ def get_db_connection(
 
 
 def test_db_connection() -> bool:
-    """Valida la conectividad a la base de datos MariaDB."""
+    """Valida la conectividad a la base de datos MariaDB usando el Context Manager centralizado."""
     try:
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1 AS ok")
-                row = cur.fetchone()
-                return bool(row and row.get("ok") == 1)
-        finally:
-            conn.close()
+        from monitor.infrastructure.db_context import db_cursor
+        with db_cursor() as cur:
+            cur.execute("SELECT 1 AS ok")
+            row = cur.fetchone()
+            return bool(row and row.get("ok") == 1)
     except Exception as e:
         logger.error(f"Fallo al verificar conexión con MariaDB: {e}")
         return False
+
+
+# ------------------------------------------------------------------------------
+# Exportaciones directas del Context Manager Canónico (SOLID / Inversión de Dependencias)
+# ------------------------------------------------------------------------------
+def db_connection(*args: Any, **kwargs: Any):
+    from monitor.infrastructure.db_context import db_connection as _db_connection
+    return _db_connection(*args, **kwargs)
+
+
+def db_cursor(*args: Any, **kwargs: Any):
+    from monitor.infrastructure.db_context import db_cursor as _db_cursor
+    return _db_cursor(*args, **kwargs)
+
+
+def execute_query(*args: Any, **kwargs: Any):
+    from monitor.infrastructure.db_context import execute_query as _execute_query
+    return _execute_query(*args, **kwargs)
+
+
+def execute_scalar(*args: Any, **kwargs: Any):
+    from monitor.infrastructure.db_context import execute_scalar as _execute_scalar
+    return _execute_scalar(*args, **kwargs)
+
+
+def execute_statement(*args: Any, **kwargs: Any):
+    from monitor.infrastructure.db_context import execute_statement as _execute_statement
+    return _execute_statement(*args, **kwargs)
+

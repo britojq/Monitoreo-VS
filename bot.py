@@ -5,8 +5,8 @@
 # Arquitectura SOLID - Principio de Responsabilidad Única y Delegación Modular.
 # Ubicación: /scripts/telegram-admin-bot/bot.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 """
 
@@ -159,22 +159,48 @@ from bot_core.handlers.alert_handlers import (
     register_alert_routes,
 )
 from bot_core.router import register_all_handlers
-from monitor.core_shield import (
-    IMMUTABLE_AUTO_UPDATE_ENABLED,
-    IMMUTABLE_BOT_TOKEN,
-    IMMUTABLE_GIT_BRANCH,
-    IMMUTABLE_GIT_REPO_URL,
-    IMMUTABLE_OWNER_ID,
-    activate_hardware_first_boot,
-    get_core_status,
-    is_core_operational,
-    migrate_core_token,
+from bot_core.contracts.security_provider import (
+    SecurityProviderProtocol,
+    get_default_security_provider,
 )
 from monitor.proxy_cache import (
     ProxyInflightGuard,
     get_cached_proxy_result,
     save_cached_proxy_result,
 )
+
+# ------------------------------------------------------------------------------
+# Inversión de Dependencias (DIP): Delegación al proveedor de seguridad formal
+# ------------------------------------------------------------------------------
+_SECURITY_PROVIDER: SecurityProviderProtocol = get_default_security_provider()
+
+# Constantes y funciones de compatibilidad histórica desacopladas mediante el protocolo
+IMMUTABLE_BOT_TOKEN = _SECURITY_PROVIDER.get_bot_token()
+IMMUTABLE_OWNER_ID = _SECURITY_PROVIDER.get_owner_id()
+IMMUTABLE_AUTO_UPDATE_ENABLED = _SECURITY_PROVIDER.is_auto_update_enabled()
+IMMUTABLE_GIT_REPO_URL = _SECURITY_PROVIDER.get_git_repo_url()
+IMMUTABLE_GIT_BRANCH = _SECURITY_PROVIDER.get_git_branch()
+
+
+def is_core_operational() -> bool:
+    """Verifica si el núcleo de seguridad física se encuentra operativo."""
+    return _SECURITY_PROVIDER.is_core_operational()
+
+
+def get_core_status() -> Dict[str, Any]:
+    """Obtiene el diagnóstico operativo del núcleo y hardware vault."""
+    return _SECURITY_PROVIDER.get_core_status()
+
+
+def activate_hardware_first_boot() -> bool:
+    """Inicializa la bóveda física en el primer arranque del servidor."""
+    return _SECURITY_PROVIDER.activate_first_boot()
+
+
+def migrate_core_token(new_token: str) -> bool:
+    """Cifra y persiste un nuevo token en la bóveda de hardware."""
+    return _SECURITY_PROVIDER.migrate_token(new_token)
+
 
 # ------------------------------------------------------------------------------
 # 3. VARIABLES GLOBALES DE ESTADO Y CONFIGURACIÓN
@@ -196,8 +222,7 @@ async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) 
     if isinstance(err, telegram.error.Conflict):
         logger.error(f"🚨 COLISIÓN DE INSTANCIAS DETECTADA (Conflict 409): {err}")
         try:
-            from monitor.core_shield import send_core_conflict_alert
-            send_core_conflict_alert()
+            _SECURITY_PROVIDER.send_conflict_alert()
         except Exception as e_alert:
             logger.error(f"Error enviando alerta de conflicto: {e_alert}")
         await asyncio.sleep(25)
@@ -216,15 +241,16 @@ async def bot_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) 
 
 
 # ------------------------------------------------------------------------------
-# 5. PUNTO DE ENTRADA PRINCIPAL (MAIN)
+# 5. PUNTO DE ENTRADA PRINCIPAL (MAIN - CON INYECCIÓN DE DEPENDENCIAS)
 # ------------------------------------------------------------------------------
-def main() -> None:
+def main(security_provider: Optional[SecurityProviderProtocol] = None) -> None:
     """Punto de entrada principal: configuración de red, background workers y polling."""
     global _BOT_APP_INSTANCE
-    bot_token = IMMUTABLE_BOT_TOKEN
+    provider = security_provider or _SECURITY_PROVIDER
+    bot_token = provider.get_bot_token()
 
     if not bot_token:
-        logger.error("Error: IMMUTABLE_BOT_TOKEN no configurado en el código fuente.")
+        logger.error("Error: Token de Telegram no configurado en el proveedor de seguridad.")
         return
 
     # Selección y conmutación automática de conexión (Directa vs Proxies corporativos)
@@ -308,7 +334,7 @@ def main() -> None:
                     commit = data.get("new_commit", "N/A")
                     msg = html.escape(data.get("commit_message", "Actualización del sistema"))
                     duration = data.get("duration_seconds", "N/A")
-                    owner_id = IMMUTABLE_OWNER_ID or CONFIG.get("owner_id", 0)
+                    owner_id = provider.get_owner_id() or CONFIG.get("owner_id", 0)
 
                     # Regla de Oro #1: Solo enviar al chat privado del Owner (chat_id positivo)
                     if owner_id and int(owner_id) > 0:

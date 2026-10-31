@@ -25,12 +25,14 @@ from monitor.alerts import (
     format_table,
     main_cli,
 )
+from monitor.monitor_db import get_db_connection
 
 __all__ = [
     "compute_fingerprint",
     "AlertEngine",
     "format_table",
     "main_cli",
+    "get_db_connection",
 ]
 
 if __name__ == "__main__":

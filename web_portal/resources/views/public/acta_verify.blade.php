@@ -24,7 +24,7 @@
                     <span class="material-symbols-outlined text-2xl">verified_user</span>
                 </div>
                 <div>
-                    <div class="text-[10px] uppercase tracking-wider font-extrabold text-cyan-400">empresa • UNIDAD DE INFORMÁTICA</div>
+                    <div class="text-[10px] uppercase tracking-wider font-extrabold text-cyan-400">EMPRESA • UNIDAD DE INFORMÁTICA</div>
                     <div class="text-base font-bold text-white tracking-tight">Certificado de Autenticidad Digital</div>
                 </div>
             </div>
@@ -168,7 +168,7 @@
 
         <!-- PIE DE PÁGINA -->
         <div class="p-4 bg-slate-950 border-t border-slate-800 text-center text-xs text-slate-500">
-            Corporación Eléctrica Nacional, S.A (empresa) • Centro de Operaciones & ITAM Valle Seco
+            Corporación Eléctrica Nacional, S.A (EMPRESA) • Centro de Operaciones & ITAM Valle Seco
         </div>
 
     </div>

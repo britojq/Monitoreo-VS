@@ -1,26 +1,40 @@
+# Entorno virtual
 venv/
 __pycache__/
 *.pyc
+
+# Archivos de entorno y credenciales sensibles locales
 .env
-config.json
-config/config.json
-config/*.conf
-!config/bot.conf
-!config/monitoreo.conf
-!config/mensajes.conf
+*.token
+
+# Logs de ejecución efímeros
 *.log
-logs/*
-!logs/.gitkeep
-audit/*
-!audit/.gitkeep
+
+# Bóveda criptográfica de hardware (Regla #13)
+system/vault/
 system/vault/*
-!system/vault/.gitkeep
-docs/
-tests/
+system/vault/.sys_anchor
+system/vault/.active_challenge
+
+# Puntos de restauración y resiliencia local (Checkpoints)
+system/recovery/
+system/recovery/checkpoints/
+system/recovery/checkpoints/*
+
+# Documentación interna (Se respalda en el repositorio privado)
+
+# Binarios de instaladores (GLPI Agent)
+*.msi
+*.deb
+instaladores/*.msi
+instaladores/*.deb
+web_portal/public/instaladores/*.msi
+web_portal/public/instaladores/*.deb
+
+# Web Portal Laravel exclusions
 web_portal/vendor/
 web_portal/node_modules/
 web_portal/.env
-web_portal/database/database.sqlite
 web_portal/storage/logs/*.log
 web_portal/storage/framework/cache/data/*
 web_portal/storage/framework/sessions/*
@@ -28,7 +42,37 @@ web_portal/storage/framework/views/*
 web_portal/storage/app/public/*
 web_portal/bootstrap/cache/*.php
 !web_portal/bootstrap/cache/.gitignore
+# Scratch scripts
 scratch/
+
+# GitOps y Respaldos de Base de Datos
 .update_lock
 database/backups/*.sql.gz
+!database/backups/.gitkeep
+
+# Informes de análisis y auditorías externas temporales
+Informe*.txt
+Informe*.md
+
+# Archivos del sistema y editores
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Respaldos pesados de sesiones raw (JSONL)
+historico_sesiones/*.gz
+historico_sesiones/*.jsonl
+docs/historico_sesiones/*.gz
+docs/historico_sesiones/*.jsonl
+
+# Archivos temporales de pruebas y notas locales
+PASE-*.pdf
+modal-invetario.txt
+
+# Graphify y flujos locales de agentes
 graphify-out/
+.agents/workflows/
+
+

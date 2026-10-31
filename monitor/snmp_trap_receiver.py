@@ -4,8 +4,8 @@
 # Demonio de captura y análisis de traps SNMP v1/v2c en tiempo real (UDP 162)
 # Ubicación: /opt/sonar/monitor/snmp_trap_receiver.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 from __future__ import annotations

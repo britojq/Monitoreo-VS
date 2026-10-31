@@ -316,9 +316,9 @@
                 <tr>
                     <td class="logo-box">
                         @if(isset($empresaLogoBase64) && $empresaLogoBase64)
-                            <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="empresa">
+                            <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="EMPRESA">
                         @else
-                            <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="empresa">
+                            <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="EMPRESA">
                         @endif
                     </td>
                     <td class="title-box">

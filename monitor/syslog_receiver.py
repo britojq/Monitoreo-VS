@@ -4,8 +4,8 @@
 # Captura asíncrona de eventos RFC 3164 / RFC 5424 en tiempo real (UDP 514)
 # Ubicación: /opt/sonar/monitor/syslog_receiver.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 from __future__ import annotations

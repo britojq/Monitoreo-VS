@@ -4,8 +4,8 @@
 # Despacho reactivo de caídas y recuperaciones por Telegram (Owner / Grupo)
 # Ubicación: /opt/sonar/monitor/device_service_notifier.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 """
 
@@ -37,7 +37,7 @@ def get_notification_target(target_type: str) -> str:
     Si target_type es 'group', en modo esclavo / desarrollo se redirige al Owner.
     """
     owner_id = "38914901"
-    group_id = "-1001383163558"
+    group_id = ""
     node_role = "master"
 
     try:
@@ -47,9 +47,11 @@ def get_notification_target(target_type: str) -> str:
         groups = cfg.get("allowed_group_ids", [])
         if groups:
             group_id = str(groups[0])
+        else:
+            group_id = "-1001383163558"
         node_role = str(cfg.get("node_role", "master")).lower()
     except Exception:
-        pass
+        group_id = "-1001383163558"
 
     try:
         # Soporte para tests unitarios que simulan configuración mockeando Path.read_text

@@ -302,9 +302,9 @@
             </td>
             <td style="width: 50%; text-align: right;">
                 @if(isset($empresaLogoBase64) && $empresaLogoBase64)
-                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="empresa">
+                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="EMPRESA">
                 @else
-                    <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="empresa">
+                    <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="EMPRESA">
                 @endif
                 <table style="margin-left: auto; border-collapse: collapse; margin-top: 3px;">
                     <tr>
@@ -549,7 +549,7 @@
 
     <!-- PIE CORPORATIVO Y LEGAL -->
     <div class="footer-legal">
-        Corporación Eléctrica Nacional, S.A (empresa) / R.I.F: G-20010014-1<br>
+        Corporación Eléctrica Nacional, S.A (EMPRESA) / R.I.F: G-20010014-1<br>
         Avenida Vollmer entre Caracas y Alameda, Edificio Centro Empresarial Caracas, Piso 6, Oficina 6. San Bernardino Caracas, Venezuela / Teléfono: (0212) 502.21.11
     </div>
     <div class="footer-bottom">

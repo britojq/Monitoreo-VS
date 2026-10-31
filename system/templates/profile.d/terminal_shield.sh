@@ -4,8 +4,8 @@
 # Ubicación de despliegue: /etc/profile.d/terminal_shield.sh
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 # 0. Si hay Override Maestro del Owner activo, omitir toda comprobación y permitir acceso completo

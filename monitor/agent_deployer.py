@@ -4,8 +4,8 @@
 # Despliegue desatendido e inventario en PCs Windows (32/64 bits) y Linux (Xubuntu)
 # Ubicación: /opt/sonar/monitor/agent_deployer.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 """
 

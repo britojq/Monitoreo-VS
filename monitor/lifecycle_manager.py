@@ -4,8 +4,8 @@
 # Auditoría de garantías, fin de soporte (EOL/EOS), baterías y estado de discos
 # Ubicación: /opt/sonar/monitor/lifecycle_manager.py
 # License: GNU Affero General Public License v3.0
-# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Operador ATIT
+# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 
 from __future__ import annotations
