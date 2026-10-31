@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Models\BotCommand;
 use App\Models\BotSetting;
-use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +14,9 @@ use Illuminate\View\View;
 
 class AdminBotCommandController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Muestra la lista de comandos y configuraciones globales del bot.
      */
@@ -50,15 +53,14 @@ class AdminBotCommandController extends Controller
      */
     public function update(Request $request, BotCommand $command): RedirectResponse|JsonResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        if ($this->cluster->isSlave()) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).",
                 ], 403);
             }
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de comandos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -96,15 +98,14 @@ class AdminBotCommandController extends Controller
      */
     public function toggle(BotCommand $command): RedirectResponse|JsonResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        if ($this->cluster->isSlave()) {
             if (request()->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).",
                 ], 403);
             }
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La activación/desactivación de comandos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $command->is_active = !$command->is_active;
@@ -129,9 +130,8 @@ class AdminBotCommandController extends Controller
      */
     public function updateSettings(Request $request): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La configuración global del bot debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La configuración global del bot debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([

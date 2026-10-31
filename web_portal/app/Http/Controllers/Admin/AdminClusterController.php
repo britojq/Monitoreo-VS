@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
-use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,12 +12,9 @@ use Illuminate\Support\Facades\Log;
 
 class AdminClusterController extends Controller
 {
-    protected ClusterConfigService $clusterService;
-
-    public function __construct(ClusterConfigService $clusterService)
-    {
-        $this->clusterService = $clusterService;
-    }
+    public function __construct(
+        protected ClusterConfigInterface $clusterService,
+    ) {}
 
     /**
      * Actualiza la configuración de rol Master/Slave y conexión.

@@ -8,6 +8,7 @@ use App\Actions\Snmp\ActivateRemoteSnmpAction;
 use App\Actions\Snmp\CreateSnmpDeviceAction;
 use App\Actions\Snmp\DeleteSnmpDeviceAction;
 use App\Actions\Snmp\UpdateSnmpDeviceAction;
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Snmp\ActivateRemoteSnmpRequest;
 use App\Http\Requests\Snmp\StoreSnmpDeviceRequest;
@@ -15,7 +16,6 @@ use App\Http\Requests\Snmp\UpdateSnmpDeviceRequest;
 use App\Models\SnmpDevice;
 use App\Models\SnmpInterface;
 use App\Models\SnmpInterfaceMetric;
-use App\Services\ClusterConfigService;
 use App\Services\System\SonarPathService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +23,9 @@ use Illuminate\Http\Request;
 
 class AdminSnmpController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Redirige al panel unificado de Radar & Telemetría SNMP (Pestaña SNMP).
      */
@@ -250,11 +253,10 @@ class AdminSnmpController extends Controller
      */
     public function toggleInterfaceMonitoring(Request $request, int $id): JsonResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        if ($this->cluster->isSlave()) {
             return response()->json([
                 'success' => false,
-                'message' => "Acción Bloqueada: Servidor en modo ESCLAVO. Gestione interfaces en el Master ({$cluster->getMasterApiUrl()}).",
+                'message' => "Acción Bloqueada: Servidor en modo ESCLAVO. Gestione interfaces en el Master ({$this->cluster->getMasterApiUrl()}).",
             ], 403);
         }
 

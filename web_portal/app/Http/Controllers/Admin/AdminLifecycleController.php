@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\HardwareLifecycle;
 use App\Models\MonitoredNetworkDevice;
 use App\Models\SnmpDevice;
-use App\Services\ClusterConfigService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +16,9 @@ use Illuminate\View\View;
 
 class AdminLifecycleController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Muestra la matriz de ciclo de vida de hardware, garantías y fin de soporte.
      */
@@ -101,9 +104,8 @@ class AdminLifecycleController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de inventario y garantías deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de inventario y garantías deben realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -164,9 +166,8 @@ class AdminLifecycleController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de inventario y garantías deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de inventario y garantías deben realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $item = HardwareLifecycle::findOrFail($id);

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Models\ConfigChangeLog;
 use App\Models\DeviceConfiguration;
 use App\Models\MonitoredNetworkDevice;
 use App\Models\SnmpDevice;
-use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +16,9 @@ use Symfony\Component\Process\Process;
 
 class AdminConfigController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Muestra el panel de inventario de respaldos de configuraciones,
      * métricas HUD, auditoría diferencial y control de cambios.
@@ -159,9 +162,8 @@ class AdminConfigController extends Controller
      */
     public function backupDevice(Request $request): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución de respaldos WAN debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución de respaldos WAN debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $target = $request->input('device_target');
@@ -231,9 +233,8 @@ class AdminConfigController extends Controller
      */
     public function backupAll(): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución masiva de respaldos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La ejecución masiva de respaldos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $pythonScript = base_path('../monitor/config_backup.py');
@@ -251,9 +252,8 @@ class AdminConfigController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de respaldos debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La eliminación de respaldos debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $config = DeviceConfiguration::findOrFail($id);

@@ -1,4 +1,6 @@
 # monitor/gitops/services/git_client.py
+from __future__ import annotations
+
 import asyncio
 import html
 import logging
@@ -11,13 +13,69 @@ from monitor.core_shield import (
     get_core_repo_url,
     get_core_branch,
 )
+from monitor.domain.exceptions import SubprocessSecurityException
 
 logger = logging.getLogger("monitor.gitops.git")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
+
+def validate_process_args(args: List[str]) -> bool:
+    """
+    Valida estrictamente los argumentos pasados a un subproceso del sistema.
+    Previene inyección de metacaracteres, secuencias nulas y flags peligrosos de Git.
+
+    Args:
+        args: Lista de cadenas de argumentos a despachar.
+
+    Returns:
+        bool: True si todos los argumentos son seguros.
+
+    Raises:
+        SubprocessSecurityException: Si se detecta un patrón malicioso o flag prohibido.
+    """
+    if not isinstance(args, list):
+        raise SubprocessSecurityException("La lista de argumentos debe ser de tipo List[str]")
+
+    forbidden_chars = {"\x00", "\r", "\n", "`", ";", "|", "&"}
+    dangerous_git_options = {
+        "--upload-pack",
+        "--receive-pack",
+        "--exec",
+    }
+
+    for arg in args:
+        if not isinstance(arg, str):
+            raise SubprocessSecurityException(f"Argumento no es de tipo str: {type(arg)}")
+
+        for char in forbidden_chars:
+            if char in arg:
+                raise SubprocessSecurityException(
+                    f"Argumento contiene metacaracter prohibido '{repr(char)}': {arg!r}"
+                )
+
+        if "$(" in arg or "${" in arg:
+            raise SubprocessSecurityException(
+                f"Argumento contiene intento de interpolación o substitución: {arg!r}"
+            )
+
+        arg_lower = arg.lower()
+        for dangerous_opt in dangerous_git_options:
+            if arg_lower == dangerous_opt or arg_lower.startswith(dangerous_opt + "="):
+                raise SubprocessSecurityException(
+                    f"Flag de Git potencialmente inseguro denegado: {arg}"
+                )
+
+    return True
+
+
 class GitClient:
     """Ejecutor desacoplado y seguro de comandos Git con soporte de proxies corporativos."""
+
+    @staticmethod
+    def validate_args(args: List[str]) -> bool:
+        """Alias de validación de argumentos en la clase GitClient."""
+        return validate_process_args(args)
 
     @staticmethod
     async def run_command(
@@ -27,6 +85,13 @@ class GitClient:
         cwd: Optional[Path] = None,
     ) -> Tuple[int, str, str]:
         """Ejecuta un comando git en el directorio del proyecto con argumentos opcionales de proxy."""
+        all_args = (proxy_args or []) + args
+        try:
+            validate_process_args(all_args)
+        except SubprocessSecurityException as sec_err:
+            logger.error(f"Violación de seguridad al validar argumentos de Git: {sec_err}")
+            return -1, "", f"Error de seguridad: {sec_err}"
+
         cmd = ["git"]
         if proxy_args:
             cmd.extend(proxy_args)

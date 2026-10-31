@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Models\BotSetting;
 use Illuminate\Support\Facades\Log;
 
-class ClusterConfigService
+class ClusterConfigService implements ClusterConfigInterface
 {
     /**
      * Obtiene la configuración de cluster directamente desde MariaDB (SSOT).

@@ -9,8 +9,8 @@ use App\Actions\Cluster\ProvideClusterTelemetryAction;
 use App\Actions\Cluster\VerifyClusterAction;
 use App\Contracts\ClusterAuditLoggerInterface;
 use App\Contracts\ClusterVerifierInterface;
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
-use App\Services\ClusterConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 class ClusterApiController extends Controller
 {
     public function __construct(
-        protected ClusterConfigService $clusterService,
+        protected ClusterConfigInterface $clusterService,
         protected ?ClusterVerifierInterface $verifier = null,
         protected ?ClusterAuditLoggerInterface $auditLogger = null
     ) {}

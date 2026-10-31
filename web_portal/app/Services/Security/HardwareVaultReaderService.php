@@ -83,6 +83,38 @@ class HardwareVaultReaderService implements HardwareVaultReaderInterface
                 return null;
             }
 
+            // 1. Desencriptado AES-256-GCM v2.0 (NIST SP 800-38D)
+            if (($data['v'] ?? '') === '2.0' || ($data['algo'] ?? '') === 'AES-256-GCM') {
+                if (strlen($rawTb) < 28) {
+                    Log::error("HardwareVaultReaderService: Payload AES-256-GCM demasiado corto.");
+                    return null;
+                }
+                $nonce = substr($rawTb, 0, 12);
+                $tag = substr($rawTb, -16);
+                $ciphertext = substr($rawTb, 12, -16);
+                $decrypted = openssl_decrypt(
+                    $ciphertext,
+                    'aes-256-gcm',
+                    $hwKey,
+                    OPENSSL_RAW_DATA,
+                    $nonce,
+                    $tag,
+                    'TELEGRAM_BOT_TOKEN_V2'
+                );
+                if ($decrypted !== false) {
+                    $computedSig = hash_hmac('sha256', $decrypted, $hwKey);
+                    if (hash_equals($computedSig, (string) $data['ts'])) {
+                        $cleanToken = trim($decrypted);
+                        if (str_contains($cleanToken, ':') && strlen($cleanToken) >= 30) {
+                            return $cleanToken;
+                        }
+                    }
+                }
+                Log::error('HardwareVaultReaderService: Fallo autenticando o descifrando token AES-256-GCM v2.');
+                return null;
+            }
+
+            // 2. Desencriptado Formato v1 Legacy (XOR + Rotación)
             $computedSig = hash_hmac('sha256', $rawTb, $hwKey);
             if (!hash_equals($computedSig, (string) $data['ts'])) {
                 Log::error('HardwareVaultReaderService: Firma HMAC inválida. Componentes de hardware no coinciden.');

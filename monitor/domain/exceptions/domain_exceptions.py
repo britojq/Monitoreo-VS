@@ -112,3 +112,39 @@ class NetworkCaptureException(InfrastructureException):
 class HardwareVaultException(InfrastructureException):
     """Lanzada ante fallos al acceder o derivar llaves criptográficas de anclaje de hardware."""
     pass
+
+
+class VaultError(HardwareVaultException):
+    """Excepción base para fallos operativos en el subsistema de bóveda criptográfica."""
+    pass
+
+
+class VaultWriteError(VaultError):
+    """Lanzada cuando la escritura o sellado del anclaje de hardware falla."""
+    pass
+
+
+class VaultReadError(VaultError):
+    """Lanzada cuando la lectura o desenrollado de llaves en memoria falla."""
+    pass
+
+
+class VaultKeyNotFoundError(VaultError):
+    """Lanzada cuando la llave maestra o los secretos del vault no están aprovisionados."""
+    pass
+
+
+class VaultIntegrityError(VaultError):
+    """Lanzada ante discrepancias de firma HMAC o corrupción de datos en el anclaje."""
+    pass
+
+
+class DatabaseTransactionException(DatabaseException):
+    """Lanzada cuando una transacción atómica falla y debe ser revertida (rollback)."""
+    pass
+
+
+class SubprocessSecurityException(InfrastructureException):
+    """Lanzada cuando un argumento de subproceso contiene patrones peligrosos o metacaracteres."""
+    pass
+

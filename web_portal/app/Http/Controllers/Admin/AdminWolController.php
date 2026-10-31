@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\MonitoredSite;
@@ -15,6 +16,9 @@ use Illuminate\View\View;
 
 class AdminWolController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Muestra el panel de administración de Wake-on-LAN.
      */
@@ -94,9 +98,8 @@ class AdminWolController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $cluster = new \App\Services\ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de equipos WoL deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de equipos WoL deben realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -148,9 +151,8 @@ class AdminWolController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $cluster = new \App\Services\ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de equipos WoL deben realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). Las modificaciones de equipos WoL deben realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $device = WolDevice::findOrFail($id);

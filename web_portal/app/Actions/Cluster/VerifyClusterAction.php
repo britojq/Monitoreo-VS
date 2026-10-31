@@ -6,14 +6,14 @@ namespace App\Actions\Cluster;
 
 use App\Contracts\ClusterAuditLoggerInterface;
 use App\Contracts\ClusterVerifierInterface;
-use App\Services\ClusterConfigService;
+use App\Contracts\Services\ClusterConfigInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class VerifyClusterAction
 {
     public function __construct(
-        protected ClusterConfigService $clusterService,
+        protected ClusterConfigInterface $clusterService,
         protected ClusterVerifierInterface $verifier,
         protected ClusterAuditLoggerInterface $auditLogger
     ) {}

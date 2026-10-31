@@ -7,9 +7,10 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Discovery\AuthorizeDiscoveredDeviceAction;
 use App\Actions\Discovery\FetchDiscoveredDevicesAction;
 use App\Actions\Discovery\StoreSubnetAction;
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Discovery\StoreSubnetRequest;
-use App\Services\Cluster\ClusterConfigService;
+use App\Models\DiscoveredDevice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,16 +18,21 @@ use Illuminate\View\View;
 
 class AdminDiscoveryController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
+
     public function index(Request $request, FetchDiscoveredDevicesAction $action): View
     {
+        $this->authorize('view', DiscoveredDevice::class);
         return view('admin.discovery.index', $action->execute($request));
     }
 
     public function authorizeDevice(Request $request, int $id, AuthorizeDiscoveredDeviceAction $action): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Servidor en modo ESCLAVO. Gestione en MASTER ({$cluster->getMasterApiUrl()}).");
+        $this->authorize('authorize', DiscoveredDevice::class);
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Servidor en modo ESCLAVO. Gestione en MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
         $device = $action->authorize($id, $request->user(), (string) $request->input('device_type', 'workstation'), $request->input('notes'));
         return back()->with('success', "Dispositivo {$device->ip_address} aprobado exitosamente.");
@@ -34,8 +40,8 @@ class AdminDiscoveryController extends Controller
 
     public function markRogue(Request $request, int $id, AuthorizeDiscoveredDeviceAction $action): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        $this->authorize('authorize', DiscoveredDevice::class);
+        if ($this->cluster->isSlave()) {
             return back()->with('error', "Acción Bloqueada: Servidor en modo ESCLAVO.");
         }
         $device = $action->markRogue($id, $request->user(), (string) $request->input('reason', 'No reconocido'));
@@ -44,8 +50,8 @@ class AdminDiscoveryController extends Controller
 
     public function update(Request $request, int $id, AuthorizeDiscoveredDeviceAction $action): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        $this->authorize('authorize', DiscoveredDevice::class);
+        if ($this->cluster->isSlave()) {
             return back()->with('error', "Acción Bloqueada: Servidor en modo ESCLAVO.");
         }
         $validated = $request->validate([
@@ -62,6 +68,7 @@ class AdminDiscoveryController extends Controller
 
     public function scanNow(Request $request, AuthorizeDiscoveredDeviceAction $action): RedirectResponse
     {
+        $this->authorize('scan', DiscoveredDevice::class);
         $subnet = $request->input('subnet');
         $action->scanNow($subnet ? (string) $subnet : null);
         $target = $subnet ? "subred {$subnet}" : "todas las subredes";
@@ -70,8 +77,8 @@ class AdminDiscoveryController extends Controller
 
     public function storeSubnet(StoreSubnetRequest $request, StoreSubnetAction $action): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        $this->authorize('scan', DiscoveredDevice::class);
+        if ($this->cluster->isSlave()) {
             return back()->with('error', "Acción Bloqueada: Servidor en modo ESCLAVO.");
         }
         $subnet = $action->execute($request->validated());
@@ -80,6 +87,7 @@ class AdminDiscoveryController extends Controller
 
     public function history(int $id, FetchDiscoveredDevicesAction $action): JsonResponse
     {
+        $this->authorize('view', DiscoveredDevice::class);
         return response()->json($action->getHistory($id));
     }
 }

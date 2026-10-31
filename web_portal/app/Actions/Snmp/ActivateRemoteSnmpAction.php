@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Actions\Snmp;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Models\AuditLog;
 use App\Models\SnmpDevice;
-use App\Services\ClusterConfigService;
 use App\Services\System\SonarPathService;
 use Illuminate\Support\Facades\Auth;
 
 readonly class ActivateRemoteSnmpAction
 {
     public function __construct(
-        private ClusterConfigService $cluster
+        private ClusterConfigInterface $cluster
     ) {}
 
     public function execute(array $validated, ?string $ip, ?string $userAgent): array

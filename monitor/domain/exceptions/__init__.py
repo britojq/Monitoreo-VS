@@ -11,6 +11,7 @@ from monitor.domain.exceptions.domain_exceptions import (
     DatabaseConnectionException,
     DatabaseException,
     DatabaseQueryException,
+    DatabaseTransactionException,
     DecryptionException,
     DomainException,
     EntityNotFoundException,
@@ -23,6 +24,12 @@ from monitor.domain.exceptions.domain_exceptions import (
     SnmpException,
     SnmpTimeoutException,
     SonarBaseException,
+    SubprocessSecurityException,
+    VaultError,
+    VaultIntegrityError,
+    VaultKeyNotFoundError,
+    VaultReadError,
+    VaultWriteError,
 )
 
 __all__ = [
@@ -31,6 +38,7 @@ __all__ = [
     "DatabaseConnectionException",
     "DatabaseException",
     "DatabaseQueryException",
+    "DatabaseTransactionException",
     "DecryptionException",
     "DomainException",
     "EntityNotFoundException",
@@ -43,4 +51,10 @@ __all__ = [
     "SnmpException",
     "SnmpTimeoutException",
     "SonarBaseException",
+    "SubprocessSecurityException",
+    "VaultError",
+    "VaultIntegrityError",
+    "VaultKeyNotFoundError",
+    "VaultReadError",
+    "VaultWriteError",
 ]

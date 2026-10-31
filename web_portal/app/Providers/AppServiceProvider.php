@@ -11,6 +11,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(\App\Contracts\Services\ClusterConfigInterface::class, \App\Services\ClusterConfigService::class);
         $this->app->singleton(\App\Contracts\Services\HardwareVaultReaderInterface::class, \App\Services\Security\HardwareVaultReaderService::class);
         $this->app->singleton(\App\Contracts\Services\BotTokenResolverInterface::class, \App\Services\Security\OperationalBotTokenResolver::class);
         $this->app->singleton(\App\Contracts\NotifierInterface::class, \App\Services\Notification\TelegramTransport::class);
@@ -29,7 +30,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Contracts\GlpiEndpointConfigInterface::class, \App\Services\Deployment\GlpiEndpointConfigService::class);
         $this->app->singleton(\App\Contracts\ToolExecutorInterface::class, \App\Services\Mcp\NocToolExecutor::class);
         $this->app->singleton(\App\Contracts\ToolIntentResolverInterface::class, \App\Services\Mcp\Resolvers\SemanticToolIntentResolver::class);
-        $this->app->singleton(\App\Contracts\OllamaServiceInterface::class, \App\Services\Mcp\OllamaService::class);
+        $this->app->singleton(\App\Contracts\CorporateAiInferenceServiceInterface::class, \App\Services\Mcp\CorporateAiInferenceService::class);
+        $this->app->singleton(\App\Contracts\OllamaServiceInterface::class, function ($app) {
+            return $app->make(\App\Contracts\CorporateAiInferenceServiceInterface::class);
+        });
 
         // Repositorios de Dominio (Principios SOLID)
         $this->app->bind(\App\Contracts\Repositories\InventoryAssetRepositoryInterface::class, \App\Repositories\Eloquent\EloquentInventoryAssetRepository::class);
@@ -51,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         view()->composer('*', function ($view) {
-            $clusterService = new \App\Services\ClusterConfigService();
+            $clusterService = $this->app->make(\App\Contracts\Services\ClusterConfigInterface::class);
             $view->with('clusterConfig', $clusterService->getConfig());
             $view->with('isClusterSlave', $clusterService->isSlave());
             $view->with('isClusterMaster', $clusterService->isMaster());

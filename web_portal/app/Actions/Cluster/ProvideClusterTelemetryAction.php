@@ -54,14 +54,14 @@ use App\Models\UpsPowerEvent;
 use App\Models\UpsTelemetryHistory;
 use App\Models\WolDevice;
 use App\Contracts\ClusterAuditLoggerInterface;
-use App\Services\ClusterConfigService;
+use App\Contracts\Services\ClusterConfigInterface;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class ProvideClusterTelemetryAction
 {
     public function __construct(
-        protected ClusterConfigService $clusterService,
+        protected ClusterConfigInterface $clusterService,
         protected ClusterAuditLoggerInterface $auditLogger
     ) {}
 

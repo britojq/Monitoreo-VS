@@ -21,8 +21,8 @@ class HardwareVaultSolidTest extends TestCase
 {
     public function test_credentials_dto_immutability_and_validation(): void
     {
-        $dto = new HardwareVaultCredentialsDto('1234567890:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ', 38914901);
-        $this->assertSame('1234567890:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ', $dto->botToken);
+        $dto = new HardwareVaultCredentialsDto('1234567890:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ_dummy', 38914901);
+        $this->assertSame('1234567890:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ_dummy', $dto->botToken);
         $this->assertSame(38914901, $dto->ownerId);
         $this->assertTrue($dto->isValid());
 

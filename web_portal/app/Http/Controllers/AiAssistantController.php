@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Contracts\OllamaServiceInterface;
+use App\Contracts\CorporateAiInferenceServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 class AiAssistantController extends Controller
 {
     public function __construct(
-        protected OllamaServiceInterface $ollamaService
+        protected CorporateAiInferenceServiceInterface $aiService
     ) {}
 
     /**
@@ -35,7 +35,7 @@ class AiAssistantController extends Controller
 
         @set_time_limit(240);
 
-        $result = $this->ollamaService->chat(
+        $result = $this->aiService->chat(
             userMessage: trim($validated['message']),
             history: $validated['history'] ?? [],
             userName: $validated['user_name'] ?? 'Administrador Telegram',

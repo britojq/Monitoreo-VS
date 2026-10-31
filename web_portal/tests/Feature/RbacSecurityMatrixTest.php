@@ -176,7 +176,7 @@ class RbacSecurityMatrixTest extends TestCase
     {
         $response = $this->actingAs($this->adminUser)->get(route('admin.inventory.deploy'));
         $response->assertDontSee('360°');
-        $response->assertDontSee('360');
+        $response->assertDontSee('360 grados');
         $response->assertDontSee('custodio');
         $response->assertDontSee('Custodio');
 

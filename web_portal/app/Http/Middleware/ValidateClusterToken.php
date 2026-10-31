@@ -2,17 +2,20 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\ClusterConfigService;
+use App\Contracts\Services\ClusterConfigInterface;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidateClusterToken
 {
+    public function __construct(
+        protected ClusterConfigInterface $clusterService,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
-        $clusterService = new ClusterConfigService();
-        $expectedToken = $clusterService->getClusterToken();
+        $expectedToken = $this->clusterService->getClusterToken();
 
         // Extraer token desde cabecera X-Cluster-Token o Bearer Token o parámetro token
         $providedToken = $request->header('X-Cluster-Token') 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Cluster;
 
 use App\Contracts\ClusterAuditLoggerInterface;
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Models\Alert;
 use App\Models\AuditLog;
 use App\Models\MonitoredNetworkDevice;
@@ -14,7 +15,6 @@ use App\Models\MonitoredSite;
 use App\Models\NetworkTopologyLink;
 use App\Models\SnmpDevice;
 use App\Models\User;
-use App\Services\ClusterConfigService;
 use App\Services\System\SonarPathService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +22,7 @@ use Illuminate\Http\Request;
 class ProvideClusterDiagnosticsAction
 {
     public function __construct(
-        protected ClusterConfigService $clusterService,
+        protected ClusterConfigInterface $clusterService,
         protected ClusterAuditLoggerInterface $auditLogger
     ) {}
 

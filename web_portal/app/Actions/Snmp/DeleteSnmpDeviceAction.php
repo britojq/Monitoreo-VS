@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Snmp;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Models\AuditLog;
 use App\Models\SnmpDevice;
-use App\Services\ClusterConfigService;
 use Illuminate\Support\Facades\Auth;
 
 readonly class DeleteSnmpDeviceAction
 {
     public function __construct(
-        private ClusterConfigService $cluster
+        private ClusterConfigInterface $cluster
     ) {}
 
     public function execute(int $id, ?string $ip, ?string $userAgent): array

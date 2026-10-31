@@ -1,33 +1,33 @@
 """
 # ==============================================================================
-# 🚀 NOTIFICACIÓN DE ARRANQUE Y APAGADO: boot_alert.py (@IA_ValleSeco_bot)
-# Detección de reinicios limpios y cortes de energía con alertas inmediatas
+# 🚀 ALERTAS DE ARRANQUE Y PARADA DEL SISTEMA: boot_alert.py (@IA_ValleSeco_bot)
+# Notificación inmediata al Owner / Grupo corporativo en arranque o apagado
 # Ubicación: /opt/sonar/monitor/boot_alert.py
-# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
-# License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
 # ==============================================================================
 """
 
-from __future__ import annotations
-
 import asyncio
+from datetime import datetime
 import html
-import json
 import logging
 import os
+from pathlib import Path
 import signal
 import socket
 import subprocess
 import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-import httpx
+from monitor.alerts.boot import (
+    get_bot_setting,
+    get_local_ips,
+    load_config,
+    send_shutdown_alert_fast,
+    send_telegram_alert,
+    set_bot_setting,
+    wait_for_network_and_telegram,
+)
 
-# Configuración de logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -38,176 +38,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-# =========================================================================
-# 🔒 POLÍTICAS DE SEGURIDAD INMUTABLES Y OFUSCADAS (NÚCLEO BLINDADO)
-# =========================================================================
-from monitor.core_shield import IMMUTABLE_OWNER_ID, get_core_bot_token
-
-
-def get_bot_setting(key: str, default: str = "0") -> str:
-    """Consulta una clave en MariaDB bot_settings (SSOT)."""
-    try:
-        from monitor.monitor_db import get_db_connection
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT setting_value FROM bot_settings WHERE setting_key = %s LIMIT 1", (key,))
-                row = cur.fetchone()
-                if row and row[0] is not None:
-                    return str(row[0]).strip()
-        finally:
-            conn.close()
-    except Exception as e:
-        logger.warning(f"Error consultando bot_settings ({key}): {e}")
-    return default
-
-
-def set_bot_setting(key: str, value: str) -> bool:
-    """Actualiza o inserta una clave en MariaDB bot_settings (SSOT)."""
-    try:
-        from monitor.monitor_db import get_db_connection
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO bot_settings (setting_key, setting_value, updated_at)
-                    VALUES (%s, %s, NOW())
-                    ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()
-                    """,
-                    (key, str(value))
-                )
-            conn.commit()
-            return True
-        finally:
-            conn.close()
-    except Exception as e:
-        logger.warning(f"Error actualizando bot_settings ({key} = {value}): {e}")
-        return False
-
-
-def load_config() -> Dict[str, any]:
-    """Carga configuración desde MariaDB vía config_manager (SSOT) y fuerza parámetros inmutables."""
-    try:
-        from bot_core.services.config_manager import load_config as load_bot_config
-        cfg = load_bot_config()
-    except Exception as e:
-        logger.error(f"Error leyendo configuración desde MariaDB SSOT: {e}")
-        cfg = {}
-    # Blindaje inmutable de Owner ID y Bot Token dinámico verificado
-    cfg["owner_id"] = IMMUTABLE_OWNER_ID
-    cfg["bot_token"] = get_core_bot_token()
-    return cfg
-
-
-def get_local_ips() -> str:
-    """Obtiene las direcciones IP locales activas del sistema."""
-    try:
-        res = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=3)
-        ips = res.stdout.strip()
-        if ips:
-            return ips
-    except Exception:
-        pass
-
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "No asignada (sin red detectada)"
-
-
-async def send_telegram_alert(token: str, chat_ids: List[int | str], message: str, proxies: List[dict] = None) -> bool:
-    """Envía la alerta a los chat_ids especificados probando directo y con proxies con reintentos."""
-    if not token or not chat_ids:
-        logger.error("Token o chat_ids vacíos")
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    success_any = False
-
-    # Lista de endpoints/clientes a probar: Directo primero, luego proxies
-    client_configs = [None]  # None = directo
-    if proxies:
-        for p in proxies:
-            if isinstance(p, dict) and p.get("url"):
-                client_configs.append(p["url"])
-            elif isinstance(p, str):
-                client_configs.append(p)
-
-    for chat_id in chat_ids:
-        delivered = False
-        for attempt in range(1, 4):
-            for proxy_url in client_configs:
-                try:
-                    async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0) as client:
-                        resp = await client.post(url, json={
-                            "chat_id": chat_id,
-                            "text": message,
-                            "parse_mode": "HTML"
-                        })
-                        if resp.status_code == 200 and resp.json().get("ok"):
-                            logger.info(f"Mensaje entregado a {chat_id} exitosamente (intento {attempt}).")
-                            delivered = True
-                            success_any = True
-                            break
-                except Exception as e:
-                    logger.debug(f"Fallo envío a {chat_id} (intento {attempt}) via {'directo' if not proxy_url else proxy_url}: {e}")
-
-            if delivered:
-                break
-            await asyncio.sleep(3)
-
-        if not delivered:
-            logger.warning(f"No se pudo entregar la alerta al chat {chat_id} tras reintentos.")
-
-    return success_any
-
-
-async def wait_for_network_and_telegram(token: str, proxies: List[dict], max_wait_seconds: int = 240) -> bool:
-    """Espera activamente a que la red y la API de Telegram estén accesibles tras el arranque."""
-    logger.info(f"Iniciando espera activa de conectividad (hasta {max_wait_seconds}s)...")
-    url = f"https://api.telegram.org/bot{token}/getMe"
-    
-    elapsed = 0
-    step = 4
-    
-    while elapsed < max_wait_seconds:
-        # 1. Probar directo
-        try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
-                r = await client.get(url)
-                if r.status_code == 200 and r.json().get("ok"):
-                    logger.info(f"Conectividad con Telegram confirmada (Directo) tras {elapsed}s.")
-                    return True
-        except Exception:
-            pass
-
-        # 2. Probar proxies
-        if proxies:
-            for p in proxies:
-                p_url = p.get("url") if isinstance(p, dict) else p
-                if p_url:
-                    try:
-                        async with httpx.AsyncClient(proxy=p_url, timeout=3.5) as client:
-                            r = await client.get(url)
-                            if r.status_code == 200 and r.json().get("ok"):
-                                logger.info(f"Conectividad con Telegram confirmada (Proxy: {p_url}) tras {elapsed}s.")
-                                return True
-                    except Exception:
-                        pass
-
-        if elapsed % 20 == 0 and elapsed > 0:
-            logger.info(f"Aún esperando conectividad con Telegram ({elapsed}s/{max_wait_seconds}s)...")
-
-        await asyncio.sleep(step)
-        elapsed += step
-
-    logger.warning(f"Tiempo de espera de red agotado tras {max_wait_seconds}s.")
-    return False
+__all__ = [
+    "get_bot_setting",
+    "set_bot_setting",
+    "load_config",
+    "get_local_ips",
+    "send_telegram_alert",
+    "wait_for_network_and_telegram",
+    "send_shutdown_alert_fast",
+    "handle_start",
+    "handle_stop",
+    "handle_background_start",
+    "main",
+]
 
 
 async def handle_start() -> int:
@@ -376,44 +219,6 @@ async def handle_start() -> int:
 
     # Retornar SIEMPRE 0 para que systemd marque el servicio como active (exited) de forma garantizada
     return 0
-
-
-async def send_shutdown_alert_fast(token: str, chat_id: int | str, message: str, proxies: List[dict] = None) -> bool:
-    """
-    Envío ultra-rápido y prioritario para apagado del sistema.
-    Timeout estricto de 3.5s por conexión sin sleeps para ganar la carrera al apagado de interfaces.
-    """
-    if not token or not chat_id:
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-
-    # Targets: Directo primero, luego proxies configurados
-    targets = [None]
-    if proxies:
-        for p in proxies:
-            p_url = p.get("url") if isinstance(p, dict) else p
-            if p_url and p_url not in targets:
-                targets.append(p_url)
-
-    for target in targets:
-        try:
-            async with httpx.AsyncClient(proxy=target, timeout=4.0) as client:
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200 and resp.json().get("ok"):
-                    logger.info(f"Alerta de apagado entregada exitosamente (Vía: {target or 'Directo'}).")
-                    return True
-        except Exception as e:
-            logger.warning(f"Fallo envío rápido de apagado con {target or 'Directo'}: {e}")
-            continue
-
-    logger.warning("No se pudo entregar la alerta rápida de apagado por ninguna vía.")
-    return False
 
 
 async def handle_stop() -> int:

@@ -23,6 +23,7 @@ import pymysql.cursors
 from monitor.domain.exceptions import (
     DatabaseConnectionException,
     DatabaseQueryException,
+    DatabaseTransactionException,
 )
 from monitor.monitor_db import load_env_db_config
 
@@ -109,6 +110,66 @@ def db_cursor(
         except pymysql.MySQLError as e:
             logger.error(f"Error de sintaxis o ejecución SQL en MariaDB: {e}")
             raise DatabaseQueryException(f"Error en consulta MariaDB: {e}") from e
+        finally:
+            try:
+                cur.close()
+            except Exception:
+                pass
+
+
+@contextmanager
+def atomic_transaction(
+    cursorclass: Any = pymysql.cursors.DictCursor,
+    connect_timeout: int = 5,
+) -> Generator[pymysql.connections.Connection, None, None]:
+    """
+    Context manager para transacciones atómicas seguras en MariaDB (ACID).
+    Garantiza autocommit=False, commit explícito al completar con éxito el bloque,
+    y rollback incondicional ante cualquier excepción, encapsulando fallos en
+    DatabaseTransactionException.
+
+    Uso:
+        with atomic_transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE alerts SET status = %s WHERE id = %s", ("RESOLVED", alert_id))
+                cur.execute("INSERT INTO audit_logs (action, details) VALUES (%s, %s)", ("RESOLVE_ALERT", "..."))
+    """
+    with db_connection(
+        cursorclass=cursorclass,
+        autocommit=False,
+        connect_timeout=connect_timeout,
+    ) as conn:
+        try:
+            yield conn
+            conn.commit()
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception as rb_err:
+                logger.warning(f"Error secundario en rollback MariaDB: {rb_err}")
+            logger.error(f"Fallo en transacción atómica MariaDB (rollback ejecutado): {e}")
+            raise DatabaseTransactionException(f"Transacción atómica fallida y revertida: {e}") from e
+
+
+@contextmanager
+def atomic_cursor(
+    cursorclass: Any = pymysql.cursors.DictCursor,
+    connect_timeout: int = 5,
+) -> Generator[pymysql.cursors.Cursor, None, None]:
+    """
+    Context manager transaccional de alto nivel que entrega un cursor directamente
+    bajo una transacción atómica segura. Ejecuta commit al salir del bloque with
+    o rollback si ocurre un error.
+
+    Uso:
+        with atomic_cursor() as cur:
+            cur.execute("UPDATE ...")
+            cur.execute("INSERT ...")
+    """
+    with atomic_transaction(cursorclass=cursorclass, connect_timeout=connect_timeout) as conn:
+        cur = conn.cursor()
+        try:
+            yield cur
         finally:
             try:
                 cur.close()

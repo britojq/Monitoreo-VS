@@ -3,19 +3,16 @@
 namespace App\Services\Cluster;
 
 use App\Contracts\ClusterAuditLoggerInterface;
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Models\AuditLog;
-use App\Services\ClusterConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ClusterAuditLoggerService implements ClusterAuditLoggerInterface
 {
-    protected ClusterConfigService $clusterConfig;
-
-    public function __construct(ClusterConfigService $clusterConfig)
-    {
-        $this->clusterConfig = $clusterConfig;
-    }
+    public function __construct(
+        protected ClusterConfigInterface $clusterConfig,
+    ) {}
 
     /**
      * Registra un evento de acceso a la API de Clúster en audit_logs de forma inmutable.

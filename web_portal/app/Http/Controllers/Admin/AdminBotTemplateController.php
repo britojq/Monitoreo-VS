@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
 use App\Models\BotMessageTemplate;
-use App\Services\ClusterConfigService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +14,9 @@ use Illuminate\View\View;
 
 class AdminBotTemplateController extends Controller
 {
+    public function __construct(
+        protected ClusterConfigInterface $cluster,
+    ) {}
     /**
      * Muestra el panel de edición de plantillas de mensajería del Bot.
      */
@@ -40,15 +43,14 @@ class AdminBotTemplateController extends Controller
      */
     public function update(Request $request, BotMessageTemplate $template): RedirectResponse|JsonResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
+        if ($this->cluster->isSlave()) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).",
+                    'message' => "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).",
                 ], 403);
             }
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La modificación de plantillas debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         $validated = $request->validate([
@@ -87,9 +89,8 @@ class AdminBotTemplateController extends Controller
      */
     public function reset(BotMessageTemplate $template): RedirectResponse
     {
-        $cluster = new ClusterConfigService();
-        if ($cluster->isSlave()) {
-            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La restauración de plantillas debe realizarse en el servidor MASTER ({$cluster->getMasterApiUrl()}).");
+        if ($this->cluster->isSlave()) {
+            return back()->with('error', "Acción Bloqueada: Este servidor opera en modo ESCLAVO (Solo Lectura). La restauración de plantillas debe realizarse en el servidor MASTER ({$this->cluster->getMasterApiUrl()}).");
         }
 
         /** @var \App\Models\User $user */
