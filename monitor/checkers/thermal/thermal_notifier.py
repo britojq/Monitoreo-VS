@@ -65,7 +65,7 @@ def get_proxies_list() -> List[Optional[str]]:
 def dispatch_telegram_alert(text: str, alert_type: str = "thermal") -> bool:
     """
     Despacha una alerta directa y exclusiva al Owner mediante el bot principal.
-    Cumple estrictamente la Regla de Oro #1 (chat_id: 38914901, jamás a grupos).
+    Cumple estrictamente la Regla de Oro #1 (chat_id: <OWNER_TELEGRAM_ID>, jamás a grupos).
     """
     token = IMMUTABLE_BOT_TOKEN
     if not token:

@@ -362,7 +362,7 @@ N° Personal: {{ auth()->user()->personal_number }}
                                 <span class="w-3.5 h-3.5 rounded-full border border-cyan-400 peer-checked:bg-cyan-400 flex items-center justify-center text-[9px] text-black font-bold">✓</span>
                             </div>
                             <p class="text-[10px] font-mono text-obsidian-muted leading-tight">
-                                Chat privado del Administrador (38914901).
+                                Chat privado del Administrador (<OWNER_TELEGRAM_ID>).
                             </p>
                         </div>
                     </label>

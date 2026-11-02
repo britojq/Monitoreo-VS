@@ -530,7 +530,7 @@
                                 <div>
                                     <span class="text-xs font-bold font-mono text-white block">👤 Administrador Privado</span>
                                     <span class="text-[10px] font-mono text-obsidian-muted block mt-0.5">
-                                        Owner ID: <code class="text-cyan-300">38914901</code> (Chat confidencial)
+                                        Owner ID: <code class="text-cyan-300"><OWNER_TELEGRAM_ID></code> (Chat confidencial)
                                     </span>
                                 </div>
                             </label>

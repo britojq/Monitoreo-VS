@@ -1,8 +1,8 @@
 # 🛡️ Plataforma Integral de Monitoreo y Administración Valle Seco
 ### *Centro de Operaciones y Monitoreo de Infraestructura de Red*
 
-[![Version](https://img.shields.io/badge/Version-v5.46.80-007acc?style=flat&logo=git&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
-[![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%2010%2F10-success?style=flat&logo=blueprint&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
+[![Version](https://img.shields.io/badge/Version-v5.46.90-007acc?style=flat&logo=git&logoColor=white)](docs/PENDIENTES.md)
+[![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%2010%2F10-success?style=flat&logo=blueprint&logoColor=white)](docs/PENDIENTES.md)
 [![Quality Barrier](https://img.shields.io/badge/Quality%20Barrier-Zero--Fail-brightgreen?style=flat&logo=shield&logoColor=white)](tools/certify_system_integrity.py)
 [![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com/)
@@ -14,10 +14,10 @@
 
 > **Organización:** Centro de Operaciones y Monitoreo de Redes  
 > **Autor / Administrador:** José A. Brito H. ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
-> **Versión Activa:** `v5.46.80` (Arquitectura Desacoplada SOLID 10/10)  
+> **Versión Activa:** `v5.46.90` (Arquitectura Desacoplada SOLID 10/10)  
 > **Arquitectura Modular:** Módulos de la Plataforma: [1 / 5] Activo (Módulo Actual: Sistema de Monitoreo)  
 > **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
-> **Topología de Servidores:** Servidor Principal Master (`192.168.1.250`) / Servidor Réplica Slave (`192.168.1.220`)  
+> **Topología de Servidores:** Servidor Principal Master (`<MASTER_IP>`) / Servidor Réplica Slave (`<SLAVE_IP>`)  
 > **Acceso Portal Web:** `http://monitoreo-vs.local/`  
 
 ---
@@ -36,9 +36,9 @@ El ecosistema integra de manera coordinada servicios web, bots de mensajería ci
                 ┌────────────────────────────────────────┴────────────────────────────────────────┐
                 ▼                                                                                 ▼
    ┌──────────────────────────────┐                                                  ┌──────────────────────────────┐
-   │    👑 NODO MASTER (252)       │                                                  │     🔗 NODO SLAVE (221)      │
+   │    👑 NODO MASTER            │                                                  │     🔗 NODO SLAVE            │
    │  • Escaneo oficial de red    │                                                  │  • Réplica de sólo lectura   │
-   │  • Consultas hacia pfSense   │ ─── Telemetría Snapshot / API Cifrada ────────▶  │  • Sin colisión en pfSense   │
+   │  • Consultas hacia Firewall  │ ─── Telemetría Snapshot / API Cifrada ────────▶  │  • Sin colisión en Firewall  │
    │  • Configuración mutable     │       [X-CLUSTER-TOKEN /api/cluster/*]           │  • Comandos independientes   │
    └──────────────┬───────────────┘                                                  └──────────────┬───────────────┘
                   │                                                                                 │
@@ -75,7 +75,7 @@ Para garantizar la continuidad operativa y evitar problemas de colisión de cred
                                                 ▼
                                    ┌─────────────────────────┐
                                    │    👑 SERVIDOR MASTER   │
-                                   │      (192.168.1.250)     │
+                                   │       (<MASTER_IP>)     │
                                    └────────────┬────────────┘
                                                 │
                  Snapshot JSON vía API Cifrada  │ (X-CLUSTER-TOKEN)
@@ -83,16 +83,16 @@ Para garantizar la continuidad operativa y evitar problemas de colisión de cred
                                                 ▼
                                    ┌─────────────────────────┐
                                    │    🔗 SERVIDOR SLAVE    │
-                                   │      (192.168.1.220)     │
+                                   │       (<SLAVE_IP>)      │
                                    └─────────────────────────┘
 ```
 
-### 1. Rol Master (Servidor Principal - `192.168.1.250`):
+### 1. Rol Master (Servidor Principal - `<MASTER_IP>`):
 - **Escaneo Oficial de Infraestructura:** Es el único nodo autorizado para consultar directamente los estados de enlaces, proxies Squid y métricas de pfSense.
 - **Autoridad de Configuración:** Las adiciones, ediciones o eliminaciones de servicios, sedes y proxies se ejecutan exclusivamente en este nodo y se persisten en MariaDB SSOT (`monitoreo_vs`).
 - **Servidor de API de Clúster:** Expone el endpoint protegido `/api/cluster/snapshot` y `/api/cluster/telemetry`, que genera instantáneas completas de telemetría validadas criptográficamente mediante el encabezado `X-CLUSTER-TOKEN`.
 
-### 2. Rol Slave (Servidor Réplica - `192.168.1.220`):
+### 2. Rol Slave (Servidor Réplica - `<SLAVE_IP>`):
 - **Cero Consultas Externas al Firewall:** No realiza escaneos directos a pfSense ni a la red WAN, eliminando riesgos de baneos o bloqueos por concurrencia de credenciales.
 - **Sincronización Asíncrona Ultraligera:** El demonio `monitor_web_sync.py` descarga automáticamente el snapshot del Master en intervalos ajustables (**1, 2, 5, 10 o 15 minutos**) con latencia interna inferior a 100 ms.
 - **Interfaz Adaptativa de Solo Lectura:** El portal web desactiva automáticamente los formularios de mutación de infraestructura y despliega avisos visuales explicativos.
@@ -116,7 +116,7 @@ La plataforma implementa un subsistema de autenticación híbrido (`LdapAuthServ
                                     /                  \
                         ┌──────────────────┐     ┌────────────────────────┐
                         │ Autenticación en │     │  Consulta LDAP Server  │
-                        │ MariaDB (Bcrypt) │     │     (192.168.0.22:389)   │
+                        │ MariaDB (Bcrypt) │     │  (<LDAP_SERVER_IP>:389)│
                         └──────────────────┘     └───────────┬────────────┘
                                                              │
                                                 ¿Credenciales válidas en LDAP?
@@ -143,11 +143,11 @@ La plataforma implementa un subsistema de autenticación híbrido (`LdapAuthServ
 El portal web incorpora clientes de acceso remoto directo desde la interfaz gráfica, sin requerir software cliente adicional en las estaciones de trabajo de los operadores:
 
 ### 1. Terminal Telnet Web (Xterm.js)
-- **Acceso a Switches y Routers:** Integración con switches perimetrales (`SW01`, `SW02`, `SW03`) y routers principales (`192.168.1.1`, `192.168.1.119`, etc.).
+- **Acceso a Switches y Routers:** Integración con switches perimetrales (`SW01`, `SW02`, `SW03`) y routers principales (`<ROUTER_CORE_IP>`, `<ROUTER_EDGE_IP>`, etc.).
 - **Terminal Reactiva:** Emulación ANSI completa mediante Xterm.js con ajuste dinámico de dimensiones (*FitAddon*) y gestión de sesiones seguras.
 
 ### 2. Visor VNC Embebido
-- **Supervisión de Estaciones Gráficas:** Visualización remota de interfaces de consolas de monitoreo locales (`192.168.1.66`).
+- **Supervisión de Estaciones Gráficas:** Visualización remota de interfaces de consolas de monitoreo locales (`<CONSOLE_IP>`).
 - **Autenticación Temporal:** Generación de tokens de sesión con expiración para prevenir accesos concurrentes no autorizados.
 
 ---
@@ -256,7 +256,7 @@ estatus analisis_red
 
 # Auto-Discovery de Red y Detección Anti-Rogue
 estatus discovery --all                    # Escanear todas las subredes activas
-estatus discovery --subnet 192.168.1.0/24   # Escaneo de subred específica
+estatus discovery --subnet <SUBNET_CIDR>   # Escaneo de subred específica (ej: 192.168.1.0/24)
 
 # Ejecutar escaneo localmente sin enviar mensaje a Telegram
 estatus servicios --no-send
@@ -282,7 +282,7 @@ rollback 20260902_122152
 
 ## 📋 Comandos del Bot de Telegram
 
-### 👑 Comandos de Administrador (Owner: `38914901`):
+### 👑 Comandos de Administrador (Owner: `<OWNER_TELEGRAM_ID>`):
 | Comando | Descripción |
 | :--- | :--- |
 | `/emergencia` | Menú de contingencia (detención segura, modo mantenimiento, restauración). |

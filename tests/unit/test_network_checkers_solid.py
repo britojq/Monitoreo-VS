@@ -68,7 +68,7 @@ class TestCoreShieldModular:
 
     def test_vault_constants(self):
         from monitor.shield.vault_key_deriver import IMMUTABLE_OWNER_ID
-        assert IMMUTABLE_OWNER_ID == 38914901
+        assert IMMUTABLE_OWNER_ID == <OWNER_TELEGRAM_ID>
 
     def test_secure_core_status(self):
         from monitor.shield.secure_core import is_core_operational, get_core_status
@@ -81,7 +81,7 @@ class TestCoreShieldModular:
         assert hasattr(facade, "SecureCore")
         assert hasattr(facade, "is_core_operational")
         assert hasattr(facade, "IMMUTABLE_OWNER_ID")
-        assert facade.IMMUTABLE_OWNER_ID == 38914901
+        assert facade.IMMUTABLE_OWNER_ID == <OWNER_TELEGRAM_ID>
 
 
 class TestConfigBackupModular:
@@ -177,7 +177,7 @@ class TestThermalModular:
 
     def test_thermal_constants(self):
         from monitor.checkers.thermal.constants import IMMUTABLE_OWNER_ID, AI_SERVICE_UNIT
-        assert IMMUTABLE_OWNER_ID == 38914901
+        assert IMMUTABLE_OWNER_ID == <OWNER_TELEGRAM_ID>
         assert AI_SERVICE_UNIT == "ollama.service"
 
     def test_thermal_facade_exports(self):

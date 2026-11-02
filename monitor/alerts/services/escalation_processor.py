@@ -80,17 +80,17 @@ class EscalationProcessor:
                         continue
 
                     # REGLA DE ORO #1: Chat ID estricto privado del Administrador
-                    target_chat = "38914901"
+                    target_chat = "<OWNER_TELEGRAM_ID>"
                     if lvl.get("target_external"):
                         target_chat = str(lvl["target_external"]).strip()
 
                     try:
                         cid = int(target_chat)
                         if cid < 0:
-                            logger.error(f"🚨 REGLA DE ORO #1: Intento bloqueado de despachar a grupo ({cid}). Redirigiendo a Owner 38914901.")
-                            target_chat = "38914901"
+                            logger.error(f"🚨 REGLA DE ORO #1: Intento bloqueado de despachar a grupo ({cid}). Redirigiendo a Owner <OWNER_TELEGRAM_ID>.")
+                            target_chat = "<OWNER_TELEGRAM_ID>"
                     except ValueError:
-                        target_chat = "38914901"
+                        target_chat = "<OWNER_TELEGRAM_ID>"
 
                     sev_map = {
                         "emergency": ("🆘", "EMERGENCIA"),

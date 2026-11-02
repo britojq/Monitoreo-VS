@@ -125,7 +125,7 @@ class TestTelemetryPushIntegration(unittest.TestCase):
 
     def test_05_golden_rule_1_syslog_owner_chat_id(self):
         """Verifica que el chat ID de despacho de seguridad sea estrictamente el ID privado del Owner."""
-        self.assertEqual(SYSLOG_OWNER, 38914901)
+        self.assertEqual(SYSLOG_OWNER, <OWNER_TELEGRAM_ID>)
         self.assertGreater(SYSLOG_OWNER, 0, "El chat ID jamás debe ser negativo (grupo).")
 
 

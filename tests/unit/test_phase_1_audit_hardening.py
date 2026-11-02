@@ -67,7 +67,7 @@ class TestPhase1AuditHardening:
 
     def test_deobfuscate_payload_aes_256_gcm(self):
         """Certifica que deobfuscate_payload utilice descifrado AES-256-GCM estándar."""
-        plaintext = "38914901"
+        plaintext = "<OWNER_TELEGRAM_ID>"
         blob = StandardEncryptor.encrypt_to_base64(
             plaintext=plaintext.encode("utf-8"),
             key=_CORE_MASTER_KEY,

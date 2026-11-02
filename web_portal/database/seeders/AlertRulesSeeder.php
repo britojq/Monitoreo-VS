@@ -226,7 +226,7 @@ class AlertRulesSeeder extends Seeder
                     'channel' => 'telegram',
                     'target_type' => 'user',
                     'target_id' => $adminId,
-                    'target_external' => '38914901',
+                    'target_external' => '<OWNER_TELEGRAM_ID>',
                     'is_active' => true,
                 ]
             );
@@ -242,7 +242,7 @@ class AlertRulesSeeder extends Seeder
                     'channel' => 'telegram',
                     'target_type' => 'user',
                     'target_id' => $adminId,
-                    'target_external' => '38914901',
+                    'target_external' => '<OWNER_TELEGRAM_ID>',
                     'is_active' => true,
                 ]
             );
@@ -258,7 +258,7 @@ class AlertRulesSeeder extends Seeder
                     'channel' => 'telegram',
                     'target_type' => 'user',
                     'target_id' => $adminId,
-                    'target_external' => '38914901',
+                    'target_external' => '<OWNER_TELEGRAM_ID>',
                     'is_active' => true,
                 ]
             );

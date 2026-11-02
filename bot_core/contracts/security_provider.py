@@ -14,14 +14,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
 
 logger = logging.getLogger("bot_core.security_provider")
 
 
 @runtime_checkable
-class SecurityProviderProtocol(Protocol):
-    """Protocolo formal para proveedores de seguridad, tokens y bóveda criptográfica."""
+class TokenProvider(Protocol):
+    """Protocolo segregado para credenciales y tokens del bot (ISP de SOLID)."""
 
     def get_bot_token(self) -> str:
         """Obtiene el token del bot de Telegram desenrollado en memoria volátil."""
@@ -31,13 +31,35 @@ class SecurityProviderProtocol(Protocol):
         """Obtiene el identificador de usuario Telegram del Administrador único."""
         ...
 
+    def migrate_token(self, new_token: str) -> bool:
+        """Cifra y persiste un nuevo token en la bóveda de hardware."""
+        ...
+
+
+@runtime_checkable
+class OperationalStatusProvider(Protocol):
+    """Protocolo segregado para salud y telemetría del núcleo físico (ISP de SOLID)."""
+
     def is_core_operational(self) -> bool:
         """Indica si el núcleo de seguridad y anclaje de hardware está activo."""
         ...
 
-    def get_core_status(self) -> Dict[str, Any]:
+    def get_core_status(self) -> Union[Dict[str, Any], str]:
         """Obtiene el diagnóstico operativo del núcleo y hardware vault."""
         ...
+
+    def send_conflict_alert(self) -> None:
+        """Despacha alerta de conflicto de sesión (Conflict 409) al chat privado."""
+        ...
+
+    def activate_first_boot(self) -> bool:
+        """Inicializa la bóveda física en el primer arranque del servidor."""
+        ...
+
+
+@runtime_checkable
+class GitConfigProvider(Protocol):
+    """Protocolo segregado para aprovisionamiento y configuración GitOps (ISP de SOLID)."""
 
     def is_auto_update_enabled(self) -> bool:
         """Verifica si las actualizaciones automáticas están permitidas."""
@@ -51,17 +73,14 @@ class SecurityProviderProtocol(Protocol):
         """Retorna la rama de ejecución oficial."""
         ...
 
-    def send_conflict_alert(self) -> None:
-        """Despacha alerta de conflicto de sesión (Conflict 409) al chat privado."""
-        ...
 
-    def activate_first_boot(self) -> bool:
-        """Inicializa la bóveda física en el primer arranque del servidor."""
-        ...
-
-    def migrate_token(self, new_token: str) -> bool:
-        """Cifra y persiste un nuevo token en la bóveda de hardware."""
-        ...
+@runtime_checkable
+class SecurityProviderProtocol(TokenProvider, OperationalStatusProvider, GitConfigProvider, Protocol):
+    """
+    Protocolo formal para proveedores de seguridad, tokens y bóveda criptográfica.
+    Compone TokenProvider, OperationalStatusProvider y GitConfigProvider cumpliendo con ISP.
+    """
+    ...
 
 
 class HardwareVaultSecurityProvider:
@@ -94,7 +113,7 @@ class HardwareVaultSecurityProvider:
             logger.error(f"Error verificando operatividad del core: {e}")
             return False
 
-    def get_core_status(self) -> Dict[str, Any]:
+    def get_core_status(self) -> Union[Dict[str, Any], str]:
         try:
             from monitor.core_shield import get_core_status
             return get_core_status()

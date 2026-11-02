@@ -24,6 +24,7 @@ from typing import Optional
 
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from monitor.domain.exceptions import DecryptionException
 from monitor.infrastructure.shm_cache import get_shm_cache
@@ -120,16 +121,21 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
     return key_bytes
 
 
-def decrypt_laravel_string(encrypted_str: str) -> str:
+def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
     """
-    Descifra una cadena generada por Crypt::encryptString() en Laravel (AES-256-CBC).
+    Descifra una cadena generada por Crypt::encryptString() en Laravel (AES-256-CBC)
+    o por el subsistema criptográfico NIST SP 800-38D (AES-256-GCM).
     Utiliza memoria compartida /dev/shm para acelerar consultas repetidas de credenciales SNMP.
 
     Args:
-        encrypted_str: Cadena cifrada en base64 con el payload JSON de Laravel.
+        encrypted_str: Cadena cifrada en base64 con el payload JSON.
+        strict: Si True, levanta DecryptionException ante fallos en vez de retornar "".
 
     Returns:
-        str: Cadena en texto plano o vacía si el descifrado falla.
+        str: Cadena en texto plano o vacía si el descifrado falla (en modo no strict).
+
+    Raises:
+        DecryptionException: Si strict=True y el descifrado falla.
     """
     if not encrypted_str:
         return ""
@@ -142,17 +148,28 @@ def decrypt_laravel_string(encrypted_str: str) -> str:
 
     try:
         key = get_laravel_app_key()
-        payload = json.loads(base64.b64decode(encrypted_str).decode("utf-8"))
-        iv = base64.b64decode(payload["iv"])
-        ciphertext = base64.b64decode(payload["value"])
+        raw_json = base64.b64decode(encrypted_str).decode("utf-8")
+        payload = json.loads(raw_json)
 
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        decryptor = cipher.decryptor()
-        padded = decryptor.update(ciphertext) + decryptor.finalize()
+        # 1. Soporte Nativo NIST SP 800-38D (AES-256-GCM)
+        if payload.get("mode") == "GCM" or "nonce" in payload:
+            nonce = base64.b64decode(payload["nonce"])
+            ciphertext = base64.b64decode(payload["value"])
+            aesgcm = AESGCM(key)
+            plain_bytes = aesgcm.decrypt(nonce, ciphertext, None)
+            val = plain_bytes.decode("utf-8", errors="ignore")
+        else:
+            # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC)
+            iv = base64.b64decode(payload["iv"])
+            ciphertext = base64.b64decode(payload["value"])
 
-        unpadder = padding.PKCS7(128).unpadder()
-        unpadded = unpadder.update(padded) + unpadder.finalize()
-        val = unpadded.decode("utf-8", errors="ignore")
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+            decryptor = cipher.decryptor()
+            padded = decryptor.update(ciphertext) + decryptor.finalize()
+
+            unpadder = padding.PKCS7(128).unpadder()
+            unpadded = unpadder.update(padded) + unpadder.finalize()
+            val = unpadded.decode("utf-8", errors="ignore")
 
         # Limpiar serialización de PHP si aplica (ej: s:6:"public";)
         if val.startswith("s:") and '"' in val:
@@ -161,8 +178,40 @@ def decrypt_laravel_string(encrypted_str: str) -> str:
         cache.set(cache_key, val, ttl=300.0)
         return val
     except Exception as e:
-        logger.debug(f"Fallo al descifrar cadena Laravel: {e}")
+        logger.warning(f"Fallo al descifrar cadena Laravel: {e}")
+        if strict:
+            raise DecryptionException(f"Error crítico al descifrar credencial: {e}") from e
         return ""
+
+
+def encrypt_laravel_string_gcm(plain_text: str) -> str:
+    """
+    Cifra una cadena usando AES-256-GCM conforme a NIST SP 800-38D (AEAD).
+    Incluye un nonce criptográfico de 12 bytes (96 bits) recomendado por NIST.
+
+    Args:
+        plain_text: Cadena en texto plano a cifrar.
+
+    Returns:
+        str: Blob codificado en base64 con payload JSON que incluye nonce, ciphertext y mode="GCM".
+
+    Raises:
+        DecryptionException: Si la clave criptográfica de Laravel no está disponible.
+    """
+    if not plain_text:
+        return ""
+
+    key = get_laravel_app_key()
+    nonce = os.urandom(12)  # NIST SP 800-38D: 96 bits nonce
+    aesgcm = AESGCM(key)
+    ciphertext = aesgcm.encrypt(nonce, plain_text.encode("utf-8"), None)
+
+    payload = json.dumps({
+        "nonce": base64.b64encode(nonce).decode("utf-8"),
+        "value": base64.b64encode(ciphertext).decode("utf-8"),
+        "mode": "GCM",
+    })
+    return base64.b64encode(payload.encode("utf-8")).decode("utf-8")
 
 
 def encrypt_laravel_string(plain_text: str) -> str:

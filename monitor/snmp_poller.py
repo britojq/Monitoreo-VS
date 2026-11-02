@@ -22,11 +22,15 @@ from monitor.checkers.snmp.snmp_engine import poll_device_oids
 from monitor.cli.snmp_cli import main
 from monitor.infrastructure.laravel_encryptor import (
     decrypt_laravel_string,
+    encrypt_laravel_string,
+    encrypt_laravel_string_gcm,
     get_laravel_app_key,
 )
 
 __all__ = [
     "decrypt_laravel_string",
+    "encrypt_laravel_string",
+    "encrypt_laravel_string_gcm",
     "get_laravel_app_key",
     "poll_device_oids",
     "discover_interfaces",

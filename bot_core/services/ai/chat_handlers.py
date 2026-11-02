@@ -46,7 +46,7 @@ async def cmd_ia_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     user = update.effective_user
     cfg = get_active_config()
-    owner_id = int(cfg.get("owner_id", 38914901))
+    owner_id = int(cfg.get("owner_id", <OWNER_TELEGRAM_ID>))
 
     if not user or user.id != owner_id:
         await update.message.reply_text("⛔ Acceso restringido: Este comando es exclusivo del Administrador Principal.")
@@ -115,7 +115,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     cfg = get_active_config()
-    owner_id = int(cfg.get("owner_id", 38914901))
+    owner_id = int(cfg.get("owner_id", <OWNER_TELEGRAM_ID>))
 
     # LÍNEA 1: CHAT PRIVADO DEL OWNER
     if chat.type == "private":
@@ -173,7 +173,7 @@ async def handle_chat_query_direct(update: Update, context: ContextTypes.DEFAULT
         return
 
     cfg = get_active_config()
-    owner_id = int(cfg.get("owner_id", 38914901))
+    owner_id = int(cfg.get("owner_id", <OWNER_TELEGRAM_ID>))
 
     if chat.type == "private":
         if user.id != owner_id or chat.id != owner_id:

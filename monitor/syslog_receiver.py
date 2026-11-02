@@ -60,7 +60,7 @@ logger = logging.getLogger("syslog")
 
 DEFAULT_SYSLOG_PORT = 514
 FALLBACK_SYSLOG_PORT = 10514
-OWNER_PRIVATE_CHAT_ID = 38914901
+OWNER_PRIVATE_CHAT_ID = <OWNER_TELEGRAM_ID>
 
 # Regex para RFC 5424
 RE_RFC5424 = re.compile(
@@ -228,7 +228,7 @@ def store_syslog_event(event: Dict[str, Any]) -> int:
 async def check_and_notify_syslog_alert(event: Dict[str, Any]):
     """
     Evalúa si el evento amerita notificación inmediata a Telegram para severidades críticas (<= 3).
-    🚨 En estricto cumplimiento de la REGLA DE ORO #1: NUNCA enviar a grupos, solo a Owner ID 38914901.
+    🚨 En estricto cumplimiento de la REGLA DE ORO #1: NUNCA enviar a grupos, solo a Owner ID <OWNER_TELEGRAM_ID>.
     """
     severity = event.get("severity", 6)
     if severity > 3:  # Solo notificar Emergency (0), Alert (1), Critical (2), Error (3)

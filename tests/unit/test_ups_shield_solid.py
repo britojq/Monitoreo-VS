@@ -65,12 +65,12 @@ class TestUpsSolidArchitecture:
         assert format_duration(3600) == "1 h 0 min"
         assert format_duration(3665) == "1 h 1 min"
 
-        # Con TESTING=1 debe devolver estrictamente solo el ID del Owner privado (38914901)
+        # Con TESTING=1 debe devolver estrictamente solo el ID del Owner privado (<OWNER_TELEGRAM_ID>)
         with patch.dict(os.environ, {"TESTING": "1"}):
             targets = get_notification_targets("group")
-            assert targets == ["38914901"]
+            assert targets == ["<OWNER_TELEGRAM_ID>"]
             target = get_notification_target("group")
-            assert target == "38914901"
+            assert target == "<OWNER_TELEGRAM_ID>"
 
     def test_ups_dtos_immutability(self):
         """Verifica que los DTOs de UPS sean inmutables y serializables."""

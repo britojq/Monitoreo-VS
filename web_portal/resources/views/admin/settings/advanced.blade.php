@@ -884,7 +884,7 @@
                                 <span class="px-2 py-0.5 rounded text-[9px] bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-bold">100% ACTIVA</span>
                             </div>
                             <p class="text-gray-400 font-sans text-[11px] leading-tight">
-                                Dedicada al chat privado del Administrador (<code class="text-cyan-300">38914901</code>). Capacidad total de consulta NOC, ITAM, base de datos y comandos de control.
+                                Dedicada al chat privado del Administrador (<code class="text-cyan-300"><OWNER_TELEGRAM_ID></code>). Capacidad total de consulta NOC, ITAM, base de datos y comandos de control.
                             </p>
                         </div>
 

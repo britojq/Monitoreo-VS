@@ -36,14 +36,14 @@ def get_notification_targets(target_type: str) -> List[str]:
     simultáneo hacia el Administrador Privado (Owner) y el Grupo Corporativo.
     En entornos de desarrollo/test o modo esclavo, se restringe exclusivamente al Owner.
     """
-    owner_id = "38914901"
+    owner_id = "<OWNER_TELEGRAM_ID>"
     group_id = "-1001383163558"
     node_role = "master"
 
     try:
         from bot_core.services.config_manager import load_config
         cfg = load_config()
-        owner_id = str(cfg.get("owner_id", "38914901"))
+        owner_id = str(cfg.get("owner_id", "<OWNER_TELEGRAM_ID>"))
         groups = cfg.get("allowed_group_ids", [])
         if groups:
             group_id = str(groups[0])

@@ -42,19 +42,19 @@ class TestUpsService:
         """REGLA DE ORO #1: En modo esclavo, dev o test, el target grupal se redirige al Administrador."""
         with patch.dict(os.environ, {"TESTING": "1"}):
             target = get_notification_target("group")
-            assert target == "38914901"
+            assert target == "<OWNER_TELEGRAM_ID>"
 
     def test_get_notification_targets_dual_dispatch_prod(self):
         """En entorno productivo (nodo master), la opción group despacha a ambos: Owner y Grupo."""
         mock_cfg = json.dumps({
-            "owner_id": "38914901",
+            "owner_id": "<OWNER_TELEGRAM_ID>",
             "allowed_group_ids": ["-1001383163558"],
             "node_role": "master",
         })
         with patch("pathlib.Path.read_text", return_value=mock_cfg):
             with patch.dict(os.environ, {"TESTING": "0", "APP_ENV": "production"}):
                 targets = get_notification_targets("group")
-                assert "38914901" in targets
+                assert "<OWNER_TELEGRAM_ID>" in targets
                 assert "-1001383163558" in targets
                 assert len(targets) == 2
 
@@ -62,12 +62,12 @@ class TestUpsService:
         """En entorno no productivo (ej. testing), la opción group se restringe únicamente al Owner."""
         with patch.dict(os.environ, {"TESTING": "1"}):
             targets = get_notification_targets("group")
-            assert targets == ["38914901"]
+            assert targets == ["<OWNER_TELEGRAM_ID>"]
 
     def test_get_notification_targets_owner_only(self):
         """Cuando la opción es 'owner', despacha únicamente al Administrador Privado."""
         targets = get_notification_targets("owner")
-        assert targets == ["38914901"]
+        assert targets == ["<OWNER_TELEGRAM_ID>"]
 
     def test_build_ups_outage_alert(self):
         device = {"name": "UPS ZTG LV6KL", "model": "6kVA"}
@@ -208,7 +208,7 @@ class TestUpsService:
         assert res is not None
         mock_dispatcher.send_text.assert_called_once()
         call_args = mock_dispatcher.send_text.call_args[0]
-        assert call_args[0] == "38914901"
+        assert call_args[0] == "<OWNER_TELEGRAM_ID>"
         assert "FALLA EN SERVICIO ELÉCTRICO CONFIRMADA" in call_args[1]
         mock_conn.commit.assert_called()
 
@@ -255,7 +255,7 @@ class TestUpsService:
         }
 
         mock_cfg = json.dumps({
-            "owner_id": "38914901",
+            "owner_id": "<OWNER_TELEGRAM_ID>",
             "allowed_group_ids": ["-1001383163558"],
             "node_role": "master",
         })
@@ -269,7 +269,7 @@ class TestUpsService:
         # Micro-fluctuación se envía ÚNICAMENTE al Owner (1 llamada), jamás al grupo
         assert mock_dispatcher.send_text.call_count == 1
         call_args = mock_dispatcher.send_text.call_args[0]
-        assert call_args[0] == "38914901"
+        assert call_args[0] == "<OWNER_TELEGRAM_ID>"
         assert "MICRO-FLUCTUACIÓN DE VOLTAJE ABSORBIDA" in call_args[1]
 
     @pytest.mark.anyio
@@ -315,7 +315,7 @@ class TestUpsService:
         }
 
         mock_cfg = json.dumps({
-            "owner_id": "38914901",
+            "owner_id": "<OWNER_TELEGRAM_ID>",
             "allowed_group_ids": ["-1001383163558"],
             "node_role": "master",
         })
@@ -329,7 +329,7 @@ class TestUpsService:
         # En producción con target='group' y >45s, debe llamarse 2 veces: Owner + Grupo
         assert mock_dispatcher.send_text.call_count == 2
         calls = [c[0][0] for c in mock_dispatcher.send_text.call_args_list]
-        assert "38914901" in calls
+        assert "<OWNER_TELEGRAM_ID>" in calls
         assert "-1001383163558" in calls
 
 
@@ -538,7 +538,7 @@ class TestUpsService:
             "beeper_on": False,
         }
         mock_cfg = json.dumps({
-            "owner_id": "38914901",
+            "owner_id": "<OWNER_TELEGRAM_ID>",
             "ups_notify_micro_fluctuations": False,
         })
 

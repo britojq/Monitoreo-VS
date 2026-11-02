@@ -22,7 +22,7 @@ class SystemCleanupStrategy(MonitoringStrategyProtocol):
     """Estrategia para el saneamiento y mantenimiento de temporales."""
 
     def can_handle(self, target: str) -> bool:
-        return target.strip().lower() in ("limpiar", "clean", "limpieza")
+        return target.strip().lower() in ("limpiar", "clean", "limpieza", "limpiador", "cleanup")
 
     async def execute(
         self,

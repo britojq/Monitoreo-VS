@@ -221,9 +221,9 @@ class TestAlertsIntegration(unittest.TestCase):
         ok_group2, _ = validate_chat_target(-1001383163558)
         self.assertFalse(ok_group2, "REGLA DE ORO #1 VIOLADA: Se permitió un int negativo!")
 
-        # Debe permitir chat ID privado del Administrador (38914901)
-        ok_admin, _ = validate_chat_target("38914901")
-        self.assertTrue(ok_admin, "El chat ID privado del Administrador (38914901) debe ser permitido.")
+        # Debe permitir chat ID privado del Administrador (<OWNER_TELEGRAM_ID>)
+        ok_admin, _ = validate_chat_target("<OWNER_TELEGRAM_ID>")
+        self.assertTrue(ok_admin, "El chat ID privado del Administrador (<OWNER_TELEGRAM_ID>) debe ser permitido.")
 
 
 if __name__ == "__main__":

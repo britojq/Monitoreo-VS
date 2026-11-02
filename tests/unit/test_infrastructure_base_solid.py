@@ -190,7 +190,7 @@ class TestSecurityProviderDIP:
         """Verifica que HardwareVaultSecurityProvider implemente SecurityProviderProtocol."""
         provider = HardwareVaultSecurityProvider()
         assert isinstance(provider, SecurityProviderProtocol)
-        assert provider.get_owner_id() == 38914901
+        assert provider.get_owner_id() == <OWNER_TELEGRAM_ID>
         assert provider.get_git_branch() == "master"
         assert provider.is_core_operational() is True
 
@@ -198,7 +198,7 @@ class TestSecurityProviderDIP:
         """Verifica que bot.py exponga propiedades y métodos gobernados por el SecurityProvider."""
         assert bot._SECURITY_PROVIDER is not None
         assert isinstance(bot._SECURITY_PROVIDER, SecurityProviderProtocol)
-        assert bot.IMMUTABLE_OWNER_ID == 38914901
+        assert bot.IMMUTABLE_OWNER_ID == <OWNER_TELEGRAM_ID>
         assert bot.is_core_operational() is True
 
     def test_bot_main_accepts_injected_security_provider(self) -> None:

@@ -11,8 +11,11 @@ from bot_core.contracts.ai_contracts import (
     OutageSummaryDTO,
 )
 from bot_core.contracts.security_provider import (
+    GitConfigProvider,
     HardwareVaultSecurityProvider,
+    OperationalStatusProvider,
     SecurityProviderProtocol,
+    TokenProvider,
     get_default_security_provider,
     set_default_security_provider,
 )
@@ -27,6 +30,9 @@ __all__ = [
     "AiGuardrailsServiceProtocol",
     "AiInferenceClientProtocol",
     "AiGroupConfigProtocol",
+    "TokenProvider",
+    "OperationalStatusProvider",
+    "GitConfigProvider",
     "SecurityProviderProtocol",
     "HardwareVaultSecurityProvider",
     "get_default_security_provider",

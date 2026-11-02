@@ -143,7 +143,7 @@ TRAP_DICTIONARY: Dict[str, Dict[str, str]] = {
 
 DEFAULT_TRAP_PORT = 162
 FALLBACK_TRAP_PORT = 10162
-OWNER_PRIVATE_CHAT_ID = 38914901
+OWNER_PRIVATE_CHAT_ID = <OWNER_TELEGRAM_ID>
 
 
 def resolve_trap_info(trap_oid: str) -> Dict[str, str]:
