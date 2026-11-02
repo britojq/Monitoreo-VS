@@ -22,7 +22,7 @@ class McpToolExecutorTest extends TestCase
         $res = $this->executor->getUpsTelemetry();
 
         $this->assertTrue($res['found']);
-        $this->assertEquals('UPS-DEMO-01', $res['ups_id']);
+        $this->assertEquals('LV6KL-VS-01', $res['ups_id']);
         $this->assertStringContainsString('LV6KL', $res['model']);
         $this->assertArrayHasKey('input_voltage_vac', $res);
         $this->assertArrayHasKey('battery_percent', $res);
@@ -103,9 +103,9 @@ class McpToolExecutorTest extends TestCase
     public function test_execute_tool_dispatching_and_unknown_tool(): void
     {
         // Despacho válido
-        $resValid = $this->executor->executeTool('get_ups_telemetry', ['ups_id' => 'UPS-DEMO-01']);
+        $resValid = $this->executor->executeTool('get_ups_telemetry', ['ups_id' => 'LV6KL-VS-01']);
         $this->assertTrue($resValid['found']);
-        $this->assertEquals('UPS-DEMO-01', $resValid['ups_id']);
+        $this->assertEquals('LV6KL-VS-01', $resValid['ups_id']);
 
         // Despacho de herramienta desconocida (defensa contra alucinaciones)
         $resInvalid = $this->executor->executeTool('delete_all_servers', ['confirm' => true]);

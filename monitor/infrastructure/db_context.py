@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 
@@ -21,6 +22,7 @@ import pymysql
 import pymysql.cursors
 
 from monitor.domain.exceptions import (
+    DatabaseConcurrencyError,
     DatabaseConnectionException,
     DatabaseQueryException,
     DatabaseTransactionException,
@@ -148,6 +150,8 @@ def atomic_transaction(
             except Exception as rb_err:
                 logger.warning(f"Error secundario en rollback MariaDB: {rb_err}")
             logger.error(f"Fallo en transacción atómica MariaDB (rollback ejecutado): {e}")
+            if isinstance(e, DatabaseConcurrencyError):
+                raise
             raise DatabaseTransactionException(f"Transacción atómica fallida y revertida: {e}") from e
 
 
@@ -228,3 +232,94 @@ def test_db_connectivity() -> bool:
     except Exception as e:
         logger.error(f"Fallo de conectividad comprobando MariaDB: {e}")
         return False
+
+
+@contextmanager
+def pessimistic_row_lock(
+    table: str,
+    row_id: Union[int, str],
+    id_column: str = "id",
+    connect_timeout: int = 5,
+) -> Generator[Dict[str, Any], None, None]:
+    """
+    Context manager transaccional que adquiere un bloqueo pesimista exclusivo (SELECT ... FOR UPDATE)
+    sobre una fila específica de MariaDB (InnoDB). Garantiza aislamiento ACID y previene
+    condiciones de carrera durante lecturas-modificaciones concurrentes.
+
+    Uso:
+        with pessimistic_row_lock("inventory_assets", asset_id) as row:
+            if row["status"] != "DECOMMISSIONED":
+                cur.execute("UPDATE inventory_assets SET status = %s WHERE id = %s", ("IN_MAINTENANCE", asset_id))
+
+    Raises:
+        DatabaseConcurrencyError: Si la tabla/columna es inválida, el registro no existe o el bloqueo expira.
+        DatabaseTransactionException: Si la transacción falla y es revertida.
+    """
+    if not re.match(r"^[a-zA-Z0-9_]+$", table):
+        raise DatabaseConcurrencyError(f"Identificador de tabla inválido para bloqueo pesimista: {table}")
+    if not re.match(r"^[a-zA-Z0-9_]+$", id_column):
+        raise DatabaseConcurrencyError(f"Identificador de columna ID inválido para bloqueo pesimista: {id_column}")
+
+    with atomic_transaction(connect_timeout=connect_timeout) as conn:
+        with conn.cursor() as cur:
+            sql = f"SELECT * FROM `{table}` WHERE `{id_column}` = %s FOR UPDATE"
+            try:
+                cur.execute(sql, (row_id,))
+                row = cur.fetchone()
+            except pymysql.MySQLError as err:
+                logger.error(f"Error adquiriendo bloqueo pesimista sobre {table} (ID {row_id}): {err}")
+                raise DatabaseConcurrencyError(f"Fallo de concurrencia al bloquear {table}:{row_id}: {err}") from err
+
+            if not row:
+                raise DatabaseConcurrencyError(f"Registro no encontrado para bloqueo pesimista en {table} con {id_column}={row_id}")
+
+            yield dict(row)
+
+
+def atomic_inventory_update(
+    asset_id: int,
+    updates: Dict[str, Any],
+    table: str = "inventory_assets",
+) -> bool:
+    """
+    Ejecuta una actualización atómica y aislada sobre un activo de inventario utilizando
+    bloqueo pesimista (SELECT ... FOR UPDATE) y rollback automático ante cualquier fallo.
+
+    Args:
+        asset_id: Identificador único del activo.
+        updates: Diccionario de columnas y nuevos valores a actualizar.
+        table: Nombre de la tabla de inventario (por defecto 'inventory_assets').
+
+    Returns:
+        bool: True si la actualización fue confirmada exitosamente.
+
+    Raises:
+        DatabaseConcurrencyError: Si el identificador es inválido o el activo no existe.
+        DatabaseTransactionException: Si la transacción es revertida por fallo de integridad.
+    """
+    if not re.match(r"^[a-zA-Z0-9_]+$", table):
+        raise DatabaseConcurrencyError(f"Tabla de inventario inválida: {table}")
+    if not updates:
+        return True
+
+    for col in updates.keys():
+        if not re.match(r"^[a-zA-Z0-9_]+$", col):
+            raise DatabaseConcurrencyError(f"Nombre de columna inválido para actualización de inventario: {col}")
+
+    with atomic_transaction() as conn:
+        with conn.cursor() as cur:
+            # 1. Bloqueo pesimista exclusivo
+            lock_sql = f"SELECT id FROM `{table}` WHERE id = %s FOR UPDATE"
+            cur.execute(lock_sql, (asset_id,))
+            locked_row = cur.fetchone()
+            if not locked_row:
+                raise DatabaseConcurrencyError(f"No existe activo con ID {asset_id} en {table} para actualización atómica")
+
+            # 2. Sentencia DML atómica
+            set_clauses = [f"`{col}` = %s" for col in updates.keys()]
+            update_sql = f"UPDATE `{table}` SET {', '.join(set_clauses)} WHERE id = %s"
+            params = list(updates.values()) + [asset_id]
+            cur.execute(update_sql, params)
+
+    logger.info(f"Actualización atómica de inventario confirmada para ID {asset_id} en {table}")
+    return True

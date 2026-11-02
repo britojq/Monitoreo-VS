@@ -22,7 +22,7 @@ class InventoryRowsEvaluator
                 $q->where('type', 'server')
                     ->orWhere('name', 'like', '%Servidor%')
                     ->orWhere('name', 'like', '%MONITOREO ATIT%')
-                    ->orWhere('name', 'like', '%CENCARATIT%');
+                    ->orWhere('name', 'like', '%MONITOREO-DEV%');
             })
             ->whereNotIn('type', ['switch', 'router'])
             ->get();
@@ -109,7 +109,7 @@ class InventoryRowsEvaluator
                     ->orWhere('name', 'like', '%AVAYA%');
             })
             ->where('name', 'not like', '%Servidor%')
-            ->where('name', 'not like', '%CENCARATIT%')
+            ->where('name', 'not like', '%MONITOREO-DEV%')
             ->get();
 
         $rows = [];
@@ -158,7 +158,7 @@ class InventoryRowsEvaluator
             if ($nd->ip && isset($seenIps[$nd->ip])) {
                 continue;
             }
-            if (stripos($nd->name, 'Servidor') !== false || stripos($nd->name, 'MONITOREO ATIT') !== false || stripos($nd->name, 'CENCARATIT') !== false) {
+            if (stripos($nd->name, 'Servidor') !== false || stripos($nd->name, 'MONITOREO ATIT') !== false || stripos($nd->name, 'MONITOREO-DEV') !== false) {
                 continue;
             }
             if (stripos($nd->model ?? '', 'Estación') !== false || stripos($nd->model ?? '', 'EliteDesk') !== false || stripos($nd->model ?? '', 'ThinkCentre') !== false) {
@@ -208,7 +208,7 @@ class InventoryRowsEvaluator
         $assets = InventoryAsset::with(['site', 'components', 'peripherals', 'activeAssignment'])
             ->whereIn('type', ['workstation', 'desktop', 'laptop', 'all_in_one'])
             ->where('name', 'not like', '%Servidor%')
-            ->where('name', 'not like', '%CENCARATIT%')
+            ->where('name', 'not like', '%MONITOREO-DEV%')
             ->where('name', 'not like', '%PFsense%')
             ->orderBy('name')
             ->get();

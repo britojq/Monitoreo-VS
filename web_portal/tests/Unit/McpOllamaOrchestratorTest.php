@@ -97,7 +97,7 @@ class McpOllamaOrchestratorTest extends TestCase
                                 'id' => 'call_test_123',
                                 'function' => [
                                     'name' => 'get_ups_telemetry',
-                                    'arguments' => ['ups_id' => 'UPS-DEMO-01'],
+                                    'arguments' => ['ups_id' => 'LV6KL-VS-01'],
                                 ],
                             ],
                         ],
@@ -107,7 +107,7 @@ class McpOllamaOrchestratorTest extends TestCase
                 ->push([
                     'message' => [
                         'role' => 'assistant',
-                        'content' => 'El UPS UPS-DEMO-01 se encuentra 100% ONLINE y en LINE_MODE con batería al 100%.',
+                        'content' => 'El UPS LV6KL-VS-01 se encuentra 100% ONLINE y en LINE_MODE con batería al 100%.',
                     ],
                 ], 200),
         ]);
@@ -117,7 +117,7 @@ class McpOllamaOrchestratorTest extends TestCase
         $this->assertTrue($res['success']);
         $this->assertEquals('get_ups_telemetry', $res['tool_executed']);
         $this->assertNotNull($res['tool_result']);
-        $this->assertEquals('UPS-DEMO-01', $res['tool_result']['ups_id']);
+        $this->assertEquals('LV6KL-VS-01', $res['tool_result']['ups_id']);
         $this->assertStringContainsString('100% ONLINE', $res['reply']);
     }
 

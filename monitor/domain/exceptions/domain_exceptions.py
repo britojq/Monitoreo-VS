@@ -144,6 +144,16 @@ class DatabaseTransactionException(DatabaseException):
     pass
 
 
+class DatabaseConcurrencyError(DatabaseTransactionException):
+    """Lanzada ante conflictos de concurrencia o tiempos de espera en bloqueos pesimistas."""
+    pass
+
+
+class SnmpDeviceValidationError(SnmpException, DomainException):
+    """Lanzada cuando la configuración o parámetros de un dispositivo SNMP no son válidos."""
+    pass
+
+
 class SubprocessSecurityException(InfrastructureException):
     """Lanzada cuando un argumento de subproceso contiene patrones peligrosos o metacaracteres."""
     pass

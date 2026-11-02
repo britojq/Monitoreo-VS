@@ -1,1 +1,0 @@
-@include('vendor.pagination.obsidian')

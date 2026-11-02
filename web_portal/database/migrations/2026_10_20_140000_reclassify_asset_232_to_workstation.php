@@ -17,7 +17,7 @@ return new class extends Migration
             ->where('id', 7)
             ->orWhere('ip_address', '192.168.1.232')
             ->update([
-                'name' => 'CENCARCOMG206',
+                'name' => 'SEDE-CENTRALCOMG206',
                 'type' => 'desktop',
                 'brand' => 'LENOVO',
                 'model' => 'ThinkCentre M910s',
@@ -29,9 +29,9 @@ return new class extends Migration
                 'access_type' => 'VNC',
                 'access_port' => 5900,
                 'vnc_port' => 5900,
-                'notes' => 'Estación de Trabajo Comercial / Operativa | Hostname: CENCARCOMG206',
-                'normal_state_msg' => '✅ - CENCARCOMG206',
-                'error_state_msg' => '❌ - CENCARCOMG206',
+                'notes' => 'Estación de Trabajo Comercial / Operativa | Hostname: SEDE-CENTRALCOMG206',
+                'normal_state_msg' => '✅ - SEDE-CENTRALCOMG206',
+                'error_state_msg' => '❌ - SEDE-CENTRALCOMG206',
                 'updated_at' => now(),
             ]);
 
@@ -39,7 +39,7 @@ return new class extends Migration
         DB::table('discovered_devices')
             ->where('ip_address', '192.168.1.232')
             ->update([
-                'hostname' => 'CENCARCOMG206',
+                'hostname' => 'SEDE-CENTRALCOMG206',
                 'device_type' => 'workstation',
                 'vendor' => 'LENOVO',
                 'os_detected' => 'Microsoft Windows 7 Ultimate (64-bit)',
@@ -60,7 +60,7 @@ return new class extends Migration
                 'brand' => 'Hon Hai Precision',
                 'model' => 'Switch de Red',
                 'ports' => '16x FE',
-                'notes' => 'Conmutador de periféricos y salas de lectura. | Hostname NetBIOS: CENCARCOMG206',
+                'notes' => 'Conmutador de periféricos y salas de lectura. | Hostname NetBIOS: SEDE-CENTRALCOMG206',
                 'normal_state_msg' => '✅ - SW04 - Hon Hai Acceso',
                 'error_state_msg' => '❌ - SW04 - Hon Hai Acceso',
                 'updated_at' => now(),

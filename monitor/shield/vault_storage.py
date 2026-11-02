@@ -1,7 +1,7 @@
 """
 # ==============================================================================
 # 🔐 ALMACENAMIENTO SEGURO Y ANCLAJE DE HARDWARE: vault_storage.py
-# Persistencia cifrada en reposo mediante AES-256-GCM y control-flow flattening.
+# Persistencia cifrada en reposo mediante AES-256-GCM (NIST SP 800-38D).
 # Arquitectura SOLID - Principio de Responsabilidad Única (SRP).
 # Ubicación: /opt/sonar/monitor/shield/vault_storage.py
 # ==============================================================================
@@ -40,7 +40,9 @@ logger = logging.getLogger("monitor.shield.vault_storage")
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 VAULT_DIR = BASE_DIR / "system" / "vault"
 ANCHOR_FILE = VAULT_DIR / ".sys_anchor"
-CHALLENGE_FILE = VAULT_DIR / ".active_challenge"
+
+# Desafíos en RAM volátil (tmpfs) para erradicar archivos planos en el repositorio
+CHALLENGE_FILE = Path("/dev/shm/.monitoreo_challenge.json")
 
 
 def init_vault_dir() -> None:
@@ -116,15 +118,19 @@ def write_anchor(hw_key: bytes, custom_token: Optional[str] = None) -> bool:
         os.sync()
         logger.info("✅ Anclaje de hardware sellado exitosamente con AES-256-GCM v2.0")
         return True
+    except PermissionError as e:
+        logger.error(f"Permisos insuficientes al escribir anclaje de hardware en {ANCHOR_FILE}: {e}")
+        raise VaultWriteError("Permisos insuficientes al escribir anclaje en vault") from e
     except Exception as e:
-        logger.error(f"Fallo crítico al escribir anclaje de hardware: {e}")
-        return False
+        logger.exception(f"Fallo crítico al escribir anclaje de hardware: {e}")
+        raise VaultWriteError(f"Error inesperado al escribir anclaje: {e}") from e
 
 
 def unwrap_anchor(hw_key: bytes) -> Tuple[Optional[bytes], Optional[str]]:
     """
     Desencripta la Master Key y token personalizado desde .sys_anchor.
-    Soporta formato nativo AES-256-GCM v2.0 y formato v1 legacy con migración automática.
+    Cumple con el estándar autenticado AES-256-GCM v2.0 NIST SP 800-38D.
+    Rechaza de forma estricta cualquier payload no estándar o no autenticado.
     
     Args:
         hw_key: Clave simétrica de 32 bytes derivada del hardware físico.
@@ -141,7 +147,7 @@ def unwrap_anchor(hw_key: bytes) -> Tuple[Optional[bytes], Optional[str]]:
         logger.error(f"Error al leer estructura JSON de .sys_anchor: {e}")
         return None, None
 
-    # CASO 1: Formato v2.0 Estándar AES-256-GCM
+    # Formato v2.0 Estándar AES-256-GCM autenticado
     if data.get("v") == "2.0" or data.get("algo") == "AES-256-GCM":
         try:
             master_key = StandardEncryptor.decrypt_from_base64(
@@ -170,52 +176,15 @@ def unwrap_anchor(hw_key: bytes) -> Tuple[Optional[bytes], Optional[str]]:
             logger.error(f"Error inesperado al desencapsular vault v2: {e}")
             return None, None
 
-    # CASO 2: Formato v1 Legacy (XOR + rotación) con auto-migración inmediata
-    try:
-        raw = base64.b64decode(data["b"])
-        expected_sig = data["s"]
-        computed_sig = hmac.new(hw_key, raw, hashlib.sha256).hexdigest()
-
-        if not hmac.compare_digest(computed_sig, expected_sig):
-            logger.error("Firma HMAC del anclaje legacy v1 no coincide")
-            return None, None
-
-        res = bytearray()
-        for i, b in enumerate(raw):
-            k = hw_key[i % len(hw_key)]
-            unrotated = ((b >> 3) | ((b << 5) & 0xFF)) & 0xFF
-            v = unrotated ^ k
-            res.append(v)
-
-        res_bytes = bytes(res)
-        if hashlib.sha256(res_bytes).hexdigest() != _MASTER_KEY_HASH:
-            logger.error("Hash SHA-256 de master key legacy no coincide con SSOT")
-            return None, None
-
-        custom_tok = None
-        if "tb" in data and "ts" in data:
-            raw_tb = base64.b64decode(data["tb"])
-            if hmac.compare_digest(hmac.new(hw_key, raw_tb, hashlib.sha256).hexdigest(), data["ts"]):
-                tok_res = bytearray()
-                for i, b in enumerate(raw_tb):
-                    k = hw_key[i % len(hw_key)]
-                    unrotated = ((b >> 3) | ((b << 5) & 0xFF)) & 0xFF
-                    tok_res.append(unrotated ^ k)
-                custom_tok = tok_res.decode("utf-8")
-
-        # Auto-migración a formato v2.0 AES-256-GCM transparente
-        logger.info("Migrando anclaje de hardware legacy v1 a AES-256-GCM v2.0...")
-        write_anchor(hw_key, custom_tok)
-
-        return res_bytes, custom_tok
-    except Exception as e:
-        logger.error(f"Error al procesar anclaje legacy v1: {e}")
-        return None, None
+    logger.error("Rechazando anclaje legacy no autenticado: formato AES-256-GCM v2.0 obligatorio.")
+    return None, None
 
 
 def generate_challenge(hw_fingerprint: str) -> Tuple[str, int]:
-    """Genera o recupera un Serial dinámico antifalsificación con ventana de 10 min."""
-    init_vault_dir()
+    """
+    Genera o recupera un Serial dinámico antifalsificación con ventana de 10 min.
+    Persiste exclusivamente en RAM volátil (/dev/shm) para erradicar archivos planos en el repo.
+    """
     now = int(time.time())
     if CHALLENGE_FILE.exists():
         try:
@@ -238,52 +207,70 @@ def generate_challenge(hw_fingerprint: str) -> Tuple[str, int]:
     try:
         CHALLENGE_FILE.write_text(json.dumps(ch_data, indent=2), encoding="utf-8")
         try:
-            os.chmod(CHALLENGE_FILE, 0o640)
+            os.chmod(CHALLENGE_FILE, 0o600)
         except Exception:
             pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Aviso persistiendo challenge en volatile RAM: {e}")
 
     return serial, now
 
 
-def deobfuscate_payload(cipher_blob: str, master_key: Optional[bytes], state: str) -> str:
+def deobfuscate_payload(
+    cipher_blob: str,
+    master_key: Optional[bytes],
+    state: str,
+    associated_data: Optional[bytes] = None,
+) -> str:
     """
-    Desofusca un payload usando la Master Key validada por entorno.
+    Desofusca un payload cifrado usando la Master Key validada bajo estándar AES-256-GCM.
     
     Args:
-        cipher_blob: Payload cifrado o serializado.
-        master_key: Clave maestra de 32 bytes o None.
-        state: Estado operacional del escudo ("OPERATIONAL", etc.).
-        
+        cipher_blob: String Base64 del payload cifrado con AES-256-GCM (NIST SP 800-38D).
+        master_key: Clave maestra de 32 bytes (None si el escudo no está operacional).
+        state: Estado actual del sistema ("OPERATIONAL", "TRIPPED", etc.).
+        associated_data: Datos adicionales autenticados (AAD) opcionales.
+    
     Returns:
-        str: Cadena desofuscada o marcador de fallo silencioso.
+        str: Cadena desofuscada en UTF-8, o "FAIL_SILENT_*" si el estado no es OPERATIONAL.
+    
+    Raises:
+        ValueError: Si cipher_blob no es Base64 válido.
+    
+    Security:
+        - Estándar criptográfico autenticado AES-256-GCM (erradica rotación de bits y XOR).
+        - Requiere estado OPERATIONAL y master_key de 32 bytes validada contra SSOT.
+        - Retorna token pseudoaleatorio en caso de tampering o fallo (anti-fingerprinting).
+    
+    Example:
+        payload = deobfuscate_payload("base64data...", master_key, "OPERATIONAL")
+        print(payload)
+        "38914901"
     """
     if state != "OPERATIONAL" or not master_key:
         return "FAIL_SILENT_" + hashlib.sha256(os.urandom(16)).hexdigest()[:24]
 
-    st = 0x10
-    while st != 0x99:
-        if st == 0x10:
-            if eval_opaque_gate(len(cipher_blob)):
-                st = 0x20
-            else:
-                st = 0x88
-        elif st == 0x20:
-            try:
-                raw = base64.b64decode(cipher_blob)
-                dec = bytearray()
-                for i, b in enumerate(raw):
-                    k = master_key[i % len(master_key)]
-                    unrotated = ((b >> 3) | ((b << 5) & 0xFF)) & 0xFF
-                    dec.append(unrotated ^ k)
-                return bytes(dec).decode("utf-8")
-            except Exception:
-                return "FAIL_SILENT_" + hashlib.sha256(os.urandom(16)).hexdigest()[:24]
-        elif st == 0x88:
-            return "FAIL_SILENT_GATE"
+    if not eval_opaque_gate(len(cipher_blob)):
+        return "FAIL_SILENT_GATE"
 
-    return "FAIL_SILENT_FLOW"
+    try:
+        # Descifrado autenticado AES-256-GCM con soporte para etiquetas AAD conocidas
+        candidates = [associated_data] if associated_data is not None else [b"OWNER_ID", b"BRANCH", b"PAYLOAD_AEAD", None]
+        for ad in candidates:
+            try:
+                dec_bytes = StandardEncryptor.decrypt_from_base64(
+                    b64_string=cipher_blob,
+                    key=master_key,
+                    associated_data=ad,
+                )
+                return dec_bytes.decode("utf-8")
+            except Exception:
+                continue
+
+        return "FAIL_SILENT_" + hashlib.sha256(os.urandom(16)).hexdigest()[:24]
+    except Exception as e:
+        logger.error(f"Fallo al descifrar payload con AES-256-GCM: {e}")
+        return "FAIL_SILENT_" + hashlib.sha256(os.urandom(16)).hexdigest()[:24]
 
 
 def invalidate_hardware_anchor(reason: str = "Aislamiento detectado") -> bool:
@@ -295,9 +282,13 @@ def invalidate_hardware_anchor(reason: str = "Aislamiento detectado") -> bool:
         if ANCHOR_FILE.exists():
             ANCHOR_FILE.write_text(os.urandom(128).hex(), encoding="utf-8")
             os.sync()
+        if CHALLENGE_FILE.exists():
+            try:
+                CHALLENGE_FILE.unlink()
+            except Exception:
+                pass
         logger.critical(f"🔒 PROTOCOLO DE CONTENCIÓN ACTIVADO: {reason}. Firma invalidada.")
         return True
     except Exception as e:
         logger.error(f"Error en invalidación de firma: {e}")
         return False
-

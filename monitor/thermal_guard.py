@@ -1,4 +1,11 @@
 """Fachada ultradelgada de retrocompatibilidad para Thermal Guard."""
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from monitor.checkers.thermal import (  # noqa: F401
     AI_SERVICE_UNIT, DEFAULT_COOLDOWN_SECONDS, DEFAULT_TEMP_CRITICAL,
     DEFAULT_TEMP_RECOVERY, DEFAULT_TEMP_WARNING, IMMUTABLE_OWNER_ID,

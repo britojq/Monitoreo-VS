@@ -1,7 +1,7 @@
 # 🛡️ Plataforma Integral de Monitoreo y Administración Valle Seco
 ### *Centro de Operaciones y Monitoreo de Infraestructura de Red*
 
-[![Version](https://img.shields.io/badge/Version-v5.45.80-007acc?style=flat&logo=git&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
+[![Version](https://img.shields.io/badge/Version-v5.46.80-007acc?style=flat&logo=git&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%2010%2F10-success?style=flat&logo=blueprint&logoColor=white)](docs/PLAN_MAESTRO_SOLID_INTEGRAL_UNIFICADO.md)
 [![Quality Barrier](https://img.shields.io/badge/Quality%20Barrier-Zero--Fail-brightgreen?style=flat&logo=shield&logoColor=white)](tools/certify_system_integrity.py)
 [![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
@@ -14,7 +14,7 @@
 
 > **Organización:** Centro de Operaciones y Monitoreo de Redes  
 > **Autor / Administrador:** José A. Brito H. ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
-> **Versión Activa:** `v5.45.80` (Arquitectura Desacoplada SOLID 10/10)  
+> **Versión Activa:** `v5.46.80` (Arquitectura Desacoplada SOLID 10/10)  
 > **Arquitectura Modular:** Módulos de la Plataforma: [1 / 5] Activo (Módulo Actual: Sistema de Monitoreo)  
 > **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
 > **Topología de Servidores:** Servidor Principal Master (`192.168.1.250`) / Servidor Réplica Slave (`192.168.1.220`)  

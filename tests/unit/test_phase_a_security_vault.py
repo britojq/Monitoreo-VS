@@ -74,7 +74,7 @@ class TestVaultStorageV2:
     def test_write_and_unwrap_anchor(self):
         hw_key = derive_hardware_key()
         assert len(hw_key) == 32
-        operational_token = "1234567890:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ_dummy"
+        operational_token = "1595888148:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ"
         success = write_anchor(hw_key, custom_token=operational_token)
         assert success is True
 

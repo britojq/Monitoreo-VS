@@ -39,6 +39,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        // Gate formal de visualización del dashboard (OWASP A01:2021)
+        Gate::define('view-dashboard', function (\App\Models\User $user): bool {
+            return $user->isAdmin() || $user->hasPermission('infra.view');
+        });
+
         // Gates para acciones y módulos desacoplados
         Gate::define('alert.manage', [AlertPolicy::class, 'manageRules']);
         Gate::define('alert.resolve', [AlertPolicy::class, 'resolve']);

@@ -22,7 +22,7 @@ interface ToolExecutorInterface
     /**
      * Herramienta 1: Obtiene la telemetría eléctrica en tiempo real del UPS ZTG 6kVA.
      *
-     * @param string|null $upsId Identificador opcional del equipo (por defecto UPS-DEMO-01).
+     * @param string|null $upsId Identificador opcional del equipo (por defecto LV6KL-VS-01).
      * @return array<string, mixed>
      */
     public function getUpsTelemetry(?string $upsId = null): array;

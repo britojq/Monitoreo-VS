@@ -281,7 +281,7 @@ def get_core_bot_token() -> str:
 
 
 def get_core_repo_url() -> str:
-    if (platform.node() or "").upper() == "CENCARATIT":
+    if (platform.node() or "").upper() == "MONITOREO-DEV":
         return "https://github.com/britojq/tgbot-pyt-bashfull.git"
     return "https://github.com/britojq/Monitoreo-VS.git"
 

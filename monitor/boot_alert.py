@@ -93,7 +93,7 @@ async def handle_start() -> int:
         f"🌐 <b>IPs Locales:</b> <code>{html.escape(local_ips)}</code>\n"
         f"🏷️ <b>Estado:</b> {estado_titulo}\n"
         f"📋 <b>Detalle:</b> {detalle_texto}\n\n"
-        "<i>Sistema operando en Debian GNU/Linux • CENCARATIT</i>"
+        "<i>Sistema operando en Debian GNU/Linux • MONITOREO-DEV</i>"
     )
 
     # Exclusivo para el Owner (Arranque de infraestructura)

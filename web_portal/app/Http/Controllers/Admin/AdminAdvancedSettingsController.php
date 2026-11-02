@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Services\CronConfigServiceInterface;
 use App\Http\Controllers\Controller;
 use App\Models\MonitoredNetworkDevice;
 use App\Models\MonitoredProxy;
@@ -19,6 +20,10 @@ use Illuminate\View\View;
 
 class AdminAdvancedSettingsController extends Controller
 {
+    public function __construct(
+        private readonly ?CronConfigServiceInterface $cronConfigService = null,
+    ) {}
+
     public function index(Request $request): View
     {
         $stats = [
@@ -34,7 +39,8 @@ class AdminAdvancedSettingsController extends Controller
             'proxies_active' => MonitoredProxy::where('is_active', true)->count(),
         ];
 
-        $cronConfig = (new AdminCronController())->getCronConfig();
+        $cronService = $this->cronConfigService ?? app(CronConfigServiceInterface::class);
+        $cronConfig = $cronService->getCronConfig();
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $aiService = new AiConfigService();
         $groupAiConfig = $aiService->getGroupAiConfig();

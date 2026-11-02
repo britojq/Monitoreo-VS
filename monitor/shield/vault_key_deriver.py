@@ -3,6 +3,7 @@
 # 🔐 DERIVACIÓN DE CLAVES BASADA EN HUELLA FÍSICA: vault_key_deriver.py
 # Extracción de identificadores físicos de hardware y resolución segura de secretos.
 # Arquitectura SOLID - Principio de Responsabilidad Única (SRP).
+# Estándar NIST SP 800-38D (AES-256-GCM) y PBKDF2-HMAC (NIST SP 800-132).
 # Ubicación: /opt/sonar/monitor/shield/vault_key_deriver.py
 # ==============================================================================
 """
@@ -18,12 +19,19 @@ from pathlib import Path
 import platform
 import socket
 import subprocess
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+
+from monitor.domain.exceptions import VaultKeyNotFoundError
+from monitor.shield.standard_encryptor import StandardEncryptor
 
 logger = logging.getLogger("monitor.shield.vault_key_deriver")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 VAULT_DIR = BASE_DIR / "system" / "vault"
+
+# Rutas seguras del sistema operativo host (fuera del repositorio Git)
+EXTERNAL_HOST_DIR = Path("/etc/monitoreo-vs")
+EXTERNAL_DEFAULT_ENV = Path("/etc/default/monitoreo-vs")
 
 # =========================================================================
 # CONSTANTES CRIPTOGRÁFICAS Y HASHES DE VALIDACIÓN (CERO SECRETOS EN PLANO)
@@ -31,20 +39,21 @@ VAULT_DIR = BASE_DIR / "system" / "vault"
 _DECOY_ALLOC_MAP = [0x7E, 0x3A, 0x9F, 0x11, 0x88, 0x24, 0x5C]
 _FAKE_SESSION_SEED = b"CENTRAL_MONITORING_VALLE_SECO_CACHE_DRIVER_V3_INIT"
 
-_CANARY_BLOB = "e3J3cnNld21+YGUCAAZyNjsLLCt0GHV3Ny0AFAwsAjYpfyoOBjg3PWd8eQFYFg=="
 _CANARY_HASH = "4f7b45269d2b2adaba068364d3c27130a09825a8ea830c38ae7f687df188448b"
-
-_T_CIPHER = ""
-_O_CIPHER = "4FHmIIPcy8M="
-_R_CIPHER = "OjOMKrnEMzPRoF67Nv57utb2ZyVWVRLp9/awH03+U7QQE+QKSwZB0anYVpv+nDHqDg=="
-_B_CIPHER = "Epu0CgmG"
-
-_SENTINEL_CIPHER = "uFGWILu8g/MjUizyl9/Da2c8p23WFEtQFcebB9ffk1TSg+QiGbb7YVH5VpJU5w=="
-_SENTINEL_BLOB = "e315ZWF0dWh0eHQIFQlrEBdzaD0jDRMdaQQPNHsZMCkhJy4wPisEVUV0Kg52Ew=="
 _SENTINEL_HASH = "c959877d928c8457106936f0e112308e7147ca1c529c2d65a4ef10025e2aa665"
-
 _MASTER_KEY_HASH = "4b700b4beff99589979d450350d294d322dda2e1812753e1ff6be582a9801527"
+
 IMMUTABLE_OWNER_ID: int = 38914901
+
+# Ciphertexts generados bajo estándar autenticado NIST SP 800-38D AES-256-GCM
+_O_CIPHER = "PitNbL5jSFVyc5Ydbi8WhBBnQJB+3q9+1E2F96+Uv77grXw3"
+_B_CIPHER = "N6AbuasT9kGBMpbRu3FD+OAui3Yx0qYECkaWWZ1nVJL9pg=="
+_SENTINEL_GCM_CIPHER = (
+    "q8p1sVhb9YyIvvQFd8/8oL2pfJW/vDHB0qjqfzpSE4ZIhGCNnSHJO/DysmckI72jO4s6ivduFWoTSvXgcadk3tCB/nmjzhRuf+o="
+)
+_CANARY_GCM_CIPHER = (
+    "Ph+KvB/wxJB1UaiD6rdkQgP7C3x1HEqFVcRVqjRIQ/eVxm4+JVK+3rwmhs9jHMUbkir7CCnHYFwsrizBW8zhZvvH2/vOvStrznU="
+)
 
 _ADMIN_AUTH_HASHES = [
     "12f477bbf83c636056d376627915131f9e33b1f9b7595e816e66514bd7742a39",
@@ -54,11 +63,24 @@ _ADMIN_AUTH_HASHES = [
 
 def _load_core_master_key() -> bytes:
     """
-    Carga la clave maestra de 256 bits exclusivamente desde el vault seguro del sistema
-    o variable de entorno inyectada por systemd, validando su integridad contra el hash SSOT.
+    Carga la clave maestra de 256 bits exclusivamente desde variables de entorno del sistema
+    o desde la ruta segura externa del host (/etc/monitoreo-vs/master.key),
+    validando su integridad contra el hash criptográfico SSOT.
+    
+    Queda terminantemente prohibido leer archivos planos dentro del árbol del proyecto.
     """
     # 1. Comprobar variable de entorno de alta seguridad
     env_key = os.getenv("VAULT_MASTER_KEY", "").strip()
+    if not env_key and EXTERNAL_DEFAULT_ENV.exists():
+        try:
+            for line in EXTERNAL_DEFAULT_ENV.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if line.startswith("VAULT_MASTER_KEY="):
+                    env_key = line.split("=", 1)[1].strip("\"' ")
+                    break
+        except Exception as e:
+            logger.debug(f"Aviso leyendo variable desde {EXTERNAL_DEFAULT_ENV}: {e}")
+
     if env_key:
         try:
             raw_key = bytes.fromhex(env_key) if len(env_key) == 64 else base64.b64decode(env_key)
@@ -67,30 +89,43 @@ def _load_core_master_key() -> bytes:
         except Exception:
             pass
 
-    # 2. Comprobar archivo seguro local en system/vault/.master_key (Permisos 0600)
-    key_file = VAULT_DIR / ".master_key"
-    if key_file.exists():
+    # 2. Comprobar archivo seguro externo en el host (/etc/monitoreo-vs/master.key) con permisos 0600
+    host_key_file = EXTERNAL_HOST_DIR / "master.key"
+    if host_key_file.exists():
         try:
-            raw_key = key_file.read_bytes()
+            raw_key = host_key_file.read_bytes()
             if len(raw_key) == 32 and hashlib.sha256(raw_key).hexdigest() == _MASTER_KEY_HASH:
                 return raw_key
         except Exception as e:
-            logger.warning(f"No se pudo leer .master_key del vault: {e}")
+            logger.warning(f"No se pudo leer master.key desde {host_key_file}: {e}")
 
-    # Fallback seguro: Retornar buffer vacío si no está provisionada
+    # Fallback seguro: Retornar buffer vacío si no está provisionada para no bloquear imports
     return b""
 
 
 def _load_vault_secrets() -> Tuple[bytes, bytes, bytes]:
-    """Carga sales y credenciales auxiliares desde la bóveda física o entorno del sistema."""
+    """Carga sales y credenciales auxiliares desde variables de entorno o archivo seguro del host."""
     canary = os.getenv("VAULT_CANARY_SECRET", "").encode("utf-8")
     sentinel = os.getenv("VAULT_SENTINEL_SECRET", "").encode("utf-8")
     salt = os.getenv("VAULT_CHALLENGE_SALT", "").encode("utf-8")
 
-    sec_file = VAULT_DIR / ".vault_secrets.json"
-    if sec_file.exists():
+    if not (canary and sentinel and salt) and EXTERNAL_DEFAULT_ENV.exists():
         try:
-            data = json.loads(sec_file.read_text(encoding="utf-8"))
+            for line in EXTERNAL_DEFAULT_ENV.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if line.startswith("VAULT_CANARY_SECRET=") and not canary:
+                    canary = line.split("=", 1)[1].strip("\"' ").encode("utf-8")
+                elif line.startswith("VAULT_SENTINEL_SECRET=") and not sentinel:
+                    sentinel = line.split("=", 1)[1].strip("\"' ").encode("utf-8")
+                elif line.startswith("VAULT_CHALLENGE_SALT=") and not salt:
+                    salt = line.split("=", 1)[1].strip("\"' ").encode("utf-8")
+        except Exception:
+            pass
+
+    host_sec = EXTERNAL_HOST_DIR / "secrets.json"
+    if not (canary and sentinel and salt) and host_sec.exists():
+        try:
+            data = json.loads(host_sec.read_text(encoding="utf-8"))
             if not canary:
                 canary = str(data.get("canary_secret", "")).encode("utf-8")
             if not sentinel:
@@ -98,7 +133,7 @@ def _load_vault_secrets() -> Tuple[bytes, bytes, bytes]:
             if not salt:
                 salt = str(data.get("challenge_salt", "")).encode("utf-8")
         except Exception as e:
-            logger.warning(f"Error cargando secretos auxiliares del vault: {e}")
+            logger.warning(f"Error cargando secretos desde {host_sec}: {e}")
 
     return canary, sentinel, salt
 
@@ -120,26 +155,46 @@ def verify_system_auth_token(candidate: str) -> bool:
 
 
 def get_sentinel_token() -> str:
-    """Desofusca credencial de pasarela administrativa de forma inmutable."""
+    """
+    Desencripta la credencial de pasarela administrativa usando AES-256-GCM estándar.
+    Erradica por completo cualquier bucle casero de XOR.
+    """
+    if not _SENTINEL_SECRET:
+        return ""
     try:
-        raw_b64 = base64.b64decode(_SENTINEL_BLOB)
-        raw = bytes([b ^ _SENTINEL_SECRET[i % len(_SENTINEL_SECRET)] for i, b in enumerate(raw_b64)])
-        if hashlib.sha256(raw).hexdigest() != _SENTINEL_HASH:
+        key = hashlib.sha256(_SENTINEL_SECRET).digest()
+        dec = StandardEncryptor.decrypt_from_base64(
+            _SENTINEL_GCM_CIPHER,
+            key=key,
+            associated_data=b"SENTINEL_TOKEN",
+        )
+        if hashlib.sha256(dec).hexdigest() != _SENTINEL_HASH:
             return ""
-        return raw.decode("utf-8")
-    except Exception:
+        return dec.decode("utf-8")
+    except Exception as e:
+        logger.error(f"Fallo al descifrar sentinel token con AES-256-GCM: {e}")
         return ""
 
 
 def get_canary_token() -> str:
-    """Desofusca el Token Canario de emergencia con la clave de respaldo."""
+    """
+    Desencripta el Token Canario de emergencia usando AES-256-GCM estándar.
+    Erradica por completo cualquier bucle casero de XOR.
+    """
+    if not _CANARY_SECRET:
+        return ""
     try:
-        raw_b64 = base64.b64decode(_CANARY_BLOB)
-        raw = bytes([b ^ _CANARY_SECRET[i % len(_CANARY_SECRET)] for i, b in enumerate(raw_b64)])
-        if hashlib.sha256(raw).hexdigest() != _CANARY_HASH:
+        key = hashlib.sha256(_CANARY_SECRET).digest()
+        dec = StandardEncryptor.decrypt_from_base64(
+            _CANARY_GCM_CIPHER,
+            key=key,
+            associated_data=b"CANARY_TOKEN",
+        )
+        if hashlib.sha256(dec).hexdigest() != _CANARY_HASH:
             return ""
-        return raw.decode("utf-8")
-    except Exception:
+        return dec.decode("utf-8")
+    except Exception as e:
+        logger.error(f"Fallo al descifrar canary token con AES-256-GCM: {e}")
         return ""
 
 

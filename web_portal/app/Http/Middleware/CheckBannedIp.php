@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Models\BannedIp;
@@ -10,27 +12,33 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckBannedIp
 {
     /**
-     * Lista blanca de IPs inmunes a bloqueos (Loopback, Servidor de Desarrollo, Servidor Master y Gateway)
+     * Obtiene la lista blanca de IPs autorizadas e inmunes a bloqueos desde la configuración.
+     * Cumple con OWASP A05:2021 externalizando direcciones corporativas a variables de entorno.
+     *
+     * @return array<int, string>
      */
-    protected const WHITELIST_IPS = [
-        '127.0.0.1',
-        '::1',
-        '192.168.1.220', // Servidor de Desarrollo (Esclavo)
-        '192.168.1.250', // Servidor de Producción (Master)
-        '192.168.1.1',   // Gateway Corporativo
-    ];
+    protected function getWhitelistIps(): array
+    {
+        /** @var array<int, string> $ips */
+        $ips = config('security.whitelist_ips', ['127.0.0.1', '::1']);
+        return is_array($ips) ? $ips : ['127.0.0.1', '::1'];
+    }
 
     public function handle(Request $request, Closure $next): Response
     {
-        $ip = $request->ip();
+        $ip = (string) $request->ip();
+        $whitelist = $this->getWhitelistIps();
 
-        // Las direcciones de la lista blanca y del clúster de administración nunca deben ser bloqueadas
-        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '192.168.1.')) {
+        // Las direcciones de la lista blanca y del loopback local nunca deben ser bloqueadas
+        if (in_array($ip, $whitelist, true) || str_starts_with($ip, '127.')) {
             return $next($request);
         }
 
         if (BannedIp::isBanned($ip)) {
-            abort(Response::HTTP_FORBIDDEN, 'Acceso Bloqueado: Su dirección IP (' . $ip . ') ha sido suspendida permanentemente por violaciones a las políticas de seguridad.');
+            abort(
+                Response::HTTP_FORBIDDEN,
+                'Acceso Bloqueado: Su dirección IP (' . $ip . ') ha sido suspendida permanentemente por violaciones a las políticas de seguridad.'
+            );
         }
 
         return $next($request);

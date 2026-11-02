@@ -25,7 +25,7 @@ PROJECT_DIR="/opt/sonar"
 WEB_DIR="/opt/sonar/web_portal"
 DB_NAME="monitoreo_vs"
 DB_USER="monitoreo_user"
-DB_PASS="password"
+DB_PASS="DemoSecurePassword2026!"
 DOMAIN_NAME="monitoreo-vs.local"
 
 # Detección inteligente del usuario propietario del sistema

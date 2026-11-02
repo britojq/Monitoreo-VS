@@ -278,8 +278,11 @@ class SyncInventoryFromExcelCommand extends Command
                         ]);
                     } else {
                         $year = Carbon::now()->format('Y');
-                        $countYear = InventoryAssignment::whereYear('created_at', (int) $year)->count() + 1;
-                        $code = sprintf("UINF-4.05-%s-%04d", $year, $countYear);
+                        $countYear = InventoryAssignment::where('assignment_code', 'like', "UINF-4.05-{$year}-%")->count() + 1;
+                        do {
+                            $code = sprintf("UINF-4.05-%s-%04d", $year, $countYear);
+                            $countYear++;
+                        } while (InventoryAssignment::where('assignment_code', $code)->exists());
 
                         $activeAssignment = InventoryAssignment::create([
                             'assignment_code' => $code,

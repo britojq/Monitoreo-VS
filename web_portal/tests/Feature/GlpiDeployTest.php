@@ -358,7 +358,7 @@ class GlpiDeployTest extends TestCase
         $deployService = app(\App\Services\Deployment\AgentDeployService::class);
 
         $itemProdesk = [
-            'hostname' => 'CENCARCOM012015',
+            'hostname' => 'SEDE-CENTRALCOM012015',
             'vendor' => 'HP Inc. (ProDesk 400 G5 MT)',
             'raw_os' => 'Windows 10 Pro',
             'discovered_device_type' => 'printer', // Aunque un sondeo previo lo haya marcado erróneamente como impresora
@@ -536,7 +536,7 @@ class GlpiDeployTest extends TestCase
         DiscoveredDevice::create([
             'ip_address' => $ip,
             'mac_address' => '00:11:22:33:44:77',
-            'hostname' => 'CENCARDIS-0200',
+            'hostname' => 'SEDE-CENTRALDIS-0200',
             'vendor' => 'Hon Hai Precision Industry (Foxconn)',
             'os_detected' => 'Windows 7 Ultimate SP1',
             'open_ports' => '[135, 139, 445, 5800, 5900]',
@@ -545,9 +545,9 @@ class GlpiDeployTest extends TestCase
             'classification_status' => 'pendiente',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.1.0/24', 'search' => 'CENCARDIS-0200']));
+        $response = $this->actingAs($admin)->get(route('admin.inventory.deploy', ['scan_subnet' => '192.168.1.0/24', 'search' => 'SEDE-CENTRALDIS-0200']));
         $response->assertStatus(200);
-        $response->assertSee('CENCARDIS-0200');
+        $response->assertSee('SEDE-CENTRALDIS-0200');
         $response->assertSee('Windows 7 Ultimate SP1');
     }
 }

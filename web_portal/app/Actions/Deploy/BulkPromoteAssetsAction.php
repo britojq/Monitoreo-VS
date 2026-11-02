@@ -131,6 +131,8 @@ class BulkPromoteAssetsAction
 
         return [
             'success' => true,
+            'count' => $processedCount,
+            'is_workstation' => in_array($type, ['desktop', 'laptop', 'workstation'], true),
             'message' => "Se incorporaron {$processedCount} dispositivos al inventario ({$createdCount} nuevos, {$updatedIpCount} actualizados).",
             'processed_count' => $processedCount,
             'created_count' => $createdCount,

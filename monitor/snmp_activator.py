@@ -22,61 +22,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+from monitor.infrastructure.laravel_encryptor import (
+    get_laravel_app_key,
+    encrypt_laravel_string as encrypt_laravel_value,
+)
 from monitor.monitor_web_sync import get_db_connection
 
 logger = logging.getLogger("snmp.activator")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s")
-
-
-def get_laravel_app_key() -> bytes:
-    env_file = BASE_DIR / "web_portal" / ".env"
-    if not env_file.exists():
-        env_file = Path("/opt/sonar/web_portal/.env")
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line.startswith("APP_KEY="):
-                val = line.split("=", 1)[1].strip()
-                if val.startswith("base64:"):
-                    return base64.b64decode(val[7:])
-                return val.encode()
-    return b"32_bytes_default_key_monitoreo!"[:32]
-
-
-def encrypt_laravel_value(plain_text: str) -> str:
-    """Cifra una cadena usando el mismo esquema que Laravel (AES-256-CBC, IV, MAC)."""
-    import hmac
-    import hashlib
-    key = get_laravel_app_key()
-    iv = os.urandom(16)
-    backend = default_backend()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
-    encryptor = cipher.encryptor()
-    
-    # PKCS7 padding
-    pad_len = 16 - (len(plain_text.encode('utf-8')) % 16)
-    padded_data = plain_text.encode('utf-8') + bytes([pad_len] * pad_len)
-    cipher_bytes = encryptor.update(padded_data) + encryptor.finalize()
-    
-    val_b64 = base64.b64encode(cipher_bytes).decode('utf-8')
-    iv_b64 = base64.b64encode(iv).decode('utf-8')
-    
-    # MAC = hash_hmac('sha256', iv_b64 + val_b64, key)
-    mac = hmac.new(key, (iv_b64 + val_b64).encode('utf-8'), hashlib.sha256).hexdigest()
-    payload = {
-        "iv": iv_b64,
-        "value": val_b64,
-        "mac": mac,
-        "tag": ""
-    }
-    return base64.b64encode(json.dumps(payload).encode('utf-8')).decode('utf-8')
 
 
 def log_activation(

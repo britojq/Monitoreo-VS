@@ -9,7 +9,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * Restituye la identidad del Servidor de Desarrollo CENCARATIT (ID 11519, IP 192.168.1.220),
+     * Restituye la identidad del Servidor de Desarrollo MONITOREO-DEV (ID 11519, IP 192.168.1.220),
      * preserva la identidad única del ROUTER PRINCIPAL (ID 1, IP 192.168.1.1, TELNET:23),
      * reasigna y purga el activo parásito 111063 de GLPI,
      * y consolida los 17 pares de duplicados de oficinas comerciales (Sedes 3, 4, 5 y 7).
@@ -17,9 +17,9 @@ return new class extends Migration
     public function up(): void
     {
         DB::transaction(function () {
-            // 1. Restituir Activo 11519: Servidor de Desarrollo CENCARATIT
+            // 1. Restituir Activo 11519: Servidor de Desarrollo MONITOREO-DEV
             DB::table('inventory_assets')->where('id', 11519)->update([
-                'name' => 'CENCARATIT (Servidor Desarrollo)',
+                'name' => 'MONITOREO-DEV (Servidor Desarrollo)',
                 'type' => 'desktop',
                 'status' => 'assigned',
                 'brand' => 'LENOVO',
@@ -42,9 +42,9 @@ return new class extends Migration
                 'custodian_department' => 'GPO TRAB INFRA TECNOL CARABOBOATIT',
                 'operating_system' => 'Debian GNU/Linux 13 (trixie) 13.7 (x86_64)',
                 'os_kernel' => '6.12.111+deb13-amd64',
-                'notes' => 'Servidor Local de Desarrollo - Nodo Esclavo Monitoreo Valle Seco | Hostname NetBIOS: CENCARATIT',
-                'normal_state_msg' => '✅ - CENCARATIT (Servidor Desarrollo)',
-                'error_state_msg' => '❌ - CENCARATIT (Servidor Desarrollo)',
+                'notes' => 'Servidor Local de Desarrollo - Nodo Esclavo Monitoreo Valle Seco | Hostname NetBIOS: MONITOREO-DEV',
+                'normal_state_msg' => '✅ - MONITOREO-DEV (Servidor Desarrollo)',
+                'error_state_msg' => '❌ - MONITOREO-DEV (Servidor Desarrollo)',
                 'is_active' => 1,
                 'updated_at' => now(),
             ]);

@@ -222,13 +222,13 @@ class VerifyZeroDummyDataCommand extends Command
             }
 
             $devServer = DB::table('inventory_assets')->where('id', 11519)->first();
-            if (!$devServer || $devServer->ip_address !== '192.168.1.220' || !str_contains($devServer->name, 'CENCARATIT')) {
+            if (!$devServer || $devServer->ip_address !== '192.168.1.220' || !str_contains($devServer->name, 'MONITOREO-DEV')) {
                 $violations[] = [
                     'table' => 'inventory_assets',
-                    'column' => 'id=11519 (CENCARATIT)',
+                    'column' => 'id=11519 (MONITOREO-DEV)',
                     'pattern' => 'CORRUPCIÓN DE SERVIDOR DE DESARROLLO',
                     'id' => '11519',
-                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 192.168.1.220 o nombre CENCARATIT',
+                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 192.168.1.220 o nombre MONITOREO-DEV',
                 ];
             }
         } catch (\Throwable) {

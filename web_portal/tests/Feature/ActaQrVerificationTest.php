@@ -91,7 +91,7 @@ class ActaQrVerificationTest extends TestCase
                 'ram' => '16 GB DDR4',
                 'disk' => '512 GB SSD NVMe',
                 'os' => 'Debian GNU/Linux 12 (Bookworm)',
-                'device_name' => 'CENCARCOM012010',
+                'device_name' => 'SEDE-CENTRALCOM012010',
                 'ip_address' => '192.168.1.210',
             ],
             'peripherals_json' => [

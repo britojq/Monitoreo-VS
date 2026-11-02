@@ -31,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Contracts\ToolExecutorInterface::class, \App\Services\Mcp\NocToolExecutor::class);
         $this->app->singleton(\App\Contracts\ToolIntentResolverInterface::class, \App\Services\Mcp\Resolvers\SemanticToolIntentResolver::class);
         $this->app->singleton(\App\Contracts\CorporateAiInferenceServiceInterface::class, \App\Services\Mcp\CorporateAiInferenceService::class);
+        $this->app->singleton(\App\Contracts\Services\CronConfigServiceInterface::class, \App\Services\Cron\CronConfigService::class);
         $this->app->singleton(\App\Contracts\OllamaServiceInterface::class, function ($app) {
             return $app->make(\App\Contracts\CorporateAiInferenceServiceInterface::class);
         });

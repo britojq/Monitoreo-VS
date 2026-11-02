@@ -193,12 +193,17 @@ class PromoteGlpiAssetAction
 
     public function mapAssetTypeToDiscoveredDeviceType(string $assetType): string
     {
-        return match ($assetType) {
-            'desktop' => 'windows',
-            'laptop' => 'windows',
-            'server' => 'linux',
+        return match (strtolower(trim($assetType))) {
+            'desktop', 'laptop', 'workstation', 'windows', 'pc' => 'workstation',
+            'server', 'linux' => 'server',
             'printer' => 'printer',
-            'switch', 'router', 'firewall', 'access_point' => 'network',
+            'switch' => 'switch',
+            'router', 'gateway' => 'router',
+            'firewall' => 'firewall',
+            'access_point', 'ap' => 'ap',
+            'camera' => 'camera',
+            'ups' => 'ups',
+            'ip_phone', 'phone', 'voip' => 'phone',
             default => 'unknown',
         };
     }

@@ -84,10 +84,10 @@ class TestCleanArchitectureDomainEntities:
             id=5,
             label_name="JEFE DE OFICINA",  # Nombre Etiqueta (SSOT)
             ip_address="192.168.1.100",
-            hostname="CENCARCOM012010",    # Nombre de Equipo (Secundario)
+            hostname="SEDE-CENTRALCOM012010",    # Nombre de Equipo (Secundario)
         )
         assert dev.display_identity == "JEFE DE OFICINA"
-        assert dev.hostname == "CENCARCOM012010"
+        assert dev.hostname == "SEDE-CENTRALCOM012010"
 
     def test_alert_entity_security_check(self):
         """Verifica la detección de alertas de seguridad."""
