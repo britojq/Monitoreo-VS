@@ -119,7 +119,8 @@ class LdapEmployeeLookupService
                     $q->where('name', 'LIKE', "%{$clean}%")
                       ->orWhere('username', 'LIKE', "%{$clean}%")
                       ->orWhere('email', 'LIKE', "%{$clean}%")
-                      ->orWhere('id_number', 'LIKE', "%{$clean}%");
+                      ->orWhere('cedula', 'LIKE', "%{$clean}%")
+                      ->orWhere('personal_number', 'LIKE', "%{$clean}%");
                 })
                 ->where('is_active', true)
                 ->limit($remaining)
@@ -127,13 +128,13 @@ class LdapEmployeeLookupService
 
             foreach ($localUsers as $u) {
                 $uid = strtoupper((string)($u->username ?? ''));
-                $key = $uid ?: ($u->id_number ?: $u->name);
+                $key = $uid ?: ($u->cedula ?: $u->name);
                 if (!isset($seen[$key])) {
                     $seen[$key] = true;
                     $results[] = [
                         'username' => $uid,
                         'name' => mb_strtoupper((string)$u->name, 'UTF-8'),
-                        'id_number' => (string)($u->id_number ?? ''),
+                        'id_number' => (string)($u->cedula ?? $u->personal_number ?? ''),
                         'department' => (string)($u->department ?? ''),
                         'email' => strtolower((string)$u->email),
                         'phone' => (string)($u->phone ?? ''),

@@ -322,14 +322,14 @@ echo -e "${GREEN}[+] Inteligencia Artificial lista.${NC}\n"
 # PASO 8: COMANDOS GLOBALES CLI (/usr/local/bin)
 # =========================================================================
 echo -e "${BLUE}[*] Paso 8: Vinculando comandos globales en /usr/local/bin...${NC}"
-chmod +x "$PROJECT_DIR/tools/estatus" "$PROJECT_DIR/tools/checkpoint" "$PROJECT_DIR/tools/rollback" "$PROJECT_DIR/tools/activar" "$PROJECT_DIR/tools/temperatura" "$PROJECT_DIR/tools/limpiador.sh" "$PROJECT_DIR/monitor/shield_override.sh" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/tools/estatus" "$PROJECT_DIR/tools/checkpoint" "$PROJECT_DIR/tools/rollback" "$PROJECT_DIR/tools/activar" "$PROJECT_DIR/tools/temperatura" "$PROJECT_DIR/tools/limpiador.sh" "$PROJECT_DIR/system/scripts/shield_override.sh" 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/estatus" /usr/local/bin/estatus 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/checkpoint" /usr/local/bin/checkpoint 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/rollback" /usr/local/bin/rollback 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/activar" /usr/local/bin/activar 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/temperatura" /usr/local/bin/temperatura 2>/dev/null || true
 ln -sf "$PROJECT_DIR/tools/limpiador.sh" /usr/local/bin/limpiador 2>/dev/null || true
-ln -sf "$PROJECT_DIR/monitor/shield_override.sh" /usr/local/bin/shield-override 2>/dev/null || true
+ln -sf "$PROJECT_DIR/system/scripts/shield_override.sh" /usr/local/bin/shield-override 2>/dev/null || true
 echo -e "${GREEN}[+] Herramientas 'estatus', 'checkpoint', 'rollback', 'activar', 'temperatura', 'limpiador' y 'shield-override' listas en /usr/local/bin.${NC}\n"
 
 # =========================================================================
@@ -422,12 +422,12 @@ echo -e "${GREEN}[+] Servicios Systemd y Cron configurados y sincronizados corre
 # PASO 10: ALERTA Y BLINDAJE DE SEGURIDAD EN TIEMPO REAL (PAM: SSH, SUDO, SU)
 # =========================================================================
 echo -e "${BLUE}[*] Paso 10: Configurando blindaje y alertas en PAM (SSH, sudo, su)...${NC}"
-chmod +x "$PROJECT_DIR/monitor/ssh_alert.sh" "$PROJECT_DIR/monitor/ssh_alert.py" 2>/dev/null || true
-chmod +x "$PROJECT_DIR/monitor/terminal_shield.sh" "$PROJECT_DIR/monitor/terminal_shield.py" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/system/scripts/ssh_alert.sh" "$PROJECT_DIR/monitor/ssh_alert.py" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/system/scripts/terminal_shield.sh" "$PROJECT_DIR/monitor/terminal_shield.py" 2>/dev/null || true
 
 # 1. Alertas de conexión SSH (optional)
 PAM_SSHD="/etc/pam.d/sshd"
-PAM_SSHD_RULE="session optional pam_exec.so seteuid /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+PAM_SSHD_RULE="session optional pam_exec.so seteuid /bin/bash $PROJECT_DIR/system/scripts/ssh_alert.sh"
 if [ -f "$PAM_SSHD" ]; then
     sed -i '\|/ssh_alert.sh|d' "$PAM_SSHD" 2>/dev/null || true
     echo "" >> "$PAM_SSHD"
@@ -437,7 +437,7 @@ fi
 
 # 2. Alerta y contención estricta de sesiones sudo (pila account)
 PAM_SUDO="/etc/pam.d/sudo"
-PAM_SUDO_RULE="account requisite pam_exec.so quiet seteuid stdout /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+PAM_SUDO_RULE="account requisite pam_exec.so quiet seteuid stdout /bin/bash $PROJECT_DIR/system/scripts/ssh_alert.sh"
 if [ -f "$PAM_SUDO" ]; then
     sed -i '\|/ssh_alert.sh|d' "$PAM_SUDO" 2>/dev/null || true
     if grep -q "@include common-account" "$PAM_SUDO"; then
@@ -449,7 +449,7 @@ fi
 
 # 3. Alerta y contención de sesiones su / su - / su -l (pila account)
 PAM_SU="/etc/pam.d/su"
-PAM_SU_RULE="account requisite pam_exec.so quiet seteuid stdout /bin/bash $PROJECT_DIR/monitor/ssh_alert.sh"
+PAM_SU_RULE="account requisite pam_exec.so quiet seteuid stdout /bin/bash $PROJECT_DIR/system/scripts/ssh_alert.sh"
 if [ -f "$PAM_SU" ]; then
     sed -i '\|/ssh_alert.sh|d' "$PAM_SU" 2>/dev/null || true
     if grep -q "@include common-account" "$PAM_SU"; then
@@ -559,10 +559,10 @@ fi
 # PASO 10C: ESCUDO DE TERMINAL INTERACTIVA & LOCKDOWN (SENTINEL SHIELD)
 # =========================================================================
 echo -e "${BLUE}[*] Paso 10C: Desplegando Sentinel Terminal Shield y reglas de contención...${NC}"
-chmod +x "$PROJECT_DIR/monitor/terminal_shield.py" "$PROJECT_DIR/monitor/terminal_shield.sh" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/monitor/terminal_shield.py" "$PROJECT_DIR/system/scripts/terminal_shield.sh" 2>/dev/null || true
 
 # 1. Hook de apertura de terminal interactiva en el perfil del sistema
-cp -f "$PROJECT_DIR/monitor/terminal_shield.sh" /etc/profile.d/terminal_shield.sh 2>/dev/null || true
+cp -f "$PROJECT_DIR/system/scripts/terminal_shield.sh" /etc/profile.d/terminal_shield.sh 2>/dev/null || true
 chmod 0644 /etc/profile.d/terminal_shield.sh 2>/dev/null || true
 
 # 1.1 Inyectar en /etc/bash.bashrc para cubrir emuladores no-login (Konsole, xterm, VNC)

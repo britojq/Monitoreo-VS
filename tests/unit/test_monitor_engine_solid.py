@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -201,10 +203,14 @@ class TestLaravelEncryptor:
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
+        iv_b64 = base64.b64encode(iv).decode("utf-8")
+        val_b64 = base64.b64encode(ciphertext).decode("utf-8")
+        mac = hmac.new(key, (iv_b64 + val_b64).encode("utf-8"), hashlib.sha256).hexdigest()
+
         payload = {
-            "iv": base64.b64encode(iv).decode("utf-8"),
-            "value": base64.b64encode(ciphertext).decode("utf-8"),
-            "mac": "dummy_mac",
+            "iv": iv_b64,
+            "value": val_b64,
+            "mac": mac,
             "tag": "",
         }
         encrypted_str = base64.b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8")

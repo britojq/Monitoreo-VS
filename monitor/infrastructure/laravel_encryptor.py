@@ -161,9 +161,17 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
             plain_bytes = aesgcm.decrypt(nonce, ciphertext, None)
             val = plain_bytes.decode("utf-8", errors="ignore")
         else:
-            # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC)
-            iv = base64.b64decode(payload["iv"])
-            ciphertext = base64.b64decode(payload["value"])
+            # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC-SHA256)
+            iv_b64 = payload["iv"]
+            val_b64 = payload["value"]
+            expected_mac = payload.get("mac")
+            if expected_mac and len(expected_mac) == 64:
+                calculated_mac = hmac.new(key, (iv_b64 + val_b64).encode("utf-8"), hashlib.sha256).hexdigest()
+                if not hmac.compare_digest(calculated_mac, expected_mac):
+                    raise DecryptionException("Firma HMAC-SHA256 inválida o payload manipulado")
+
+            iv = base64.b64decode(iv_b64)
+            ciphertext = base64.b64decode(val_b64)
 
             cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
             decryptor = cipher.decryptor()
@@ -180,7 +188,7 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
         cache.set(cache_key, val, ttl=300.0)
         return val
     except Exception as e:
-        logger.warning(f"Fallo al descifrar cadena Laravel: {e}")
+        logger.error(f"Fallo al descifrar cadena Laravel: {e}")
         if strict:
             raise DecryptionException(f"Error crítico al descifrar credencial: {e}") from e
         return ""

@@ -119,3 +119,19 @@ class TestStrictModeErrorHandling:
         corrupted = "bad_data_non_strict"
         result = decrypt_laravel_string(corrupted, strict=False)
         assert result == ""
+
+    def test_strict_true_raises_on_tampered_cbc_hmac(self):
+        """Modo strict=True lanza DecryptionException ante HMAC alterado en AES-256-CBC."""
+        from monitor.infrastructure.laravel_encryptor import encrypt_laravel_string
+        original = "SecretCommunityCBC"
+        encrypted = encrypt_laravel_string(original)
+
+        raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
+        # Corromper el MAC
+        raw_payload["mac"] = "0000000000000000000000000000000000000000000000000000000000000000"
+        corrupted = base64.b64encode(json.dumps(raw_payload).encode("utf-8")).decode("utf-8")
+
+        with pytest.raises(DecryptionException):
+            decrypt_laravel_string(corrupted, strict=True)
+
+        assert decrypt_laravel_string(corrupted, strict=False) == ""

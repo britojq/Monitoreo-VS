@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Log;
 class OperationalBotTokenResolver implements BotTokenResolverInterface
 {
     private ?string $cachedToken = null;
-    private const FALLBACK_OWNER_ID = 38914901;
 
     public function __construct(
         private readonly HardwareVaultReaderInterface $vaultReader
@@ -62,7 +61,9 @@ class OperationalBotTokenResolver implements BotTokenResolverInterface
     }
 
     /**
-     * Obtiene el ID numérico del Owner/Administrador oficial.
+     * Obtiene el ID numérico del Owner/Administrador oficial desde MariaDB SSOT.
+     * 
+     * @throws \RuntimeException Si el Owner ID no está configurado en bot_settings ni en variables de entorno.
      */
     public function getOwnerId(): int
     {
@@ -71,11 +72,16 @@ class OperationalBotTokenResolver implements BotTokenResolverInterface
             if (!empty($dbOwner) && is_numeric($dbOwner)) {
                 return (int) $dbOwner;
             }
-        } catch (\Throwable) {
-            // Ignorar y caer al ID inmutable oficial
+        } catch (\Throwable $e) {
+            Log::warning('OperationalBotTokenResolver: Error consultando owner_id en bot_settings: ' . $e->getMessage());
         }
 
-        return self::FALLBACK_OWNER_ID;
+        $envOwner = config('services.telegram.owner_id') ?? env('TELEGRAM_OWNER_ID');
+        if (!empty($envOwner) && is_numeric($envOwner)) {
+            return (int) $envOwner;
+        }
+
+        throw new \RuntimeException('Telegram Owner ID no configurado en bot_settings ni en variables de entorno.');
     }
 
     /**

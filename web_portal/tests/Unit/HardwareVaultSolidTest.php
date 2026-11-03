@@ -92,4 +92,18 @@ class HardwareVaultSolidTest extends TestCase
         $this->assertSame('0750', $dirPerms, 'El directorio vault debe ser 0750');
         $this->assertSame('0640', $filePerms, 'El archivo .sys_anchor debe ser 0640');
     }
+
+    public function test_operational_resolver_gets_owner_id_dynamically_from_database_and_never_hardcoded(): void
+    {
+        $mockReader = new class implements HardwareVaultReaderInterface {
+            public function unwrap(): ?string { return '1595888148:TEST'; }
+            public function isAvailable(): bool { return true; }
+        };
+
+        $resolver = new OperationalBotTokenResolver($mockReader);
+        $ownerId = $resolver->getOwnerId();
+
+        $this->assertIsInt($ownerId);
+        $this->assertSame((int) \App\Models\BotSetting::get('owner_id'), $ownerId);
+    }
 }

@@ -171,7 +171,7 @@ async def poll_device_oids(
 
             if err_ind:
                 err_str = str(err_ind).lower()
-                status = "timeout" if ("timeout" in err_str or "timed out" in err_str) else "error"
+                status = "timeout" if any(k in err_str for k in ("timeout", "timed out", "timedout")) else "error"
                 error_msg = str(err_ind)
             elif err_stat:
                 status = "error"
@@ -212,7 +212,7 @@ async def poll_device_oids(
 
         except Exception as e_sys:
             e_str = str(e_sys).lower()
-            status = "timeout" if ("timeout" in e_str or "timed out" in e_str) else "error"
+            status = "timeout" if any(k in e_str for k in ("timeout", "timed out", "timedout")) else "error"
             error_msg = str(e_sys)
 
         # 2. Consultar OIDs específicos configurados

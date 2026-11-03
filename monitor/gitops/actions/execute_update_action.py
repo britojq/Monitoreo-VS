@@ -140,9 +140,10 @@ class ExecuteUpdateAction:
             await GitClient.run_command(["clean", "-fd", "-e", "venv/", "-e", "docs/", "-e", "database/backups/", "-e", "web_portal/.env"])
             logs.append("⬇️ <i>Código base sincronizado con GitHub.</i>")
 
-            # 6.1 Actualizar dependencias de Python en entorno virtual si existe
+            # 6.1 Actualizar dependencias de Python en entorno virtual si existe (priorizando lockfile)
             venv_pip = BASE_DIR / "venv" / "bin" / "pip"
-            req_file = BASE_DIR / "requirements.txt"
+            req_lock = BASE_DIR / "requirements.lock"
+            req_file = req_lock if req_lock.exists() else (BASE_DIR / "requirements.txt")
             if venv_pip.exists() and req_file.exists():
                 try:
                     pip_cmd = [str(venv_pip), "install", "-q", "--no-input"]

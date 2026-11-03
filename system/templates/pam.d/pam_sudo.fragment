@@ -1,2 +1,2 @@
 # Directiva obligatoria para /etc/pam.d/sudo y /etc/pam.d/su (contención estricta y alertas en account)
-account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/monitor/ssh_alert.sh
+account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/system/scripts/ssh_alert.sh

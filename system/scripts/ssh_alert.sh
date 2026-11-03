@@ -2,7 +2,7 @@
 # ==============================================================================
 # 🚀 HOOK PAM DE SEGURIDAD Y CONTROL DE ACCESO: ssh_alert.sh (@IA_ValleSeco_bot)
 # Despacho desacoplado para SSH y contención autónoma estricta para sudo
-# Ubicación: /opt/sonar/monitor/ssh_alert.sh
+# Ubicación: /opt/sonar/system/scripts/ssh_alert.sh
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
 # Author: Operador ATIT (@britojab:@britojq), https://britojab.com

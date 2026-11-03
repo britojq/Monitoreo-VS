@@ -383,7 +383,7 @@ def sync_pam_directives(dry_run: bool = False) -> Tuple[bool, int]:
     sudo_pam = Path("/etc/pam.d/sudo")
     su_pam = Path("/etc/pam.d/su")
 
-    hook_script = str(BASE_DIR / "monitor" / "ssh_alert.sh")
+    hook_script = str(BASE_DIR / "system" / "scripts" / "ssh_alert.sh")
     if not Path(hook_script).exists():
         logger.warning(f"Hook PAM no encontrado en {hook_script}")
         return True, 0

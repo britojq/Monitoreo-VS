@@ -223,7 +223,7 @@ def configure_terminal_shield():
     """Configura el hook global de terminal interactiva en /etc/profile.d/ y sudoers para Fail2ban."""
     cmd_prefix = get_cmd_prefix()
     try:
-        shield_src = BASE_DIR / "monitor" / "terminal_shield.sh"
+        shield_src = BASE_DIR / "system" / "scripts" / "terminal_shield.sh"
         shield_dest = Path("/etc/profile.d/terminal_shield.sh")
         if shield_src.exists():
             shield_src.chmod(0o755)
@@ -254,9 +254,13 @@ def configure_terminal_shield():
         except Exception as eb:
             log(f"Aviso integrando hook en /etc/bash.bashrc: {eb}")
 
-        # Asegurar permisos de ejecución en scripts de monitoreo
-        for s in ["terminal_shield.py", "terminal_shield.sh", "ssh_alert.sh", "ssh_alert.py", "fail2ban_alert.py"]:
+        # Asegurar permisos de ejecución en scripts de monitoreo y sistema
+        for s in ["terminal_shield.py", "ssh_alert.py", "fail2ban_alert.py"]:
             sp = BASE_DIR / "monitor" / s
+            if sp.exists():
+                sp.chmod(0o755)
+        for s in ["terminal_shield.sh", "ssh_alert.sh", "shield_override.sh"]:
+            sp = BASE_DIR / "system" / "scripts" / s
             if sp.exists():
                 sp.chmod(0o755)
 
@@ -292,31 +296,35 @@ def configure_terminal_shield():
 def configure_pam_hardening():
     """Configura y audita el blindaje PAM para SSH, sudo y su / su - en tiempo real."""
     cmd_prefix = get_cmd_prefix()
-    hook_script = BASE_DIR / "monitor" / "ssh_alert.sh"
+    hook_script = BASE_DIR / "system" / "scripts" / "ssh_alert.sh"
     if not hook_script.exists():
-        log("⚠️ No se encontró monitor/ssh_alert.sh para blindaje PAM.")
+        log("⚠️ No se encontró system/scripts/ssh_alert.sh para blindaje PAM.")
         return
 
     # Asegurar permisos de ejecución en scripts PAM
-    for s in ["ssh_alert.sh", "ssh_alert.py", "terminal_shield.sh", "terminal_shield.py"]:
+    for s in ["ssh_alert.py", "terminal_shield.py"]:
         sp = BASE_DIR / "monitor" / s
+        if sp.exists():
+            sp.chmod(0o755)
+    for s in ["ssh_alert.sh", "terminal_shield.sh"]:
+        sp = BASE_DIR / "system" / "scripts" / s
         if sp.exists():
             sp.chmod(0o755)
 
     pam_configs = [
         (
             Path("/etc/pam.d/sshd"),
-            "session optional pam_exec.so seteuid /bin/bash /opt/sonar/monitor/ssh_alert.sh",
+            "session optional pam_exec.so seteuid /bin/bash /opt/sonar/system/scripts/ssh_alert.sh",
             "# Alerta de conexion SSH a Telegram (Monitor Valle Seco)"
         ),
         (
             Path("/etc/pam.d/sudo"),
-            "account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/monitor/ssh_alert.sh",
+            "account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/system/scripts/ssh_alert.sh",
             "# Alerta y contencion estricta de sesiones sudo a Telegram y MariaDB"
         ),
         (
             Path("/etc/pam.d/su"),
-            "account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/monitor/ssh_alert.sh",
+            "account requisite pam_exec.so quiet seteuid stdout /bin/bash /opt/sonar/system/scripts/ssh_alert.sh",
             "# Alerta y contencion de sesiones su / su - a Telegram y MariaDB (Opcion B)"
         )
     ]

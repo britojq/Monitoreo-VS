@@ -200,6 +200,20 @@ def update_target_files(
                 ),
             ],
         ),
+        # 6. README.md (Badge y Versión Activa)
+        (
+            repo_root / "README.md",
+            [
+                (
+                    rf"(img\.shields\.io/badge/Version-)v?{re.escape(old_ver)}(-[0-9a-fA-F]+)",
+                    rf"\g<1>v{new_ver}\g<2>",
+                ),
+                (
+                    rf"(\*\*Versión Activa:\*\*\s*`)v?{re.escape(old_ver)}(`)",
+                    rf"\g<1>v{new_ver}\g<2>",
+                ),
+            ],
+        ),
     ]
 
     for file_path, patterns in targets:
@@ -272,7 +286,9 @@ if [ -f "$BUMP_SCRIPT" ]; then
         git add "$REPO_DIR/web_portal/resources/views/layouts/admin.blade.php" \\
                 "$REPO_DIR/web_portal/app/Services/Cluster/RuntimeParityInspector.php" \\
                 "$REPO_DIR/web_portal/app/Http/Controllers/Admin/HelpController.php" \\
-                "$REPO_DIR/docs/manual_api_verificacion_cluster.md" 2>/dev/null || true
+                "$REPO_DIR/docs/manual_api_verificacion_cluster.md" \\
+                "$REPO_DIR/docs/ESTADO_VIVO.md" \\
+                "$REPO_DIR/README.md" 2>/dev/null || true
     fi
 fi
 exit 0
@@ -294,6 +310,8 @@ def display_status(repo_root: Path) -> None:
         ("Controlador de Ayuda", repo_root / "web_portal/app/Http/Controllers/Admin/HelpController.php"),
         ("Layout Admin Blade", repo_root / "web_portal/resources/views/layouts/admin.blade.php"),
         ("Manual del Clúster", repo_root / "docs/manual_api_verificacion_cluster.md"),
+        ("Estado Vivo", repo_root / "docs/ESTADO_VIVO.md"),
+        ("README Público", repo_root / "README.md"),
     ]
 
     for label, path in files:

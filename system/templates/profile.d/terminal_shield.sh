@@ -31,6 +31,17 @@ if [[ $- == *i* ]] && [ -t 0 ]; then
             exit 1
         fi
 
+        # Si esta TTY específica ya posee gracia activa, omitir alerta (0 ms)
+        CLEAN_CURRENT_TTY="${CURRENT_TTY#/dev/}"
+        CLEAN_CURRENT_TTY="${CLEAN_CURRENT_TTY//\//_}"
+        if [ -n "$CLEAN_CURRENT_TTY" ] && [ -f "/dev/shm/terminal_shield_grace_${CLEAN_CURRENT_TTY}" ]; then
+            EXP_TS=$(cat "/dev/shm/terminal_shield_grace_${CLEAN_CURRENT_TTY}" 2>/dev/null || echo 0)
+            NOW_TS=$(date +%s)
+            if [ "$NOW_TS" -lt "${EXP_TS%.*}" ] 2>/dev/null; then
+                return 0 2>/dev/null || exit 0
+            fi
+        fi
+
         PYTHON_EXEC="/opt/sonar/venv/bin/python"
         SHIELD_SCRIPT="/opt/sonar/monitor/terminal_shield.py"
         if [ -x "$PYTHON_EXEC" ] && [ -f "$SHIELD_SCRIPT" ]; then
