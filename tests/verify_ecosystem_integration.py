@@ -34,7 +34,7 @@ async def main():
 
         content_disc = await page.content()
         assert "EN INVENTARIO" in content_disc, "Debe mostrar insignia EN INVENTARIO"
-        assert "MONITOREO-DEV (Servidor Desarrollo)" in content_disc, "Debe mostrar Nombre Etiqueta de inventario"
+        assert "CENCARATIT (Servidor Desarrollo)" in content_disc, "Debe mostrar Nombre Etiqueta de inventario"
         assert "00:D8:61:44:95:B6" in content_disc, "Debe mostrar MAC física real de Lenovo"
         assert "360" not in content_disc, "NO debe contener '360'"
         print("✅ Verificación en /admin/discovery exitosa: Estado 'EN INVENTARIO', Nombre Etiqueta y MAC física verificados.")
@@ -43,7 +43,7 @@ async def main():
         await page.goto("http://127.0.0.1/admin/devices", wait_until="networkidle")
         await page.wait_for_timeout(500)
 
-        # Buscar MONITOREO-DEV
+        # Buscar CENCARATIT
         await page.fill('input[name="search"]', '192.168.1.220')
         await page.press('input[name="search"]', 'Enter')
         await page.wait_for_timeout(1000)

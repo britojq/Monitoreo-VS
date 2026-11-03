@@ -115,8 +115,8 @@ return new class extends Migration
                     'is_active' => 1,
                     'sort_order' => 25,
                     'monitored_site_id' => 1,
-                    'normal_state_msg' => '✅ - MONITOREO-DEV (Desarrollo)',
-                    'error_state_msg' => '❌ - MONITOREO-DEV (Desarrollo)',
+                    'normal_state_msg' => '✅ - CENCARATIT (Desarrollo)',
+                    'error_state_msg' => '❌ - CENCARATIT (Desarrollo)',
                 ]);
             }
 
@@ -136,7 +136,7 @@ return new class extends Migration
                 195 => 11504, // TAQUILLA 02 (Sede 3)
                 196 => 11505, // ATU 01 (Sede 3)
                 197 => 11506, // IMPRESORA RED (Sede 3)
-                151 => 11507, // JEFE OFICINA / SEDE-CENTRALCOM012010 (Sede 4)
+                151 => 11507, // JEFE OFICINA / CENCARCOM012010 (Sede 4)
                 198 => 11508, // TAQUILLA 01 (Sede 4)
                 199 => 11509, // TAQUILLA 02 (Sede 4)
                 200 => 11510, // JEFE OFICINA (Sede 5)

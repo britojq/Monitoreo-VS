@@ -146,7 +146,7 @@ def test_telegram_route_registration():
 def test_rule_1_security_alerts_to_owner_private_only():
     """
     Regla de Oro #1: Las alertas de seguridad y bloqueos por acceso no autorizado
-    van estrictamente al chat privado del Administrador (<OWNER_TELEGRAM_ID>), NUNCA a grupos (-100...).
+    van estrictamente al chat privado del Administrador (38914901), NUNCA a grupos (-100...).
     """
     import asyncio
     from bot_core.handlers.services.actions.report_action import run_and_send_monitoring_report
@@ -184,7 +184,7 @@ def test_rule_1_security_alerts_to_owner_private_only():
              patch("bot_core.handlers.services.report_security.log_security_audit_event"):
 
             mock_cfg.return_value = {
-                "owner_id": <OWNER_TELEGRAM_ID>,
+                "owner_id": 38914901,
                 "allowed_group_ids": [-1001383163558],
                 "notify_unauthorized_to_owner": True,
             }
@@ -197,10 +197,10 @@ def test_rule_1_security_alerts_to_owner_private_only():
                 force_debug=True,
             )
 
-            # Verificar que si se envió alerta de seguridad, fue EXCLUSIVAMENTE al Owner (<OWNER_TELEGRAM_ID>)
+            # Verificar que si se envió alerta de seguridad, fue EXCLUSIVAMENTE al Owner (38914901)
             for call_args in mock_bot.send_message.call_args_list:
                 chat_id_arg = call_args.kwargs.get("chat_id") or call_args.args[0]
-                assert chat_id_arg == <OWNER_TELEGRAM_ID>, f"¡VIOLACIÓN REGLA #1! Se intentó enviar alerta al chat {chat_id_arg}"
+                assert chat_id_arg == 38914901, f"¡VIOLACIÓN REGLA #1! Se intentó enviar alerta al chat {chat_id_arg}"
                 assert chat_id_arg != -1001383163558, "¡VIOLACIÓN CRÍTICA! Se intentó enviar alerta a grupo corporativo"
 
     asyncio.run(_run())

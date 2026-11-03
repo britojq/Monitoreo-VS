@@ -4,8 +4,8 @@
 # Orquestador unificado de captura SNMP Traps (162), Syslog (514) y NetFlow (2055)
 # Ubicación: /opt/sonar/monitor/push_telemetry_daemon.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 from __future__ import annotations

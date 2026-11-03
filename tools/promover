@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# =========================================================================
+# 🛡️ S.O.N.A.R. — COMANDO WRAPPER: promover
+# tools/promover -> /usr/local/bin/promover
+# =========================================================================
+set -euo pipefail
+
+# -------------------------------------------------------------------------
+# 🔒 ESTADO DE BLOQUEO DE PREPARACIÓN DE CLONACIÓN
+# -------------------------------------------------------------------------
+# Este comando se mantiene ESTRICTAMENTE BLOQUEADO por orden del Administrador
+# hasta que indique explícitamente: "prepara todo para la clonacion".
+# -------------------------------------------------------------------------
+CLONING_PREPARED=false
+
+if [ "$CLONING_PREPARED" != "true" ]; then
+    echo "========================================================================="
+    echo " 🛑 COMANDO 'promover' BLOQUEADO (DIRECTRIZ DE SEGURIDAD OPERATIVA)"
+    echo "========================================================================="
+    echo " La promoción a producción se encuentra BLOQUEADA e INACTIVA."
+    echo " El sistema está en fase de revisión y desarrollo."
+    echo ""
+    echo " Este comando permanecerá bloqueado hasta que el Administrador ordene:"
+    echo "   'prepara todo para la clonacion'"
+    echo "========================================================================="
+    exit 1
+fi
+
+# Si no es root, re-ejecutar con sudo
+if [ "$EUID" -ne 0 ]; then
+    exec sudo "$0" "$@"
+fi
+
+echo "========================================================================="
+echo " 🚀 S.O.N.A.R. — ASISTENTE DE PROMOCIÓN A PRODUCCIÓN"
+echo "========================================================================="
+echo " Este comando configurará este servidor como PRODUCCIÓN definitiva:"
+echo "   • Hostname     : MONITOREO-VS"
+echo "   • Dirección IP : 192.168.1.250"
+echo "   • Bot Oficial  : @IA_ValleSeco_bot (Bóveda sellada al hardware)"
+echo "   • Rol Clúster  : Master"
+echo "   • Partición /  : Expansión de disco en caliente (growpart/resize2fs)"
+echo "   • Privacidad   : Purga de historiales y sesiones personales"
+echo "========================================================================="
+echo ""
+read -rp "⚠️ ¿Confirma que este equipo es el servidor clonado y desea iniciar la promoción? [s/N]: " confirm
+if [[ "$confirm" =~ ^[sS]$ ]]; then
+    exec /opt/sonar/tools/promote_to_production.sh --unlock-and-execute-promotion
+else
+    echo "Operación cancelada por el usuario. No se aplicó ningún cambio."
+    exit 0
+fi

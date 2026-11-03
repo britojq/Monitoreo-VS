@@ -67,7 +67,7 @@ class TestPhase1AuditHardening:
 
     def test_deobfuscate_payload_aes_256_gcm(self):
         """Certifica que deobfuscate_payload utilice descifrado AES-256-GCM estándar."""
-        plaintext = "<OWNER_TELEGRAM_ID>"
+        plaintext = "38914901"
         blob = StandardEncryptor.encrypt_to_base64(
             plaintext=plaintext.encode("utf-8"),
             key=_CORE_MASTER_KEY,
@@ -97,7 +97,7 @@ class TestPhase1AuditHardening:
     def test_write_and_unwrap_anchor_aes_gcm(self):
         """Certifica que el anclaje de hardware persista y se recupere bajo AES-256-GCM v2.0."""
         hw_key = derive_hardware_key()
-        test_tok = "1595888148:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ"
+        test_tok = "0000000000:AAEDummyTestTokenForMockVerificationAA"
         success = write_anchor(hw_key, custom_token=test_tok)
         assert success is True
 
@@ -120,7 +120,7 @@ class TestPhase1AuditHardening:
         with patch.object(Path, "write_text", side_effect=PermissionError("Permiso denegado simulado")):
             with pytest.raises(VaultWriteError):
                 hw_key = derive_hardware_key()
-                write_anchor(hw_key, custom_token="1595888148:AAEMMMmCAV1I5EaUMkTQ3uVBJ2LpK9aIAoQ")
+                write_anchor(hw_key, custom_token="0000000000:AAEDummyTestTokenForMockVerificationAA")
 
     def test_deobfuscate_payload_pep257_docstring_compliance(self):
         """Certifica que deobfuscate_payload cumpla con el estándar PEP 257 (Hallazgo #10)."""

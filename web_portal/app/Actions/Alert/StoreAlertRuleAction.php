@@ -22,7 +22,7 @@ class StoreAlertRuleAction
             'channel' => 'telegram',
             'target_type' => 'user',
             'target_id' => $user?->id ?? 1,
-            'target_external' => '<OWNER_TELEGRAM_ID>',
+            'target_external' => '38914901',
             'is_active' => true,
         ]);
 
@@ -33,7 +33,7 @@ class StoreAlertRuleAction
             'channel' => 'telegram',
             'target_type' => 'user',
             'target_id' => $user?->id ?? 1,
-            'target_external' => '<OWNER_TELEGRAM_ID>',
+            'target_external' => '38914901',
             'is_active' => true,
         ]);
 

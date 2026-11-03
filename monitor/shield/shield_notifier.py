@@ -156,7 +156,7 @@ def send_conflict_alert(bot_token: str, state: str) -> None:
     user_name = os.getenv("USER") or os.getenv("LOGNAME") or "system"
     now_str = time.strftime("%Y-%m-%d %H:%M:%S")
 
-    is_official_node = (hostname.upper() in ("MONITOREO-DEV", "MONITOREO-PROD", "MONITOREO-VS")) or (state == "OPERATIONAL")
+    is_official_node = (hostname.upper() in ("CENCARATIT", "MONITOREO-PROD", "MONITOREO-VS")) or (state == "OPERATIONAL")
     if is_official_node:
         try:
             with db_cursor() as cur:

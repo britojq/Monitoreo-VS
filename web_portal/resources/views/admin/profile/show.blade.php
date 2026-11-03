@@ -271,7 +271,7 @@
                                 <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Datos del Trabajador</h3>
                                 <p class="text-[11px] font-mono text-obsidian-muted">Información institucional y de contacto para asignación y consulta de equipos</p>
                             @else
-                                <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Identidad ATIT / EMPRESA</h3>
+                                <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wide">Ficha de Identidad ATIT / empresa</h3>
                                 <p class="text-[11px] font-mono text-obsidian-muted">Firma corporativa adjuntada a reportes de Telegram enviados desde la Web</p>
                             @endif
                         </div>

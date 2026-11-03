@@ -4,8 +4,8 @@
 # Despacho reactivo de caídas y recuperaciones por Telegram (Owner / Grupo)
 # Ubicación: /opt/sonar/monitor/device_service_notifier.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -36,14 +36,14 @@ def get_notification_target(target_type: str) -> str:
     Resuelve el ID de Telegram de destino respetando la REGLA DE ORO #1.
     Si target_type es 'group', en modo esclavo / desarrollo se redirige al Owner.
     """
-    owner_id = "<OWNER_TELEGRAM_ID>"
+    owner_id = "38914901"
     group_id = ""
     node_role = "master"
 
     try:
         from bot_core.services.config_manager import load_config
         cfg = load_config()
-        owner_id = str(cfg.get("owner_id", "<OWNER_TELEGRAM_ID>"))
+        owner_id = str(cfg.get("owner_id", "38914901"))
         groups = cfg.get("allowed_group_ids", [])
         if groups:
             group_id = str(groups[0])

@@ -136,9 +136,9 @@
         <tr>
             <td style="width: 20%; text-align: left;">
                 @if(!empty($empresaLogoBase64))
-                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-img" alt="EMPRESA">
+                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-img" alt="empresa">
                 @else
-                    <span style="font-weight: bold; color: #0891b2; font-size: 11pt;">EMPRESA</span>
+                    <span style="font-weight: bold; color: #0891b2; font-size: 11pt;">empresa</span>
                 @endif
             </td>
             <td class="header-title-box" style="width: 60%;">

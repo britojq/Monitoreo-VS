@@ -25,7 +25,7 @@ def format_ai_control_panel_html() -> Tuple[str, InlineKeyboardMarkup]:
     """Genera el mensaje interactivo en formato HTML para Telegram para el control del motor de inteligencia."""
     from monitor.thermal_guard import is_ai_service_active
     hostname = platform.node()
-    is_dev = (hostname.upper() == "MONITOREO-DEV")
+    is_dev = (hostname.upper() == "CENCARATIT")
 
     cfg = load_config()
     ai_enabled_in_config = bool(cfg.get("ai_engine_enabled", cfg.get("ollama_enabled", True)))
@@ -39,7 +39,7 @@ def format_ai_control_panel_html() -> Tuple[str, InlineKeyboardMarkup]:
         env_note = (
             "⚠️ <b>POLÍTICA DE SEGURIDAD EN DESARROLLO:</b>\n"
             "El asistente corporativo se encuentra permanentemente <b>deshabilitado en este equipo</b> "
-            "para resguardar el hardware físico. No se permite su activación en <code>MONITOREO-DEV</code>.\n"
+            "para resguardar el hardware físico. No se permite su activación en <code>CENCARATIT</code>.\n"
         )
     else:
         env_note = (
@@ -100,7 +100,7 @@ async def cmd_ia_control(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     hostname = platform.node()
-    is_dev = (hostname.upper() == "MONITOREO-DEV")
+    is_dev = (hostname.upper() == "CENCARATIT")
 
     if context.args:
         subcmd = context.args[0].lower().strip()
@@ -185,7 +185,7 @@ async def handle_ia_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     action = payload.action
 
     hostname = platform.node()
-    is_dev = (hostname.upper() == "MONITOREO-DEV")
+    is_dev = (hostname.upper() == "CENCARATIT")
 
     if action == "dev_blocked":
         await query.answer("⚠️ Bloqueado: No permitido en desarrollo por protección física.", show_alert=True)

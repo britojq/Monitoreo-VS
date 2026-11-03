@@ -4,8 +4,8 @@
 # Demonio de captura y análisis de traps SNMP v1/v2c en tiempo real (UDP 162)
 # Ubicación: /opt/sonar/monitor/snmp_trap_receiver.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 from __future__ import annotations
@@ -143,7 +143,7 @@ TRAP_DICTIONARY: Dict[str, Dict[str, str]] = {
 
 DEFAULT_TRAP_PORT = 162
 FALLBACK_TRAP_PORT = 10162
-OWNER_PRIVATE_CHAT_ID = <OWNER_TELEGRAM_ID>
+OWNER_PRIVATE_CHAT_ID = 38914901
 
 
 def resolve_trap_info(trap_oid: str) -> Dict[str, str]:

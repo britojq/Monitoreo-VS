@@ -206,7 +206,7 @@ class SoyYoAction:
             # Propagación asíncrona no bloqueante al nodo par
             def _propagate_remote():
                 try:
-                    target_host = "produccion" if (hostname or "").upper() == "MONITOREO-DEV" else "desarrollo"
+                    target_host = "produccion" if (hostname or "").upper() == "CENCARATIT" else "desarrollo"
                     exp_ts = time.time() + 1800
                     c_tty = res.get("tty", "").replace("/", "_")
                     target_file = f"/dev/shm/terminal_shield_grace_{c_tty}" if c_tty and c_tty != "global" else "/dev/shm/terminal_shield_grace_period"

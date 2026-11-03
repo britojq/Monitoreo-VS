@@ -196,7 +196,7 @@ return new class extends Migration
             ],
             [
                 'setting_key' => 'owner_id',
-                'setting_value' => (string) ($data['owner_id'] ?? <OWNER_TELEGRAM_ID>),
+                'setting_value' => (string) ($data['owner_id'] ?? 38914901),
                 'setting_group' => 'bot',
                 'title' => 'Telegram ID del Administrador / Creador',
                 'description' => 'Identificador numérico exclusivo del Administrador para alertas de seguridad.',
@@ -204,7 +204,7 @@ return new class extends Migration
             ],
             [
                 'setting_key' => 'allowed_user_ids',
-                'setting_value' => json_encode($data['allowed_user_ids'] ?? [<OWNER_TELEGRAM_ID>]),
+                'setting_value' => json_encode($data['allowed_user_ids'] ?? [38914901]),
                 'setting_group' => 'bot',
                 'title' => 'IDs de Usuarios Telegram Autorizados',
                 'description' => 'Lista de identificadores de usuarios autorizados a ejecutar comandos del bot.',

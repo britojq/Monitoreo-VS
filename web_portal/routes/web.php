@@ -78,8 +78,27 @@ Route::get('/deploy/win', function (\Illuminate\Http\Request $request, \App\Cont
     if (!file_exists($path)) abort(404, 'Script de despliegue Windows no encontrado.');
     $content = file_get_contents($path);
     $cfg = $endpointConfig->getEndpointsConfig();
-    $targetUrl = $request->query('server_url', $cfg['current_url']);
-    $deployBase = $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+
+    $targetUrl = (string) $request->query('server_url', $cfg['current_url']);
+    $deployBase = (string) $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+
+    // Validación estricta contra SSRF (OWASP A10:2021)
+    if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
+        abort(400, 'URL de servidor inválida');
+    }
+    $parsedUrl = parse_url($targetUrl);
+    if (!in_array($parsedUrl['scheme'] ?? '', ['http', 'https'], true)) {
+        abort(400, 'Esquema URL de servidor no permitido');
+    }
+
+    if (!filter_var($deployBase, FILTER_VALIDATE_URL)) {
+        abort(400, 'URL base de despliegue inválida');
+    }
+    $parsedBase = parse_url($deployBase);
+    if (!in_array($parsedBase['scheme'] ?? '', ['http', 'https'], true)) {
+        abort(400, 'Esquema URL de despliegue no permitido');
+    }
+
     $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
     $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
     return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
@@ -90,8 +109,27 @@ Route::get('/deploy/linux', function (\Illuminate\Http\Request $request, \App\Co
     if (!file_exists($path)) abort(404, 'Script de despliegue Linux no encontrado.');
     $content = file_get_contents($path);
     $cfg = $endpointConfig->getEndpointsConfig();
-    $targetUrl = $request->query('server_url', $cfg['current_url']);
-    $deployBase = $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+
+    $targetUrl = (string) $request->query('server_url', $cfg['current_url']);
+    $deployBase = (string) $request->query('deploy_base', $cfg['current_deploy_base'] . '/instaladores');
+
+    // Validación estricta contra SSRF (OWASP A10:2021)
+    if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
+        abort(400, 'URL de servidor inválida');
+    }
+    $parsedUrl = parse_url($targetUrl);
+    if (!in_array($parsedUrl['scheme'] ?? '', ['http', 'https'], true)) {
+        abort(400, 'Esquema URL de servidor no permitido');
+    }
+
+    if (!filter_var($deployBase, FILTER_VALIDATE_URL)) {
+        abort(400, 'URL base de despliegue inválida');
+    }
+    $parsedBase = parse_url($deployBase);
+    if (!in_array($parsedBase['scheme'] ?? '', ['http', 'https'], true)) {
+        abort(400, 'Esquema URL de despliegue no permitido');
+    }
+
     $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
     $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
     return response($content, 200, ['Content-Type' => 'text/x-sh; charset=utf-8']);

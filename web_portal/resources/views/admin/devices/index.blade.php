@@ -3008,7 +3008,7 @@
                                 </div>
                                 <div id="create-glpi-domain-wrapper">
                                     <label class="block text-[10.5px] font-mono text-slate-300 mb-0.5">Dominio AD (Windows)</label>
-                                    <input type="text" name="glpi_domain" id="create-glpi-domain" placeholder="Ej: EMPRESA" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
+                                    <input type="text" name="glpi_domain" id="create-glpi-domain" placeholder="Ej: empresa" class="w-full px-2.5 py-1.5 rounded-lg bg-[#020710] border border-obsidian-border text-white text-xs font-mono focus:border-cyan-400 focus:outline-none">
                                 </div>
                             </div>
                             <div id="glpi-detect-status" class="text-[10px] font-mono text-cyan-300 hidden p-1.5 rounded bg-cyan-950/40 border border-cyan-500/20"></div>

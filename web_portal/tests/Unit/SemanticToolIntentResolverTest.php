@@ -25,12 +25,12 @@ class SemanticToolIntentResolverTest extends TestCase
 
     public function test_embedded_json_matcher_resolves_raw_json_tool_call(): void
     {
-        $reply = 'Consultando infraestructura: {"name": "get_ups_telemetry", "arguments": {"ups_id": "LV6KL-VS-01"}}';
+        $reply = 'Consultando infraestructura: {"name": "get_ups_telemetry", "arguments": {"ups_id": "UPS-DEMO-01"}}';
         $res = $this->resolver->resolveIntent('dame el estatus del ups', $reply);
 
         $this->assertNotNull($res);
         $this->assertEquals('get_ups_telemetry', $res['name']);
-        $this->assertEquals('LV6KL-VS-01', $res['arguments']['ups_id']);
+        $this->assertEquals('UPS-DEMO-01', $res['arguments']['ups_id']);
     }
 
     public function test_embedded_json_matcher_resolves_inventory_summary_json(): void

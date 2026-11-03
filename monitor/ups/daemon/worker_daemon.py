@@ -312,13 +312,13 @@ async def poll_and_process_ups(dispatcher: Optional[TelegramDispatcher] = None) 
                             logger.warning(f"❌ Falló despacho de energía restablecida a {t_chat}: {err}")
 
             else:
-                owner_id = "<OWNER_TELEGRAM_ID>"
+                owner_id = "38914901"
                 notify_micro = True
                 cooldown_sec = 1800
                 try:
                     from bot_core.services.config_manager import load_config
                     cfg_t = load_config()
-                    owner_id = str(cfg_t.get("owner_id", "<OWNER_TELEGRAM_ID>"))
+                    owner_id = str(cfg_t.get("owner_id", "38914901"))
                     notify_micro = bool(cfg_t.get("ups_notify_micro_fluctuations", True))
                     cooldown_sec = int(cfg_t.get("ups_fluctuation_cooldown_seconds", 1800))
                 except Exception:

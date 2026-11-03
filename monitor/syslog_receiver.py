@@ -4,8 +4,8 @@
 # Captura asíncrona de eventos RFC 3164 / RFC 5424 en tiempo real (UDP 514)
 # Ubicación: /opt/sonar/monitor/syslog_receiver.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ logger = logging.getLogger("syslog")
 
 DEFAULT_SYSLOG_PORT = 514
 FALLBACK_SYSLOG_PORT = 10514
-OWNER_PRIVATE_CHAT_ID = <OWNER_TELEGRAM_ID>
+OWNER_PRIVATE_CHAT_ID = 38914901
 
 # Regex para RFC 5424
 RE_RFC5424 = re.compile(
@@ -228,7 +228,7 @@ def store_syslog_event(event: Dict[str, Any]) -> int:
 async def check_and_notify_syslog_alert(event: Dict[str, Any]):
     """
     Evalúa si el evento amerita notificación inmediata a Telegram para severidades críticas (<= 3).
-    🚨 En estricto cumplimiento de la REGLA DE ORO #1: NUNCA enviar a grupos, solo a Owner ID <OWNER_TELEGRAM_ID>.
+    🚨 En estricto cumplimiento de la REGLA DE ORO #1: NUNCA enviar a grupos, solo a Owner ID 38914901.
     """
     severity = event.get("severity", 6)
     if severity > 3:  # Solo notificar Emergency (0), Alert (1), Critical (2), Error (3)

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,21 +33,28 @@ class BannedIp extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    protected const WHITELIST_IPS = [
-        '127.0.0.1',
-        '::1',
-        '192.168.1.220', // Servidor de Desarrollo (Esclavo)
-        '192.168.1.250', // Servidor de Producción (Master)
-        '192.168.1.1',   // Gateway Corporativo
-    ];
+    /**
+     * Obtiene la lista blanca de direcciones IP autorizadas desde la configuración.
+     * Cumple con OWASP A05:2021 externalizando IPs para no exponer infraestructura en código.
+     *
+     * @return array<int, string>
+     */
+    public static function getWhitelistIps(): array
+    {
+        return (array) config('security.whitelist_ips', ['127.0.0.1', '::1']);
+    }
 
+    /**
+     * Determina si una dirección IP específica se encuentra bloqueada.
+     */
     public static function isBanned(?string $ip): bool
     {
         if (empty($ip)) {
             return false;
         }
 
-        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '192.168.1.')) {
+        $whitelist = static::getWhitelistIps();
+        if (in_array($ip, $whitelist, true) || str_starts_with($ip, '127.')) {
             return false;
         }
 

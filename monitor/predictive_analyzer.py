@@ -4,8 +4,8 @@
 # Detección de anomalías estadísticas, tendencias alcistas y proyección de capacidad
 # Ubicación: /opt/sonar/monitor/predictive_analyzer.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 from __future__ import annotations

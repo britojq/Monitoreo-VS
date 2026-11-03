@@ -19,7 +19,7 @@ class TestBootAlert:
     async def test_handle_start_clean_reboot(self):
         """Reinicio limpio: no envía alerta de corte al grupo, sólo notificación de arranque normal al owner."""
         mock_cfg = {
-            "owner_id": "<OWNER_TELEGRAM_ID>",
+            "owner_id": "38914901",
             "bot_token": "fake-token",
             "node_role": "master",
             "allowed_group_ids": ["-1001383163558"],
@@ -43,14 +43,14 @@ class TestBootAlert:
         assert mock_send.call_count == 1
         # Envía sólo al Owner
         call_chat_ids = mock_send.call_args[0][1]
-        assert call_chat_ids == ["<OWNER_TELEGRAM_ID>"]
+        assert call_chat_ids == ["38914901"]
         assert "Reinicio Limpio o Apagado Controlado" in mock_send.call_args[0][2]
 
     @pytest.mark.anyio
     async def test_handle_start_outage_recovery_flow(self):
         """Apagón con grupo previamente alertado: notifica al grupo recuperación, corre chequeo y actualiza BD."""
         mock_cfg = {
-            "owner_id": "<OWNER_TELEGRAM_ID>",
+            "owner_id": "38914901",
             "bot_token": "fake-token",
             "node_role": "master",
             "allowed_group_ids": ["-1001383163558"],
@@ -116,7 +116,7 @@ class TestBootAlert:
     async def test_handle_start_disconnected_blocks_subprocess(self):
         """Red no disponible tras 60s: en modo testing jamás lanza proceso Popen en segundo plano."""
         mock_cfg = {
-            "owner_id": "<OWNER_TELEGRAM_ID>",
+            "owner_id": "38914901",
             "bot_token": "fake-token",
             "node_role": "master",
             "allowed_group_ids": ["-1001383163558"],

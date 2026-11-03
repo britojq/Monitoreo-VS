@@ -62,7 +62,7 @@ class CsvReportExporter
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            fputcsv($handle, ['REPÚBLICA BOLIVARIANA DE VENEZUELA - MPPEE - EMPRESA']);
+            fputcsv($handle, ['REPÚBLICA BOLIVARIANA DE VENEZUELA - MPPEE - empresa']);
             fputcsv($handle, [$data['title']]);
             fputcsv($handle, ['Fecha de Emisión: ' . now()->format('d/m/Y H:i:s')]);
             fputcsv($handle, []);
@@ -119,7 +119,7 @@ class CsvReportExporter
         return response()->streamDownload(function () use ($title, $headers, $rows) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($handle, ['REPÚBLICA BOLIVARIANA DE VENEZUELA - MPPEE - EMPRESA']);
+            fputcsv($handle, ['REPÚBLICA BOLIVARIANA DE VENEZUELA - MPPEE - empresa']);
             fputcsv($handle, [$title]);
             fputcsv($handle, ['Gerencia General de ATIT • Sede Valle Seco']);
             fputcsv($handle, ['Fecha de Emisión: ' . now()->format('d/m/Y H:i:s')]);

@@ -113,7 +113,7 @@ class CoreCatalogReplicator(TableReplicatorProtocol):
                 cursor.executemany(pxy_sql, pxy_records)
                 total_synced += len(pxy_records)
 
-        # 4. Dispositivos de Red (con blindaje de paridad Regla #8: Router ID 1 vs MONITOREO-DEV ID 11519)
+        # 4. Dispositivos de Red (con blindaje de paridad Regla #8: Router ID 1 vs CENCARATIT ID 11519)
         cfg_net_devs = cfg.get("network_devices", [])
         if cfg_net_devs:
             net_dev_sql = """

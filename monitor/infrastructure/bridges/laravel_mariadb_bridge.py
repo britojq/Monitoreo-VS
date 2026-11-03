@@ -5,8 +5,8 @@
 # Implementa el contrato LaravelBridge utilizando MariaDB como Única Fuente de Verdad (SSOT).
 # Ubicación: /opt/sonar/monitor/infrastructure/bridges/laravel_mariadb_bridge.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 

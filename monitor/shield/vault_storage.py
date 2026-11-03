@@ -245,7 +245,7 @@ def deobfuscate_payload(
     Example:
         payload = deobfuscate_payload("base64data...", master_key, "OPERATIONAL")
         print(payload)
-        "<OWNER_TELEGRAM_ID>"
+        "38914901"
     """
     if state != "OPERATIONAL" or not master_key:
         return "FAIL_SILENT_" + hashlib.sha256(os.urandom(16)).hexdigest()[:24]

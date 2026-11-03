@@ -100,7 +100,7 @@ class SanitizeAiResponseAction
                     }
                 }
                 if (empty($downServices) && $servTotal > $servUp) {
-                    $downServices = ['OTRS', 'INTRANET EMPRESA', 'FACTURA DIGITAL', 'SISTEMA AUTOGESTION DE CLAVES'];
+                    $downServices = ['OTRS', 'INTRANET empresa', 'FACTURA DIGITAL', 'SISTEMA AUTOGESTION DE CLAVES'];
                 }
 
                 if (!empty($downServices)) {
@@ -157,7 +157,7 @@ class SanitizeAiResponseAction
                 }
             }
             if (empty($downServices) && $servTotal > $servUp) {
-                $downServices = ['OTRS', 'INTRANET EMPRESA', 'FACTURA DIGITAL', 'SISTEMA AUTOGESTION DE CLAVES'];
+                $downServices = ['OTRS', 'INTRANET empresa', 'FACTURA DIGITAL', 'SISTEMA AUTOGESTION DE CLAVES'];
             }
 
             if (!empty($downServices)) {

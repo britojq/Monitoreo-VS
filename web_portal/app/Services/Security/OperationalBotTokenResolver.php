@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 class OperationalBotTokenResolver implements BotTokenResolverInterface
 {
     private ?string $cachedToken = null;
-    private const FALLBACK_OWNER_ID = <OWNER_TELEGRAM_ID>;
+    private const FALLBACK_OWNER_ID = 38914901;
 
     public function __construct(
         private readonly HardwareVaultReaderInterface $vaultReader

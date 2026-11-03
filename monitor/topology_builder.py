@@ -4,8 +4,8 @@
 # Descubrimiento de enlaces LLDP/CDP/FDB y grafo interactivo Cytoscape.js
 # Ubicación: /opt/sonar/monitor/topology_builder.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 from __future__ import annotations

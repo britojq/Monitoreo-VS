@@ -28,10 +28,10 @@ class SyncInventoryFromExcelTest extends TestCase
             ->expectsOutputToContain('ACTUALIZACIÓN EXITOSA')
             ->assertExitCode(0);
 
-        // Verificar activo SEDE-CENTRALPROC-2001
+        // Verificar activo CENCARPROC-2001
         $asset = InventoryAsset::where('serial_number', 'MXL5242234')->first();
         $this->assertNotNull($asset);
-        $this->assertSame('SEDE-CENTRALPROC-2001', $asset->name); // Nombre Etiqueta intacto
+        $this->assertSame('CENCARPROC-2001', $asset->name); // Nombre Etiqueta intacto
         $this->assertSame('YUSNEIDY BARELA', $asset->custodian_name);
         $this->assertSame('V-14243365', $asset->custodian_id_number);
         $this->assertSame('PROCURA', $asset->custodian_department);

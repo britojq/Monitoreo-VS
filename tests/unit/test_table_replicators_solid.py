@@ -76,7 +76,7 @@ class TestTableReplicatorsSolidArchitecture:
 
     def test_core_catalog_replicator_golden_rule_8_remap(self):
         """
-        REGLA DE ORO #8: Router Principal ID 1 vs MONITOREO-DEV ID 11519.
+        REGLA DE ORO #8: Router Principal ID 1 vs CENCARATIT ID 11519.
         Si el master envía el Router con ID 11519 y 192.168.1.1, debe ser remapeado al ID 1.
         """
         replicator = CoreCatalogReplicator()

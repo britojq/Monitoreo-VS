@@ -10,7 +10,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      * Garantiza la restauración y paridad absoluta del ROUTER PRINCIPAL (ID 1, IP 192.168.1.1, TELNET:23)
-     * y la correcta etiqueta de activo (asset_tag) del Servidor de Desarrollo MONITOREO-DEV (ID 11519)
+     * y la correcta etiqueta de activo (asset_tag) del Servidor de Desarrollo CENCARATIT (ID 11519)
      * en monitored_network_devices e inventory_assets tanto en Producción como en Desarrollo.
      */
     public function up(): void

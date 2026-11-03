@@ -1,21 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Models\BannedIp;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
 class Fail2banService
 {
     protected const BINARY = '/usr/bin/fail2ban-client';
-
-    protected const WHITELIST_IPS = [
-        '127.0.0.1',
-        '::1',
-        '192.168.1.220',
-        '192.168.1.250',
-        '192.168.1.1',
-    ];
 
     /**
      * Obtiene el estado general del demonio Fail2ban y la lista de jails activas.
@@ -186,9 +181,10 @@ class Fail2banService
             return ['success' => false, 'message' => 'Dirección IP inválida.'];
         }
 
-        // Verificación de protección contra bloqueo de IPs vitales
-        if (in_array($ip, self::WHITELIST_IPS, true) || str_starts_with($ip, '127.') || str_starts_with($ip, '192.168.1.')) {
-            return ['success' => false, 'message' => 'Acción denegada: La IP pertenece a la red corporativa o al cluster de administración.'];
+        // Verificación de protección contra bloqueo de IPs vitales desde la configuración centralizada
+        $whitelist = BannedIp::getWhitelistIps();
+        if (in_array($ip, $whitelist, true) || str_starts_with($ip, '127.')) {
+            return ['success' => false, 'message' => 'Acción denegada: La IP pertenece a la lista blanca de administración o red protegida.'];
         }
 
         try {

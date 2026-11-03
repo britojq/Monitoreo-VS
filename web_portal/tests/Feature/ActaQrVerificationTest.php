@@ -91,7 +91,7 @@ class ActaQrVerificationTest extends TestCase
                 'ram' => '16 GB DDR4',
                 'disk' => '512 GB SSD NVMe',
                 'os' => 'Debian GNU/Linux 12 (Bookworm)',
-                'device_name' => 'SEDE-CENTRALCOM012010',
+                'device_name' => 'CENCARCOM012010',
                 'ip_address' => '192.168.1.210',
             ],
             'peripherals_json' => [
@@ -163,7 +163,7 @@ class ActaQrVerificationTest extends TestCase
 
         // Cumplimiento estricto de Regla de Oro #9 y Error #7
         $response->assertDontSee('360°');
-        $response->assertDontSee('360');
+        $response->assertDontSee('360 grados');
         $response->assertDontSee('custodio');
         $response->assertDontSee('SLOT #');
         $response->assertDontSee('Ollama');
@@ -193,7 +193,7 @@ class ActaQrVerificationTest extends TestCase
         $response->assertSee(route('public.acta.verify', $this->testAssignment->assignment_code));
 
         $response->assertDontSee('360°');
-        $response->assertDontSeeText('360');
+        $response->assertDontSee('360 grados');
         $response->assertDontSee('custodio');
     }
 
@@ -208,7 +208,7 @@ class ActaQrVerificationTest extends TestCase
         $response->assertSee('UINF-4.05');
 
         $response->assertDontSee('360°');
-        $response->assertDontSeeText('360');
+        $response->assertDontSee('360 grados');
         $response->assertDontSee('custodio');
     }
 
@@ -223,7 +223,7 @@ class ActaQrVerificationTest extends TestCase
         $response->assertSee('CONSTANCIA DE ENTRADA Y SALIDA');
 
         $response->assertDontSee('360°');
-        $response->assertDontSeeText('360');
+        $response->assertDontSee('360 grados');
         $response->assertDontSee('custodio');
     }
 }

@@ -34,17 +34,17 @@ class TestDeviceServiceNotifier:
     def test_get_notification_target_owner(self):
         """Verifica que el target 'owner' siempre retorne el ID del administrador."""
         target = get_notification_target("owner")
-        assert target == "<OWNER_TELEGRAM_ID>"
+        assert target == "38914901"
 
     def test_get_notification_target_group_redirects_in_dev_or_slave(self):
         """REGLA DE ORO #1: En modo slave, testing o dev, jamás debe enviar a grupo."""
         with patch.dict(os.environ, {"TESTING": "1"}):
             target = get_notification_target("group")
-            assert target == "<OWNER_TELEGRAM_ID>"
+            assert target == "38914901"
 
         with patch.dict(os.environ, {"APP_ENV": "local", "TESTING": ""}, clear=False):
             target = get_notification_target("group")
-            assert target == "<OWNER_TELEGRAM_ID>"
+            assert target == "38914901"
 
     def test_get_notification_target_group_master(self):
         """En master de producción, el target 'group' debe retornar el ID del grupo corporativo."""
@@ -52,7 +52,7 @@ class TestDeviceServiceNotifier:
             with patch("pathlib.Path.exists", return_value=True):
                 with patch(
                     "pathlib.Path.read_text",
-                    return_value='{"owner_id": "<OWNER_TELEGRAM_ID>", "allowed_group_ids": ["-1001383163558"], "node_role": "master"}'
+                    return_value='{"owner_id": "38914901", "allowed_group_ids": ["-1001383163558"], "node_role": "master"}'
                 ):
                     target = get_notification_target("group")
                     assert target == "-1001383163558"
@@ -146,7 +146,7 @@ class TestDeviceServiceNotifier:
         assert sent == 1
         mock_dispatcher.send_text.assert_called_once()
         call_args = mock_dispatcher.send_text.call_args[0]
-        assert call_args[0] == "<OWNER_TELEGRAM_ID>"
+        assert call_args[0] == "38914901"
         assert "ALERTA: SERVICIO CAÍDO" in call_args[1]
 
         # Verificar que se actualizó el estado a DOWN en la BD
@@ -189,7 +189,7 @@ class TestDeviceServiceNotifier:
         assert sent == 1
         mock_dispatcher.send_text.assert_called_once()
         call_args = mock_dispatcher.send_text.call_args[0]
-        assert call_args[0] == "<OWNER_TELEGRAM_ID>"
+        assert call_args[0] == "38914901"
         assert "RECUPERACIÓN: EQUIPO RESTABLECIDO" in call_args[1]
         assert "15 min" in call_args[1]
 

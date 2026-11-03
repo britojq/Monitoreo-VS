@@ -2,12 +2,14 @@
 # ==============================================================================
 # 🔐 DESCIFRADOR DE CREDENCIALES LARAVEL: laravel_encryptor.py
 # Arquitectura SOLID - Principio de Responsabilidad Única (SRP).
-# Descifrado y cifrado AES-256-CBC compatible con Illuminate\\Encryption\\Encrypter.
+# Soporte dual: AES-256-CBC (compatible con Illuminate\\Encryption\\Encrypter)
+# y AES-256-GCM AEAD (conforme a NIST SP 800-38D).
+# Registro de Decisión Arquitectónica: docs/ADR_CRIPTO_LARAVEL_CBC_GCM.md
 # Cumple con OWASP A02:2021 externalizando claves a variables de entorno.
 # Ubicación: /opt/sonar/monitor/infrastructure/laravel_encryptor.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 

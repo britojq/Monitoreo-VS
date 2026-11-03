@@ -84,10 +84,10 @@ class TestCleanArchitectureDomainEntities:
             id=5,
             label_name="JEFE DE OFICINA",  # Nombre Etiqueta (SSOT)
             ip_address="192.168.1.100",
-            hostname="SEDE-CENTRALCOM012010",    # Nombre de Equipo (Secundario)
+            hostname="CENCARCOM012010",    # Nombre de Equipo (Secundario)
         )
         assert dev.display_identity == "JEFE DE OFICINA"
-        assert dev.hostname == "SEDE-CENTRALCOM012010"
+        assert dev.hostname == "CENCARCOM012010"
 
     def test_alert_entity_security_check(self):
         """Verifica la detección de alertas de seguridad."""
@@ -153,16 +153,16 @@ class TestCleanArchitectureDomainServices:
         target = resolve_safe_target(
             target_type="group",
             node_role="slave",
-            owner_id="<OWNER_TELEGRAM_ID>",
+            owner_id="38914901",
             group_id="-1001383163558",
             is_non_prod=True,
         )
-        assert target == "<OWNER_TELEGRAM_ID>"
+        assert target == "38914901"
 
         target_prod = resolve_safe_target(
             target_type="group",
             node_role="master",
-            owner_id="<OWNER_TELEGRAM_ID>",
+            owner_id="38914901",
             group_id="-1001383163558",
             is_non_prod=False,
         )
@@ -181,7 +181,7 @@ class TestCleanArchitectureNotificationDTO:
         assert dto_group_security.is_safe_for_groups() is False
 
         dto_owner_security = AlertNotificationDTO(
-            recipient="<OWNER_TELEGRAM_ID>",
+            recipient="38914901",
             message="Alerta de Intrusión PAM",
             is_security_alert=True,
         )
@@ -230,12 +230,12 @@ class TestCleanArchitectureUseCases:
         )
 
         # Micro-fluctuación de 4 segundos (<8s) debe ser suprimida
-        sent = await use_case.notify_outage("<OWNER_TELEGRAM_ID>", ups, duration_sec=4.0)
+        sent = await use_case.notify_outage("38914901", ups, duration_sec=4.0)
         assert sent is False
         mock_notifier.send_message.assert_not_called()
 
         # Corte prolongado de 15 segundos debe despacharse
-        sent = await use_case.notify_outage("<OWNER_TELEGRAM_ID>", ups, duration_sec=15.0)
+        sent = await use_case.notify_outage("38914901", ups, duration_sec=15.0)
         assert sent is True
         mock_notifier.send_message.assert_called_once()
 

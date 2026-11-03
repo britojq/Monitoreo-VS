@@ -1,0 +1,10 @@
+{
+  "v": "2.0",
+  "algo": "AES-256-GCM",
+  "b": "KZp3gBsb49p1uVcmSw9FoHpZ4PUFNy74g3aLMPrnps55tURozmBS6zBaB6ify4C0CvbzeiK4M2y++Fv5",
+  "s": "cd1ce66c1b9555ddb1843abe2fd2bb61788c581cfc6f40b3ec1fd472e57184fb",
+  "t": 1793645981,
+  "node": "CENCARATIT",
+  "tb": "LcNpXN+cIF8PCXIzVaSSGAOD1OuD18P340NNg8vfT/sgne75uLqLbVtO9l7FL5Sl5JIO2V6pm8lZHC8Rf8VDuGkFX2hB4CZ3t7c=",
+  "ts": "52b15775a00582b301e891e94b855d3081076e5d22a601234c707a06bad1957f"
+}

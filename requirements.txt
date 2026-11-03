@@ -1,9 +1,15 @@
-python-telegram-bot>=22.0
-requests>=2.31.0
-PyMySQL>=1.1.0
-cryptography>=42.0.0
-pysnmp>=7.1.0
-paramiko>=3.4.0
-netmiko>=4.3.0
-psutil>=5.9.0
-networkx>=3.0
+# ==============================================================================
+# 📦 DEPENDENCIAS DEL ECOSISTEMA S.O.N.A.R. / MONITOREO-VS
+# Cumplimiento OWASP A06:2021 - Control de Versiones con Cotas Superiores (Pinning)
+# Python: 3.13+
+# ==============================================================================
+
+python-telegram-bot>=22.0,<23.0.0
+requests>=2.31.0,<3.0.0
+PyMySQL>=1.1.0,<2.0.0
+cryptography>=42.0.0,<51.0.0
+pysnmp>=7.1.0,<8.0.0
+paramiko>=3.4.0,<5.0.0
+netmiko>=4.3.0,<5.0.0
+psutil>=5.9.0,<8.0.0
+networkx>=3.0,<4.0.0

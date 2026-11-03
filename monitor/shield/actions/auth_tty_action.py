@@ -68,7 +68,7 @@ def execute_auth(minutes: int = 30, tty: Optional[str] = None, pid: int = 0) -> 
             pass
 
         node_name = (platform.node() or "").upper()
-        target_host = "produccion" if node_name == "MONITOREO-DEV" else "desarrollo"
+        target_host = "produccion" if node_name == "CENCARATIT" else "desarrollo"
         target_file = f"/dev/shm/terminal_shield_grace_{c_tty}" if c_tty else "/dev/shm/terminal_shield_grace_period"
         try:
             cmd = [

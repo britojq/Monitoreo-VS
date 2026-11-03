@@ -176,9 +176,9 @@
         <tr>
             <td style="width: 30%; text-align: center;">
                 @if(isset($empresaLogoBase64) && $empresaLogoBase64)
-                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="EMPRESA">
+                    <img src="data:image/png;base64,{{ $empresaLogoBase64 }}" class="logo-empresa" alt="empresa">
                 @else
-                    <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="EMPRESA">
+                    <img src="{{ asset('assets/img/inventory/empresa_logo.png') }}" class="logo-empresa" alt="empresa">
                 @endif
             </td>
             <td style="width: 45%;" class="title-box">
@@ -328,7 +328,7 @@
 
     <!-- PIE CORPORATIVO -->
     <div class="footer-legal">
-        Corporación Eléctrica Nacional, S.A (EMPRESA) &bull; Centro de Servicio Valle Seco &bull; Unidad de Tecnología de la Información<br>
+        Corporación Eléctrica Nacional, S.A (empresa) &bull; Centro de Servicio Valle Seco &bull; Unidad de Tecnología de la Información<br>
         Documento de control interno de soporte técnico y trazabilidad de hardware &bull; Generado el {{ date('d/m/Y H:i') }}
     </div>
 </div>

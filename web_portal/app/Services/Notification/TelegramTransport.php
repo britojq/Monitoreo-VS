@@ -80,9 +80,9 @@ class TelegramTransport implements NotifierInterface
             return !str_starts_with(trim($chatId), '-');
         }));
 
-        // Garantizar al menos el ID privado oficial del Administrador / Owner (<OWNER_TELEGRAM_ID>)
+        // Garantizar al menos el ID privado oficial del Administrador / Owner (38914901)
         if (empty($this->targetChats)) {
-            $this->targetChats[] = '<OWNER_TELEGRAM_ID>';
+            $this->targetChats[] = '38914901';
         }
     }
 

@@ -28,7 +28,7 @@ class TelegramReportSenderAction
             $token = \App\Services\Security\HardwareVaultService::resolveBotToken();
         }
 
-        $ownerId = (string) (BotSetting::get('owner_id') ?: '<OWNER_TELEGRAM_ID>');
+        $ownerId = (string) (BotSetting::get('owner_id') ?: '38914901');
         $allowedGroups = BotSetting::get('allowed_group_ids');
         $groupId = (!empty($allowedGroups) && is_array($allowedGroups)) ? (string)$allowedGroups[0] : '-1001383163558';
         $proxies = [];
@@ -64,7 +64,7 @@ class TelegramReportSenderAction
      */
     public function resolveTargetChatIds(string $destination, array $config): array
     {
-        $ownerId = (string)($config['owner_id'] ?? '<OWNER_TELEGRAM_ID>');
+        $ownerId = (string)($config['owner_id'] ?? '38914901');
         $groupId = (string)($config['group_id'] ?? '-1001383163558');
 
         return match ($destination) {

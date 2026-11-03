@@ -5,8 +5,8 @@
 # Ubicación: /opt/sonar/installer/install.sh
 # Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
 # License: GNU Affero General Public License v3.0 
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 
 set -e
@@ -25,7 +25,7 @@ PROJECT_DIR="/opt/sonar"
 WEB_DIR="/opt/sonar/web_portal"
 DB_NAME="monitoreo_vs"
 DB_USER="monitoreo_user"
-DB_PASS="DemoSecurePassword2026!"
+DB_PASS="password"
 DOMAIN_NAME="monitoreo-vs.local"
 
 # Detección inteligente del usuario propietario del sistema

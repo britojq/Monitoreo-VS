@@ -6,8 +6,8 @@
 # Validación estricta de inputs de red bajo OWASP A03:2021.
 # Ubicación: /opt/sonar/monitor/checkers/snmp/snmp_engine.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
@@ -170,7 +170,8 @@ async def poll_device_oids(
             )
 
             if err_ind:
-                status = "timeout" if "timeout" in str(err_ind).lower() else "error"
+                err_str = str(err_ind).lower()
+                status = "timeout" if ("timeout" in err_str or "timed out" in err_str) else "error"
                 error_msg = str(err_ind)
             elif err_stat:
                 status = "error"
@@ -210,7 +211,8 @@ async def poll_device_oids(
                         logger.debug(f"Aviso actualizando sys info para {ip}: {e_up}")
 
         except Exception as e_sys:
-            status = "timeout" if "timeout" in str(e_sys).lower() else "error"
+            e_str = str(e_sys).lower()
+            status = "timeout" if ("timeout" in e_str or "timed out" in e_str) else "error"
             error_msg = str(e_sys)
 
         # 2. Consultar OIDs específicos configurados

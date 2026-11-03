@@ -66,7 +66,7 @@ class TestDeviceServiceNotifierIntegration(unittest.TestCase):
     def test_02_golden_rule_1_target_in_slave_mode(self):
         """REGLA DE ORO #1: En nodo esclavo o dev, cualquier target a grupo debe redirigirse al Administrador."""
         target = get_notification_target("group")
-        self.assertEqual(target, "<OWNER_TELEGRAM_ID>")
+        self.assertEqual(target, "38914901")
 
     def test_03_service_alert_flow(self):
         """Prueba ciclo completo de alerta de servicio DOWN y posterior recuperación UP."""

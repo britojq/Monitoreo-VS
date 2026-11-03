@@ -31,10 +31,10 @@ from bot_core.handlers.admin_router import register_admin_routes
 
 
 def test_shield_callback_payload_parsing():
-    raw = "shield_auth:MONITOREO-DEV:1234:5678"
+    raw = "shield_auth:CENCARATIT:1234:5678"
     payload = ShieldCallbackPayload.from_callback_data(raw)
     assert payload.action == "shield_auth"
-    assert payload.target_server == "MONITOREO-DEV"
+    assert payload.target_server == "CENCARATIT"
     assert payload.target_pid == 1234
     assert payload.target_ppid == 5678
 
@@ -45,7 +45,7 @@ def test_authorize_terminal_action_executes_without_name_error():
 
     async def _run():
         action = AuthorizeTerminalAction()
-        payload = ShieldCallbackPayload("shield_auth", "MONITOREO-DEV", 9999, 8888, "raw")
+        payload = ShieldCallbackPayload("shield_auth", "CENCARATIT", 9999, 8888, "raw")
 
         update = MagicMock(spec=Update)
         query = MagicMock(spec=CallbackQuery)
@@ -74,7 +74,7 @@ def test_kill_terminal_action_executes_correctly():
 
     async def _run():
         action = KillTerminalAction()
-        payload = ShieldCallbackPayload("shield_kill", "MONITOREO-DEV", 1234, 5678, "raw")
+        payload = ShieldCallbackPayload("shield_kill", "CENCARATIT", 1234, 5678, "raw")
 
         update = MagicMock(spec=Update)
         query = MagicMock(spec=CallbackQuery)

@@ -5,8 +5,8 @@
 # Carga dinámicamente las credenciales desde los entornos .env sin credenciales en código.
 # Ubicación: /opt/sonar/monitor/monitor_db.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 

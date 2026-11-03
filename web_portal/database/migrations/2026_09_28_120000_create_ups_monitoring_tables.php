@@ -74,7 +74,7 @@ return new class extends Migration
         DB::table('ups_devices')->insert([
             'name' => 'UPS ZTG LV6KL - Sede Valle Seco',
             'model' => 'ZTG LV6KL 6kVA',
-            'serial_number' => 'LV6KL-VS-01',
+            'serial_number' => 'UPS-DEMO-01',
             'serial_port' => '/dev/ttyS0',
             'baud_rate' => 2400,
             'rating_voltage' => 208.0,

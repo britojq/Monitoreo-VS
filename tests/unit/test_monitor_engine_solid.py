@@ -4,8 +4,8 @@
 # Arquitectura SOLID - Verificación de SRP, OCP, Estrategias y Criptografía AES.
 # Ubicación: /opt/sonar/tests/unit/test_monitor_engine_solid.py
 # License: GNU Affero General Public License v3.0
-# Author: Jose A. Brito H. (@britojab:@britojq), https://britojab.com
-# Copyright (c) 2026 Jose A. Brito H.
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
 # ==============================================================================
 """
 
