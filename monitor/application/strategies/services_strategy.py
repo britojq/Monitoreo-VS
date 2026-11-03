@@ -24,9 +24,21 @@ logger = logging.getLogger("monitor.strategies.services")
 
 
 class ServicesMonitoringStrategy(MonitoringStrategyProtocol):
-    """Estrategia para el chequeo exclusivo de Servicios Corporativos."""
+    """Estrategia para el chequeo exclusivo de Servicios Corporativos.
+
+    Monitorea el estado de disponibilidad y tiempos de respuesta de servicios web,
+    puertos TCP y servidores proxy corporativos.
+    """
 
     def can_handle(self, target: str) -> bool:
+        """Determina si la solicitud corresponde a servicios corporativos.
+
+        Args:
+            target: Cadena con el comando o target.
+
+        Returns:
+            bool: True si el target es 'servicios', 'servicio' o 'services'.
+        """
         return target.strip().lower() in ("servicios", "servicio", "services")
 
     async def execute(
@@ -35,6 +47,16 @@ class ServicesMonitoringStrategy(MonitoringStrategyProtocol):
         mode: str = "snapshot",
         debug_mode: bool = False,
     ) -> MonitoringResultDto:
+        """Ejecuta la evaluación de servicios corporativos y compila el informe.
+
+        Args:
+            target: Identificador del comando solicitado.
+            mode: 'snapshot' para leer del snapshot o 'ondemand' para sondeo en vivo.
+            debug_mode: Booleano para activar trazas de depuración.
+
+        Returns:
+            MonitoringResultDto: DTO con el informe formateado de servicios corporativos.
+        """
         logs: List[str] = []
         report_text: Optional[str] = None
 

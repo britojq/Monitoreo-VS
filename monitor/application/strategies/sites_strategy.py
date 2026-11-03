@@ -24,9 +24,21 @@ logger = logging.getLogger("monitor.strategies.sites")
 
 
 class SitesMonitoringStrategy(MonitoringStrategyProtocol):
-    """Estrategia para el chequeo exclusivo de Sedes y Enlaces de Telecomunicaciones."""
+    """Estrategia para el chequeo exclusivo de Sedes y Enlaces de Telecomunicaciones.
+
+    Evalúa la disponibilidad, latencia y pérdida de paquetes de los enlaces WAN
+    y routers de cada sede física de la organización.
+    """
 
     def can_handle(self, target: str) -> bool:
+        """Determina si la solicitud corresponde a sedes y enlaces de telecomunicaciones.
+
+        Args:
+            target: Cadena con el comando o target.
+
+        Returns:
+            bool: True si el target es 'sedes', 'sede' o 'sites'.
+        """
         return target.strip().lower() in ("sedes", "sede", "sites")
 
     async def execute(
@@ -35,6 +47,16 @@ class SitesMonitoringStrategy(MonitoringStrategyProtocol):
         mode: str = "snapshot",
         debug_mode: bool = False,
     ) -> MonitoringResultDto:
+        """Ejecuta la evaluación de sedes físicas y enlaces y compila el informe.
+
+        Args:
+            target: Identificador del comando solicitado.
+            mode: 'snapshot' para leer del snapshot o 'ondemand' para sondeo en vivo.
+            debug_mode: Booleano para activar trazas de depuración.
+
+        Returns:
+            MonitoringResultDto: DTO con el informe formateado de sedes y enlaces WAN.
+        """
         logs: List[str] = []
         report_text: Optional[str] = None
 

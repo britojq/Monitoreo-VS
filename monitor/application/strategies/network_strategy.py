@@ -22,9 +22,21 @@ logger = logging.getLogger("monitor.strategies.network")
 
 
 class NetworkAnalysisStrategy(MonitoringStrategyProtocol):
-    """Estrategia para el análisis profundo de tráfico y captura de red."""
+    """Estrategia para el análisis profundo de tráfico y captura de red.
+
+    Orquesta la captura de paquetes LAN mediante tshark y la generación de métricas
+    de anomalías en los flujos de red corporativos.
+    """
 
     def can_handle(self, target: str) -> bool:
+        """Determina si la solicitud corresponde a una captura o análisis de red.
+
+        Args:
+            target: Cadena con el comando o target.
+
+        Returns:
+            bool: True si el target es 'analisis_red', 'red', 'trafico' o 'network'.
+        """
         return target.strip().lower() in ("analisis_red", "red", "trafico", "network")
 
     async def execute(
@@ -33,6 +45,16 @@ class NetworkAnalysisStrategy(MonitoringStrategyProtocol):
         mode: str = "snapshot",
         debug_mode: bool = False,
     ) -> MonitoringResultDto:
+        """Ejecuta la captura de paquetes y consolida el informe estadístico.
+
+        Args:
+            target: Identificador del comando solicitado.
+            mode: Modo de ejecución (no aplicable a capturas en tiempo real).
+            debug_mode: Booleano para activar trazas detalladas.
+
+        Returns:
+            MonitoringResultDto: DTO con informe de tráfico y archivo PCAP asociado.
+        """
         from monitor.network_analyzer import run_full_network_analysis
 
         rep_txt, pcap, _, _ = await run_full_network_analysis(capture_duration=60)

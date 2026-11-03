@@ -26,9 +26,15 @@ def write_consolidated_log(
     log_dir: Optional[Path] = None,
     filename: str = DEFAULT_LOG_FILENAME,
 ) -> Path:
-    """
-    Escribe la bitácora consolidada de chequeos con cabecera formal y marcas de tiempo.
-    Retorna la ruta absoluta del archivo generado.
+    """Escribe la bitácora consolidada de chequeos con cabecera formal y marcas de tiempo.
+
+    Args:
+        logs: Lista de cadenas de texto con los registros generados por los chequeos.
+        log_dir: Directorio de destino opcional (por defecto /tmp/monitor).
+        filename: Nombre del archivo de bitácora (por defecto servicelog.txt).
+
+    Returns:
+        Path: Ruta absoluta del archivo generado y persistido en disco.
     """
     target_dir = log_dir or DEFAULT_LOG_DIR
     target_dir.mkdir(parents=True, exist_ok=True)

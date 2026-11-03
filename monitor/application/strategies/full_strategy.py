@@ -27,9 +27,21 @@ logger = logging.getLogger("monitor.strategies.full")
 
 
 class FullMonitoringStrategy(MonitoringStrategyProtocol):
-    """Estrategia para el chequeo unificado (Servicios + Sedes)."""
+    """Estrategia para el chequeo unificado (Servicios + Sedes).
+
+    Coordina la recolección holística de telemetría evaluando tanto la infraestructura
+    de servicios web y proxies como las sedes físicas y enlaces de telecomunicaciones.
+    """
 
     def can_handle(self, target: str) -> bool:
+        """Determina si la solicitud corresponde a un chequeo integral.
+
+        Args:
+            target: Cadena con el comando o target.
+
+        Returns:
+            bool: True si el target es 'completo', 'monitoreo', 'all' o 'full'.
+        """
         return target.strip().lower() in ("completo", "monitoreo", "all", "full")
 
     async def execute(
@@ -38,6 +50,16 @@ class FullMonitoringStrategy(MonitoringStrategyProtocol):
         mode: str = "snapshot",
         debug_mode: bool = False,
     ) -> MonitoringResultDto:
+        """Ejecuta el chequeo holístico simultáneo y consolida ambos informes.
+
+        Args:
+            target: Identificador del comando solicitado.
+            mode: 'snapshot' para leer del caché persistente o 'ondemand' para sondeo en vivo.
+            debug_mode: Booleano para activar trazas detalladas de depuración.
+
+        Returns:
+            MonitoringResultDto: DTO con informes combinados de servicios y sedes.
+        """
         logs: List[str] = []
         report_s: Optional[str] = None
         report_sd: Optional[str] = None

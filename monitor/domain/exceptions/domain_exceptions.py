@@ -13,16 +13,37 @@ from typing import Any, Optional
 
 
 class SonarBaseException(Exception):
-    """Excepción raíz de la que heredan todos los errores tipados del sistema S.O.N.A.R."""
+    """Excepción raíz de la que heredan todos los errores tipados del sistema S.O.N.A.R.
+
+    Attributes:
+        message: Descripción legible del motivo del error.
+    """
 
     def __init__(self, message: str = "", *args: Any, **kwargs: Any) -> None:
+        """Inicializa la excepción base almacenando el mensaje y argumentos adicionales.
+
+        Args:
+            message: Mensaje explicativo del error.
+            *args: Argumentos posicionales estándar para Exception.
+            **kwargs: Argumentos por nombre adicionales.
+        """
         super().__init__(message, *args)
         self.message: str = message
 
     def __str__(self) -> str:
+        """Retorna la representación textual legible de la excepción.
+
+        Returns:
+            str: Mensaje de error o el nombre de la clase de excepción.
+        """
         return self.message or self.__class__.__name__
 
     def __repr__(self) -> str:
+        """Retorna la representación técnica formal de la excepción.
+
+        Returns:
+            str: Cadena formateada para depuración que incluye la clase y mensaje.
+        """
         return f"{self.__class__.__name__}(message={self.message!r})"
 
 

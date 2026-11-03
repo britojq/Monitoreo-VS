@@ -25,16 +25,35 @@ logger = logging.getLogger("monitor.dispatcher")
 
 
 class TelegramDispatcher:
-    """Despachador robusto de alertas con failover por proxies corporativos."""
+    """Despachador robusto de alertas con failover por proxies corporativos.
+
+    Attributes:
+        loader: Cargador de configuración del monitor.
+        token: Token del bot de Telegram.
+        proxies: Lista de proxies corporativos configurados.
+        active_proxy_url: URL del proxy activo en uso o None si la conexión es directa.
+    """
 
     def __init__(self, token: Optional[str] = None):
+        """Inicializa el despachador configurando el token y la lista de proxies.
+
+        Args:
+            token: Token de Telegram opcional; si no se provee, se obtiene del hardware vault o DB.
+        """
         self.loader = MonitorConfigLoader()
         self.token = token or get_core_bot_token() or self.loader.raw_bot.get("TOKENA") or self.loader.raw_bot.get("TOKEN")
         self.proxies = self.loader.get_proxies()
         self.active_proxy_url: Optional[str] = None
 
     async def get_active_client(self, timeout: float = 10.0) -> httpx.AsyncClient:
-        """Determina si hay salida directa o selecciona el proxy funcional."""
+        """Determina si hay salida directa o selecciona el proxy funcional.
+
+        Args:
+            timeout: Tiempo de espera en segundos para las peticiones HTTP del cliente.
+
+        Returns:
+            httpx.AsyncClient: Cliente asíncrono configurado para salir directamente o vía proxy.
+        """
         api_test_url = f"https://api.telegram.org/bot{self.token}/getMe"
 
         # 1. Probar conexión directa
@@ -69,7 +88,17 @@ class TelegramDispatcher:
         parse_mode: Optional[str] = "HTML",
         reply_markup: Optional[dict | str] = None
     ) -> Tuple[bool, str]:
-        """Envía un mensaje de texto formateado a Telegram con soporte opcional de teclado en línea."""
+        """Envía un mensaje de texto formateado a Telegram con soporte opcional de teclado en línea.
+
+        Args:
+            chat_id: Identificador único del chat destinatario.
+            text: Mensaje de texto a transmitir.
+            parse_mode: Formato de marcado ('HTML' o 'Markdown').
+            reply_markup: Teclado o menú inline serializado.
+
+        Returns:
+            Tuple[bool, str]: (éxito, mensaje descriptivo de confirmación o error).
+        """
         if not self.token:
             return False, "Token de Telegram no configurado"
 
@@ -116,7 +145,16 @@ class TelegramDispatcher:
         document_path: str | Path,
         caption: Optional[str] = None
     ) -> Tuple[bool, str]:
-        """Envía un archivo como documento adjunto a Telegram."""
+        """Envía un archivo como documento adjunto a Telegram.
+
+        Args:
+            chat_id: Identificador del chat destinatario.
+            document_path: Ruta en disco del documento a transmitir.
+            caption: Texto explicativo opcional.
+
+        Returns:
+            Tuple[bool, str]: (éxito, mensaje de confirmación o detalle del fallo).
+        """
         if not self.token:
             return False, "Token de Telegram no configurado"
 
@@ -147,7 +185,16 @@ class TelegramDispatcher:
         photo_path: str | Path,
         caption: Optional[str] = None
     ) -> Tuple[bool, str]:
-        """Envía una imagen/captura de pantalla en alta definición a Telegram."""
+        """Envía una imagen o captura de pantalla en alta definición a Telegram.
+
+        Args:
+            chat_id: Identificador del chat destinatario.
+            photo_path: Ruta en disco de la imagen.
+            caption: Texto explicativo opcional en formato HTML.
+
+        Returns:
+            Tuple[bool, str]: (éxito, mensaje de confirmación o detalle del error).
+        """
         if not self.token:
             return False, "Token de Telegram no configurado"
 

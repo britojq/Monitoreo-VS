@@ -24,20 +24,35 @@ logger = logging.getLogger("monitor.strategies.registry")
 
 
 class MonitoringStrategyRegistry:
-    """Catálogo y resolvedor polimórfico de estrategias de monitoreo."""
+    """Catálogo y resolvedor polimórfico de estrategias de monitoreo.
+
+    Permite desacoplar el enrutamiento de requerimientos de monitoreo eliminando
+    estructuras de control monolíticas y cumpliendo con el principio Open/Closed.
+    """
 
     def __init__(self) -> None:
+        """Inicializa el catálogo vacío y auto-registra las estrategias por defecto."""
         self._strategies: List[MonitoringStrategyProtocol] = []
         self._register_defaults()
 
     def register(self, strategy: MonitoringStrategyProtocol) -> None:
-        """Registra una nueva estrategia de monitoreo (Extensión limpia OCP)."""
+        """Registra una nueva estrategia de monitoreo (Extensión limpia OCP).
+
+        Args:
+            strategy: Instancia que implementa MonitoringStrategyProtocol.
+        """
         self._strategies.append(strategy)
 
     def get_strategy(self, target: str) -> MonitoringStrategyProtocol:
-        """
-        Retorna la estrategia correspondiente para el objetivo dado.
+        """Retorna la estrategia correspondiente para el objetivo dado.
+
         Si ninguna estrategia específica coincide, retorna FullMonitoringStrategy como fallback.
+
+        Args:
+            target: Cadena con el comando o target deseado (e.g. 'sedes', 'servicios', 'limpiar').
+
+        Returns:
+            MonitoringStrategyProtocol: Estrategia coincidente o FullMonitoringStrategy por defecto.
         """
         clean_target = target.strip().lower()
         for strategy in self._strategies:
@@ -62,7 +77,11 @@ _DEFAULT_REGISTRY: Optional[MonitoringStrategyRegistry] = None
 
 
 def get_default_strategy_registry() -> MonitoringStrategyRegistry:
-    """Obtiene o inicializa el registro canónico de estrategias."""
+    """Obtiene o inicializa el registro canónico de estrategias.
+
+    Returns:
+        MonitoringStrategyRegistry: Instancia singleton del registro de estrategias.
+    """
     global _DEFAULT_REGISTRY
     if _DEFAULT_REGISTRY is None:
         _DEFAULT_REGISTRY = MonitoringStrategyRegistry()

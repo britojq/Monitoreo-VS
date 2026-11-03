@@ -27,7 +27,11 @@ from monitor.monitor_db import load_env_db_config as load_db_config
 
 
 def get_git_commit_short() -> str:
-    """Obtiene el hash corto del commit actual de Git."""
+    """Obtiene el hash corto del commit actual de Git.
+
+    Returns:
+        str: Hash corto de 7-8 caracteres o 'unknown' si no se puede determinar.
+    """
     try:
         res = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -45,9 +49,13 @@ def get_git_commit_short() -> str:
 
 
 def create_db_snapshot(tag: str = "pre_update") -> Tuple[bool, str, str]:
-    """
-    Ejecuta un mysqldump atómico comprimido con gzip antes de aplicar cambios o migraciones.
-    Retorna: (success, backup_filepath, status_message)
+    """Ejecuta un mysqldump atómico comprimido con gzip antes de aplicar cambios o migraciones.
+
+    Args:
+        tag: Etiqueta descriptiva para incluir en el nombre del archivo (por defecto 'pre_update').
+
+    Returns:
+        Tuple[bool, str, str]: Tupla con (éxito, ruta_del_archivo_generado, mensaje_descriptivo).
     """
     BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
     cfg = load_db_config()
@@ -99,9 +107,15 @@ def create_db_snapshot(tag: str = "pre_update") -> Tuple[bool, str, str]:
 
 
 def restore_db_snapshot(backup_path: Optional[str] = None) -> Tuple[bool, str]:
-    """
-    Restaura la base de datos MariaDB desde un archivo .sql.gz.
+    """Restaura la base de datos MariaDB desde un archivo .sql.gz.
+
     Si no se especifica ruta, toma el último respaldo disponible.
+
+    Args:
+        backup_path: Ruta opcional del archivo comprimido .sql.gz a restaurar.
+
+    Returns:
+        Tuple[bool, str]: Tupla con (éxito, mensaje descriptivo del resultado).
     """
     if not backup_path:
         latest = get_latest_backup()
@@ -143,7 +157,11 @@ def restore_db_snapshot(backup_path: Optional[str] = None) -> Tuple[bool, str]:
 
 
 def get_latest_backup() -> Optional[Path]:
-    """Obtiene la ruta del archivo de respaldo más reciente."""
+    """Obtiene la ruta del archivo de respaldo más reciente.
+
+    Returns:
+        Optional[Path]: Ruta al archivo .sql.gz más reciente o None si no existen respaldos.
+    """
     if not BACKUPS_DIR.exists():
         return None
     files = sorted(BACKUPS_DIR.glob("db_backup_*.sql.gz"), key=lambda f: f.stat().st_mtime, reverse=True)
@@ -151,7 +169,14 @@ def get_latest_backup() -> Optional[Path]:
 
 
 def list_backups(limit: int = 5) -> List[Dict[str, str]]:
-    """Lista los respaldos recientes disponibles."""
+    """Lista los respaldos recientes disponibles con metadatos de tamaño y fecha.
+
+    Args:
+        limit: Número máximo de respaldos a retornar (por defecto 5).
+
+    Returns:
+        List[Dict[str, str]]: Colección de diccionarios con metadatos de los respaldos.
+    """
     if not BACKUPS_DIR.exists():
         return []
     files = sorted(BACKUPS_DIR.glob("db_backup_*.sql.gz"), key=lambda f: f.stat().st_mtime, reverse=True)
@@ -169,8 +194,8 @@ def list_backups(limit: int = 5) -> List[Dict[str, str]]:
     return results
 
 
-def _rotate_backups():
-    """Conserva como máximo MAX_BACKUPS_TO_KEEP archivos de respaldo."""
+def _rotate_backups() -> None:
+    """Conserva como máximo MAX_BACKUPS_TO_KEEP archivos de respaldo purgando los más antiguos."""
     if not BACKUPS_DIR.exists():
         return
     files = sorted(BACKUPS_DIR.glob("db_backup_*.sql.gz"), key=lambda f: f.stat().st_mtime, reverse=True)

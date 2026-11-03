@@ -38,14 +38,20 @@ def db_connection(
     autocommit: bool = True,
     connect_timeout: int = 5,
 ) -> Generator[pymysql.connections.Connection, None, None]:
-    """
-    Context manager que provee una conexión segura y gestionada a MariaDB.
+    """Context manager que provee una conexión segura y gestionada a MariaDB.
+
     Garantiza el cierre del socket al finalizar el bloque with bajo cualquier circunstancia.
-    
-    Uso:
-        with db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
+
+    Args:
+        cursorclass: Clase de cursor a utilizar (por defecto DictCursor).
+        autocommit: Booleano que define si las consultas confirman inmediatamente.
+        connect_timeout: Tiempo de espera en segundos para la conexión TCP.
+
+    Yields:
+        pymysql.connections.Connection: Objeto de conexión gestionada a MariaDB.
+
+    Raises:
+        DatabaseConnectionException: Si no es posible conectar a MariaDB (SSOT).
     """
     conn: Optional[pymysql.connections.Connection] = None
     try:
@@ -92,14 +98,21 @@ def db_cursor(
     autocommit: bool = True,
     connect_timeout: int = 5,
 ) -> Generator[pymysql.cursors.Cursor, None, None]:
-    """
-    Context manager que provee un cursor listo para usar sobre una conexión gestionada.
+    """Context manager que provee un cursor listo para usar sobre una conexión gestionada.
+
     Cierra automáticamente el cursor y la conexión asociada al salir del contexto.
-    
-    Uso:
-        with db_cursor() as cur:
-            cur.execute("SELECT * FROM sites WHERE status = %s", ("UP",))
-            sites = cur.fetchall()
+
+    Args:
+        cursorclass: Clase de cursor a instanciar (por defecto DictCursor).
+        autocommit: Booleano que define confirmación automática de transacciones.
+        connect_timeout: Tiempo de espera en segundos para la conexión TCP.
+
+    Yields:
+        pymysql.cursors.Cursor: Cursor listo para ejecutar sentencias SQL.
+
+    Raises:
+        DatabaseConnectionException: Si la conexión a la base de datos falla.
+        DatabaseQueryException: Si ocurre un error de sintaxis o ejecución SQL.
     """
     with db_connection(
         cursorclass=cursorclass,
@@ -124,17 +137,22 @@ def atomic_transaction(
     cursorclass: Any = pymysql.cursors.DictCursor,
     connect_timeout: int = 5,
 ) -> Generator[pymysql.connections.Connection, None, None]:
-    """
-    Context manager para transacciones atómicas seguras en MariaDB (ACID).
+    """Context manager para transacciones atómicas seguras en MariaDB (ACID).
+
     Garantiza autocommit=False, commit explícito al completar con éxito el bloque,
     y rollback incondicional ante cualquier excepción, encapsulando fallos en
     DatabaseTransactionException.
 
-    Uso:
-        with atomic_transaction() as conn:
-            with conn.cursor() as cur:
-                cur.execute("UPDATE alerts SET status = %s WHERE id = %s", ("RESOLVED", alert_id))
-                cur.execute("INSERT INTO audit_logs (action, details) VALUES (%s, %s)", ("RESOLVE_ALERT", "..."))
+    Args:
+        cursorclass: Clase de cursor a instanciar en las conexiones de la transacción.
+        connect_timeout: Tiempo de espera en segundos para la conexión TCP.
+
+    Yields:
+        pymysql.connections.Connection: Conexión con transacción en curso.
+
+    Raises:
+        DatabaseConcurrencyError: Si ocurre un conflicto de bloqueo concurrente.
+        DatabaseTransactionException: Si la transacción atómica falla y es revertida.
     """
     with db_connection(
         cursorclass=cursorclass,
@@ -160,15 +178,21 @@ def atomic_cursor(
     cursorclass: Any = pymysql.cursors.DictCursor,
     connect_timeout: int = 5,
 ) -> Generator[pymysql.cursors.Cursor, None, None]:
-    """
-    Context manager transaccional de alto nivel que entrega un cursor directamente
-    bajo una transacción atómica segura. Ejecuta commit al salir del bloque with
+    """Context manager transaccional de alto nivel que entrega un cursor directamente.
+
+    Bajo una transacción atómica segura, ejecuta commit al salir del bloque with
     o rollback si ocurre un error.
 
-    Uso:
-        with atomic_cursor() as cur:
-            cur.execute("UPDATE ...")
-            cur.execute("INSERT ...")
+    Args:
+        cursorclass: Clase de cursor a instanciar (por defecto DictCursor).
+        connect_timeout: Tiempo de espera en segundos para la conexión TCP.
+
+    Yields:
+        pymysql.cursors.Cursor: Cursor transaccional para ejecutar sentencias.
+
+    Raises:
+        DatabaseConcurrencyError: Si ocurre un conflicto de concurrencia.
+        DatabaseTransactionException: Si la transacción atómica falla y es revertida.
     """
     with atomic_transaction(cursorclass=cursorclass, connect_timeout=connect_timeout) as conn:
         cur = conn.cursor()
@@ -186,9 +210,21 @@ def execute_query(
     params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     cursorclass: Any = pymysql.cursors.DictCursor,
 ) -> List[Dict[str, Any]]:
-    """
-    Ejecuta una consulta SELECT y retorna todas las filas resultantes como lista de diccionarios.
+    """Ejecuta una consulta SELECT y retorna todas las filas resultantes como lista de diccionarios.
+
     Asegura liberación inmediata del cursor y conexión.
+
+    Args:
+        sql: Sentencia SQL SELECT parametrizada.
+        params: Parámetros posicionales (tupla/lista) o nombrados (dict) para la consulta.
+        cursorclass: Clase de cursor (DictCursor por defecto).
+
+    Returns:
+        List[Dict[str, Any]]: Lista de filas obtenidas como diccionarios asociativos.
+
+    Raises:
+        DatabaseConnectionException: Si no se puede conectar a MariaDB.
+        DatabaseQueryException: Si la sentencia SQL contiene errores o falla.
     """
     with db_cursor(cursorclass=cursorclass) as cur:
         cur.execute(sql, params)
@@ -200,8 +236,18 @@ def execute_scalar(
     sql: str,
     params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
 ) -> Any:
-    """
-    Ejecuta una consulta y retorna el valor escalar de la primera columna de la primera fila.
+    """Ejecuta una consulta y retorna el valor escalar de la primera columna de la primera fila.
+
+    Args:
+        sql: Sentencia SQL a ejecutar.
+        params: Parámetros opcionales para la sentencia.
+
+    Returns:
+        Any: Valor de la celda única obtenida, o None si no hay registros coincidentes.
+
+    Raises:
+        DatabaseConnectionException: Si la conexión a MariaDB falla.
+        DatabaseQueryException: Si la sentencia SQL falla durante su ejecución.
     """
     with db_cursor(cursorclass=pymysql.cursors.Cursor) as cur:
         cur.execute(sql, params)
@@ -214,8 +260,19 @@ def execute_statement(
     params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None,
     autocommit: bool = True,
 ) -> int:
-    """
-    Ejecuta una sentencia DML (INSERT, UPDATE, DELETE) y retorna el número de filas afectadas.
+    """Ejecuta una sentencia DML (INSERT, UPDATE, DELETE) y retorna el número de filas afectadas.
+
+    Args:
+        sql: Sentencia SQL DML parametrizada.
+        params: Parámetros para la sentencia.
+        autocommit: Booleano para confirmar inmediatamente los cambios.
+
+    Returns:
+        int: Cantidad de filas afectadas por la operación.
+
+    Raises:
+        DatabaseConnectionException: Si la conexión a MariaDB no pudo establecerse.
+        DatabaseQueryException: Si la sentencia falla.
     """
     with db_cursor(autocommit=autocommit) as cur:
         affected = cur.execute(sql, params)
@@ -223,8 +280,10 @@ def execute_statement(
 
 
 def test_db_connectivity() -> bool:
-    """
-    Comprueba de forma rápida si MariaDB (SSOT) responde a una consulta atómica.
+    """Comprueba de forma rápida si MariaDB (SSOT) responde a una consulta atómica.
+
+    Returns:
+        bool: True si la base de datos responde exitosamente a SELECT 1; False en caso contrario.
     """
     try:
         val = execute_scalar("SELECT 1")

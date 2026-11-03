@@ -15,8 +15,15 @@ class ScreenshotGeneratorProtocol(Protocol):
     """Protocolo formal para captura visual de tableros web sin acoplar Playwright."""
 
     async def capture(self, mode: str = "full") -> Optional[str]:
-        """
-        Genera una captura del dashboard en el modo especificado.
-        Retorna la ruta absoluta del archivo de imagen generado o None si falla.
+        """Genera una captura del dashboard en el modo especificado.
+
+        Args:
+            mode: Modo de captura ('full' para dashboard completo, 'services' o 'sites').
+
+        Returns:
+            Optional[str]: Ruta absoluta del archivo de imagen generado o None si falla.
+
+        Raises:
+            Exception: Si el navegador sin cabeza o el servicio de captura no responde.
         """
         ...

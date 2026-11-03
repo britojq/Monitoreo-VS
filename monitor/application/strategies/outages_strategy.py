@@ -28,9 +28,21 @@ logger = logging.getLogger("monitor.strategies.outages")
 
 
 class OutagesMonitoringStrategy(MonitoringStrategyProtocol):
-    """Estrategia para la extracción y reporte de incidencias y enlaces caídos."""
+    """Estrategia para la extracción y reporte de incidencias y enlaces caídos.
+
+    Filtra los resultados de monitoreo para aislar exclusivamente los servicios y
+    sedes que presentan fallos críticos (estado ❌) o degradación operativa.
+    """
 
     def can_handle(self, target: str) -> bool:
+        """Determina si la solicitud corresponde a una consulta de caídas o incidentes.
+
+        Args:
+            target: Cadena con el comando o target.
+
+        Returns:
+            bool: True si el target es 'caidas', 'incidentes', 'fallas' u 'outages'.
+        """
         return target.strip().lower() in ("caidas", "incidentes", "fallas", "outages")
 
     async def execute(
@@ -39,6 +51,16 @@ class OutagesMonitoringStrategy(MonitoringStrategyProtocol):
         mode: str = "snapshot",
         debug_mode: bool = False,
     ) -> MonitoringResultDto:
+        """Ejecuta el filtrado de caídas a partir del snapshot o sondeo en vivo.
+
+        Args:
+            target: Identificador del comando solicitado.
+            mode: 'snapshot' para leer del snapshot o 'ondemand' para sondeo en vivo.
+            debug_mode: Booleano para activar trazas de depuración.
+
+        Returns:
+            MonitoringResultDto: DTO con el informe formateado de incidentes o mensaje de normalidad.
+        """
         logs: List[str] = []
         caidas_lines: List[str] = []
         snapshot_dt: Optional[str] = None

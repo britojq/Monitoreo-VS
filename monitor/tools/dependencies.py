@@ -42,7 +42,11 @@ _SCREENSHOT_CLIENT: Optional[ScreenshotGeneratorProtocol] = None
 
 
 def get_site_repository() -> SiteRepositoryProtocol:
-    """Fábrica de repositorio de Sedes."""
+    """Fábrica de repositorio de Sedes.
+
+    Returns:
+        SiteRepositoryProtocol: Instancia singleton del repositorio de sedes MariaDB.
+    """
     global _SITE_REPO
     if _SITE_REPO is None:
         _SITE_REPO = MariaDBSiteRepository()
@@ -50,7 +54,11 @@ def get_site_repository() -> SiteRepositoryProtocol:
 
 
 def get_service_repository() -> ServiceRepositoryProtocol:
-    """Fábrica de repositorio de Servicios."""
+    """Fábrica de repositorio de Servicios.
+
+    Returns:
+        ServiceRepositoryProtocol: Instancia singleton del repositorio de servicios MariaDB.
+    """
     global _SERVICE_REPO
     if _SERVICE_REPO is None:
         _SERVICE_REPO = MariaDBServiceRepository()
@@ -58,7 +66,11 @@ def get_service_repository() -> ServiceRepositoryProtocol:
 
 
 def get_network_device_repository() -> NetworkDeviceRepositoryProtocol:
-    """Fábrica de repositorio de Dispositivos de Red."""
+    """Fábrica de repositorio de Dispositivos de Red.
+
+    Returns:
+        NetworkDeviceRepositoryProtocol: Instancia singleton del repositorio de equipos de red.
+    """
     global _NETWORK_DEVICE_REPO
     if _NETWORK_DEVICE_REPO is None:
         _NETWORK_DEVICE_REPO = MariaDBNetworkDeviceRepository()
@@ -66,7 +78,11 @@ def get_network_device_repository() -> NetworkDeviceRepositoryProtocol:
 
 
 def get_snapshot_repository() -> SnapshotRepositoryProtocol:
-    """Fábrica de repositorio de Snapshots de Monitoreo."""
+    """Fábrica de repositorio de Snapshots de Monitoreo.
+
+    Returns:
+        SnapshotRepositoryProtocol: Instancia singleton del repositorio de snapshots.
+    """
     global _SNAPSHOT_REPO
     if _SNAPSHOT_REPO is None:
         _SNAPSHOT_REPO = MariaDBSnapshotRepository()
@@ -74,7 +90,11 @@ def get_snapshot_repository() -> SnapshotRepositoryProtocol:
 
 
 def get_telemetry_repository() -> TelemetryRepositoryProtocol:
-    """Fábrica de repositorio de Telemetría e Históricos."""
+    """Fábrica de repositorio de Telemetría e Históricos.
+
+    Returns:
+        TelemetryRepositoryProtocol: Instancia singleton del repositorio de telemetría.
+    """
     global _TELEMETRY_REPO
     if _TELEMETRY_REPO is None:
         _TELEMETRY_REPO = MariaDBTelemetryRepository()
@@ -82,7 +102,11 @@ def get_telemetry_repository() -> TelemetryRepositoryProtocol:
 
 
 def get_telegram_notifier() -> TelegramNotifierProtocol:
-    """Fábrica de despachador de notificaciones Telegram."""
+    """Fábrica de despachador de notificaciones Telegram.
+
+    Returns:
+        TelegramNotifierProtocol: Instancia singleton del cliente de despacho Telegram.
+    """
     global _NOTIFIER
     if _NOTIFIER is None:
         _NOTIFIER = TelegramNotifier()
@@ -90,7 +114,11 @@ def get_telegram_notifier() -> TelegramNotifierProtocol:
 
 
 def get_screenshot_generator() -> ScreenshotGeneratorProtocol:
-    """Fábrica de cliente generador de capturas Playwright."""
+    """Fábrica de cliente generador de capturas Playwright.
+
+    Returns:
+        ScreenshotGeneratorProtocol: Instancia singleton del cliente generador de capturas web.
+    """
     global _SCREENSHOT_CLIENT
     if _SCREENSHOT_CLIENT is None:
         _SCREENSHOT_CLIENT = PlaywrightScreenshotClient()
@@ -102,7 +130,15 @@ def get_check_all_sites_use_case(
     site_repo: Optional[SiteRepositoryProtocol] = None,
     telemetry_repo: Optional[TelemetryRepositoryProtocol] = None,
 ) -> CheckAllSitesUseCase:
-    """Construye e inyecta el caso de uso para chequeo integral de sedes."""
+    """Construye e inyecta el caso de uso para chequeo integral de sedes.
+
+    Args:
+        site_repo: Repositorio de sedes opcional para inyección en pruebas unitarias.
+        telemetry_repo: Repositorio de telemetría opcional para inyección de mocks.
+
+    Returns:
+        CheckAllSitesUseCase: Caso de uso configurado con todas sus dependencias.
+    """
     return CheckAllSitesUseCase(
         site_repo=site_repo or get_site_repository(),
         telemetry_repo=telemetry_repo or get_telemetry_repository(),
@@ -113,7 +149,15 @@ def get_check_all_services_use_case(
     service_repo: Optional[ServiceRepositoryProtocol] = None,
     telemetry_repo: Optional[TelemetryRepositoryProtocol] = None,
 ) -> CheckAllServicesUseCase:
-    """Construye e inyecta el caso de uso para chequeo integral de servicios."""
+    """Construye e inyecta el caso de uso para chequeo integral de servicios.
+
+    Args:
+        service_repo: Repositorio de servicios opcional para pruebas unitarias.
+        telemetry_repo: Repositorio de telemetría opcional.
+
+    Returns:
+        CheckAllServicesUseCase: Instancia del caso de uso con dependencias inyectadas.
+    """
     return CheckAllServicesUseCase(
         service_repo=service_repo or get_service_repository(),
         telemetry_repo=telemetry_repo or get_telemetry_repository(),
@@ -124,7 +168,15 @@ def get_sync_telemetry_snapshot_use_case(
     snapshot_repo: Optional[SnapshotRepositoryProtocol] = None,
     telemetry_repo: Optional[TelemetryRepositoryProtocol] = None,
 ) -> SyncTelemetrySnapshotUseCase:
-    """Construye e inyecta el caso de uso para sincronización de snapshot de telemetría."""
+    """Construye e inyecta el caso de uso para sincronización de snapshot de telemetría.
+
+    Args:
+        snapshot_repo: Repositorio de snapshots opcional para inyección.
+        telemetry_repo: Repositorio de telemetría opcional.
+
+    Returns:
+        SyncTelemetrySnapshotUseCase: Instancia del caso de uso de sincronización.
+    """
     return SyncTelemetrySnapshotUseCase(
         snapshot_repo=snapshot_repo or get_snapshot_repository(),
         telemetry_repo=telemetry_repo or get_telemetry_repository(),
@@ -134,7 +186,14 @@ def get_sync_telemetry_snapshot_use_case(
 def get_process_ups_telemetry_use_case(
     notifier: Optional[TelegramNotifierProtocol] = None,
 ) -> ProcessUpsTelemetryUseCase:
-    """Construye e inyecta el caso de uso para procesamiento de telemetría y alarmas de UPS."""
+    """Construye e inyecta el caso de uso para procesamiento de telemetría y alarmas de UPS.
+
+    Args:
+        notifier: Despachador de notificaciones Telegram opcional para pruebas.
+
+    Returns:
+        ProcessUpsTelemetryUseCase: Instancia configurada del caso de uso de UPS.
+    """
     return ProcessUpsTelemetryUseCase(
         notifier=notifier or get_telegram_notifier(),
     )

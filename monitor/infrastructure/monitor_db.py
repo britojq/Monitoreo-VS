@@ -30,12 +30,21 @@ _DB_CONFIG_CACHE: Optional[Dict[str, Any]] = None
 
 
 def load_env_db_config(force_reload: bool = False) -> Dict[str, Any]:
-    """
-    Carga y valida la configuración de base de datos desde los archivos .env del sistema.
-    Prioridad:
+    """Carga y valida la configuración de base de datos desde los archivos .env del sistema.
+
+    Prioridad de carga:
     1. web_portal/.env (entorno activo S.O.N.A.R.)
     2. .env en la raíz del proyecto
     3. Variables de entorno del proceso
+
+    Args:
+        force_reload: Booleano que invalida el caché en memoria para forzar recarga.
+
+    Returns:
+        Dict[str, Any]: Diccionario con parámetros de conexión (host, port, user, password, etc.).
+
+    Raises:
+        RuntimeError: Si DB_PASSWORD no se encuentra definida en ningún entorno.
     """
     global _DB_CONFIG_CACHE
     if _DB_CONFIG_CACHE is not None and not force_reload:
@@ -98,9 +107,20 @@ def get_db_connection(
     autocommit: bool = True,
     connect_timeout: int = 5,
 ) -> pymysql.connections.Connection:
-    """
-    Obtiene una conexión limpia y validada a MariaDB.
+    """Obtiene una conexión limpia y validada a MariaDB.
+
     Las credenciales se resuelven dinámicamente sin fallbacks estáticos en código.
+
+    Args:
+        cursorclass: Clase de cursor pymysql (por defecto DictCursor).
+        autocommit: Booleano que define si las consultas confirman inmediatamente.
+        connect_timeout: Tiempo de espera en segundos para la conexión TCP.
+
+    Returns:
+        pymysql.connections.Connection: Socket de conexión abierto a MariaDB.
+
+    Raises:
+        pymysql.MySQLError: Si ocurre un error de red o autenticación.
     """
     cfg = load_env_db_config()
     return pymysql.connect(
@@ -117,7 +137,11 @@ def get_db_connection(
 
 
 def test_db_connection() -> bool:
-    """Valida la conectividad a la base de datos MariaDB usando el Context Manager centralizado."""
+    """Valida la conectividad a la base de datos MariaDB usando el Context Manager centralizado.
+
+    Returns:
+        bool: True si la base de datos responde exitosamente a SELECT 1; False en caso de fallo.
+    """
     try:
         from monitor.infrastructure.db_context import db_cursor
         with db_cursor() as cur:
@@ -133,26 +157,31 @@ def test_db_connection() -> bool:
 # Exportaciones directas del Context Manager Canónico (SOLID / Inversión de Dependencias)
 # ------------------------------------------------------------------------------
 def db_connection(*args: Any, **kwargs: Any):
+    """Context manager que provee una conexión segura delegada en db_context.db_connection."""
     from monitor.infrastructure.db_context import db_connection as _db_connection
     return _db_connection(*args, **kwargs)
 
 
 def db_cursor(*args: Any, **kwargs: Any):
+    """Context manager que provee un cursor listo para usar delegado en db_context.db_cursor."""
     from monitor.infrastructure.db_context import db_cursor as _db_cursor
     return _db_cursor(*args, **kwargs)
 
 
 def execute_query(*args: Any, **kwargs: Any):
+    """Ejecuta una consulta SELECT delegando en db_context.execute_query."""
     from monitor.infrastructure.db_context import execute_query as _execute_query
     return _execute_query(*args, **kwargs)
 
 
 def execute_scalar(*args: Any, **kwargs: Any):
+    """Ejecuta una consulta y retorna el valor escalar delegado en db_context.execute_scalar."""
     from monitor.infrastructure.db_context import execute_scalar as _execute_scalar
     return _execute_scalar(*args, **kwargs)
 
 
 def execute_statement(*args: Any, **kwargs: Any):
+    """Ejecuta una sentencia DML delegando en db_context.execute_statement."""
     from monitor.infrastructure.db_context import execute_statement as _execute_statement
     return _execute_statement(*args, **kwargs)
 
