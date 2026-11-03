@@ -111,6 +111,7 @@ def get_git_proxy_args(proxy_url: Optional[str]) -> List[str]:
 if __name__ == "__main__":
     # Prueba interactiva desde terminal
     async def _test():
+        """Ejecuta la función _test conforme a la especificación técnica."""
         print("🔍 Evaluando conectividad de Git hacia GitHub...")
         url, label, ok = await evaluate_github_connectivity()
         print(f"Resultado: {label}")

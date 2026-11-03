@@ -55,6 +55,11 @@ def get_formatted_datetime() -> Tuple[str, str]:
 def render_template(template_str: str, variables: Dict[str, str]) -> str:
     """Sustituye variables estilo Bash ($VAR o ${VAR}) en la plantilla de texto, resolviendo variables anidadas."""
     def replacer(match: re.Match) -> str:
+        """Ejecuta la función replacer conforme a la especificación técnica.
+
+        Args:
+            match: Parámetro operativo de entrada.
+        """
         var_name = match.group(1) or match.group(2)
         val = variables.get(var_name)
         if val is not None:

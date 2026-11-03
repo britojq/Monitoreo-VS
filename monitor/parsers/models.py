@@ -8,6 +8,7 @@ from typing import List, Optional
 
 @dataclass
 class ServiceConfig:
+    """DTO de configuración que define los parámetros de chequeo de un servicio."""
     letter: str
     service_type: str  # WEB, DNS, PROXY, SMTP, DHCP, CUPS, LDAP, PING, OTRO
     name: str
@@ -29,6 +30,7 @@ class ServiceConfig:
 
 @dataclass
 class EquipmentConfig:
+    """DTO que encapsula la configuración de hardware o equipo de red."""
     site_letter: str
     num: int
     name: str
@@ -40,6 +42,7 @@ class EquipmentConfig:
 
 @dataclass
 class SiteConfig:
+    """DTO que define los parámetros de conectividad y topología de una sede corporativa."""
     letter: str
     name: str
     ip_host: str
@@ -51,6 +54,7 @@ class SiteConfig:
 
 @dataclass
 class ProxyConfig:
+    """DTO de configuración para proxies de red corporativos."""
     letter: str
     name: str
     ip_port: str

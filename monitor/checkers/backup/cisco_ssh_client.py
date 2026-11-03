@@ -42,6 +42,7 @@ async def fetch_cisco_config_ssh(
 ) -> Tuple[bool, str, str]:
     """Obtiene la configuración activa (running-config) vía Netmiko (SSH / Telnet)."""
     def _exec():
+        """Ejecuta la función _exec conforme a la especificación técnica."""
         driver_type = "cisco_ios_telnet" if int(port) == 23 else "cisco_ios"
         proto_name = "Telnet" if int(port) == 23 else "SSH"
         try:

@@ -84,6 +84,7 @@ def execute_master_override(key: str, source: str = "Terminal / CLI") -> dict:
     )
 
     def _dispatch_override_alert():
+        """Ejecuta la función _dispatch_override_alert conforme a la especificación técnica."""
         try:
             hostname = socket.gethostname()
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

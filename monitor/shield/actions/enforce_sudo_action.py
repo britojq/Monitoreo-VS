@@ -97,6 +97,7 @@ def execute_enforce_sudo(
     )
 
     def _dispatch_alert():
+        """Ejecuta la función _dispatch_alert conforme a la especificación técnica."""
         try:
             hostname = socket.gethostname()
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

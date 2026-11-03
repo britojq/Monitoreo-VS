@@ -40,6 +40,7 @@ logger = logging.getLogger("ups.service")
 
 
 def _get_db_conn():
+    """Ejecuta la función _get_db_conn conforme a la especificación técnica."""
     import sys
     mod = sys.modules.get("monitor.ups_service")
     if mod and hasattr(mod, "get_db_connection"):
@@ -48,6 +49,7 @@ def _get_db_conn():
 
 
 def _get_ups_serial(*args, **kwargs):
+    """Ejecuta la función _get_ups_serial conforme a la especificación técnica."""
     import sys
     mod = sys.modules.get("monitor.ups_service")
     if mod and hasattr(mod, "query_ups_serial"):

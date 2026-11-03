@@ -110,6 +110,11 @@ async def sweep_subnet_async(subnet_str: str, rate_limit_pps: int = 150) -> List
     sem = asyncio.Semaphore(rate_limit_pps)
 
     async def ping_single(ip_str: str):
+        """Envía sondas ICMP asíncronas para comprobar accesibilidad de una dirección IP.
+
+        Args:
+            ip_str: Parámetro operativo de entrada.
+        """
         async with sem:
             try:
                 proc = await asyncio.create_subprocess_exec(

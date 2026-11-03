@@ -21,6 +21,13 @@ class AutoUpdateWorker:
         get_owner_id_func: Optional[Callable[[], int]] = None,
         get_config_func: Optional[Callable[[], dict]] = None,
     ) -> None:
+        """Ejecuta la función run conforme a la especificación técnica.
+
+        Args:
+            bot_instance: Parámetro operativo de entrada.
+            get_owner_id_func: Parámetro operativo de entrada.
+            get_config_func: Parámetro operativo de entrada.
+        """
         logger.info("Servicio inmutable de auto-actualización Git iniciado en segundo plano (Revisión cada 48h).")
         await asyncio.sleep(180)
 

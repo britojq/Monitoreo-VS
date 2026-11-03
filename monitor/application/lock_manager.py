@@ -30,6 +30,12 @@ class LockManager:
         lock_file: Path = DEFAULT_LOCK_PATH,
         expiration_seconds: float = DEFAULT_EXPIRATION_SECONDS,
     ) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            lock_file: Parámetro operativo de entrada.
+            expiration_seconds: Parámetro operativo de entrada.
+        """
         self.lock_file: Path = lock_file
         self.expiration_seconds: float = expiration_seconds
 

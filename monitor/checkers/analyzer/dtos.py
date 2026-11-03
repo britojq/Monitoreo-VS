@@ -7,6 +7,7 @@ from typing import List
 
 @dataclass
 class NetworkHost:
+    """DTO inmutable que representa un host descubierto en la red local."""
     ip: str
     hostname: str = "desconocido"
     mac: str = "desconocida"

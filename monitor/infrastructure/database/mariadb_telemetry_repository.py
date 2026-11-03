@@ -24,6 +24,11 @@ class MariaDBTelemetryRepository(TelemetryRepositoryProtocol):
     """Repositorio para poblar el histórico de telemetría en MariaDB."""
 
     def __init__(self, pool: type[MariaDBConnectionPool] = MariaDBConnectionPool) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            pool: Parámetro operativo de entrada.
+        """
         self._pool = pool
 
     def record_service_history(self, telemetry: ServiceTelemetryDTO) -> None:

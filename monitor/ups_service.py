@@ -76,6 +76,7 @@ logger = logging.getLogger("ups.service")
 
 
 def main() -> None:
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Gestor y Recolector de Telemetría UPS ZTG LV6KL")
     parser.add_argument("--daemon", action="store_true", help="Ejecutar en modo demonio continuo")
     parser.add_argument("--poll", action="store_true", help="Ejecutar una única consulta y actualizar BD")

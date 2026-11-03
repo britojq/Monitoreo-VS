@@ -51,6 +51,7 @@ class AuthWindowDto:
     tty: str
 
     def to_dict(self) -> dict:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "success": self.success,
             "expiry": self.expiry,

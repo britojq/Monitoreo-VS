@@ -20,6 +20,11 @@ def markdown_to_telegram_html(text: str) -> str:
     # 1. Proteger bloques de código multilínea ```lang ... ```
     code_blocks = []
     def _save_code_block(match):
+        """Ejecuta la función _save_code_block conforme a la especificación técnica.
+
+        Args:
+            match: Parámetro operativo de entrada.
+        """
         lang = (match.group(1) or "").strip()
         code_content = match.group(2)
         idx = len(code_blocks)
@@ -31,6 +36,11 @@ def markdown_to_telegram_html(text: str) -> str:
     # 2. Proteger código inline `code`
     inline_codes = []
     def _save_inline_code(match):
+        """Ejecuta la función _save_inline_code conforme a la especificación técnica.
+
+        Args:
+            match: Parámetro operativo de entrada.
+        """
         code_content = match.group(1)
         idx = len(inline_codes)
         inline_codes.append(code_content)
@@ -42,6 +52,11 @@ def markdown_to_telegram_html(text: str) -> str:
     valid_tag_pattern = r'</?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|a|tg-emoji|code|pre|blockquote)(?:\s+[^>]*)?>'
     html_tags = []
     def _save_html_tag(match):
+        """Ejecuta la función _save_html_tag conforme a la especificación técnica.
+
+        Args:
+            match: Parámetro operativo de entrada.
+        """
         idx = len(html_tags)
         html_tags.append(match.group(0))
         return f"QQQVALIDHTMLTAG{idx}ZZZ"

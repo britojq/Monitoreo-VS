@@ -66,6 +66,7 @@ class SNMPDeviceConfig:
     snmp_community_encrypted: Optional[str] = None
 
     def __post_init__(self) -> None:
+        """Ejecuta la función __post_init__ conforme a la especificación técnica."""
         if not self.ip_address or not isinstance(self.ip_address, str):
             raise SnmpDeviceValidationError("La dirección IP del dispositivo SNMP es requerida y debe ser un string.")
 

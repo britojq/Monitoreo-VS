@@ -71,6 +71,7 @@ class UpsHardwareInfoDto:
     is_corrupt_padding: bool
 
     def to_dict(self) -> dict:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "raw_info": self.raw_info,
             "brand": self.brand,
@@ -90,6 +91,7 @@ class UpsRatingDto:
     rating_frequency: float
 
     def to_dict(self) -> dict:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "raw_rating": self.raw_rating,
             "rating_voltage": self.rating_voltage,
@@ -107,6 +109,7 @@ class UsbMetadataDto:
     usb_serial: str
 
     def to_dict(self) -> dict:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "usb_vendor": self.usb_vendor,
             "usb_model": self.usb_model,

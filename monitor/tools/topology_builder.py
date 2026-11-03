@@ -31,6 +31,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -59,9 +60,11 @@ class TopologyBuilder:
     """Constructor y extractor de topología de red física y lógica."""
 
     def __init__(self):
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         self.db = get_db_connection()
 
     def close(self):
+        """Ejecuta la función close conforme a la especificación técnica."""
         if self.db and self.db.open:
             self.db.close()
 
@@ -384,6 +387,7 @@ class TopologyBuilder:
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Constructor de Topología de Red Cytoscape.js (Fase 7)")
     parser.add_argument("--build", action="store_true", help="Descubrir e inferir enlaces de topología en base de datos")
     parser.add_argument("--json", action="store_true", help="Exportar grafo en formato JSON de Cytoscape.js")

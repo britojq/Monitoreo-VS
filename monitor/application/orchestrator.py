@@ -35,6 +35,12 @@ class MonitoringOrchestrator:
         lock_manager: Optional[LockManager] = None,
         strategy_registry: Optional[MonitoringStrategyRegistry] = None,
     ) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            lock_manager: Parámetro operativo de entrada.
+            strategy_registry: Parámetro operativo de entrada.
+        """
         self.lock_mgr: LockManager = lock_manager or LockManager()
         self.registry: MonitoringStrategyRegistry = (
             strategy_registry or get_default_strategy_registry()

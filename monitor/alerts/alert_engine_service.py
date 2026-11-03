@@ -23,9 +23,15 @@ class AlertEngine:
     """Motor central modular de evaluación de alertas, correlación, supresión y escalación."""
 
     def __init__(self, db: Any = None):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            db: Parámetro operativo de entrada.
+        """
         self.db = db or get_db_connection()
 
     def _ensure_db(self) -> None:
+        """Garantiza que la conexión a base de datos esté activa y disponible."""
         try:
             self.db.ping()
         except Exception:

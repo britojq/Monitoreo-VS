@@ -9,5 +9,10 @@ class CupsChecker(BaseServiceChecker):
     """Verificador de servidores de impresión CUPS/IPP."""
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
+        """Ejecuta la comprobación de estado y métricas operativas del servicio.
+
+        Args:
+            svc: Parámetro operativo de entrada.
+        """
         is_ok, code, detail = await check_cups(svc.cups_port_ip)
         return CheckResult(is_ok=is_ok, code=str(code), detail=detail)

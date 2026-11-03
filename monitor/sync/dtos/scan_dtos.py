@@ -14,6 +14,7 @@ class WanQualityResult:
     mdev_ms: float
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "is_up": self.is_up,
             "latency_ms": self.latency_ms,
@@ -40,6 +41,7 @@ class ServiceEvaluationResult:
     http_code: Optional[int]
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "id": self.id,
             "letter": self.letter,
@@ -68,6 +70,7 @@ class SiteDeviceEvaluationResult:
     latency_ms: float
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "id": self.id,
             "device_number": self.device_number,
@@ -99,6 +102,7 @@ class SiteEvaluationResult:
     devices: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "id": self.id,
             "letter": self.letter,
@@ -128,6 +132,7 @@ class ProxyEvaluationResult:
     latency_ms: float
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "id": self.id,
             "letter": self.letter,
@@ -156,6 +161,7 @@ class NetworkDeviceEvaluationResult:
     latency_ms: float
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "id": self.id,
             "device_number": self.device_number,

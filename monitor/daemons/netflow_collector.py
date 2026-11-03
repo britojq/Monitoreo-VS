@@ -33,6 +33,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -65,6 +66,7 @@ class FlowBuffer:
     """Buffer en memoria con agregación de flujos por ventana de 1 minuto."""
 
     def __init__(self):
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         self.lock = asyncio.Lock()
         # Clave: (exporter_ip, src_ip, dst_ip, src_port, dst_port, protocol, window_start_str, window_end_str)
         # Valor: [bytes, packets]
@@ -85,6 +87,19 @@ class FlowBuffer:
         timestamp: float
     ):
         # Calcular límites de la ventana de 1 minuto
+        """Agrega y acumula métricas de flujo NetFlow recibidas en la ventana actual.
+
+        Args:
+            exporter_ip: Parámetro operativo de entrada.
+            src_ip: Parámetro operativo de entrada.
+            dst_ip: Parámetro operativo de entrada.
+            src_port: Parámetro operativo de entrada.
+            dst_port: Parámetro operativo de entrada.
+            protocol: Parámetro operativo de entrada.
+            byte_count: Parámetro operativo de entrada.
+            packet_count: Parámetro operativo de entrada.
+            timestamp: Parámetro operativo de entrada.
+        """
         dt = datetime.fromtimestamp(timestamp)
         window_start = dt.replace(second=0, microsecond=0)
         window_end = window_start + timedelta(minutes=1)
@@ -263,13 +278,29 @@ class NetflowProtocol(asyncio.DatagramProtocol):
     """Protocolo asíncrono para decodificación y recepción de NetFlow v5."""
 
     def __init__(self, buffer: FlowBuffer):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            buffer: Parámetro operativo de entrada.
+        """
         self.buffer = buffer
         self.transport = None
 
     def connection_made(self, transport: asyncio.DatagramTransport):
+        """Callback de evento asyncio invocado al establecerse una conexión de red.
+
+        Args:
+            transport: Parámetro operativo de entrada.
+        """
         self.transport = transport
 
     def datagram_received(self, data: bytes, addr: Tuple[str, int]):
+        """Procesa los datagramas UDP entrantes en el socket del servicio.
+
+        Args:
+            data: Parámetro operativo de entrada.
+            addr: Parámetro operativo de entrada.
+        """
         exporter_ip = addr[0]
         if len(data) < NETFLOW_V5_HEADER_SIZE:
             logger.debug(f"Paquete NetFlow descartado por tamaño insuficiente ({len(data)} bytes) desde {exporter_ip}")
@@ -422,6 +453,7 @@ def show_top_talkers(rank_type: str = "src_ip"):
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Colector Asíncrono de NetFlow v5 (Fase 6)")
     parser.add_argument("--port", type=int, default=DEFAULT_NETFLOW_PORT, help="Puerto UDP para escuchar (por defecto 2055)")
     parser.add_argument("--test-flow", action="store_true", help="Enviar paquetes sintéticos de NetFlow v5 para pruebas")
@@ -438,6 +470,7 @@ def main():
         return
 
     async def runner():
+        """Bucle de ejecución asíncrono para el servicio demonio."""
         transport, flusher = await run_netflow_collector(port=args.port)
         logger.info("🌊 Demonio NetFlow escuchando activamente. Presione Ctrl+C para salir.")
         try:

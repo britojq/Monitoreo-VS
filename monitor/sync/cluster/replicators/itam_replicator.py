@@ -16,6 +16,12 @@ class ItamReplicator(TableReplicatorProtocol):
     """Replicador atómico para inventory_assets, componentes, periféricos, asignaciones y mantenimientos."""
 
     def replicate(self, cursor: Any, data: Dict[str, Any]) -> int:
+        """Replica el conjunto de datos especificado hacia el destino local o remoto.
+
+        Args:
+            cursor: Parámetro operativo de entrada.
+            data: Parámetro operativo de entrada.
+        """
         cfg = data.get("config", {})
         total_synced = 0
 

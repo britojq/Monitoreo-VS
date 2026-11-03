@@ -199,6 +199,16 @@ async def process_fail2ban_action(
     bantime: str,
     port: str = "",
 ) -> None:
+    """Ejecuta la función process_fail2ban_action conforme a la especificación técnica.
+
+    Args:
+        action: Parámetro operativo de entrada.
+        jail: Parámetro operativo de entrada.
+        ip: Parámetro operativo de entrada.
+        failures: Parámetro operativo de entrada.
+        bantime: Parámetro operativo de entrada.
+        port: Parámetro operativo de entrada.
+    """
     hostname = socket.gethostname()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     net_ctx = get_network_context(ip)
@@ -233,6 +243,7 @@ async def process_fail2ban_action(
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Fail2ban Telegram & MariaDB Notifier")
     parser.add_argument("--action", choices=["ban", "unban"], required=True)
     parser.add_argument("--jail", required=True)

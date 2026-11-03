@@ -9,5 +9,10 @@ class SmtpChecker(BaseServiceChecker):
     """Verificador de servidores de correo saliente SMTP."""
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
+        """Ejecuta la comprobación de estado y métricas operativas del servicio.
+
+        Args:
+            svc: Parámetro operativo de entrada.
+        """
         is_ok, code, detail = await check_smtp(svc.ip_host, svc.smtp_port)
         return CheckResult(is_ok=is_ok, code=str(code), detail=detail)

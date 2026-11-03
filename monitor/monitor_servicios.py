@@ -130,6 +130,7 @@ async def run_services_check(debug_mode: bool = False) -> Tuple[str, Dict[str, s
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Chequeo de Servicios Corporativos")
     parser.add_argument("--debug", action="store_true", help="Ejecutar en modo depuración")
     parser.add_argument("--send", action="store_true", help="Enviar reporte por Telegram tras el chequeo")

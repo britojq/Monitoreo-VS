@@ -4,6 +4,11 @@ CLI y punto de entrada para Thermal Guard.
 import argparse
 import json
 import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.checkers.thermal.constants import (
     DEFAULT_COOLDOWN_SECONDS,
@@ -20,6 +25,7 @@ from monitor.checkers.thermal.thermal_guardian import (
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Guardián Térmico y Protección Física de CPU (@IA_ValleSeco_bot)")
     parser.add_argument("--status", action="store_true", help="Muestra el diagnóstico térmico instantáneo y sale")
     parser.add_argument("--json", action="store_true", help="Salida en formato JSON para integraciones")

@@ -4,6 +4,11 @@ from monitor.sync.probes.network_probes import check_ping
 from monitor.sync.dtos.scan_dtos import NetworkDeviceEvaluationResult
 
 async def evaluate_network_device(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Evalúa el estado operacional y telemetría de network_device.
+
+    Args:
+        d: Parámetro operativo de entrada.
+    """
     is_up, latency = await check_ping(d.get("ip") or "")
     return NetworkDeviceEvaluationResult(
         id=d["id"],

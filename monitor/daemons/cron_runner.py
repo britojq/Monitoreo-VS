@@ -190,6 +190,7 @@ def print_status():
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Despachador Dinámico de Reportes Programados")
     parser.add_argument("--status", action="store_true", help="Consultar estado y horarios configurados")
     parser.add_argument("--force", action="store_true", help="Forzar ejecución y despacho inmediato")

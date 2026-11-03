@@ -9,6 +9,12 @@ class MasterClusterClient:
     """Cliente HTTP desacoplado para telemetría y sincronización desde el nodo Master."""
 
     def __init__(self, master_url: str = "http://192.168.1.250", cluster_token: str = ""):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            master_url: Parámetro operativo de entrada.
+            cluster_token: Parámetro operativo de entrada.
+        """
         self.master_url = master_url.rstrip("/")
         self.cluster_token = cluster_token
 

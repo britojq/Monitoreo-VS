@@ -28,10 +28,25 @@ class ExecuteRollbackAction:
         restart_delay: float = 6.0,
         progress_callback: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> str:
+        """Ejecuta la acción de negocio o tarea programada de forma asíncrona.
+
+        Args:
+            bot_instance: Parámetro operativo de entrada.
+            target_commit: Parámetro operativo de entrada.
+            backup_path: Parámetro operativo de entrada.
+            auto_restart: Parámetro operativo de entrada.
+            restart_delay: Parámetro operativo de entrada.
+            progress_callback: Parámetro operativo de entrada.
+        """
         logs = []
         logs.append("🔄 <b>Iniciando procedimiento manual de ROLLBACK...</b>")
 
         async def report_progress(msg: str):
+            """Notifica el progreso de la acción hacia los canales de telemetría.
+
+            Args:
+                msg: Parámetro operativo de entrada.
+            """
             if progress_callback:
                 try:
                     await progress_callback(msg)

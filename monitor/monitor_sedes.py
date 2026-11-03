@@ -165,6 +165,7 @@ async def run_sedes_check(debug_mode: bool = False) -> Tuple[str, Dict[str, str]
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Chequeo de Sedes y Equipos de Comunicación")
     parser.add_argument("--debug", action="store_true", help="Ejecutar en modo depuración")
     parser.add_argument("--send", action="store_true", help="Enviar reporte por Telegram tras el chequeo")

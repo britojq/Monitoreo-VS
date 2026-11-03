@@ -13,6 +13,12 @@ from monitor.sync.probes.proxy_probe import (
 from monitor.sync.dtos.scan_dtos import ServiceEvaluationResult
 
 async def evaluate_service(s: Dict[str, Any], proxy_cache: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Evalúa el estado operacional y telemetría de service.
+
+    Args:
+        s: Parámetro operativo de entrada.
+        proxy_cache: Parámetro operativo de entrada.
+    """
     stype = (s.get("type") or "WEB").upper()
     ip = s.get("host_ip") or ""
     url = s.get("web_url") or ""

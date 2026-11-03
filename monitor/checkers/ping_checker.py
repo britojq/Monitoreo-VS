@@ -9,5 +9,10 @@ class PingChecker(BaseServiceChecker):
     """Verificador genérico de presencia y conectividad ICMP (Ping)."""
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
+        """Ejecuta la comprobación de estado y métricas operativas del servicio.
+
+        Args:
+            svc: Parámetro operativo de entrada.
+        """
         is_ok, code, detail = await check_ping(svc.ip_host)
         return CheckResult(is_ok=is_ok, code=str(code), detail=detail)

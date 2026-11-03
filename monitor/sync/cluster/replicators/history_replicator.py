@@ -16,6 +16,12 @@ class HistoryReplicator(TableReplicatorProtocol):
     """Replicador atómico para historiales de chequeo y bitácora forense audit_logs."""
 
     def replicate(self, cursor: Any, data: Dict[str, Any]) -> int:
+        """Replica el conjunto de datos especificado hacia el destino local o remoto.
+
+        Args:
+            cursor: Parámetro operativo de entrada.
+            data: Parámetro operativo de entrada.
+        """
         snapshot_payload = data.get("snapshot", {})
         all_services = snapshot_payload.get("services", [])
         all_sites = snapshot_payload.get("sites", [])

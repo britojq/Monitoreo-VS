@@ -19,6 +19,7 @@ class UpdateCheckResultDto:
     message: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "success": self.success,
             "is_locked": self.is_locked,
@@ -47,6 +48,7 @@ class DeploymentStatusDto:
     backups: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serializa los atributos del objeto a un diccionario de datos estructurado."""
         return {
             "commit_hash": self.commit_hash,
             "commit_msg": self.commit_msg,

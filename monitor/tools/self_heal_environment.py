@@ -52,6 +52,11 @@ PROTECTED_TABLES = [
 
 
 def log(msg: str):
+    """Ejecuta la función log conforme a la especificación técnica.
+
+    Args:
+        msg: Parámetro operativo de entrada.
+    """
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [AUTO-HEAL] {msg}")
 
@@ -144,6 +149,7 @@ def run_background_scan():
         log("Escaneo forzado lanzado en segundo plano.")
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     log("Iniciando centinela de auto-curación e inmunidad ambiental...")
     desanitize_local_files()
     heal_mariadb()

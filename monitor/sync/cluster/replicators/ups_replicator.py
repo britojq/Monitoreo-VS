@@ -15,6 +15,12 @@ class UpsReplicator(TableReplicatorProtocol):
     """Replicador atómico para ups_devices, ups_telemetry_histories y ups_power_events."""
 
     def replicate(self, cursor: Any, data: Dict[str, Any]) -> int:
+        """Replica el conjunto de datos especificado hacia el destino local o remoto.
+
+        Args:
+            cursor: Parámetro operativo de entrada.
+            data: Parámetro operativo de entrada.
+        """
         cfg = data.get("config", {})
         ups_devices = cfg.get("ups_devices", [])
         total_synced = 0

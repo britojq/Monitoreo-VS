@@ -16,7 +16,12 @@ import signal
 import socket
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.alerts.boot import (
     get_bot_setting,
@@ -33,10 +38,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("monitor.boot_alert")
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
 
 __all__ = [
     "get_bot_setting",
@@ -274,7 +275,14 @@ async def handle_background_start(mensaje: str) -> int:
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     def _graceful_exit(signum, frame):
+        """Manejador de señales del sistema para finalización ordenada.
+
+        Args:
+            signum: Parámetro operativo de entrada.
+            frame: Parámetro operativo de entrada.
+        """
         logger.info(f"Señal {signum} recibida en boot_alert. Terminando limpiamente...")
         sys.exit(0)
 

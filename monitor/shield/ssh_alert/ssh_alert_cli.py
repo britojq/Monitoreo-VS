@@ -13,6 +13,7 @@ logger = logging.getLogger("monitor.shield.ssh_alert.cli")
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="PAM Security Alert Dispatcher")
     parser.add_argument("pos_user", nargs="?", default="")
     parser.add_argument("pos_rhost", nargs="?", default="")

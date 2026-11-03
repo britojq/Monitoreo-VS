@@ -22,6 +22,11 @@ class MariaDBSnapshotRepository(SnapshotRepositoryProtocol):
     """Repositorio para gestionar snapshots de monitoreo en MariaDB."""
 
     def __init__(self, pool: type[MariaDBConnectionPool] = MariaDBConnectionPool) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            pool: Parámetro operativo de entrada.
+        """
         self._pool = pool
 
     def save_snapshot(self, snapshot: SnapshotDTO) -> int:

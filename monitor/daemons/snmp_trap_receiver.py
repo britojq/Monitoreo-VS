@@ -32,6 +32,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -393,6 +394,7 @@ async def send_test_trap(target_ip: str = "127.0.0.1", port: int = DEFAULT_TRAP_
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Receptor Asíncrono de SNMP Traps (Fase 6)")
     parser.add_argument("--port", type=int, default=DEFAULT_TRAP_PORT, help="Puerto UDP para escuchar (por defecto 162)")
     parser.add_argument("--test-trap", action="store_true", help="Enviar un trap sintético a localhost para verificar")
@@ -404,6 +406,7 @@ def main():
         return
 
     async def runner():
+        """Bucle de ejecución asíncrono para el servicio demonio."""
         engine_obj, transport = await run_trap_receiver(port=args.port)
         logger.info("📡 Demonio SNMP Traps escuchando activamente. Presione Ctrl+C para salir.")
         try:

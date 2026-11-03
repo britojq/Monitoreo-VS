@@ -11,6 +11,7 @@ class CorrelationResultDto:
     final_severity: str
 
     def to_tuple(self) -> tuple[bool, Optional[int], Optional[int], str]:
+        """Convierte el DTO a una tupla inmutable representativa."""
         return (self.is_suppressed, self.group_id, self.parent_alert_id, self.final_severity)
 
 @dataclass(frozen=True)

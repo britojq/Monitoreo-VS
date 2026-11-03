@@ -16,6 +16,12 @@ class TelemetryTopologyReplicator(TableReplicatorProtocol):
     """Replicador atómico para NetRadar, Netflow, Syslog, Traps, Topología, WOL y Hardware Lifecycle."""
 
     def replicate(self, cursor: Any, data: Dict[str, Any]) -> int:
+        """Replica el conjunto de datos especificado hacia el destino local o remoto.
+
+        Args:
+            cursor: Parámetro operativo de entrada.
+            data: Parámetro operativo de entrada.
+        """
         total_synced = 0
 
         # 1. Hosts de NetRadar

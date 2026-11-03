@@ -140,7 +140,17 @@ def execute_master_override(candidate: str, source: str = "Diálogo Qt") -> bool
 
 
 class SecurityShieldDialog(QDialog):
+    """Diálogo gráfico de advertencia de seguridad para sesiones interactivas SSH."""
     def __init__(self, mode: str, attempt: int = 1, max_attempts: int = 3, seconds: int = 10, dry_run: bool = False):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            mode: Parámetro operativo de entrada.
+            attempt: Parámetro operativo de entrada.
+            max_attempts: Parámetro operativo de entrada.
+            seconds: Parámetro operativo de entrada.
+            dry_run: Parámetro operativo de entrada.
+        """
         super().__init__()
         self.mode = mode
         self.attempt = attempt
@@ -153,6 +163,7 @@ class SecurityShieldDialog(QDialog):
 
     def init_ui(self):
         # Configuración de ventana: siempre encima, sin bordes del SO, centrada
+        """Ejecuta la función init_ui conforme a la especificación técnica."""
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setFixedSize(620, 270)
@@ -306,6 +317,7 @@ class SecurityShieldDialog(QDialog):
         self.timer.start()
 
     def center_on_screen(self):
+        """Centra la ventana visual en las coordenadas medias de la pantalla."""
         screen = QApplication.primaryScreen()
         if screen:
             geo = screen.geometry()
@@ -314,6 +326,7 @@ class SecurityShieldDialog(QDialog):
             self.move(x, y)
 
     def update_timer_text(self):
+        """Actualiza el texto y tiempo restante en la interfaz visual de advertencia."""
         if self.mode == "warning":
             self.timer_label.setText(f"Esta notificación se cerrará automáticamente en {self.remaining_seconds}s...")
         else:
@@ -321,6 +334,7 @@ class SecurityShieldDialog(QDialog):
             self.timer_label.setText(f"REINICIANDO EL EQUIPO EN {self.remaining_seconds} SEGUNDOS...{dry_str}")
 
     def on_tick(self):
+        """Manejador del temporizador periódico para actualizar el conteo regresivo."""
         self.ticks_remaining -= 1
         self.progress_bar.setValue(self.ticks_remaining)
 
@@ -336,6 +350,7 @@ class SecurityShieldDialog(QDialog):
             self.on_timeout()
 
     def on_timeout(self):
+        """Manejador disparado al agotarse el tiempo límite de espera de autenticación."""
         self.close()
         if self.mode in ("lockdown", "reboot_limit"):
             if is_master_override_active():
@@ -367,6 +382,7 @@ def qt_safe_message_handler(mode: int, context: object, message: str) -> None:
 
 
 def main() -> None:
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Sentinel Shield Security Dialog (PyQt5)")
     parser.add_argument("--mode", required=True, choices=["lockdown", "warning", "reboot_limit"],
                         help="Modo visual de la alerta (lockdown, warning, reboot_limit)")

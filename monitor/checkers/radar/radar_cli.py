@@ -10,6 +10,7 @@ from monitor.checkers.radar.radar_orchestrator import main_daemon, run_radar_cyc
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Motor NET Radar de Tráfico y Actualizaciones")
     parser.add_argument("--once", action="store_true", help="Ejecuta un único ciclo de escaneo y sale")
     parser.add_argument("--daemon", action="store_true", help="Ejecuta el ciclo de monitoreo continuo")

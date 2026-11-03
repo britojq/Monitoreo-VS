@@ -15,6 +15,18 @@ class DiscoveredDeviceRuleEvaluator:
         firing_keys: Set[Tuple[str, int, str]],
         trigger_callback: Callable[..., Optional[int]],
     ) -> None:
+        """Evalúa la métrica recibida contra las reglas y dispara la alerta correspondiente.
+
+        Args:
+            cur: Parámetro operativo de entrada.
+            rule: Parámetro operativo de entrada.
+            c_type: Parámetro operativo de entrada.
+            threshold: Parámetro operativo de entrada.
+            comparison: Parámetro operativo de entrada.
+            severity: Parámetro operativo de entrada.
+            firing_keys: Parámetro operativo de entrada.
+            trigger_callback: Parámetro operativo de entrada.
+        """
         if c_type == "new_device":
             cur.execute(
                 """

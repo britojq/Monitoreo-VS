@@ -297,6 +297,7 @@ async def activate_pfsense_snmp(
 
 
 def parse_args():
+    """Ejecuta la función parse_args conforme a la especificación técnica."""
     parser = argparse.ArgumentParser(description="Activador Remoto SNMP para Equipos de Red")
     parser.add_argument("--ip", required=True, help="Dirección IP del equipo")
     parser.add_argument("--method", choices=["ssh", "telnet", "pfsense"], default="ssh", help="Método de activación")
@@ -310,6 +311,7 @@ def parse_args():
 
 
 def main() -> None:
+    """Punto de entrada principal para ejecución por línea de comandos."""
     args = parse_args()
     if args.method == "ssh":
         port = args.port or 22

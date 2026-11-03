@@ -24,6 +24,11 @@ def load_templates_from_mariadb() -> Dict[str, str]:
                     return {}
 
                 def to_md(text: str) -> str:
+                    """Ejecuta la función to_md conforme a la especificación técnica.
+
+                    Args:
+                        text: Parámetro operativo de entrada.
+                    """
                     if not text:
                         return ""
                     return text.replace("<b>", "**").replace("</b>", "**")
@@ -355,6 +360,7 @@ class MonitorConfigLoader:
 
     def __init__(self):
         # MariaDB es la única fuente de verdad (SSOT).
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         db_raw_monitoreo, db_raw_bot = load_raw_configs_from_mariadb()
         self.raw_monitoreo = db_raw_monitoreo or {}
         self.raw_bot = db_raw_bot or {}

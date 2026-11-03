@@ -72,12 +72,24 @@ async def get_geolocation(ip: str) -> Optional[dict]:
 
 
 def sanitize_session_token(user: str, tty: str) -> str:
+    """Sanitiza y normaliza el identificador de sesión para auditoría PAM.
+
+    Args:
+        user: Parámetro operativo de entrada.
+        tty: Parámetro operativo de entrada.
+    """
     clean_user = re.sub(r"[^a-zA-Z0-9_-]", "_", user)
     clean_tty = re.sub(r"[^a-zA-Z0-9_-]", "_", tty)
     return f"{clean_user}_{clean_tty}.ts"
 
 
 def record_session_start(user: str, tty: str) -> None:
+    """Registra el inicio de una sesión interactiva autenticada en el host.
+
+    Args:
+        user: Parámetro operativo de entrada.
+        tty: Parámetro operativo de entrada.
+    """
     try:
         SESSION_DIR.mkdir(parents=True, exist_ok=True)
         token_file = SESSION_DIR / sanitize_session_token(user, tty)
@@ -87,6 +99,12 @@ def record_session_start(user: str, tty: str) -> None:
 
 
 def calculate_session_duration(user: str, tty: str) -> Optional[str]:
+    """Calcula el tiempo transcurrido en segundos de una sesión interactiva activa.
+
+    Args:
+        user: Parámetro operativo de entrada.
+        tty: Parámetro operativo de entrada.
+    """
     try:
         token_file = SESSION_DIR / sanitize_session_token(user, tty)
         if token_file.exists():
@@ -111,6 +129,11 @@ def calculate_session_duration(user: str, tty: str) -> Optional[str]:
 
 
 def find_interactive_terminal_pids(tty: str = "") -> Tuple[int, int]:
+    """Localiza los identificadores de proceso asociados a la terminal interactiva.
+
+    Args:
+        tty: Parámetro operativo de entrada.
+    """
     shell_pid = 0
     terminal_pid = 0
     try:

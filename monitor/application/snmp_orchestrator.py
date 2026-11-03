@@ -62,6 +62,11 @@ async def run_snmp_poll(device_ids: Optional[List[int]] = None) -> Dict[str, Any
     start_time = time.perf_counter()
 
     async def _safe_poll(dev: Dict[str, Any]) -> Dict[str, Any]:
+        """Ejecuta de forma segura y aislada la operación poll.
+
+        Args:
+            dev: Parámetro operativo de entrada.
+        """
         async with semaphore:
             res = await poll_device_oids(dev, dev.get("oids", []))
 

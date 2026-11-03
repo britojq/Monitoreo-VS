@@ -9,6 +9,7 @@ from monitor.checkers.backup.backup_manager import ConfigBackupManager
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Gestor de Respaldos de Configuraciones de Red")
     parser.add_argument("--target-net", type=int, help="Ejecuta respaldo para un dispositivo de red por ID")
     parser.add_argument("--target-snmp", type=int, help="Ejecuta respaldo para un dispositivo SNMP por ID")

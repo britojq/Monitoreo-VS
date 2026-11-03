@@ -59,6 +59,7 @@ def execute_auth(minutes: int = 30, tty: Optional[str] = None, pid: int = 0) -> 
         pass
 
     def _sync_peer():
+        """Ejecuta la función _sync_peer conforme a la especificación técnica."""
         try:
             from bot_core.services.config_manager import load_config
             cfg = load_config()

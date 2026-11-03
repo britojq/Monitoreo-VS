@@ -78,6 +78,7 @@ logger = logging.getLogger("monitor.terminal_shield")
 
 
 def main() -> None:
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Sentinel Terminal Shield Dispatcher")
     parser.add_argument("--action", required=True, choices=["alert_terminal", "kill", "lockdown", "unlock", "rearm", "auth", "override", "status", "enforce_sudo"])
     parser.add_argument("--pid", type=int, default=0)

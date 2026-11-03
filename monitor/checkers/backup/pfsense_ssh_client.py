@@ -17,6 +17,7 @@ async def fetch_pfsense_config_ssh(
 ) -> Tuple[bool, str, str]:
     """Obtiene el archivo config.xml de un firewall pfSense vía SSH."""
     def _exec():
+        """Ejecuta la función _exec conforme a la especificación técnica."""
         try:
             import paramiko
             ssh = paramiko.SSHClient()

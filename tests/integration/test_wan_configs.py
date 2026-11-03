@@ -166,7 +166,9 @@ class TestWanQualityAndConfigsIntegration(unittest.TestCase):
 
     def test_07_golden_rules_compliance(self):
         """Verifica que el código de respaldo y calidad WAN no envíe notificaciones a grupos ni mencione tecnologías vedadas."""
-        config_backup_file = BASE_DIR / "monitor" / "config_backup.py"
+        config_backup_file = BASE_DIR / "monitor" / "checkers" / "backup" / "backup_manager.py"
+        if not config_backup_file.exists():
+            config_backup_file = BASE_DIR / "monitor" / "config_backup.py"
         content = config_backup_file.read_text(encoding='utf-8')
 
         # Regla de Oro #1: No IDs negativos de Telegram

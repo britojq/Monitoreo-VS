@@ -66,6 +66,7 @@ def run_deployment(
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Despliegue Remoto Desatendido de Agente GLPI")
     parser.add_argument("--host", required=True, help="IP o hostname del equipo remoto")
     parser.add_argument("--os", choices=["windows", "linux", "win"], default="linux", help="Sistema operativo del equipo")

@@ -33,6 +33,12 @@ class CheckAllServicesUseCase:
         service_repo: ServiceRepositoryProtocol,
         telemetry_repo: TelemetryRepositoryProtocol | None = None,
     ) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            service_repo: Parámetro operativo de entrada.
+            telemetry_repo: Parámetro operativo de entrada.
+        """
         self._service_repo = service_repo
         self._telemetry_repo = telemetry_repo
 

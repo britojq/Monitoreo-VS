@@ -30,6 +30,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -82,9 +83,11 @@ class WolManager:
     """Gestor de dispositivos Wake-on-LAN y despacho registrado en base de datos."""
 
     def __init__(self):
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         pass
 
     def list_devices(self) -> List[Dict[str, Any]]:
+        """Lista todos los dispositivos registrados aptos para Wake-on-LAN."""
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -97,6 +100,11 @@ class WolManager:
             conn.close()
 
     def get_device(self, identifier: str | int) -> Optional[Dict[str, Any]]:
+        """Obtiene el registro de un equipo Wake-on-LAN por nombre o identificador.
+
+        Args:
+            identifier: Parámetro operativo de entrada.
+        """
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -130,6 +138,15 @@ class WolManager:
         broadcast: str = "255.255.255.255",
         site_id: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """Registra un nuevo dispositivo con su dirección MAC para Wake-on-LAN.
+
+        Args:
+            name: Parámetro operativo de entrada.
+            mac: Parámetro operativo de entrada.
+            ip: Parámetro operativo de entrada.
+            broadcast: Parámetro operativo de entrada.
+            site_id: Parámetro operativo de entrada.
+        """
         norm_mac = normalize_mac(mac)
         broadcast = broadcast.strip() if broadcast else "255.255.255.255"
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -156,6 +173,13 @@ class WolManager:
             conn.close()
 
     def wake(self, identifier: str | int, broadcast_override: Optional[str] = None, port: int = 9) -> Dict[str, Any]:
+        """Envía un paquete mágico Wake-on-LAN al dispositivo destino.
+
+        Args:
+            identifier: Parámetro operativo de entrada.
+            broadcast_override: Parámetro operativo de entrada.
+            port: Parámetro operativo de entrada.
+        """
         dev = self.get_device(identifier)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -199,6 +223,7 @@ class WolManager:
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Emisor y Gestor de Wake-on-LAN (Fase 7)")
     parser.add_argument("--wake", metavar="IDENTIFIER", help="Enviar Magic Packet a dispositivo por ID, MAC o Nombre")
     parser.add_argument("--list", action="store_true", help="Listar dispositivos WoL registrados")

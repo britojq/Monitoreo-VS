@@ -28,6 +28,12 @@ class SyncTelemetrySnapshotUseCase:
         snapshot_repo: SnapshotRepositoryProtocol,
         telemetry_repo: TelemetryRepositoryProtocol | None = None,
     ) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            snapshot_repo: Parámetro operativo de entrada.
+            telemetry_repo: Parámetro operativo de entrada.
+        """
         self._snapshot_repo = snapshot_repo
         self._telemetry_repo = telemetry_repo
 

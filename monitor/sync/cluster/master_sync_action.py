@@ -17,9 +17,15 @@ class SyncFromMasterAction:
     """Acción de responsabilidad única encargada de sincronizar telemetría y catálogo en Modo Esclavo/Dev."""
 
     def __init__(self, client: Optional[MasterClusterClient] = None):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            client: Parámetro operativo de entrada.
+        """
         self.client = client or MasterClusterClient.from_config()
 
     async def execute(self) -> bool:
+        """Ejecuta la acción de negocio o tarea programada de forma asíncrona."""
         start_time = time.perf_counter()
 
         success, data = await self.client.fetch_telemetry()

@@ -30,6 +30,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -102,6 +103,7 @@ class PredictiveAnalyzer:
     """Motor de análisis predictivo proactivo e inferencia estadística."""
 
     def __init__(self):
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         pass
 
     def run_full_analysis(self) -> List[Dict[str, Any]]:
@@ -398,6 +400,12 @@ class PredictiveAnalyzer:
         return saved
 
     def get_recent_anomalies(self, limit: int = 15, unacknowledged_only: bool = False) -> List[Dict[str, Any]]:
+        """Retorna las anomalías predictivas detectadas en las métricas recientes.
+
+        Args:
+            limit: Parámetro operativo de entrada.
+            unacknowledged_only: Parámetro operativo de entrada.
+        """
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -415,6 +423,11 @@ class PredictiveAnalyzer:
             conn.close()
 
     def resolve_anomaly(self, anomaly_id: int) -> bool:
+        """Marca una anomalía predictiva específica como atendida y resuelta.
+
+        Args:
+            anomaly_id: Parámetro operativo de entrada.
+        """
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -425,6 +438,7 @@ class PredictiveAnalyzer:
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Motor de Análisis Predictivo e IA Estadística (Fase 7)")
     parser.add_argument("--analyze", action="store_true", help="Ejecutar análisis predictivo sobre toda la telemetría")
     parser.add_argument("--recent", action="store_true", help="Listar anomalías predictivas recientes")

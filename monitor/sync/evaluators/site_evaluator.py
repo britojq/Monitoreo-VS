@@ -5,6 +5,12 @@ from monitor.sync.probes.network_probes import check_wan_quality, check_ping
 from monitor.sync.dtos.scan_dtos import SiteDeviceEvaluationResult, SiteEvaluationResult
 
 async def evaluate_site(site: Dict[str, Any], devices: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Evalúa el estado operacional y telemetría de site.
+
+    Args:
+        site: Parámetro operativo de entrada.
+        devices: Parámetro operativo de entrada.
+    """
     ip = site.get("ip") or ""
     wan = await check_wan_quality(ip, count=5)
     is_up = wan["is_up"]

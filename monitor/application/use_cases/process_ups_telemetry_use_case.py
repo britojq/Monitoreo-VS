@@ -27,6 +27,11 @@ class ProcessUpsTelemetryUseCase:
     """Caso de uso orquestador para procesar telemetría y eventos de la UPS."""
 
     def __init__(self, notifier: TelegramNotifierProtocol) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            notifier: Parámetro operativo de entrada.
+        """
         self._notifier = notifier
 
     async def notify_outage(

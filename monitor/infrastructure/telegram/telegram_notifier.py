@@ -22,6 +22,11 @@ class TelegramNotifier(TelegramNotifierProtocol):
     """Adaptador de infraestructura para despacho de notificaciones a Telegram."""
 
     def __init__(self, dispatcher: Optional[TelegramDispatcher] = None) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            dispatcher: Parámetro operativo de entrada.
+        """
         self._dispatcher = dispatcher or TelegramDispatcher()
 
     async def send_message(self, notification: AlertNotificationDTO) -> bool:

@@ -118,6 +118,7 @@ async def main_supervisor(trap_port: int, syslog_port: int, netflow_port: int):
     stop_event = asyncio.Event()
 
     def stop_signal_handler():
+        """Ejecuta la función stop_signal_handler conforme a la especificación técnica."""
         logger.info("🛑 Señal de terminación recibida. Cerrando conexiones push...")
         stop_event.set()
 
@@ -194,6 +195,7 @@ def print_status():
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Demonio Maestro de Telemetría Push (Fase 6)")
     parser.add_argument("--trap-port", type=int, default=DEFAULT_TRAP_PORT, help="Puerto UDP para SNMP Traps")
     parser.add_argument("--syslog-port", type=int, default=DEFAULT_SYSLOG_PORT, help="Puerto UDP para Syslog")

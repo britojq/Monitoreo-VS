@@ -16,6 +16,7 @@ from monitor.infrastructure.db_context import db_cursor
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Verificador y Auditor Avanzado de Certificados SSL/TLS (@IA_ValleSeco_bot)")
     parser.add_argument("--domain", type=str, help="Dominio o IP a inspeccionar directamente")
     parser.add_argument("--port", type=int, default=443, help="Puerto SSL/TLS (default: 443)")

@@ -44,12 +44,14 @@ C_BLUE = "\033[34m"
 
 
 def print_banner() -> None:
+    """Ejecuta la función print_banner conforme a la especificación técnica."""
     print(f"{C_BOLD}{C_CYAN}=============================================================={C_RESET}")
     print(f"{C_BOLD}{C_GREEN} 🛡️  VALIDACIÓN Y ACTIVACIÓN DE SERVICIOS (SHELL) {C_RESET}")
     print(f"{C_BOLD}{C_CYAN}=============================================================={C_RESET}")
 
 
 def show_help() -> None:
+    """Ejecuta la función show_help conforme a la especificación técnica."""
     print_banner()
     print(f"""
 {C_BOLD}DESCRIPCIÓN:{C_RESET}
@@ -116,6 +118,7 @@ def restart_bot_service() -> bool:
 
 
 def show_status() -> None:
+    """Ejecuta la función show_status conforme a la especificación técnica."""
     print_banner()
     telem = get_node_telemetry()
     status = get_core_status()
@@ -152,6 +155,7 @@ def normalize_serial(raw_str: str) -> str:
 
 
 def main() -> int:
+    """Punto de entrada principal para ejecución por línea de comandos."""
     args = sys.argv[1:]
 
     if not args:

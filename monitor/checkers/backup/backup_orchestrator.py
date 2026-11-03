@@ -265,6 +265,12 @@ async def backup_target_device(target: Dict[str, Any], captured_by: str = "cron"
 
 
 def backup_network_device_by_id(net_id: int, captured_by: str = "manual") -> Dict[str, Any]:
+    """Inicia el respaldo de un dispositivo de red referenciado por su identificador.
+
+    Args:
+        net_id: Parámetro operativo de entrada.
+        captured_by: Parámetro operativo de entrada.
+    """
     with db_cursor() as cur:
         cur.execute(
             "SELECT id, name, ip, model, access_type, access_port, ssh_username, ssh_password_encrypted, ssh_enable_secret_encrypted "
@@ -282,6 +288,12 @@ def backup_network_device_by_id(net_id: int, captured_by: str = "manual") -> Dic
 
 
 def backup_snmp_device_by_id(snmp_id: int, captured_by: str = "manual") -> Dict[str, Any]:
+    """Inicia el respaldo de un equipo SNMP referenciado por su identificador.
+
+    Args:
+        snmp_id: Parámetro operativo de entrada.
+        captured_by: Parámetro operativo de entrada.
+    """
     with db_cursor() as cur:
         cur.execute(
             "SELECT id, name, ip_address, device_type, ssh_port, ssh_username, ssh_password_encrypted, ssh_enable_secret_encrypted "
@@ -297,6 +309,11 @@ def backup_snmp_device_by_id(snmp_id: int, captured_by: str = "manual") -> Dict[
 
 
 def backup_all_configured_devices(captured_by: str = "cron") -> List[Dict[str, Any]]:
+    """Orquesta el respaldo secuencial de todos los dispositivos configurados.
+
+    Args:
+        captured_by: Parámetro operativo de entrada.
+    """
     results = []
     with db_cursor() as cur:
         cur.execute(
@@ -327,6 +344,7 @@ def backup_all_configured_devices(captured_by: str = "cron") -> List[Dict[str, A
 
 
 def get_backups_summary() -> Dict[str, Any]:
+    """Obtiene el consolidado estadístico de respaldos registrados en el sistema."""
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(DISTINCT device_ip) as total_devices FROM device_configurations WHERE status = 'success'")
         tot_dev = cur.fetchone()["total_devices"]
@@ -354,6 +372,11 @@ def get_backups_summary() -> Dict[str, Any]:
 
 
 def list_latest_backups(limit: int = 30) -> List[Dict[str, Any]]:
+    """Retorna el listado de los respaldos más recientes almacenados.
+
+    Args:
+        limit: Parámetro operativo de entrada.
+    """
     with db_cursor() as cur:
         cur.execute(
             f"""

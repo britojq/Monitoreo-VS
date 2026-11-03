@@ -21,6 +21,7 @@ class RunFullScanAction:
     """Acción de responsabilidad única encargada de ejecutar el escaneo NOC completo."""
 
     async def execute(self) -> Dict[str, Any]:
+        """Ejecuta la acción de negocio o tarea programada de forma asíncrona."""
         start_time = time.perf_counter()
 
         conn = get_db_connection()

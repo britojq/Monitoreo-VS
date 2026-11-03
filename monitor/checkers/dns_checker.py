@@ -9,5 +9,10 @@ class DnsChecker(BaseServiceChecker):
     """Verificador de resolución de nombres DNS corporativos."""
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
+        """Ejecuta la comprobación de estado y métricas operativas del servicio.
+
+        Args:
+            svc: Parámetro operativo de entrada.
+        """
         is_ok, code, detail = await check_dns(svc.ip_host, svc.dns_test_host)
         return CheckResult(is_ok=is_ok, code=str(code), detail=detail)

@@ -10,6 +10,7 @@ from monitor.checkers.discovery.subnet_orchestrator import (
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Motor de Auto-Discovery y Detección Anti-Rogue")
     parser.add_argument("--subnet", type=str, help="Subred específica a escanear")
     parser.add_argument("--all", action="store_true", help="Escanear todas las subredes activas")

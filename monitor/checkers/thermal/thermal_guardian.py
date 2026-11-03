@@ -42,6 +42,14 @@ class ThermalGuardian:
         temp_recovery: float = DEFAULT_TEMP_RECOVERY,
         cooldown_seconds: int = DEFAULT_COOLDOWN_SECONDS
     ):
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            temp_critical: Parámetro operativo de entrada.
+            temp_warning: Parámetro operativo de entrada.
+            temp_recovery: Parámetro operativo de entrada.
+            cooldown_seconds: Parámetro operativo de entrada.
+        """
         self.temp_critical = temp_critical
         self.temp_warning = temp_warning
         self.temp_recovery = temp_recovery
@@ -73,6 +81,12 @@ class ThermalGuardian:
         logger.info("Guardián Térmico detenido ordenadamente.")
 
     def _handle_signal(self, signum, frame):
+        """Maneja el evento o señal signal según el protocolo definido.
+
+        Args:
+            signum: Parámetro operativo de entrada.
+            frame: Parámetro operativo de entrada.
+        """
         logger.info(f"Señal recibida ({signum}). Deteniendo Guardián Térmico...")
         self.running = False
 

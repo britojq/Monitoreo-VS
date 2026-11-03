@@ -33,6 +33,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -271,9 +272,20 @@ class SyslogProtocol(asyncio.DatagramProtocol):
     """Protocolo asíncrono para recepción de paquetes Syslog UDP."""
 
     def connection_made(self, transport: asyncio.DatagramTransport):
+        """Callback de evento asyncio invocado al establecerse una conexión de red.
+
+        Args:
+            transport: Parámetro operativo de entrada.
+        """
         self.transport = transport
 
     def datagram_received(self, data: bytes, addr: Tuple[str, int]):
+        """Procesa los datagramas UDP entrantes en el socket del servicio.
+
+        Args:
+            data: Parámetro operativo de entrada.
+            addr: Parámetro operativo de entrada.
+        """
         source_ip = addr[0]
         try:
             raw_text = data.decode("utf-8", errors="replace")
@@ -294,6 +306,11 @@ class SyslogProtocol(asyncio.DatagramProtocol):
             logger.error(f"Error creando tarea para procesar syslog: {e}")
 
     async def _process_event(self, event: Dict[str, Any]):
+        """Ejecuta la función _process_event conforme a la especificación técnica.
+
+        Args:
+            event: Parámetro operativo de entrada.
+        """
         try:
             await asyncio.to_thread(store_syslog_event, event)
             await check_and_notify_syslog_alert(event)
@@ -372,6 +389,7 @@ def search_syslog(query: Optional[str] = None, device_ip: Optional[str] = None, 
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Receptor Centralizado de Syslog (Fase 6)")
     parser.add_argument("--port", type=int, default=DEFAULT_SYSLOG_PORT, help="Puerto UDP para escuchar (por defecto 514)")
     parser.add_argument("--test-packet", action="store_true", help="Enviar un paquete de syslog sintético para prueba")
@@ -389,6 +407,7 @@ def main():
         return
 
     async def runner():
+        """Bucle de ejecución asíncrono para el servicio demonio."""
         transport, _ = await run_syslog_receiver(port=args.port)
         logger.info("📋 Demonio de Syslog escuchando activamente. Presione Ctrl+C para salir.")
         try:

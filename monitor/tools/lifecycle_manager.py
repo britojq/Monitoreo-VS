@@ -28,6 +28,7 @@ try:
     from monitor.monitor_web_sync import get_db_connection
 except ImportError:
     def get_db_connection():
+        """Establece y retorna una conexión activa con MariaDB SSOT."""
         return pymysql.connect(
             host="127.0.0.1",
             user="root",
@@ -56,9 +57,11 @@ class LifecycleManager:
     """Administrador de ciclo de vida de equipamiento físico e infraestructura."""
 
     def __init__(self):
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         pass
 
     def get_all_items(self) -> List[Dict[str, Any]]:
+        """Recupera la totalidad de elementos del ciclo de vida de hardware registrados."""
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -105,6 +108,7 @@ class LifecycleManager:
             conn.close()
 
     def get_summary(self) -> Dict[str, Any]:
+        """Obtiene el resumen consolidado de garantías, obsolescencia y estado de equipos."""
         items = self.get_all_items()
         total = len(items)
         warranty_expired = sum(1 for x in items if x.get("warranty_days") is not None and x["warranty_days"] < 0)
@@ -136,6 +140,21 @@ class LifecycleManager:
         firmware_version: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Registra o actualiza la ficha técnica de ciclo de vida de un componente.
+
+        Args:
+            entity_type: Parámetro operativo de entrada.
+            entity_id: Parámetro operativo de entrada.
+            serial_number: Parámetro operativo de entrada.
+            purchase_date: Parámetro operativo de entrada.
+            warranty_end_date: Parámetro operativo de entrada.
+            eol_date: Parámetro operativo de entrada.
+            eos_date: Parámetro operativo de entrada.
+            battery_last_replaced: Parámetro operativo de entrada.
+            disk_health_status: Parámetro operativo de entrada.
+            firmware_version: Parámetro operativo de entrada.
+            notes: Parámetro operativo de entrada.
+        """
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -177,6 +196,7 @@ class LifecycleManager:
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     parser = argparse.ArgumentParser(description="Gestor de Ciclo de Vida de Hardware (Fase 7)")
     parser.add_argument("--summary", action="store_true", help="Mostrar resumen de garantías y fin de soporte")
     parser.add_argument("--list", action="store_true", help="Listar todos los activos y su estado de ciclo de vida")

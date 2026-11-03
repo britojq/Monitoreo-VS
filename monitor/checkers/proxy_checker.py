@@ -13,6 +13,11 @@ class ProxyChecker(BaseServiceChecker):
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
         # Normalizar IP y puerto para evitar puertos duplicados accidentales
+        """Ejecuta la comprobación de estado y métricas operativas del servicio.
+
+        Args:
+            svc: Parámetro operativo de entrada.
+        """
         raw_ip_port = (svc.proxy_ip_port or svc.ip_host or "").strip()
         parts = [p for p in raw_ip_port.split(":") if p]
         if len(parts) >= 2:

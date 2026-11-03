@@ -35,6 +35,12 @@ class CheckAllSitesUseCase:
         site_repo: SiteRepositoryProtocol,
         telemetry_repo: TelemetryRepositoryProtocol | None = None,
     ) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa.
+
+        Args:
+            site_repo: Parámetro operativo de entrada.
+            telemetry_repo: Parámetro operativo de entrada.
+        """
         self._site_repo = site_repo
         self._telemetry_repo = telemetry_repo
 

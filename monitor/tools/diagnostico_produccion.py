@@ -26,6 +26,7 @@ if str(BASE_DIR) not in sys.path:
 
 
 def get_cluster_credentials():
+    """Retorna el valor o recurso para cluster_credentials."""
     master_url = "http://192.168.1.250"
     cluster_token = ""
     try:
@@ -39,6 +40,7 @@ def get_cluster_credentials():
 
 
 def main():
+    """Punto de entrada principal para ejecución por línea de comandos."""
     target_url, cluster_token = get_cluster_credentials()
 
     # Permitir sobreescribir URL de destino por argumento

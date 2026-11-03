@@ -18,6 +18,7 @@ class ReplicatorRegistry:
     """Registro desacoplado para orquestar la replicación de tablas de clúster."""
 
     def __init__(self) -> None:
+        """Inicializa la instancia con sus dependencias y configuración operativa."""
         self._replicators: Dict[str, TableReplicatorProtocol] = {}
 
     def register(self, domain: str, replicator: TableReplicatorProtocol) -> None:
