@@ -27,7 +27,7 @@ from monitor.domain.exceptions import (
     DatabaseQueryException,
     DatabaseTransactionException,
 )
-from monitor.monitor_db import load_env_db_config
+from monitor.infrastructure.monitor_db import load_env_db_config
 
 logger = logging.getLogger("monitor.infrastructure.db_context")
 

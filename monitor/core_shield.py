@@ -1,5 +1,7 @@
 """Fachada ultradelgada de retrocompatibilidad para SecureCore."""
 from monitor.shield.secure_core import (  # noqa: F401
+    ANCHOR_FILE,
+    CHALLENGE_FILE,
     IMMUTABLE_AUTO_UPDATE_ENABLED, IMMUTABLE_BOT_TOKEN, IMMUTABLE_GIT_BRANCH,
     IMMUTABLE_GIT_REPO_URL, IMMUTABLE_OWNER_ID, SecureCore,
     activate_hardware_first_boot, force_core_hardware_anchor,
