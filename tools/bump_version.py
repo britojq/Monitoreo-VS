@@ -16,7 +16,8 @@ Archivos Sincronizados Atómicamente:
 1. web_portal/resources/views/layouts/admin.blade.php (Header badge y créditos)
 2. web_portal/app/Services/Cluster/RuntimeParityInspector.php (API Clúster)
 3. web_portal/app/Http/Controllers/Admin/HelpController.php (Centro de ayuda)
-4. docs/manual_api_verificacion_cluster.md (Documentación técnica)
+4. docs/ESTADO_VIVO.md (Puntero atómico)
+5. README.md (Badge y versión activa)
 + Purga de caché en web_portal/ y repositorio unificado.
 =============================================================================
 """
@@ -176,21 +177,7 @@ def update_target_files(
                 ),
             ],
         ),
-        # 4. docs/manual_api_verificacion_cluster.md
-        (
-            repo_root / "docs" / "manual_api_verificacion_cluster.md",
-            [
-                (
-                    rf"(\*\*Versión:\*\*\s*)v?{re.escape(old_ver)}",
-                    rf"\g<1>{new_ver}",
-                ),
-                (
-                    rf"(\"system_version\":\s*\")v?{re.escape(old_ver)}(\")",
-                    rf"\g<1>v{new_ver}\g<2>",
-                ),
-            ],
-        ),
-        # 5. docs/ESTADO_VIVO.md
+        # 4. docs/ESTADO_VIVO.md
         (
             repo_root / "docs" / "ESTADO_VIVO.md",
             [
@@ -286,7 +273,6 @@ if [ -f "$BUMP_SCRIPT" ]; then
         git add "$REPO_DIR/web_portal/resources/views/layouts/admin.blade.php" \\
                 "$REPO_DIR/web_portal/app/Services/Cluster/RuntimeParityInspector.php" \\
                 "$REPO_DIR/web_portal/app/Http/Controllers/Admin/HelpController.php" \\
-                "$REPO_DIR/docs/manual_api_verificacion_cluster.md" \\
                 "$REPO_DIR/docs/ESTADO_VIVO.md" \\
                 "$REPO_DIR/README.md" 2>/dev/null || true
     fi
@@ -309,7 +295,6 @@ def display_status(repo_root: Path) -> None:
         ("Inspector de Clúster", repo_root / "web_portal/app/Services/Cluster/RuntimeParityInspector.php"),
         ("Controlador de Ayuda", repo_root / "web_portal/app/Http/Controllers/Admin/HelpController.php"),
         ("Layout Admin Blade", repo_root / "web_portal/resources/views/layouts/admin.blade.php"),
-        ("Manual del Clúster", repo_root / "docs/manual_api_verificacion_cluster.md"),
         ("Estado Vivo", repo_root / "docs/ESTADO_VIVO.md"),
         ("README Público", repo_root / "README.md"),
     ]
