@@ -22,15 +22,16 @@ Para erradicar amnesias, pérdidas de contexto y truncados por tamaño:
   ```bash
   python tools/close_phase.py --task "..." --phase "..." --next "..."
   ```
-* **El Sello de Continuidad y Certificación Atómica:** Toda respuesta de entrega técnica debe culminar obligatoriamente con el bloque del Sello emitido por `tools/close_phase.py`:
+* **El Sello de Continuidad y Certificación Atómica Dual:** Toda respuesta de entrega técnica debe culminar obligatoriamente con el bloque del Sello emitido por `tools/close_phase.py`:
   ```markdown
   ---
-  🛡️ SELLO DE CONTINUIDAD Y CERTIFICACIÓN ATÓMICA
-  * Commit Oficial: `[hash]` (sincronizado en master)
-  * Versión Certificada: v[version]
-  * Estado Vivo: docs/ESTADO_VIVO.md actualizado (Próximo paso: [next])
-  * Histórico: docs/historico_sesiones/HISTORICO_SESIONES.md actualizado en el tope
-  * Certificación: tools/certify_system_integrity.py (100% Zero-Fail)
+  🛡️ SELLO DE CONTINUIDAD Y CERTIFICACIÓN ATÓMICA DUAL
+  * Commit Oficial Privado : `[hash]` (tgbot-pyt-bashfull:master)
+  * Commit Oficial Público : `[public_hash]` (Monitoreo-VS:master)
+  * Versión Certificada    : v[version] (Tags sincronizados en ambos remotos)
+  * Estado Vivo            : docs/ESTADO_VIVO.md actualizado (Próximo paso: [next])
+  * Histórico              : docs/historico_sesiones/HISTORICO_SESIONES.md actualizado en el tope
+  * Certificación          : tools/certify_system_integrity.py (100% Zero-Fail)
   ---
   ```
   Si este sello con datos reales no está presente en la respuesta, **la entrega carece de validez técnica y será rechazada**.
