@@ -127,7 +127,7 @@ curl -s -H "X-Cluster-Token: YOUR_CLUSTER_TOKEN" \
   },
   "runtime_parity": {
     "platform": {
-      "system_version": "v5.50.50",
+      "system_version": "v5.51.0",
       "laravel_version": "13.11.2",
       "php_version": "8.4.26",
       "hostname": "CENCARATIT"

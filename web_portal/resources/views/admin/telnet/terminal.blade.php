@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TELNET: {{ $name }} ({{ $ip }}:{{ $port }}) - {{ $site }} | Monitoreo ATIT</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="/vendor/xterm/xterm.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/vendor/xterm/xterm.min.js"></script>
-    <script src="/vendor/xterm/xterm-addon-fit.min.js"></script>
+    <!-- Activos Locales 100% Autónomos (Cero CDNs Externos - Regla de Oro / Pilar 1) -->
+    <link rel="stylesheet" href="{{ asset('vendor/fonts/fonts.css') }}"/>
+    <link rel="stylesheet" href="{{ asset('vendor/material-symbols/material-symbols.css') }}"/>
+    <link rel="stylesheet" href="{{ asset('vendor/xterm/xterm.css') }}" />
+    <script src="{{ asset('vendor/tailwindcss/tailwind.min.js') }}"></script>
+    <script src="{{ asset('vendor/xterm/xterm.min.js') }}"></script>
+    <script src="{{ asset('vendor/xterm/xterm-addon-fit.min.js') }}"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -135,6 +134,19 @@
         </div>
     </header>
 
+    <!-- BANNER DE ADVERTENCIA DE SEGURIDAD (SEC-006 / OWASP A02:2021) -->
+    <div id="telnet-security-warning" class="bg-amber-950/80 border-b border-amber-500/40 px-4 py-2 flex items-center justify-between text-xs text-amber-200 z-20 shrink-0">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm text-amber-400">warning</span>
+            <span class="font-mono text-[11px] leading-tight">
+                <strong class="text-amber-300">ADVERTENCIA DE SEGURIDAD (SEC-006):</strong> Sesión Telnet activa en puerto {{ $port }}. El tráfico y credenciales no están cifrados de extremo a extremo en la LAN. Para equipos críticos se recomienda migración a SSH (puerto 22) con claves ed25519.
+            </span>
+        </div>
+        <button type="button" onclick="document.getElementById('telnet-security-warning').style.display='none'" class="text-amber-400 hover:text-white text-xs cursor-pointer font-bold px-2 py-0.5 rounded hover:bg-amber-900/60" title="Descartar aviso">
+            &times;
+        </button>
+    </div>
+
     <!-- AREA DE TERMINAL XTERM -->
     <main class="flex-1 w-full bg-[#050b14] overflow-hidden relative">
         <div id="terminal-container"></div>
@@ -159,7 +171,8 @@
             }
 
             connect() {
-                this.term.write('\r\n\x1b[1;36m[ATIT-TELNET]\x1b[0m Iniciando conexión a ' + targetName + ' (' + targetIp + ':' + targetPort + ')...\r\n');
+                this.term.write('\r\n\x1b[1;33m[SEGURIDAD - SEC-006]\x1b[0m ADVERTENCIA: Esta consola utiliza Telnet (tráfico sin cifrar). Se recomienda migración a SSH con claves ed25519.\r\n');
+                this.term.write('\x1b[1;36m[ATIT-TELNET]\x1b[0m Iniciando conexión a ' + targetName + ' (' + targetIp + ':' + targetPort + ')...\r\n');
                 try {
                     this.ws = new WebSocket(this.wsUrl);
                     this.ws.binaryType = 'arraybuffer';
