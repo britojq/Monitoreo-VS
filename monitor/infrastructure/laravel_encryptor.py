@@ -6,6 +6,8 @@
 # y AES-256-GCM AEAD (conforme a NIST SP 800-38D).
 # Registro de Decisión Arquitectónica: docs/ADR_CRIPTO_LARAVEL_CBC_GCM.md
 # Cumple con OWASP A02:2021 externalizando claves a variables de entorno.
+# Hardening SEC-005: Modo estricto CRYPT_STRICT_MODE para forzar AEAD, verificación
+# HMAC constante y fail-closed previo a unpadding, y cero fuga de secretos en logs.
 # Ubicación: /opt/sonar/monitor/infrastructure/laravel_encryptor.py
 # License: GNU Affero General Public License v3.0
 # Author: Operador ATIT (@britojab:@britojq), https://britojab.com
@@ -38,9 +40,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 _CACHED_APP_KEY: Optional[bytes] = None
 
 
-def get_laravel_app_key(force_reload: bool = False) -> bytes:
+def is_crypt_strict_mode() -> bool:
+    """Retorna True si la directiva exige AES-256-GCM AEAD exclusivamente (SEC-005).
+
+    Rechaza cualquier payload cifrado con AES-256-CBC si CRYPT_STRICT_MODE está activo.
     """
-    Obtiene y decodifica la clave criptográfica maestra de Laravel (AES-256-CBC).
+    raw = os.getenv("CRYPT_STRICT_MODE") or os.getenv("SONAR_CRYPT_STRICT_MODE") or "false"
+    return raw.strip().lower() in ("true", "1", "yes", "on")
+
+
+def get_laravel_app_key(force_reload: bool = False) -> bytes:
+    """Obtiene y decodifica la clave criptográfica maestra de Laravel (AES-256-CBC/GCM).
 
     Prioriza estrictamente variables de entorno y archivos seguros del sistema
     operativo (/etc/default/monitoreo-vs) para cumplir con OWASP A02:2021 y
@@ -56,7 +66,7 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
         DecryptionException: Si la clave no está aprovisionada o su longitud es inválida.
 
     Security Considerations:
-        - Nunca persiste la clave en disco ni en logs.
+        - Nunca persiste la clave en disco ni en logs (CWE-532).
         - Soporta formato 'base64:...' estándar de Laravel y cadenas directas.
     """
     global _CACHED_APP_KEY
@@ -82,7 +92,7 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
                         raw_key = line.split("=", 1)[1].strip("\"' ")
                         break
             except Exception as e_sys:
-                logger.debug(f"Aviso leyendo clave desde {sys_env}: {e_sys}")
+                logger.debug(f"Aviso leyendo clave desde {sys_env}: {type(e_sys).__name__}")
 
     # 3. Fallback de entorno local de desarrollo (solo si no se definió variable de entorno)
     if not raw_key:
@@ -100,7 +110,7 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
                             raw_key = line.split("=", 1)[1].strip("\"' ")
                             break
                 except Exception as e:
-                    logger.debug(f"Aviso leyendo APP_KEY de {p}: {e}")
+                    logger.debug(f"Aviso leyendo APP_KEY de {p}: {type(e).__name__}")
             if raw_key:
                 break
 
@@ -123,15 +133,25 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
     return key_bytes
 
 
-def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
-    """
-    Descifra una cadena generada por Crypt::encryptString() en Laravel (AES-256-CBC)
+def decrypt_laravel_string(
+    encrypted_str: str,
+    strict: bool = False,
+    strict_crypto: Optional[bool] = None,
+) -> str:
+    """Descifra una cadena generada por Crypt::encryptString() en Laravel (AES-256-CBC)
+
     o por el subsistema criptográfico NIST SP 800-38D (AES-256-GCM).
     Utiliza memoria compartida /dev/shm para acelerar consultas repetidas de credenciales SNMP.
+
+    Hardening SEC-005:
+    - CRYPT_STRICT_MODE: Rechaza cargas CBC heredadas forzando AEAD.
+    - CBC Fail-Closed: Verifica HMAC en tiempo constante previo a invocar unpadder.
+    - Cero fugas de secretos en registros de auditoría o excepciones.
 
     Args:
         encrypted_str: Cadena cifrada en base64 con el payload JSON.
         strict: Si True, levanta DecryptionException ante fallos en vez de retornar "".
+        strict_crypto: Si se especifica, sobreescribe is_crypt_strict_mode() para el llamado.
 
     Returns:
         str: Cadena en texto plano o vacía si el descifrado falla (en modo no strict).
@@ -142,25 +162,53 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
     if not encrypted_str:
         return ""
 
+    if strict_crypto is None:
+        strict_crypto = is_crypt_strict_mode()
+
     cache = get_shm_cache()
     cache_key = f"cred_{hashlib.sha256(encrypted_str.encode('utf-8')).hexdigest()[:32]}"
     cached_val = cache.get(cache_key)
-    if cached_val is not None:
+    if cached_val is not None and not strict_crypto:
         return str(cached_val)
 
     try:
         key = get_laravel_app_key()
-        raw_json = base64.b64decode(encrypted_str).decode("utf-8")
-        payload = json.loads(raw_json)
+        try:
+            raw_json = base64.b64decode(encrypted_str, validate=True).decode("utf-8")
+            payload = json.loads(raw_json)
+        except Exception as e_dec:
+            raise DecryptionException("Payload criptográfico base64/JSON inválido o malformado") from e_dec
 
-        # 1. Soporte Nativo NIST SP 800-38D (AES-256-GCM)
-        if payload.get("cipher") == "aes-256-gcm" or payload.get("mode") == "GCM" or "nonce" in payload:
-            nonce = base64.b64decode(payload["nonce"])
-            ciphertext = base64.b64decode(payload["value"])
+        if not isinstance(payload, dict):
+            raise DecryptionException("Estructura de payload criptográfico inválida (debe ser objeto JSON)")
+
+        cipher_field = str(payload.get("cipher") or "").lower()
+        mode_field = str(payload.get("mode") or "").upper()
+        is_gcm = cipher_field in ("aes-256-gcm", "gcm") or mode_field == "GCM" or "nonce" in payload
+
+        # 1. Soporte Nativo NIST SP 800-38D (AES-256-GCM AEAD)
+        if is_gcm:
+            nonce_b64 = payload.get("nonce")
+            val_b64 = payload.get("value")
+            if not nonce_b64 or not val_b64:
+                raise DecryptionException("Payload GCM inválido: faltan campos requeridos nonce o value")
+
+            nonce = base64.b64decode(nonce_b64)
+            ciphertext = base64.b64decode(val_b64)
+            if len(nonce) not in (12, 16):
+                raise DecryptionException(f"Longitud de nonce inválida para AES-GCM ({len(nonce)} bytes)")
+
             aesgcm = AESGCM(key)
             plain_bytes = aesgcm.decrypt(nonce, ciphertext, None)
             val = plain_bytes.decode("utf-8", errors="ignore")
         else:
+            # SEC-005: Rechazo obligatorio de CBC si el modo estricto está habilitado
+            if strict_crypto:
+                raise DecryptionException(
+                    "Modo estricto criptográfico activo (CRYPT_STRICT_MODE): descifrado AES-256-CBC deshabilitado. "
+                    "Se requiere AES-256-GCM AEAD conforme a NIST SP 800-38D."
+                )
+
             # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC-SHA256 Obligatorio)
             iv_b64 = payload.get("iv")
             val_b64 = payload.get("value")
@@ -178,7 +226,12 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
                 raise DecryptionException("Firma HMAC-SHA256 inválida o payload manipulado")
 
             iv = base64.b64decode(iv_b64)
+            if len(iv) != 16:
+                raise DecryptionException(f"Longitud de IV inválida para AES-CBC ({len(iv)} bytes)")
+
             ciphertext = base64.b64decode(val_b64)
+            if len(ciphertext) == 0 or len(ciphertext) % 16 != 0:
+                raise DecryptionException("Longitud de ciphertext inválida para bloque AES-CBC")
 
             cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
             decryptor = cipher.decryptor()
@@ -194,16 +247,21 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
 
         cache.set(cache_key, val, ttl=300.0)
         return val
-    except Exception as e:
-        logger.error(f"Fallo al descifrar cadena Laravel: {e}")
+    except DecryptionException as de:
+        logger.error(f"Fallo al descifrar credencial Laravel: {de}")
         if strict:
-            raise DecryptionException(f"Error crítico al descifrar credencial: {e}") from e
+            raise DecryptionException(f"Error crítico al descifrar credencial: {de}") from de
+        return ""
+    except Exception as e:
+        logger.error(f"Fallo al descifrar credencial Laravel ({type(e).__name__})")
+        if strict:
+            raise DecryptionException(f"Error crítico al descifrar credencial: {type(e).__name__}") from e
         return ""
 
 
 def encrypt_laravel_string_gcm(plain_text: str) -> str:
-    """
-    Cifra una cadena usando AES-256-GCM conforme a NIST SP 800-38D (AEAD).
+    """Cifra una cadena usando AES-256-GCM conforme a NIST SP 800-38D (AEAD).
+
     Incluye un nonce criptográfico de 12 bytes (96 bits) recomendado por NIST.
 
     Args:
@@ -233,8 +291,8 @@ def encrypt_laravel_string_gcm(plain_text: str) -> str:
 
 
 def encrypt_laravel_string(plain_text: str) -> str:
-    """
-    Cifra una cadena usando el esquema canónico de Laravel (AES-256-CBC con HMAC-SHA256).
+    """Cifra una cadena usando el esquema canónico de Laravel (AES-256-CBC con HMAC-SHA256).
+
     Genera un blob compatible con Illuminate\\Support\\Facades\\Crypt::decryptString().
 
     Args:
