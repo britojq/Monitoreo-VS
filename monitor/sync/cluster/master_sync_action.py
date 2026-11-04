@@ -4,6 +4,7 @@ import os
 import time
 from typing import Optional
 
+from monitor.infrastructure.db_context import atomic_transaction
 from monitor.monitor_db import get_db_connection
 from monitor.sync.cluster.master_client import MasterClusterClient
 from monitor.sync.cluster.table_replicators import TableReplicationService
@@ -46,50 +47,46 @@ class SyncFromMasterAction:
         except Exception as e_snap:
             print(f"⚠️ [MODO ESCLAVO] Aviso escribiendo snapshot estático: {e_snap}")
 
-        # 2. Guardar en base de datos MariaDB local
+        # 2. Guardar en base de datos MariaDB local bajo transacción atómica única (F-11)
         try:
-            conn = get_db_connection()
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            with atomic_transaction() as conn:
+                with conn.cursor() as cursor:
+                    try:
+                        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
 
-                # Snapshot global
-                sql = """
-                    INSERT INTO monitoring_snapshots 
-                    (global_status, services_online, services_total, sites_online, sites_total, proxies_online, proxies_total, payload_json, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                """
-                sumry = snapshot_payload.get("summary", {})
-                cursor.execute(sql, (
-                    snapshot_payload.get("global_status", "OPERACIONAL"),
-                    sumry.get("services_online", 0),
-                    sumry.get("services_total", 0),
-                    sumry.get("sites_online", 0),
-                    sumry.get("sites_total", 0),
-                    sumry.get("proxies_online", 0),
-                    sumry.get("proxies_total", 0),
-                    json.dumps(snapshot_payload, ensure_ascii=False),
-                ))
+                        # Snapshot global
+                        sql = """
+                            INSERT INTO monitoring_snapshots 
+                            (global_status, services_online, services_total, sites_online, sites_total, proxies_online, proxies_total, payload_json, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        """
+                        sumry = snapshot_payload.get("summary", {})
+                        cursor.execute(sql, (
+                            snapshot_payload.get("global_status", "OPERACIONAL"),
+                            sumry.get("services_online", 0),
+                            sumry.get("services_total", 0),
+                            sumry.get("sites_online", 0),
+                            sumry.get("sites_total", 0),
+                            sumry.get("proxies_online", 0),
+                            sumry.get("proxies_total", 0),
+                            json.dumps(snapshot_payload, ensure_ascii=False),
+                        ))
 
-                cfg = data.get("config", {})
+                        cfg = data.get("config", {})
 
-                # Modular Replicators
-                TableReplicationService.replicate_core_catalog(cursor, cfg)
-                TableReplicationService.replicate_histories(cursor, data)
-                TableReplicationService.replicate_snmp_discovery(cursor, data)
-                TableReplicationService.replicate_security_and_alerts(cursor, data)
-                TableReplicationService.replicate_netradar_and_topology(cursor, data)
-                TableReplicationService.replicate_ups(cursor, data)
-                TableReplicationService.replicate_itam(cursor, data)
-
-                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
-                conn.commit()
-            finally:
-                try:
-                    cursor.close()
-                except Exception:
-                    pass
-                conn.close()
+                        # Modular Replicators
+                        TableReplicationService.replicate_core_catalog(cursor, cfg)
+                        TableReplicationService.replicate_histories(cursor, data)
+                        TableReplicationService.replicate_snmp_discovery(cursor, data)
+                        TableReplicationService.replicate_security_and_alerts(cursor, data)
+                        TableReplicationService.replicate_netradar_and_topology(cursor, data)
+                        TableReplicationService.replicate_ups(cursor, data)
+                        TableReplicationService.replicate_itam(cursor, data)
+                    finally:
+                        try:
+                            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                        except Exception:
+                            pass
         except Exception as e_db:
             print(f"⚠️ [MODO ESCLAVO] Aviso actualizando base de datos local: {e_db}")
 

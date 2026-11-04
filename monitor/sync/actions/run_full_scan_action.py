@@ -31,15 +31,15 @@ class RunFullScanAction:
                 corp_domain = ".".join(["corpo" + "elec", "com", "ve"])
                 corp_name = "CORPO" + "ELEC"
                 try:
-                    cursor.execute(f"""
+                    cursor.execute("""
                         UPDATE monitored_services 
-                        SET web_url = REPLACE(web_url, 'empresa.com.ve', '{corp_domain}'),
-                            dns_test_domain = REPLACE(dns_test_domain, 'empresa.com.ve', '{corp_domain}'),
-                            name = REPLACE(name, 'empresa', '{corp_name}')
+                        SET web_url = REPLACE(web_url, 'empresa.com.ve', %s),
+                            dns_test_domain = REPLACE(dns_test_domain, 'empresa.com.ve', %s),
+                            name = REPLACE(name, 'empresa', %s)
                         WHERE web_url LIKE '%empresa.com.ve%' 
                            OR dns_test_domain LIKE '%empresa.com.ve%' 
                            OR name LIKE '%empresa%'
-                    """)
+                    """, (corp_domain, corp_domain, corp_name))
                     cursor.execute("""
                         UPDATE monitored_services ms
                         JOIN monitored_proxies mp ON mp.ip_port LIKE CONCAT(ms.host_ip, ':%')
@@ -49,7 +49,10 @@ class RunFullScanAction:
                     """)
                     conn.commit()
                 except Exception:
-                    pass
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
 
                 cursor.execute(
                     "SELECT * FROM monitored_services WHERE is_active = 1 "

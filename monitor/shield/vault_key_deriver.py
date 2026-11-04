@@ -43,7 +43,28 @@ _CANARY_HASH = "4f7b45269d2b2adaba068364d3c27130a09825a8ea830c38ae7f687df188448b
 _SENTINEL_HASH = "c959877d928c8457106936f0e112308e7147ca1c529c2d65a4ef10025e2aa665"
 _MASTER_KEY_HASH = "4b700b4beff99589979d450350d294d322dda2e1812753e1ff6be582a9801527"
 
-IMMUTABLE_OWNER_ID: int = 38914901
+def get_resolved_owner_id() -> int:
+    """Resuelve dinámicamente el identificador del propietario desde el entorno o MariaDB SSOT (F-13).
+
+    Garantiza configuración dinámica desacoplada manteniendo el fallback canónico de seguridad.
+    """
+    env_owner = os.getenv("TELEGRAM_OWNER_ID", os.getenv("OWNER_ID", "")).strip()
+    if env_owner.isdigit() and int(env_owner) > 0:
+        return int(env_owner)
+
+    try:
+        from bot_core.services.config_manager import load_config
+        cfg = load_config()
+        ssot_owner = cfg.get("owner_id")
+        if ssot_owner and str(ssot_owner).isdigit() and int(ssot_owner) > 0:
+            return int(ssot_owner)
+    except Exception:
+        pass
+
+    return 38914901
+
+
+IMMUTABLE_OWNER_ID: int = get_resolved_owner_id()
 
 # Ciphertexts generados bajo estándar autenticado NIST SP 800-38D AES-256-GCM
 _O_CIPHER = "PitNbL5jSFVyc5Ydbi8WhBBnQJB+3q9+1E2F96+Uv77grXw3"

@@ -28,6 +28,7 @@ from monitor.shield.vault_key_deriver import (
     get_canary_token,
     get_hardware_components,
     get_local_ip_addresses,
+    get_resolved_owner_id,
     get_sentinel_token,
     verify_system_auth_token,
 )
@@ -327,12 +328,15 @@ def migrate_core_token(new_token: str) -> Tuple[bool, str]:
 
 
 def get_core_owner_id() -> int:
-    """Retorna el identificador inmutable del propietario del sistema."""
+    """Retorna el identificador del propietario del sistema con soporte dinámico (F-13)."""
+    env_owner = os.getenv("TELEGRAM_OWNER_ID", os.getenv("OWNER_ID", "")).strip()
+    if env_owner.isdigit() and int(env_owner) > 0:
+        return int(env_owner)
     try:
         val = _ENGINE.deobfuscate(_O_CIPHER)
         return int(val)
     except Exception:
-        return IMMUTABLE_OWNER_ID
+        return get_resolved_owner_id()
 
 
 def get_core_bot_token() -> str:
