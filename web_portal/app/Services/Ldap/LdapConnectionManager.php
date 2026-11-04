@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Ldap;
 
 use App\Models\BotSetting;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,6 +27,9 @@ class LdapConnectionManager
             'base_dn' => config('services.ldap.base_dn', env('LDAP_BASE_DN', base64_decode('ZGM9Y29ycG9lbGVjLGRjPWdvYixkYz12ZQ=='))),
             'allowed_areas' => 'ATIT, GPO TRAB INFRA TECNOL CARABOBO, INFRAESTRUCTURA, TELECOMUNICACIONES',
             'default_role' => 'operator',
+            'bind_dn' => '',
+            'bind_password' => '',
+            'has_bind_password' => false,
             'updated_at' => null,
             'updated_by' => null,
         ];
@@ -43,6 +47,10 @@ class LdapConnectionManager
                 $default['default_role'] = in_array($c['default_role'] ?? 'operator', ['admin', 'operator'], true)
                     ? $c['default_role']
                     : 'operator';
+                $default['bind_dn'] = trim((string)($c['bind_dn'] ?? ''));
+                $hasPw = !empty($c['bind_password_encrypted']);
+                $default['has_bind_password'] = $hasPw;
+                $default['bind_password'] = $hasPw ? '••••••••' : '';
                 $default['updated_at'] = $c['updated_at'] ?? null;
                 $default['updated_by'] = $c['updated_by'] ?? null;
             }
@@ -58,6 +66,23 @@ class LdapConnectionManager
     }
 
     /**
+     * Obtener de forma segura y descifrada la contraseña de enlace (Bind Password)
+     * protegida con cifrado AES-256 en MariaDB (SEC-004 / CWE-256).
+     */
+    public function getDecryptedBindPassword(): ?string
+    {
+        try {
+            $c = BotSetting::get('ldap_config');
+            if (is_array($c) && !empty($c['bind_password_encrypted'])) {
+                return Crypt::decryptString((string) $c['bind_password_encrypted']);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error desencriptando bind_password de LDAP: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    /**
      * Comprobar si la autenticación LDAP está habilitada en el sistema.
      */
     public function isEnabled(): bool
@@ -67,6 +92,7 @@ class LdapConnectionManager
 
     /**
      * Actualizar y persistir la configuración de LDAP en MariaDB (SSOT).
+     * Las contraseñas de servicio se cifran mediante AES-256-GCM (SEC-004).
      */
     public function updateConfig(array $attributes, ?string $updatedBy = null): bool
     {
@@ -85,6 +111,22 @@ class LdapConnectionManager
                 ? $attributes['default_role']
                 : ($currentLdap['default_role'] ?? 'operator');
 
+            $bindDn = trim((string)($attributes['bind_dn'] ?? ($currentLdap['bind_dn'] ?? '')));
+
+            // Recuperar contraseña previa cifrada si existe
+            $currentRaw = BotSetting::get('ldap_config');
+            $bindPasswordEncrypted = is_array($currentRaw) ? ($currentRaw['bind_password_encrypted'] ?? null) : null;
+
+            if (array_key_exists('bind_password', $attributes)) {
+                $rawPw = (string) $attributes['bind_password'];
+                if ($rawPw === '') {
+                    $bindPasswordEncrypted = null;
+                } elseif ($rawPw !== '••••••••' && !str_starts_with($rawPw, '[ENCRYPTED')) {
+                    // Cifrado criptográfico AES-256 (SEC-004)
+                    $bindPasswordEncrypted = Crypt::encryptString($rawPw);
+                }
+            }
+
             $ldapData = [
                 'enabled' => $enabled,
                 'host' => $host,
@@ -92,6 +134,8 @@ class LdapConnectionManager
                 'base_dn' => $baseDn,
                 'allowed_areas' => $allowedAreas,
                 'default_role' => $defaultRole,
+                'bind_dn' => $bindDn,
+                'bind_password_encrypted' => $bindPasswordEncrypted,
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => $updatedBy ?? 'Administrador',
             ];
@@ -198,7 +242,7 @@ class LdapConnectionManager
     }
 
     /**
-     * Obtener conexión LDAP activa con bind anónimo.
+     * Obtener conexión LDAP activa con autenticación de enlace (Bind) o anónima.
      */
     public function getConnection(?string $customHost = null, ?int $customPort = null)
     {
@@ -221,10 +265,21 @@ class LdapConnectionManager
         ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
         ldap_set_option($conn, LDAP_OPT_NETWORK_TIMEOUT, 4);
 
-        if (!@ldap_bind($conn)) {
-            Log::warning('LDAP: Falló bind anónimo: ' . ldap_error($conn));
-            @ldap_unbind($conn);
-            return null;
+        $bindDn = $cfg['bind_dn'] ?? '';
+        $bindPassword = $this->getDecryptedBindPassword();
+
+        if (!empty($bindDn) && !empty($bindPassword)) {
+            if (!@ldap_bind($conn, $bindDn, $bindPassword)) {
+                Log::warning('LDAP: Falló bind autenticado (' . $bindDn . '): ' . ldap_error($conn));
+                @ldap_unbind($conn);
+                return null;
+            }
+        } else {
+            if (!@ldap_bind($conn)) {
+                Log::warning('LDAP: Falló bind anónimo: ' . ldap_error($conn));
+                @ldap_unbind($conn);
+                return null;
+            }
         }
 
         return $conn;
@@ -233,12 +288,19 @@ class LdapConnectionManager
     /**
      * Probar en tiempo real la conectividad y validación de Base DN hacia el servidor LDAP.
      */
-    public function testConnection(?string $host = null, ?int $port = null, ?string $baseDn = null): array
-    {
+    public function testConnection(
+        ?string $host = null,
+        ?int $port = null,
+        ?string $baseDn = null,
+        ?string $bindDn = null,
+        ?string $bindPassword = null
+    ): array {
         $cfg = $this->getConfig();
         $testHost = trim($host ?: $cfg['host']);
         $testPort = (int)($port ?: $cfg['port']);
         $testBaseDn = trim($baseDn ?: $cfg['base_dn']);
+        $testBindDn = trim($bindDn ?? ($cfg['bind_dn'] ?? ''));
+        $testBindPw = $bindPassword !== null ? $bindPassword : $this->getDecryptedBindPassword();
 
         if (!function_exists('ldap_connect')) {
             return [
@@ -263,14 +325,21 @@ class LdapConnectionManager
         ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
         ldap_set_option($conn, LDAP_OPT_NETWORK_TIMEOUT, 3);
 
-        if (!@ldap_bind($conn)) {
+        $bindSuccess = false;
+        if (!empty($testBindDn) && !empty($testBindPw) && $testBindPw !== '••••••••') {
+            $bindSuccess = (bool) @ldap_bind($conn, $testBindDn, $testBindPw);
+        } else {
+            $bindSuccess = (bool) @ldap_bind($conn);
+        }
+
+        if (!$bindSuccess) {
             $latency = round((microtime(true) - $start) * 1000, 1);
             $err = ldap_error($conn);
             @ldap_unbind($conn);
             return [
                 'success' => false,
                 'latency_ms' => $latency,
-                'message' => "Fallo de conexión o bind anónimo a {$testHost}:{$testPort} ({$err}).",
+                'message' => "Fallo de conexión o enlace (bind) a {$testHost}:{$testPort} ({$err}).",
             ];
         }
 

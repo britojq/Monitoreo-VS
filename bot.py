@@ -68,8 +68,10 @@ from bot_core.services.config_manager import (
     BASE_DIR,
     DOCS_DIR,
     SYSTEM_PROMPT_PATH,
+    clear_auto_rollback_notice,
     ensure_golden_backup,
     env_int,
+    get_auto_rollback_notice,
     load_config,
     restore_golden_backup,
     save_config,
@@ -310,13 +312,11 @@ def main(security_provider: Optional[SecurityProviderProtocol] = None) -> None:
             )
         )
 
-        # 3. Verificador de Autorrecuperación (Auto-Rollback)
+        # 3. Verificador de Autorrecuperación (Auto-Rollback vía MariaDB SSOT - SEC-010)
         async def _check_auto_rollback_notice():
-            flag_file = Path("/tmp/.auto_rollback_occurred")
-            if flag_file.exists():
-                try:
-                    with open(flag_file, "r", encoding="utf-8") as f:
-                        info = json.load(f)
+            try:
+                info = get_auto_rollback_notice()
+                if info:
                     cp_id = info.get("checkpoint_id", "LATEST")
                     desc = info.get("description", "Recuperación automática de estado seguro")
                     dt = info.get("datetime", "Reciente")
@@ -328,16 +328,16 @@ def main(security_provider: Optional[SecurityProviderProtocol] = None) -> None:
                             "El sistema detectó corrupción de archivos o apagón imprevisto durante el arranque.\n\n"
                             "🔄 <b>Acción:</b> <code>Rollback Automático Ejecutado</code>\n"
                             "✅ <b>Estado Actual:</b> <code>Sistema Restaurado y Operativo</code>\n"
-                            f"📁 <b>Punto Restaurado:</b> <code>{html.escape(cp_id)}</code>\n"
-                            f"📝 <b>Detalle:</b> <i>{html.escape(desc)}</i>\n"
-                            f"⏰ <b>Fecha:</b> <code>{html.escape(dt)}</code>\n"
+                            f"📁 <b>Punto Restaurado:</b> <code>{html.escape(str(cp_id))}</code>\n"
+                            f"📝 <b>Detalle:</b> <i>{html.escape(str(desc))}</i>\n"
+                            f"⏰ <b>Fecha:</b> <code>{html.escape(str(dt))}</code>\n"
                             "━━━━━━━━━━━━\n"
                             "<i>El bot se encuentra en línea y completamente funcional.</i>"
                         )
                         await app.bot.send_message(chat_id=owner_id, text=alert_msg, parse_mode="HTML")
-                    flag_file.unlink(missing_ok=True)
-                except Exception as err:
-                    logger.error(f"Error procesando notificación de auto-rollback: {err}")
+                    clear_auto_rollback_notice()
+            except Exception as err:
+                logger.error(f"Error procesando notificación de auto-rollback: {err}")
 
         asyncio.create_task(_check_auto_rollback_notice())
 

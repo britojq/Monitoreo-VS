@@ -53,9 +53,19 @@ class LdapAuthService
         return $this->connectionManager->getDomainsFromBaseDn($baseDn);
     }
 
-    public function testConnection(?string $host = null, ?int $port = null, ?string $baseDn = null): array
+    public function testConnection(
+        ?string $host = null,
+        ?int $port = null,
+        ?string $baseDn = null,
+        ?string $bindDn = null,
+        ?string $bindPassword = null
+    ): array {
+        return $this->connectionManager->testConnection($host, $port, $baseDn, $bindDn, $bindPassword);
+    }
+
+    public function getDecryptedBindPassword(): ?string
     {
-        return $this->connectionManager->testConnection($host, $port, $baseDn);
+        return $this->connectionManager->getDecryptedBindPassword();
     }
 
     public function getConnection(?string $customHost = null, ?int $customPort = null)

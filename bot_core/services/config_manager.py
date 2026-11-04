@@ -14,7 +14,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from monitor.shield.secure_core import (
     get_core_owner_id,
@@ -213,3 +213,89 @@ def restore_golden_backup() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"Error restaurando configuración desde MariaDB SSOT: {e}")
         return False, str(e)
+
+
+def get_auto_rollback_notice() -> Optional[Dict[str, Any]]:
+    """
+    Obtiene la notificación pendiente de autorrecuperación directamente desde MariaDB SSOT.
+    Erradica el uso de archivos temporales en /tmp (Regla #7 y OWASP A08:2021 / SEC-010).
+    """
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT setting_value FROM bot_settings WHERE setting_key = 'auto_rollback_flag' LIMIT 1"
+                )
+                row = cur.fetchone()
+                if row and row.get("setting_value"):
+                    val_str = str(row["setting_value"]).strip()
+                    if val_str:
+                        data = json.loads(val_str)
+                        if isinstance(data, dict):
+                            return data
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error("Error al consultar bandera de auto-rollback en MariaDB (SSOT): %s", e)
+    return None
+
+
+def set_auto_rollback_notice(checkpoint_id: str, description: str, dt: str) -> bool:
+    """
+    Persiste la bandera de autorrecuperación en MariaDB bot_settings (SSOT).
+    Cero archivos planos en disco (Regla de Oro #7 y SEC-010).
+    """
+    try:
+        from monitor.monitor_db import get_db_connection
+        payload = json.dumps(
+            {
+                "checkpoint_id": checkpoint_id,
+                "description": description,
+                "datetime": dt,
+            },
+            ensure_ascii=False,
+        )
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO bot_settings (setting_key, setting_value, setting_group, title, type, updated_at)
+                    VALUES ('auto_rollback_flag', %s, 'system', 'Bandera de Autorrecuperación Pendiente', 'json', NOW())
+                    ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()
+                    """,
+                    (payload,),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        logger.info("Bandera de auto-rollback persistida en MariaDB bot_settings (SSOT)")
+        return True
+    except Exception as e:
+        logger.error("Error persistiendo bandera de auto-rollback en MariaDB: %s", e)
+        return False
+
+
+def clear_auto_rollback_notice() -> bool:
+    """
+    Limpia la bandera de autorrecuperación en MariaDB bot_settings tras ser notificada al Administrador.
+    """
+    try:
+        from monitor.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE bot_settings SET setting_value = '' WHERE setting_key = 'auto_rollback_flag'"
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        logger.info("Bandera de auto-rollback limpiada en MariaDB bot_settings (SSOT)")
+        return True
+    except Exception as e:
+        logger.error("Error limpiando bandera de auto-rollback en MariaDB: %s", e)
+        return False
+

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -29,6 +31,8 @@ class AdminLdapController extends Controller
             'ldap_base_dn' => ['required', 'string', 'max:255'],
             'ldap_allowed_areas' => ['nullable', 'string', 'max:1000'],
             'ldap_default_role' => ['required', 'in:operator,admin'],
+            'ldap_bind_dn' => ['nullable', 'string', 'max:255'],
+            'ldap_bind_password' => ['nullable', 'string', 'max:255'],
         ], [
             'ldap_enabled.required' => 'Debe indicar si el servicio LDAP estará activo o inactivo.',
             'ldap_host.required' => 'La dirección IP o nombre de host del servidor LDAP es obligatoria.',
@@ -43,14 +47,21 @@ class AdminLdapController extends Controller
         $enabled = filter_var($validated['ldap_enabled'], FILTER_VALIDATE_BOOLEAN);
         $updaterName = auth()->user()?->name ?: (auth()->user()?->username ?: 'Administrador');
 
-        $ok = $this->ldapService->updateConfig([
+        $updatePayload = [
             'enabled' => $enabled,
             'host' => trim($validated['ldap_host']),
             'port' => (int) $validated['ldap_port'],
             'base_dn' => trim($validated['ldap_base_dn']),
             'allowed_areas' => trim($validated['ldap_allowed_areas'] ?? ''),
             'default_role' => $validated['ldap_default_role'],
-        ], $updaterName);
+            'bind_dn' => trim($validated['ldap_bind_dn'] ?? ''),
+        ];
+
+        if (array_key_exists('ldap_bind_password', $validated)) {
+            $updatePayload['bind_password'] = $validated['ldap_bind_password'];
+        }
+
+        $ok = $this->ldapService->updateConfig($updatePayload, $updaterName);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -78,8 +89,10 @@ class AdminLdapController extends Controller
         $host = $request->input('host');
         $port = $request->filled('port') ? (int) $request->input('port') : null;
         $baseDn = $request->input('base_dn');
+        $bindDn = $request->input('bind_dn') ?: $request->input('ldap_bind_dn');
+        $bindPassword = $request->input('bind_password') ?: $request->input('ldap_bind_password');
 
-        $result = $this->ldapService->testConnection($host, $port, $baseDn);
+        $result = $this->ldapService->testConnection($host, $port, $baseDn, $bindDn, $bindPassword);
 
         return response()->json($result);
     }

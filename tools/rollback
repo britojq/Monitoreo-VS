@@ -17,7 +17,6 @@ BASE_DIR="${BASE_DIR:-/opt/sonar}"
 cd "$BASE_DIR"
 
 CHECKPOINTS_DIR="$BASE_DIR/system/recovery/checkpoints"
-AUTO_FLAG_FILE="/tmp/.auto_rollback_occurred"
 PYTHON_EXEC="$BASE_DIR/venv/bin/python"
 
 # Colores para salida interactiva
@@ -131,9 +130,11 @@ restore_checkpoint() {
             --description="Rollback $TIPO_RB hacia checkpoint: $target_id ($desc)" >/dev/null 2>&1 || true
     fi
 
-    # 6. Si fue automático, dejar bandera para notificación a Telegram
+    # 6. Si fue automático, registrar bandera en MariaDB bot_settings (SSOT - Cero archivos planos)
     if [ $is_auto -eq 1 ]; then
-        python3 -c "import sys, json; json.dump({"datetime": sys.argv[1], "checkpoint_id": sys.argv[2], "description": sys.argv[3]}, open("$AUTO_FLAG_FILE", "w", encoding="utf-8"))"             "$NOW_STR" "$target_id" "$desc"
+        if [ -x "$PYTHON_EXEC" ]; then
+            "$PYTHON_EXEC" -c "from bot_core.services.config_manager import set_auto_rollback_notice; set_auto_rollback_notice('$target_id', '$desc', '$NOW_STR')" >/dev/null 2>&1 || true
+        fi
     fi
 
     # 7. Reiniciar servicio si se ejecuta interactivamente
