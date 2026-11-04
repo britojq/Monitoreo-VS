@@ -42,3 +42,39 @@ Se adopta formalmente una **arquitectura de interoperabilidad criptográfica dua
 * ✅ **Cumplimiento NIST SP 800-38D:** Las nuevas cargas de trabajo pueden optar por cifrado autenticado AEAD sin fricción.
 * ✅ **Consistencia Documental Total:** Queda erradicada la ambigüedad documental señalada por el auditor externo (SEC-M1).
 * ✅ **Resiliencia de Caché en RAM:** La clave maestra `APP_KEY` se desenrolla en memoria volátil compartida (`/dev/shm`) con TTL de 300s, erradicando lecturas de archivos planos en disco (Reglas de Oro #6 y #13).
+
+---
+
+## ADR-002: Hardening Fail-Closed de CBC, Canonicidad Explícita de Ciphers y Protección de Caché /dev/shm (F-05, F-06)
+
+* **Estado:** Aprobado / Implementado
+* **Fecha:** 4 de Noviembre, 2026
+* **Versión del Sistema:** v5.51.40
+* **Componentes Afectados:**
+  - [`monitor/infrastructure/laravel_encryptor.py`](file:///opt/sonar/monitor/infrastructure/laravel_encryptor.py)
+  - [`monitor/infrastructure/shm_cache.py`](file:///opt/sonar/monitor/infrastructure/shm_cache.py)
+  - [`tests/unit/test_laravel_encryptor_gcm.py`](file:///opt/sonar/tests/unit/test_laravel_encryptor_gcm.py)
+* **Auditoría de Referencia:** [`docs/REPORTE_AUDITORIA_SEGURIDAD_ARQUITECTURA_v5.51.0.md`](file:///opt/sonar/docs/REPORTE_AUDITORIA_SEGURIDAD_ARQUITECTURA_v5.51.0.md) (Hallazgos F-05 y F-06)
+
+---
+
+### 1. 📋 Contexto y Riesgos Detectados en Auditoría v5.51.0
+1. **F-05 (CWE-312, CWE-732):** El directorio `/dev/shm/monitoreo_snmp_cache/` heredaba la umask del proceso sin forzar permisos `0700`, y los archivos JSON se creaban sin permisos `0600`. Además, las claves de archivo usaban `abs(hash(key))`, generando riesgo de colisiones e inestabilidad entre procesos de Python.
+2. **F-06 (CWE-327, CWE-347):** En la rama CBC de `decrypt_laravel_string`, la comprobación de MAC era optativa (`if expected_mac and len==64`), permitiendo que un atacante enviara un payload sin MAC y fuera descifrado sin validación de integridad (fail-open). Además, los payloads no declaraban explícitamente el campo `cipher`.
+
+---
+
+### 2. 🎯 Decisión y Solución Técnica
+
+1. **Hardening Riguroso de ShmCache (F-05):**
+   * Directorio `/dev/shm/monitoreo_snmp_cache/` forzado a modo `0700` (`rwx------`).
+   * Archivos individuales de caché creados mediante descriptor de bajo nivel `os.open(..., os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)` asegurando permisos estrictos `0600` (`rw-------`).
+   * Nombre de archivo derivado de forma determinista y uniforme mediante SHA-256 (`hashlib.sha256(key.encode()).hexdigest()[:32] + ".json"`).
+   * Incorporación de métodos de invalidación granular `invalidate(key)` y purga completa `clear()`.
+
+2. **Validación Fail-Closed Estricta en CBC (F-06):**
+   * El MAC en CBC es ahora obligatorio e incondicional. Si falta, está vacío o no mide 64 caracteres hex, se levanta inmediatamente `DecryptionException("Firma HMAC-SHA256 ausente, truncada o inválida en payload CBC")`.
+   * Los blobs generados en Python declaran explícitamente el algoritmo empleado:
+     * Para AES-GCM: `"cipher": "aes-256-gcm"`
+     * Para AES-CBC: `"cipher": "aes-256-cbc"`
+   * Se ratifica la paridad e interoperabilidad bidireccional bit a bit con `Illuminate\Support\Facades\Crypt` de Laravel tanto para cifrado como descifrado.

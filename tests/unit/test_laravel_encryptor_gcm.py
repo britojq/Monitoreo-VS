@@ -1,13 +1,15 @@
 """
 # ==============================================================================
 # 🧪 PRUEBAS UNITARIAS CIFRADO GCM/CBC: test_laravel_encryptor_gcm.py
-# Valida la subsanación integral de SEC-002 y ERR-001 en laravel_encryptor.py.
+# Valida la subsanación integral de SEC-002, ERR-001, F-05 y F-06 en laravel_encryptor.py.
 # ==============================================================================
 """
 
 import base64
+import hashlib
 import json
 import os
+import stat
 from unittest.mock import patch
 import pytest
 
@@ -18,7 +20,7 @@ from monitor.infrastructure.laravel_encryptor import (
     encrypt_laravel_string_gcm,
     get_laravel_app_key,
 )
-from monitor.infrastructure.shm_cache import get_shm_cache
+from monitor.infrastructure.shm_cache import ShmCache, get_shm_cache
 
 
 @pytest.fixture(autouse=True)
@@ -31,13 +33,14 @@ class TestLaravelEncryptorNistGcmAndLegacyCbc:
     """Verificación de compatibilidad dual GCM (NIST SP 800-38D) y CBC (Legacy Laravel)."""
 
     def test_encrypt_gcm_structure_and_roundtrip(self):
-        """Verifica que encrypt_laravel_string_gcm genere el payload esperado y recupere el texto."""
+        """Verifica que encrypt_laravel_string_gcm genere el payload esperado con cipher explícito."""
         original = "Router_Admin_Password_2026!"
         encrypted = encrypt_laravel_string_gcm(original)
 
         # Inspección del payload JSON interno
         raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
         assert raw_payload["mode"] == "GCM"
+        assert raw_payload["cipher"] == "aes-256-gcm"
         assert "nonce" in raw_payload
         assert "value" in raw_payload
 
@@ -58,6 +61,7 @@ class TestLaravelEncryptorNistGcmAndLegacyCbc:
         assert "iv" in raw_payload
         assert "value" in raw_payload
         assert "mac" in raw_payload
+        assert raw_payload["cipher"] == "aes-256-cbc"
 
         iv_bytes = base64.b64decode(raw_payload["iv"])
         assert len(iv_bytes) == 16  # AES CBC IV: 16 bytes
@@ -66,7 +70,7 @@ class TestLaravelEncryptorNistGcmAndLegacyCbc:
         assert decrypted == original
 
     def test_shm_cache_acceleration(self):
-        """Verifica que consultas sucesivas aprovechen la caché en /dev/shm."""
+        """Verifica que consultas sucesivas aprovechen la caché en /dev/shm con clave SHA-256 (F-05)."""
         original = "Repeated_Query_Credential"
         encrypted = encrypt_laravel_string_gcm(original)
 
@@ -76,7 +80,7 @@ class TestLaravelEncryptorNistGcmAndLegacyCbc:
 
         # Segundo descifrado (debe provenir de caché)
         cache = get_shm_cache()
-        cache_key = f"cred_{abs(hash(encrypted))}"
+        cache_key = f"cred_{hashlib.sha256(encrypted.encode('utf-8')).hexdigest()[:32]}"
         assert cache.get(cache_key) == original
 
         val2 = decrypt_laravel_string(encrypted)
@@ -90,9 +94,31 @@ class TestLaravelEncryptorNistGcmAndLegacyCbc:
         decrypted = decrypt_laravel_string(encrypted, strict=True)
         assert decrypted == "public"
 
+    def test_shm_cache_hardening_permissions(self, tmp_path):
+        """F-05: Verifica que el directorio tenga permisos 0700 y los archivos 0600."""
+        shm_dir = tmp_path / "test_shm_cache"
+        cache = ShmCache(cache_dir=shm_dir, default_ttl=60.0)
+
+        # Permisos del directorio 0700 (rwx------)
+        dir_mode = stat.S_IMODE(os.stat(shm_dir).st_mode)
+        assert dir_mode == 0o700
+
+        cache.set("test_key", {"token": "secret_data"})
+        cache_file = cache._get_cache_path("test_key")
+        assert cache_file.exists()
+
+        # Permisos del archivo 0600 (rw-------)
+        file_mode = stat.S_IMODE(os.stat(cache_file).st_mode)
+        assert file_mode == 0o600
+
+        # Lectura e invalidación
+        assert cache.get("test_key") == {"token": "secret_data"}
+        cache.invalidate("test_key")
+        assert cache.get("test_key") is None
+
 
 class TestStrictModeErrorHandling:
-    """Verificación de ERR-001: Modo estricto vs silenciamiento."""
+    """Verificación de ERR-001 y F-06: Modo estricto y fail-closed en CBC."""
 
     def test_strict_true_raises_on_invalid_base64(self):
         """Modo strict=True levanta DecryptionException ante base64 inválido."""
@@ -105,7 +131,6 @@ class TestStrictModeErrorHandling:
         encrypted = encrypt_laravel_string_gcm(original)
 
         raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
-        # Corromper un byte del ciphertext
         ct_bytes = bytearray(base64.b64decode(raw_payload["value"]))
         ct_bytes[0] ^= 0xFF
         raw_payload["value"] = base64.b64encode(ct_bytes).decode("utf-8")
@@ -122,13 +147,39 @@ class TestStrictModeErrorHandling:
 
     def test_strict_true_raises_on_tampered_cbc_hmac(self):
         """Modo strict=True lanza DecryptionException ante HMAC alterado en AES-256-CBC."""
-        from monitor.infrastructure.laravel_encryptor import encrypt_laravel_string
         original = "SecretCommunityCBC"
         encrypted = encrypt_laravel_string(original)
 
         raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
-        # Corromper el MAC
         raw_payload["mac"] = "0000000000000000000000000000000000000000000000000000000000000000"
+        corrupted = base64.b64encode(json.dumps(raw_payload).encode("utf-8")).decode("utf-8")
+
+        with pytest.raises(DecryptionException):
+            decrypt_laravel_string(corrupted, strict=True)
+
+        assert decrypt_laravel_string(corrupted, strict=False) == ""
+
+    def test_cbc_missing_mac_fails_closed(self):
+        """F-06: Payload CBC sin MAC o con MAC nulo debe fallar cerrado (DecryptionException)."""
+        original = "SecretCBCNoMac"
+        encrypted = encrypt_laravel_string(original)
+
+        raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
+        del raw_payload["mac"]
+        corrupted = base64.b64encode(json.dumps(raw_payload).encode("utf-8")).decode("utf-8")
+
+        with pytest.raises(DecryptionException):
+            decrypt_laravel_string(corrupted, strict=True)
+
+        assert decrypt_laravel_string(corrupted, strict=False) == ""
+
+    def test_cbc_empty_mac_fails_closed(self):
+        """F-06: Payload CBC con MAC vacío debe fallar cerrado (DecryptionException)."""
+        original = "SecretCBCEmptyMac"
+        encrypted = encrypt_laravel_string(original)
+
+        raw_payload = json.loads(base64.b64decode(encrypted).decode("utf-8"))
+        raw_payload["mac"] = ""
         corrupted = base64.b64encode(json.dumps(raw_payload).encode("utf-8")).decode("utf-8")
 
         with pytest.raises(DecryptionException):

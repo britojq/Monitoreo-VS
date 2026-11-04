@@ -143,7 +143,7 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
         return ""
 
     cache = get_shm_cache()
-    cache_key = f"cred_{abs(hash(encrypted_str))}"
+    cache_key = f"cred_{hashlib.sha256(encrypted_str.encode('utf-8')).hexdigest()[:32]}"
     cached_val = cache.get(cache_key)
     if cached_val is not None:
         return str(cached_val)
@@ -154,21 +154,28 @@ def decrypt_laravel_string(encrypted_str: str, strict: bool = False) -> str:
         payload = json.loads(raw_json)
 
         # 1. Soporte Nativo NIST SP 800-38D (AES-256-GCM)
-        if payload.get("mode") == "GCM" or "nonce" in payload:
+        if payload.get("cipher") == "aes-256-gcm" or payload.get("mode") == "GCM" or "nonce" in payload:
             nonce = base64.b64decode(payload["nonce"])
             ciphertext = base64.b64decode(payload["value"])
             aesgcm = AESGCM(key)
             plain_bytes = aesgcm.decrypt(nonce, ciphertext, None)
             val = plain_bytes.decode("utf-8", errors="ignore")
         else:
-            # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC-SHA256)
-            iv_b64 = payload["iv"]
-            val_b64 = payload["value"]
+            # 2. Soporte Estándar Laravel (AES-256-CBC con HMAC-SHA256 Obligatorio)
+            iv_b64 = payload.get("iv")
+            val_b64 = payload.get("value")
             expected_mac = payload.get("mac")
-            if expected_mac and len(expected_mac) == 64:
-                calculated_mac = hmac.new(key, (iv_b64 + val_b64).encode("utf-8"), hashlib.sha256).hexdigest()
-                if not hmac.compare_digest(calculated_mac, expected_mac):
-                    raise DecryptionException("Firma HMAC-SHA256 inválida o payload manipulado")
+
+            if not iv_b64 or not val_b64:
+                raise DecryptionException("Payload CBC inválido: faltan campos iv o value")
+
+            # F-06 / CWE-347: Fail-closed estricto. En CBC el MAC es OBLIGATORIO para verificar integridad.
+            if not expected_mac or not isinstance(expected_mac, str) or len(expected_mac) != 64:
+                raise DecryptionException("Firma HMAC-SHA256 ausente, truncada o inválida en payload CBC")
+
+            calculated_mac = hmac.new(key, (iv_b64 + val_b64).encode("utf-8"), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(calculated_mac, expected_mac):
+                raise DecryptionException("Firma HMAC-SHA256 inválida o payload manipulado")
 
             iv = base64.b64decode(iv_b64)
             ciphertext = base64.b64decode(val_b64)
@@ -220,6 +227,7 @@ def encrypt_laravel_string_gcm(plain_text: str) -> str:
         "nonce": base64.b64encode(nonce).decode("utf-8"),
         "value": base64.b64encode(ciphertext).decode("utf-8"),
         "mode": "GCM",
+        "cipher": "aes-256-gcm",
     })
     return base64.b64encode(payload.encode("utf-8")).decode("utf-8")
 
@@ -259,5 +267,11 @@ def encrypt_laravel_string(plain_text: str) -> str:
     # Firma HMAC-SHA256 sobre IV + Ciphertext (estándar Laravel Encrypter)
     mac = hmac.new(key, (iv_b64 + val_b64).encode("utf-8"), hashlib.sha256).hexdigest()
 
-    payload = json.dumps({"iv": iv_b64, "value": val_b64, "mac": mac, "tag": ""})
+    payload = json.dumps({
+        "iv": iv_b64,
+        "value": val_b64,
+        "mac": mac,
+        "tag": "",
+        "cipher": "aes-256-cbc",
+    })
     return base64.b64encode(payload.encode("utf-8")).decode("utf-8")
