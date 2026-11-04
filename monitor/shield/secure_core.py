@@ -384,7 +384,16 @@ def get_node_telemetry() -> dict:
     }
 
 
-IMMUTABLE_BOT_TOKEN: str = get_core_bot_token()
-IMMUTABLE_GIT_REPO_URL: str = get_core_repo_url()
-IMMUTABLE_GIT_BRANCH: str = get_core_branch()
-IMMUTABLE_AUTO_UPDATE_ENABLED: bool = is_core_auto_update_enabled()
+def __getattr__(name: str) -> Any:
+    """Resuelve atributos dinámicos bajo demanda sin persistir secretos en variables globales."""
+    if name == "IMMUTABLE_BOT_TOKEN":
+        return get_core_bot_token()
+    if name == "IMMUTABLE_OWNER_ID":
+        return get_core_owner_id()
+    if name == "IMMUTABLE_GIT_REPO_URL":
+        return get_core_repo_url()
+    if name == "IMMUTABLE_GIT_BRANCH":
+        return get_core_branch()
+    if name == "IMMUTABLE_AUTO_UPDATE_ENABLED":
+        return is_core_auto_update_enabled()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

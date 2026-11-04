@@ -1,5 +1,8 @@
 # monitor/sync/cluster/master_client.py
+import hashlib
+import hmac
 import logging
+import time
 from typing import Any, Dict, Optional, Tuple
 import httpx
 
@@ -34,8 +37,17 @@ class MasterClusterClient:
 
     async def fetch_telemetry(self, timeout: float = 10.0) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """Obtiene el snapshot y catálogo del nodo Master vía /api/cluster/telemetry."""
+        timestamp = str(int(time.time()))
+        signature = hmac.new(
+            self.cluster_token.encode("utf-8"),
+            f"{timestamp}:".encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
+
         headers = {
             "X-Cluster-Token": self.cluster_token,
+            "X-Cluster-Timestamp": timestamp,
+            "X-Cluster-Signature": signature,
             "Accept": "application/json",
             "Accept-Encoding": "gzip",
             "User-Agent": "ATIT-ValleSeco-ClusterSync/1.0",

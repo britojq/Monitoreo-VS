@@ -20,9 +20,9 @@ import httpx
 from telegram.ext import Application
 
 from bot_core.services.config_manager import load_config
-from monitor.core_shield import (
-    IMMUTABLE_BOT_TOKEN,
-    IMMUTABLE_OWNER_ID,
+from monitor.shield.secure_core import (
+    get_core_bot_token,
+    get_core_owner_id,
 )
 from monitor.proxy_cache import (
     ProxyInflightGuard,
@@ -197,7 +197,7 @@ async def trigger_connection_failover(reason: str = "Aviso de red") -> None:
     async with _FAILOVER_LOCK:
         bot_mod = sys.modules.get("bot")
         cfg = getattr(bot_mod, "CONFIG", None) if bot_mod else load_config()
-        bot_token = cfg.get("bot_token", IMMUTABLE_BOT_TOKEN) if cfg else IMMUTABLE_BOT_TOKEN
+        bot_token = (cfg.get("bot_token") if cfg else None) or get_core_bot_token()
         best_url, best_label, is_ok = await async_evaluate_best_connection(bot_token)
         if is_ok:
             if best_url != ACTIVE_PROXY_URL or best_label != ACTIVE_CONNECTION_LABEL:
@@ -222,7 +222,7 @@ async def runtime_connection_watchdog(app: Application) -> None:
     logger.info("🛡️ Centinela Autorreparable de Red (Watchdog activo, revisión cada 10 min).")
     bot_mod = sys.modules.get("bot")
     cfg = getattr(bot_mod, "CONFIG", None) if bot_mod else load_config()
-    bot_token = cfg.get("bot_token", IMMUTABLE_BOT_TOKEN) if cfg else IMMUTABLE_BOT_TOKEN
+    bot_token = (cfg.get("bot_token") if cfg else None) or get_core_bot_token()
 
     while True:
         try:

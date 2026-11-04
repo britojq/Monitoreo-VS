@@ -9,7 +9,7 @@ import urllib.parse
 import httpx
 
 from monitor.checkers.thermal.constants import IMMUTABLE_OWNER_ID
-from monitor.core_shield import IMMUTABLE_BOT_TOKEN
+from monitor.shield.secure_core import get_core_bot_token
 from monitor.infrastructure.db_context import db_cursor
 
 logger = logging.getLogger("monitor.checkers.thermal.notifier")
@@ -67,7 +67,7 @@ def dispatch_telegram_alert(text: str, alert_type: str = "thermal") -> bool:
     Despacha una alerta directa y exclusiva al Owner mediante el bot principal.
     Cumple estrictamente la Regla de Oro #1 (chat_id: 38914901, jamás a grupos).
     """
-    token = IMMUTABLE_BOT_TOKEN
+    token = get_core_bot_token()
     if not token:
         logger.error("No se pudo obtener el bot_token para la alerta de temperatura.")
         return False

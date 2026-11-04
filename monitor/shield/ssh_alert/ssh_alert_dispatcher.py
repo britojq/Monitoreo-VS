@@ -7,7 +7,7 @@ from typing import Optional
 
 import httpx
 
-from monitor.core_shield import IMMUTABLE_BOT_TOKEN, IMMUTABLE_OWNER_ID
+from monitor.shield.secure_core import get_core_bot_token, get_core_owner_id
 from monitor.infrastructure.db_context import db_cursor
 
 logger = logging.getLogger("monitor.shield.ssh_alert.dispatcher")
@@ -62,7 +62,8 @@ def load_configured_proxies() -> list:
 
 async def send_telegram_alert(mensaje: str, reply_markup: Optional[dict] = None) -> bool:
     """Despacha de forma asíncrona y segura la alerta a Telegram del Administrador (Owner)."""
-    bot_token = IMMUTABLE_BOT_TOKEN
+    bot_token = get_core_bot_token()
+    owner_id = get_core_owner_id()
     if not bot_token:
         logger.error("No se pudo obtener el Bot Token para alertar.")
         return False
@@ -76,7 +77,7 @@ async def send_telegram_alert(mensaje: str, reply_markup: Optional[dict] = None)
             connection_targets.append(p_url)
 
     payload = {
-        "chat_id": IMMUTABLE_OWNER_ID,
+        "chat_id": owner_id,
         "text": mensaje,
         "parse_mode": "HTML",
     }

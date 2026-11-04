@@ -57,11 +57,39 @@ class SonarPathService
     }
 
     /**
+     * Mapa de resolución canónica para scripts que fueron modularizados en subdirectorios de monitor/.
+     */
+    protected static array $scriptMap = [
+        'agent_deployer.py' => 'deployment/agent_deployer.py',
+        'network_discovery.py' => 'checkers/discovery/discovery_cli.py',
+        'ssl_checker.py' => 'checkers/ssl/ssl_cli.py',
+        'net_radar_engine.py' => 'checkers/radar/radar_cli.py',
+        'snmp_activator.py' => 'cli/snmp_activator.py',
+        'topology_builder.py' => 'tools/topology_builder.py',
+        'web_screenshot.py' => 'tools/web_screenshot.py',
+        'wol_sender.py' => 'tools/wol_sender.py',
+        'predictive_analyzer.py' => 'tools/predictive_analyzer.py',
+    ];
+
+    /**
      * Obtiene la ruta absoluta de un script dentro del subsistema de monitoreo (/opt/sonar/monitor/...).
      */
     public static function monitorScript(string $scriptName): string
     {
-        return self::baseDir() . '/monitor/' . ltrim($scriptName, '/');
+        $clean = ltrim($scriptName, '/');
+        $direct = self::baseDir() . '/monitor/' . $clean;
+        if (file_exists($direct)) {
+            return $direct;
+        }
+
+        if (isset(self::$scriptMap[$clean])) {
+            $mapped = self::baseDir() . '/monitor/' . self::$scriptMap[$clean];
+            if (file_exists($mapped)) {
+                return $mapped;
+            }
+        }
+
+        return $direct;
     }
 
     /**

@@ -91,16 +91,16 @@ class HardwareVaultSecurityProvider:
 
     def get_bot_token(self) -> str:
         try:
-            from monitor.core_shield import IMMUTABLE_BOT_TOKEN
-            return str(IMMUTABLE_BOT_TOKEN or "")
+            from monitor.shield.secure_core import get_core_bot_token
+            return str(get_core_bot_token() or "")
         except Exception as e:
             logger.error(f"Error accediendo a token en hardware vault: {e}")
             return ""
 
     def get_owner_id(self) -> int:
         try:
-            from monitor.core_shield import IMMUTABLE_OWNER_ID
-            return int(IMMUTABLE_OWNER_ID or 0)
+            from monitor.shield.secure_core import get_core_owner_id
+            return int(get_core_owner_id() or 0)
         except Exception as e:
             logger.error(f"Error accediendo a owner_id en hardware vault: {e}")
             return 0

@@ -174,12 +174,30 @@ from monitor.proxy_cache import (
 # ------------------------------------------------------------------------------
 _SECURITY_PROVIDER: SecurityProviderProtocol = get_default_security_provider()
 
-# Constantes y funciones de compatibilidad histórica desacopladas mediante el protocolo
-IMMUTABLE_BOT_TOKEN = _SECURITY_PROVIDER.get_bot_token()
-IMMUTABLE_OWNER_ID = _SECURITY_PROVIDER.get_owner_id()
-IMMUTABLE_AUTO_UPDATE_ENABLED = _SECURITY_PROVIDER.is_auto_update_enabled()
-IMMUTABLE_GIT_REPO_URL = _SECURITY_PROVIDER.get_git_repo_url()
-IMMUTABLE_GIT_BRANCH = _SECURITY_PROVIDER.get_git_branch()
+# Funciones de acceso dinámico al proveedor de seguridad formal (sin secretos en variables globales)
+def get_bot_token() -> str:
+    """Obtiene el token del bot de forma efímera desde el proveedor de seguridad."""
+    return _SECURITY_PROVIDER.get_bot_token()
+
+
+def get_owner_id() -> int:
+    """Obtiene el identificador del propietario desde el proveedor de seguridad."""
+    return _SECURITY_PROVIDER.get_owner_id()
+
+
+def __getattr__(name: str) -> Any:
+    """Resuelve atributos de compatibilidad histórica bajo demanda sin exponer secretos en el ámbito global."""
+    if name == "IMMUTABLE_BOT_TOKEN":
+        return _SECURITY_PROVIDER.get_bot_token()
+    if name == "IMMUTABLE_OWNER_ID":
+        return _SECURITY_PROVIDER.get_owner_id()
+    if name == "IMMUTABLE_AUTO_UPDATE_ENABLED":
+        return _SECURITY_PROVIDER.is_auto_update_enabled()
+    if name == "IMMUTABLE_GIT_REPO_URL":
+        return _SECURITY_PROVIDER.get_git_repo_url()
+    if name == "IMMUTABLE_GIT_BRANCH":
+        return _SECURITY_PROVIDER.get_git_branch()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
 def is_core_operational() -> bool:

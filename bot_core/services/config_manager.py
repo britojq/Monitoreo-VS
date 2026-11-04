@@ -16,12 +16,12 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
-from monitor.core_shield import (
-    IMMUTABLE_OWNER_ID,
-    IMMUTABLE_BOT_TOKEN,
-    IMMUTABLE_AUTO_UPDATE_ENABLED,
-    IMMUTABLE_GIT_REPO_URL,
-    IMMUTABLE_GIT_BRANCH,
+from monitor.shield.secure_core import (
+    get_core_owner_id,
+    get_core_bot_token,
+    is_core_auto_update_enabled,
+    get_core_repo_url,
+    get_core_branch,
 )
 
 logger = logging.getLogger("bot.services.config")
@@ -51,8 +51,8 @@ def load_config() -> Dict[str, Any]:
     """
     default_config: Dict[str, Any] = {
         # Telegram
-        "bot_token": IMMUTABLE_BOT_TOKEN,
-        "owner_id": IMMUTABLE_OWNER_ID,
+        "bot_token": get_core_bot_token(),
+        "owner_id": get_core_owner_id(),
         "allowed_user_ids": [],
         "allowed_group_ids": [],
         "commands_enabled": True,
@@ -65,10 +65,10 @@ def load_config() -> Dict[str, Any]:
         "monitor_debug_mode": False,
 
         # Actualizaciones Git
-        "auto_update_enabled": IMMUTABLE_AUTO_UPDATE_ENABLED,
+        "auto_update_enabled": is_core_auto_update_enabled(),
         "auto_update_interval_hours": 48,
-        "git_repo_url": IMMUTABLE_GIT_REPO_URL,
-        "git_branch": IMMUTABLE_GIT_BRANCH,
+        "git_repo_url": get_core_repo_url(),
+        "git_branch": get_core_branch(),
 
         # Motor local de IA
         "ollama_enabled": False,
@@ -145,11 +145,11 @@ def load_config() -> Dict[str, Any]:
         default_config["commands_enabled"] = os.getenv("COMMANDS_ENABLED", "").strip().lower() in ("true", "1", "yes")
 
     # FORZAR BLINDAJE INMUTABLE: Estas variables jamás pueden ser alteradas por agentes externos
-    default_config["owner_id"] = IMMUTABLE_OWNER_ID
-    default_config["bot_token"] = IMMUTABLE_BOT_TOKEN
-    default_config["auto_update_enabled"] = IMMUTABLE_AUTO_UPDATE_ENABLED
-    default_config["git_repo_url"] = IMMUTABLE_GIT_REPO_URL
-    default_config["git_branch"] = IMMUTABLE_GIT_BRANCH
+    default_config["owner_id"] = get_core_owner_id()
+    default_config["bot_token"] = get_core_bot_token()
+    default_config["auto_update_enabled"] = is_core_auto_update_enabled()
+    default_config["git_repo_url"] = get_core_repo_url()
+    default_config["git_branch"] = get_core_branch()
 
     return default_config
 
