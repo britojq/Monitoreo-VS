@@ -236,10 +236,27 @@ class ExecuteUpdateAction:
 
                 storage_p = WEB_DIR / "storage"
                 boot_p = WEB_DIR / "bootstrap" / "cache"
+                # SEC-001: Erradicado chmod -R 777. Permisos de mínimo privilegio para almacenamiento de Laravel
                 if storage_p.exists():
-                    await (await asyncio.create_subprocess_exec(*(sudo_prefix + ["chmod", "-R", "777", str(storage_p)]))).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["chown", "-R", "www-data:www-data", str(storage_p)])
+                    )).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["find", str(storage_p), "-type", "d", "-exec", "chmod", "775", "{}", "+"])
+                    )).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["find", str(storage_p), "-type", "f", "-exec", "chmod", "664", "{}", "+"])
+                    )).communicate()
                 if boot_p.exists():
-                    await (await asyncio.create_subprocess_exec(*(sudo_prefix + ["chmod", "-R", "775", str(boot_p)]))).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["chown", "-R", "www-data:www-data", str(boot_p)])
+                    )).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["find", str(boot_p), "-type", "d", "-exec", "chmod", "775", "{}", "+"])
+                    )).communicate()
+                    await (await asyncio.create_subprocess_exec(
+                        *(sudo_prefix + ["find", str(boot_p), "-type", "f", "-exec", "chmod", "664", "{}", "+"])
+                    )).communicate()
 
                 # 7.3 Migraciones seguras de Base de Datos
                 p_migr = await asyncio.create_subprocess_exec(

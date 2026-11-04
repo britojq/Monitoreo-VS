@@ -28,7 +28,7 @@ TMP_DIR = Path("/tmp/monitoreo_proxy_cache")
 
 def get_cache_dir() -> Path:
     """
-    Obtiene el directorio de caché asegurando permisos universales (0o777).
+    Obtiene el directorio de caché asegurando permisos restrictivos (0o700).
 
     Returns:
         Path: Ruta al directorio de caché (/dev/shm o /tmp como fallback).
@@ -37,7 +37,7 @@ def get_cache_dir() -> Path:
     try:
         target.mkdir(parents=True, exist_ok=True)
         try:
-            os.chmod(target, 0o777)
+            os.chmod(target, 0o700)
         except Exception:
             pass
     except Exception:

@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
@@ -49,14 +49,16 @@ def _build_emergency_panel() -> Tuple[str, InlineKeyboardMarkup]:
     return text, InlineKeyboardMarkup(keyboard)
 
 
-async def _delayed_emergency_stop() -> None:
-    """Espera 1.5 segundos para permitir el envío del mensaje de confirmación y detiene el servicio."""
-    await asyncio.sleep(1.5)
-    try:
-        proc = await asyncio.create_subprocess_exec("sudo", "systemctl", "stop", "tg-admin-bot.service")
-        await proc.communicate()
-    except Exception as e:
-        logger.error(f"Error al detener servicio por emergencia: {e}")
+async def _delayed_emergency_stop(actor_id: Optional[int] = None) -> None:
+    """Espera 1.5 segundos para permitir el envío del mensaje de confirmación y detiene el servicio con auditoría inmutable."""
+    from monitor.gitops.services.systemd_control import SystemdController
+
+    await SystemdController.stop_service_delayed(
+        delay_seconds=1.5,
+        service="tg-admin-bot.service",
+        actor_id=actor_id,
+        reason="emergency_panel_stop_confirmed",
+    )
 
 
 async def cmd_emergencia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -139,7 +141,7 @@ async def handle_emergency_callback(update: Update, context: ContextTypes.DEFAUL
             )
         except Exception:
             pass
-        asyncio.create_task(_delayed_emergency_stop())
+        asyncio.create_task(_delayed_emergency_stop(actor_id=clicker_id))
         return
 
     elif action == "toggle_maint":

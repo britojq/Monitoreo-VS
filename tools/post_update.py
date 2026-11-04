@@ -90,14 +90,14 @@ def configure_system_directories():
     cmd_prefix = get_cmd_prefix()
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
-        subprocess.run(cmd_prefix + ["chmod", "777", str(LOG_DIR)], check=False)
+        subprocess.run(cmd_prefix + ["chmod", "750", str(LOG_DIR)], check=False)
 
         for item in LOG_DIR.iterdir():
             try:
-                subprocess.run(cmd_prefix + ["chmod", "666", str(item)], check=False)
+                subprocess.run(cmd_prefix + ["chmod", "640", str(item)], check=False)
             except Exception:
                 pass
-        log("✅ Directorio /tmp/monitor y archivos de log configurados con permisos de escritura (0666).")
+        log("✅ Directorio /tmp/monitor y archivos de log configurados con permisos de escritura (0750/0640).")
     except Exception as e:
         log(f"⚠️ Aviso en permisos de directorios: {e}")
 

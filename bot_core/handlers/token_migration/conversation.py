@@ -5,7 +5,6 @@ Conversación guiada e interactiva para la migración de token de Telegram.
 from __future__ import annotations
 import asyncio
 import html
-import os
 import time
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -72,11 +71,18 @@ async def handle_new_token_input(update: Update, context: ContextTypes.DEFAULT_T
         except Exception:
             await update.message.reply_text(f"{msg}\n\n🚀 <b>Reiniciando servicio para aplicar la nueva identidad...</b>")
 
-        async def _restart_service() -> None:
-            await asyncio.sleep(2.5)
-            os.system("sudo systemctl restart tg-admin-bot.service &")
+        # SEC-002: Erradicado os.system. Despacho desacoplado y auditable mediante SystemdController
+        from monitor.gitops.services.systemd_control import SystemdController
 
-        asyncio.create_task(_restart_service())
+        actor_id = update.effective_user.id if update.effective_user else None
+        asyncio.create_task(
+            SystemdController.restart_service_delayed(
+                delay_seconds=2.5,
+                service="tg-admin-bot.service",
+                actor_id=actor_id,
+                reason="token_migration_applied",
+            )
+        )
         return ConversationHandler.END
     else:
         try:

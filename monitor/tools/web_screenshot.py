@@ -25,7 +25,7 @@ logger = logging.getLogger("monitor.tools.screenshot")
 CACHE_DIR = Path("/tmp/monitoreo_captures")
 try:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    CACHE_DIR.chmod(0o777)
+    CACHE_DIR.chmod(0o700)
 except Exception:
     pass
 

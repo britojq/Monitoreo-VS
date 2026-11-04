@@ -24,7 +24,7 @@ def restart_ai_engine() -> bool:
 
     os.makedirs("/tmp/monitor", exist_ok=True)
     try:
-        os.chmod("/tmp/monitor", 0o777)
+        os.chmod("/tmp/monitor", 0o750)
     except Exception:
         pass
 
