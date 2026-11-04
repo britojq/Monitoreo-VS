@@ -104,14 +104,17 @@ def check_sec_004_ldap_encryption() -> Tuple[bool, str]:
 
 
 def check_sec_005_dependency_pinning() -> Tuple[bool, str]:
-    """SEC-005: Dependencias acotadas con cotas superiores estrictas y requirements.lock."""
+    """SEC-005: Dependencias acotadas con cotas superiores estrictas, requirements.lock y composer.lock reconciliados."""
     req_path = BASE_DIR / "requirements.txt"
     lock_path = BASE_DIR / "requirements.lock"
+    composer_lock = BASE_DIR / "web_portal" / "composer.lock"
 
     if not req_path.exists():
         return False, "requirements.txt no existe"
     if not lock_path.exists() or lock_path.stat().st_size == 0:
         return False, "requirements.lock no existe o está vacío"
+    if not composer_lock.exists() or composer_lock.stat().st_size == 0:
+        return False, "web_portal/composer.lock no existe o está vacío"
 
     content = req_path.read_text(encoding="utf-8")
     unbounded = []
@@ -126,7 +129,7 @@ def check_sec_005_dependency_pinning() -> Tuple[bool, str]:
     if unbounded:
         return False, f"Dependencias sin cota superior detectadas en requirements.txt: {unbounded}"
 
-    return True, "requirements.txt 100% acotado con cotas superiores y requirements.lock sincronizado."
+    return True, "requirements.txt 100% acotado con cotas superiores, requirements.lock y composer.lock reconciliados."
 
 
 def check_sec_006_telnet_security_warning() -> Tuple[bool, str]:
