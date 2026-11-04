@@ -14,9 +14,20 @@ class SystemdController:
         """Espera delay_seconds para asegurar el envío del mensaje y reinicia los servicios del bot."""
         await asyncio.sleep(delay_seconds)
         try:
-            sudo_prefix = "sudo " if os.geteuid() != 0 else ""
-            cmd = f"{sudo_prefix}systemd-run --no-block systemctl restart tg-admin-bot.service || {sudo_prefix}nohup sh -c 'sleep 1 && systemctl restart tg-admin-bot.service' >/dev/null 2>&1 &"
-            os.system(cmd)
+            # F-04: Ejecución estructurada mediante argv-list sin subshell shell=True ni os.system
+            cmd_args = (["sudo"] if os.geteuid() != 0 else []) + [
+                "systemd-run",
+                "--no-block",
+                "systemctl",
+                "restart",
+                "tg-admin-bot.service",
+            ]
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_args,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
             logger.info("Comando de reinicio desacoplado de tg-admin-bot.service despachado con éxito.")
         except Exception as e:
             logger.error(f"Error al reiniciar tg-admin-bot.service: {e}")

@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Cluster;
 
 use App\Services\System\SonarPathService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 
 class RuntimeParityInspector
@@ -34,7 +37,8 @@ class RuntimeParityInspector
         $pythonVersion = 'unknown';
         $pyVenv = SonarPathService::pythonBinary();
         if (file_exists($pyVenv) && is_executable($pyVenv)) {
-            $pythonVersion = trim(@shell_exec("$pyVenv --version 2>/dev/null") ?: 'unknown');
+            $pyProc = Process::run([$pyVenv, '--version']);
+            $pythonVersion = $pyProc->successful() ? trim($pyProc->output()) : 'unknown';
         }
 
         $mariadbVersion = 'unknown';
@@ -46,7 +50,7 @@ class RuntimeParityInspector
         }
 
         return [
-            'system_version' => 'v5.51.20',
+            'system_version' => 'v5.51.30',
             'laravel_version' => app()->version(),
             'php_version' => PHP_VERSION,
             'python_version' => $pythonVersion,
@@ -243,12 +247,17 @@ class RuntimeParityInspector
     }
 
     /**
-     * Comprueba si un puerto está en escucha localmente mediante socket TCP o /proc.
+     * Comprueba si un puerto está en escucha localmente mediante socket TCP o ss estructurado (F-03).
      */
     protected function isLocalPortListening(int $port): bool
     {
+        // Validación estricta de rango de puerto (1-65535) contra inyección
+        if ($port < 1 || $port > 65535) {
+            return false;
+        }
+
         // Para puertos TCP rápidos:
-        if (in_array($port, [80, 443, 3306])) {
+        if (in_array($port, [80, 443, 3306], true)) {
             $fp = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.2);
             if ($fp) {
                 fclose($fp);
@@ -256,9 +265,17 @@ class RuntimeParityInspector
             }
         }
 
-        // Inspección rápida en ss / netstat si está disponible:
-        $ssCheck = trim(@shell_exec("ss -tuln | grep -q ':$port ' && echo 'yes' 2>/dev/null") ?: '');
-        return ($ssCheck === 'yes');
+        // Inspección segura sin shell mediante Symfony Process (F-03 / CWE-78)
+        try {
+            $process = Process::run(['ss', '-tuln']);
+            if ($process->successful()) {
+                return str_contains($process->output(), ":{$port} ");
+            }
+        } catch (\Throwable) {
+            // Degradación silenciosa en entornos con permisos restringidos
+        }
+
+        return false;
     }
 
     /**

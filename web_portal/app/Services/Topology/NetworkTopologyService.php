@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Topology;
 
 use App\Contracts\NetworkTopologyInterface;
@@ -11,6 +13,7 @@ use App\Models\NetworkTopologyLink;
 use App\Models\SnmpDevice;
 use App\Services\System\SonarPathService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Process;
 
 /**
  * Servicio unificado para la generación dinámica de la cartografía y topología de red.
@@ -387,7 +390,7 @@ class NetworkTopologyService implements NetworkTopologyInterface
     }
 
     /**
-     * Reconstruye los enlaces de topología ejecutando el constructor backend.
+     * Reconstruye los enlaces de topología ejecutando el constructor backend (F-07).
      */
     public function rebuildTopology(): array
     {
@@ -395,12 +398,16 @@ class NetworkTopologyService implements NetworkTopologyInterface
         $pythonBin = SonarPathService::pythonBinary();
 
         if (file_exists($builderScript) && file_exists($pythonBin)) {
-            $cmd = "{$pythonBin} {$builderScript} --build 2>&1";
-            $output = @shell_exec($cmd);
+            // F-07: Invocación estructurada mediante Process::run sin subshell shell=True ni interpolación cruda
+            $process = Process::run([$pythonBin, $builderScript, '--build']);
+            $output = trim($process->output() . "\n" . $process->errorOutput());
+
             return [
-                'success' => true,
-                'message' => 'Topología de red re-evaluada con éxito.',
-                'output' => $output ? trim($output) : '',
+                'success' => $process->successful(),
+                'message' => $process->successful()
+                    ? 'Topología de red re-evaluada con éxito.'
+                    : 'Error al reconstruir la topología de red.',
+                'output' => $output,
                 'links_count' => NetworkTopologyLink::count(),
             ];
         }
