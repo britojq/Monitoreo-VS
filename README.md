@@ -1,7 +1,7 @@
 # 🛡️ Plataforma Integral de Monitoreo y Administración Valle Seco
 ### *Centro de Operaciones y Monitoreo de Infraestructura de Red*
 
-[![Version](https://img.shields.io/badge/Version-v5.50.20-007acc?style=flat&logo=git&logoColor=white)](docs/PENDIENTES.md)
+[![Version](https://img.shields.io/badge/Version-v5.50.30-007acc?style=flat&logo=git&logoColor=white)](docs/PENDIENTES.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%2010%2F10-success?style=flat&logo=blueprint&logoColor=white)](docs/PENDIENTES.md)
 [![Quality Barrier](https://img.shields.io/badge/Quality%20Barrier-Zero--Fail-brightgreen?style=flat&logo=shield&logoColor=white)](tools/certify_system_integrity.py)
 [![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
@@ -14,7 +14,7 @@
 
 > **Organización:** Centro de Operaciones y Monitoreo de Redes  
 > **Autor / Administrador:** Operador ATIT ([@britojab](https://github.com/britojab) / [@britojq](https://github.com/britojq))  
-> **Versión Activa:** `v5.50.20` (Arquitectura Desacoplada SOLID 10/10)  
+> **Versión Activa:** `v5.50.30` (Arquitectura Desacoplada SOLID 10/10)  
 > **Arquitectura Modular:** Módulos de la Plataforma: [1 / 5] Activo (Módulo Actual: Sistema de Monitoreo)  
 > **Sistema Operativo Base:** Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server 22.04 / 24.04 LTS  
 > **Topología de Servidores:** Servidor Principal Master (`<MASTER_IP>`) / Servidor Réplica Slave (`<SLAVE_IP>`)  
@@ -256,7 +256,7 @@ estatus analisis_red
 
 # Auto-Discovery de Red y Detección Anti-Rogue
 estatus discovery --all                    # Escanear todas las subredes activas
-estatus discovery --subnet <SUBNET_CIDR>   # Escaneo de subred específica (ej: 192.168.1.0/24)
+estatus discovery --subnet <SUBNET_CIDR>   # Escaneo de subred específica (formato <SUBNET_CIDR>)
 
 # Ejecutar escaneo localmente sin enviar mensaje a Telegram
 estatus servicios --no-send
