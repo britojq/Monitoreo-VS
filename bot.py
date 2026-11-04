@@ -165,10 +165,68 @@ from bot_core.contracts.security_provider import (
     SecurityProviderProtocol,
     get_default_security_provider,
 )
-from monitor.proxy_cache import (
+from bot_core.services.proxy_cache import (
     ProxyInflightGuard,
     get_cached_proxy_result,
     save_cached_proxy_result,
+)
+
+# ------------------------------------------------------------------------------
+# 2.1 DELIMITACIÓN FORMAL DE API PÚBLICA / FACHADA (ARCH-001)
+# ------------------------------------------------------------------------------
+__all__ = (
+    # Ciclo de vida y orquestación
+    "main",
+    "bot_error_handler",
+    "register_all_handlers",
+    # Estado global y configuración
+    "CONFIG",
+    "COMMANDS",
+    "MESSAGES",
+    "SYSTEM_PROMPT",
+    "BASE_DIR",
+    "AI_DIR",
+    "DOCS_DIR",
+    "SYSTEM_PROMPT_PATH",
+    "load_config",
+    "save_config",
+    "ensure_golden_backup",
+    "restore_golden_backup",
+    "env_int",
+    "clear_auto_rollback_notice",
+    "get_auto_rollback_notice",
+    # Bóveda de hardware y seguridad criptográfica
+    "get_bot_token",
+    "get_owner_id",
+    "is_core_operational",
+    "get_core_status",
+    "activate_hardware_first_boot",
+    "migrate_core_token",
+    "check_authorization",
+    "is_authorized",
+    "log_security_audit_event",
+    "require_private_chat",
+    "get_security_warning_html",
+    # Red y proxies
+    "ProxyInflightGuard",
+    "get_cached_proxy_result",
+    "save_cached_proxy_result",
+    "select_working_connection",
+    "runtime_connection_watchdog",
+    "trigger_connection_failover",
+    "load_proxies_list",
+    "restart_bot_process",
+    "async_evaluate_best_connection",
+    # Utilidades y sanitización
+    "sanitizar_pii",
+    "check_ai_rate_limit",
+    "markdown_to_telegram_html",
+    "safe_reply_html",
+    "safe_deliver_update_result",
+    "split_message",
+    "AI_RATE_LIMITS",
+    "run_command_async",
+    "_exec_system_command",
 )
 
 # ------------------------------------------------------------------------------

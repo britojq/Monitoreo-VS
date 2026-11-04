@@ -24,7 +24,7 @@ from monitor.shield.secure_core import (
     get_core_bot_token,
     get_core_owner_id,
 )
-from monitor.proxy_cache import (
+from bot_core.services.proxy_cache import (
     ProxyInflightGuard,
     get_cached_proxy_result,
     save_cached_proxy_result,
