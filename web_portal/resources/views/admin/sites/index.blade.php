@@ -102,7 +102,7 @@
                             </span>
                         @endif
 
-                        <button type="button" onclick="openSiteHistoryModal({{ $site->id }}, '{{ addslashes($site->name) }}', '{{ $site->ip }}')" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white font-mono text-xs transition flex items-center gap-1 shadow-sm cursor-pointer" title="Ver Gráficos y Métricas Temporales">
+                        <button type="button" onclick="openSiteHistoryModal({{ $site->id }}, @js($site->name), @js($site->ip))" class="px-3 py-1.5 rounded-lg bg-obsidian-panel border border-obsidian-purple/40 text-obsidian-purple hover:bg-obsidian-purple hover:text-white font-mono text-xs transition flex items-center gap-1 shadow-sm cursor-pointer" title="Ver Gráficos y Métricas Temporales">
                             <span class="material-symbols-outlined text-sm">show_chart</span>
                             <span>Histórico</span>
                         </button>
@@ -118,7 +118,7 @@
                                     <span class="material-symbols-outlined text-sm">tune</span>
                                     <span>Modificar</span>
                                 </button>
-                                <form action="{{ route('admin.sites.destroy', $site->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar la sede [{{ addslashes($site->name) }}] y todos sus equipos asociados?');">
+                                <form action="{{ route('admin.sites.destroy', $site->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de eliminar la sede [' + @js($site->name) + '] y todos sus equipos asociados?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition inline-flex items-center" title="Eliminar Sede">
@@ -160,7 +160,7 @@
                             Equipos de Red Asociados ({{ $site->devices->where('is_active', true)->count() }} Activos de {{ $site->devices->count() }})
                         </span>
                         @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
-                            <button type="button" onclick="openAddDeviceModal({{ $site->id }}, '{{ addslashes($site->name) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-obsidian-panel border border-cyan-500/40 text-[11px] font-mono text-cyan-300 hover:bg-cyan-500 hover:text-black transition cursor-pointer">
+                            <button type="button" onclick="openAddDeviceModal({{ $site->id }}, @js($site->name))" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-obsidian-panel border border-cyan-500/40 text-[11px] font-mono text-cyan-300 hover:bg-cyan-500 hover:text-black transition cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">add</span>
                                 Agregar Dispositivo
                             </button>
@@ -221,7 +221,7 @@
                                                     </span>
                                                 @elseif($devAcc === 'SSH')
                                                     <button type="button"
-                                                            onclick="openSshTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                            onclick="openSshTerminal(@js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name))"
                                                             class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-emerald-950/90 hover:bg-emerald-500 hover:text-black border border-emerald-500/50 text-emerald-300 transition flex items-center gap-1 cursor-pointer shadow-xs"
                                                             title="Conectar por SSH (Puerto {{ $devPort }})">
                                                         <span class="material-symbols-outlined text-[11px]">terminal</span>
@@ -229,7 +229,7 @@
                                                     </button>
                                                 @elseif($devAcc === 'TELNET')
                                                     <button type="button"
-                                                            onclick="openTelnetTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                            onclick="openTelnetTerminal(@js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name))"
                                                             class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-cyan-950/90 hover:bg-cyan-500 hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-1 cursor-pointer shadow-xs"
                                                             title="Conectar por Telnet (Puerto {{ $devPort }})">
                                                         <span class="material-symbols-outlined text-[11px]">terminal</span>
@@ -245,7 +245,7 @@
                                                     </a>
                                                 @elseif($devAcc === 'VNC')
                                                     <button type="button"
-                                                            onclick="openVncViewer('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                            onclick="openVncViewer(@js($dev->ip), @js($dev->name), @js($site->name))"
                                                             class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-purple-950/90 hover:bg-purple-500 hover:text-white border border-purple-500/50 text-purple-300 transition flex items-center gap-1 cursor-pointer shadow-xs"
                                                             title="Conectar Escritorio Remoto VNC (Puerto {{ $devPort }})">
                                                          <span class="material-symbols-outlined text-[11px]">desktop_windows</span>
@@ -264,7 +264,7 @@
                                                 </span>
 
                                                 @if((auth()->user()->isAdmin() || auth()->user()->hasPermission('infra.manage_sites') || auth()->user()->hasPermission('infra.manage_devices')) && !$isClusterSlave)
-                                                    <form action="{{ route('admin.sites.devices.destroy', $dev->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar equipo [{{ addslashes($dev->name) }}]?');">
+                                                    <form action="{{ route('admin.sites.devices.destroy', $dev->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar equipo [' + @js($dev->name) + ']?');">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="text-red-400 hover:text-red-200 transition text-xs leading-none p-0.5 rounded hover:bg-red-950/30" title="Eliminar Equipo">
@@ -330,7 +330,7 @@
                                     <!-- CUADRO CON LA GRÁFICA HISTÓRICA DEBAJO DEL DISPOSITIVO -->
                                     <div class="mt-2.5 pt-2 border-t border-obsidian-border/50">
                                         <button type="button"
-                                                onclick="openDeviceHistoryModal({{ $netDevId }}, '{{ addslashes($dev->name) }}', '{{ $dev->ip }}', '{{ $dev->device_number ?: $dev->id }}')"
+                                                onclick="openDeviceHistoryModal({{ $netDevId }}, @js($dev->name), @js($dev->ip), @js($dev->device_number ?: (string)$dev->id))"
                                                 class="w-full py-1.5 px-2.5 rounded-lg bg-obsidian-panel/90 hover:bg-purple-950/40 border border-obsidian-border hover:border-purple-500/50 text-purple-300 hover:text-white font-mono text-[10.5px] font-semibold transition flex items-center justify-between group shadow-xs cursor-pointer"
                                                 title="Ver Gráfica Histórica de Telemetría (Ping 24h)">
                                             <span class="flex items-center gap-1.5">

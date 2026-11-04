@@ -29,9 +29,31 @@ STANDARD_DIRS = {
     "media", "mnt", "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr", "var"
 }
 
+ALLOWED_SYSTEM_BINARIES = {"df", "du", "find", "journalctl", "apt-get", "php", "sudo"}
+ALLOWED_CLEAN_ACTIONS = {
+    "apt_clean", "autoremove", "vacuum_journal",
+    "clean_rotated_logs", "clean_audit_artifacts",
+    "clean_telemetry", "clean_all_safe"
+}
+
 
 async def run_cmd_async(cmd: List[str], timeout: float = 6.0) -> Tuple[int, str]:
-    """Ejecuta un comando de sistema de forma asíncrona."""
+    """Ejecuta un comando de sistema de forma asíncrona validando binarios autorizados."""
+    if not cmd or not isinstance(cmd, list):
+        return 1, "Comando no estructurado inválido"
+
+    bin_name = Path(cmd[0]).name
+    if bin_name not in ALLOWED_SYSTEM_BINARIES:
+        logger.error(f"Intento de ejecución de binario no autorizado en system_cleaner: {bin_name}")
+        return 1, "Binario no autorizado"
+
+    if bin_name == "sudo" and len(cmd) > 1:
+        sub_arg = cmd[1]
+        sub_bin = sub_arg.split("=")[0] if "=" in sub_arg else Path(sub_arg).name
+        if sub_bin not in ALLOWED_SYSTEM_BINARIES and not sub_arg.startswith("DEBIAN_FRONTEND="):
+            logger.error(f"Sub-binario no autorizado bajo sudo: {sub_bin}")
+            return 1, "Sub-binario no autorizado"
+
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -169,6 +191,9 @@ async def scan_top_large_files() -> List[Tuple[str, str]]:
 
 async def execute_clean_task(action: str) -> str:
     """Ejecuta una acción de limpieza específica y devuelve el resultado con feedback."""
+    if action not in ALLOWED_CLEAN_ACTIONS:
+        return f"❌ Acción de limpieza no autorizada: <code>{html.escape(str(action))}</code>"
+
     if action == "apt_clean":
         rc, _ = await run_cmd_async(["sudo", "apt-get", "clean"], timeout=10.0)
         return "✅ <b>Caché de APT limpiada con éxito</b> (<code>apt-get clean</code>)." if rc == 0 else "❌ Error limpiando caché de APT."

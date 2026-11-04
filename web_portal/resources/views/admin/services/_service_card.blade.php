@@ -137,7 +137,7 @@
 
     <!-- PIE DEL CUADRO: GRÁFICA HISTÓRICA DEDICADA + ACCIONES ADMIN -->
     <div class="pt-2.5 border-t border-obsidian-border/40 flex items-center gap-1.5">
-        <button type="button" onclick="openServiceHistoryModal({{ $s->id }}, '{{ addslashes($cleanName) }}', '{{ $s->id }}', '{{ $s->type }}')" class="flex-1 py-1.5 px-2 rounded-lg bg-obsidian-panel border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-black transition flex items-center justify-between text-[11px] font-semibold group cursor-pointer shadow-xs">
+        <button type="button" onclick="openServiceHistoryModal({{ $s->id }}, @js($cleanName), '{{ $s->id }}', @js($s->type))" class="flex-1 py-1.5 px-2 rounded-lg bg-obsidian-panel border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-black transition flex items-center justify-between text-[11px] font-semibold group cursor-pointer shadow-xs">
             <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-sm text-cyan-400 group-hover:text-black">show_chart</span>
                 <span>Gráfica Histórica</span>
@@ -157,7 +157,7 @@
                 <button type="button" onclick="openEditServiceModal({{ json_encode($s) }})" class="p-1.5 rounded-lg bg-obsidian-panel border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition cursor-pointer shrink-0" title="Editar Parámetros">
                     <span class="material-symbols-outlined text-sm">edit</span>
                 </button>
-                <form action="{{ route('admin.services.destroy', $s->id) }}" method="POST" class="inline shrink-0" onsubmit="return confirm('¿Está seguro de eliminar el servicio [{{ addslashes($s->name) }}]?');">
+                <form action="{{ route('admin.services.destroy', $s->id) }}" method="POST" class="inline shrink-0" onsubmit="return confirm('¿Está seguro de eliminar el servicio [' + @js($s->name) + ']?');">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="p-1.5 rounded-lg bg-obsidian-panel border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white transition cursor-pointer" title="Eliminar Servicio">

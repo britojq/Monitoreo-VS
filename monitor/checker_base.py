@@ -123,9 +123,17 @@ async def check_dns(dns_server: str, test_host: str, timeout: float = 5.0) -> Tu
         return False, "0", "Servidor DNS no configurado"
 
     target_host = test_host if test_host else "1.1.1.1"
+
+    from monitor.infrastructure.validators import validate_ipv4, validate_hostname
+    clean_dns = dns_server.lstrip("@").strip()
+    if not (validate_ipv4(clean_dns) or validate_hostname(clean_dns)):
+        return False, "0", f"Servidor DNS con formato inválido: {dns_server}"
+    if not (validate_ipv4(target_host) or validate_hostname(target_host)):
+        return False, "0", f"Host de prueba DNS con formato inválido: {target_host}"
+
     try:
         proc = await asyncio.create_subprocess_exec(
-            "dig", f"@{dns_server}", target_host, "+time=2", "+tries=2",
+            "dig", f"@{clean_dns}", target_host, "+time=2", "+tries=2",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -231,7 +239,12 @@ async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[b
 
 async def check_dhcp(interface: str = "eth0", timeout: float = 13.0) -> Tuple[bool, str, str]:
     """Verifica si un servidor DHCP ofrece concesiones en la red local usando broadcast con nmap."""
+    from monitor.infrastructure.validators import validate_network_interface
+    if not validate_network_interface(interface):
+        return False, "0", f"Nombre de interfaz de red inválido: {interface}"
+
     active_iface = get_active_network_interface(interface)
+
     try:
         proc = await asyncio.create_subprocess_exec(
             "sudo", "nmap", "--script", "broadcast-dhcp-discover", "-e", active_iface,
@@ -253,6 +266,11 @@ async def check_cups(cups_ip_port: str, timeout: float = 4.0) -> Tuple[bool, str
     """Verifica la cola de impresión de un servidor CUPS."""
     if not cups_ip_port or cups_ip_port.startswith("0.0.0.0"):
         return False, "0", "Servidor CUPS no configurado"
+
+    cups_host = cups_ip_port.split(":")[0].strip()
+    from monitor.infrastructure.validators import validate_ipv4, validate_hostname
+    if not (validate_ipv4(cups_host) or validate_hostname(cups_host)):
+        return False, "0", f"Servidor CUPS con formato de host inválido: {cups_host}"
 
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -294,6 +312,11 @@ async def check_ping(ip: str, count: int = 3, timeout: float = 3.0) -> Tuple[boo
     """Verifica conectividad ICMP (Ping) hacia una dirección IP."""
     if not ip or ip.startswith("0.0.0.0") or ip == "127.0.0.1":
         return False, "0", "IP no asignada o inválida (0.0.0.0)"
+
+    from monitor.infrastructure.validators import validate_ipv4, validate_hostname
+    clean_ip = ip.strip()
+    if not (validate_ipv4(clean_ip) or validate_hostname(clean_ip)):
+        return False, "0", f"Formato de host o dirección IP inválido: {ip}"
 
     try:
         proc = await asyncio.create_subprocess_exec(

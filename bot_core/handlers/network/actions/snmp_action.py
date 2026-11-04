@@ -19,6 +19,7 @@ from bot_core.handlers.network.helpers import get_active_config, reply
 from bot_core.security.auth import check_authorization
 from monitor.core_shield import IMMUTABLE_OWNER_ID
 from monitor.infrastructure.db_context import db_cursor
+from monitor.infrastructure.validators import validate_snmp_target
 
 logger = logging.getLogger("bot.handlers.network.snmp")
 
@@ -86,7 +87,7 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                         st_txt = d["last_poll_status"] or "Pendiente"
 
                     name_disp = html.escape(d["sys_name"] or d["name"])
-                    text += f"{icon} <code>{d['ip_address']}</code> - <b>{name_disp}</b> [{d['device_type']}] ({st_txt})\n"
+                    text += f"{icon} <code>{html.escape(str(d['ip_address']))}</code> - <b>{name_disp}</b> [{html.escape(str(d['device_type']))}] ({html.escape(str(st_txt))})\n"
 
             text += (
                 "\n💡 <i>Subcomandos disponibles:</i>\n"
@@ -106,6 +107,10 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 return
 
             target = args[1].strip()
+            if not validate_snmp_target(target):
+                await reply(update.message, "⚠️ <b>Parámetro inválido:</b> El objetivo debe ser una dirección IPv4, ID numérico o hostname válido.")
+                return
+
             with db_cursor() as cur:
                 cur.execute("""
                     SELECT id, name, ip_address, snmp_version, device_type, vendor, model,
@@ -133,13 +138,13 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
             text = (
                 f"📡 <b>Detalle SNMP: {html.escape(dev['name'])}</b>\n\n"
-                f"• <b>Dirección IP:</b> <code>{dev['ip_address']}</code> (v{dev['snmp_version']})\n"
-                f"• <b>Tipo / Hardware:</b> {dev['device_type']} | {html.escape(dev['vendor'] or 'N/A')} {html.escape(dev['model'] or '')}\n"
+                f"• <b>Dirección IP:</b> <code>{html.escape(str(dev['ip_address']))}</code> (v{html.escape(str(dev['snmp_version']))})\n"
+                f"• <b>Tipo / Hardware:</b> {html.escape(str(dev['device_type']))} | {html.escape(dev['vendor'] or 'N/A')} {html.escape(dev['model'] or '')}\n"
                 f"• <b>SysName:</b> <code>{html.escape(dev['sys_name'] or 'N/A')}</code>\n"
                 f"• <b>Ubicación:</b> {html.escape(dev['sys_location'] or 'N/A')}\n"
                 f"• <b>Uptime:</b> {uptime_str}\n"
-                f"• <b>Estado Poll:</b> {st_emoji} {dev['last_poll_status']} (Fallas: {dev['consecutive_failures']})\n"
-                f"• <b>Último Sondeo:</b> {dev['last_poll_at'] or 'Pendiente'}\n"
+                f"• <b>Estado Poll:</b> {st_emoji} {html.escape(str(dev['last_poll_status']))} (Fallas: {html.escape(str(dev['consecutive_failures']))})\n"
+                f"• <b>Último Sondeo:</b> {html.escape(str(dev['last_poll_at'] or 'Pendiente'))}\n"
                 f"• <b>Puertos Totales:</b> {if_count}\n"
             )
             if dev["sys_description"]:
@@ -152,6 +157,10 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 return
 
             target = args[1].strip()
+            if not validate_snmp_target(target):
+                await reply(update.message, "⚠️ <b>Parámetro inválido:</b> El objetivo debe ser una dirección IPv4, ID numérico o hostname válido.")
+                return
+
             with db_cursor() as cur:
                 cur.execute("SELECT id, name, ip_address FROM snmp_devices WHERE ip_address = %s OR name = %s OR id = %s LIMIT 1", (target, target, target if target.isdigit() else 0))
                 dev = cur.fetchone()
@@ -168,7 +177,7 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 """, (dev["id"],))
                 interfaces = cur.fetchall()
 
-            text = f"🔌 <b>Interfaces de {html.escape(dev['name'])} (<code>{dev['ip_address']}</code>):</b>\n\n"
+            text = f"🔌 <b>Interfaces de {html.escape(dev['name'])} (<code>{html.escape(str(dev['ip_address']))}</code>):</b>\n\n"
             if not interfaces:
                 text += "<i>No hay interfaces descubiertas aún. Ejecute el descubrimiento vía portal web o /snmp poll.</i>\n"
             else:
@@ -176,7 +185,7 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                     op_icon = "🟢" if iface["if_oper_status"] == "up" else "🔴"
                     spd = f"{(iface['if_speed'] // 1000000)}M" if iface["if_speed"] else ""
                     mon_txt = " [Monitoreado]" if iface["is_monitored"] else ""
-                    text += f"{op_icon} <b>#{iface['if_index']} {html.escape(iface['if_name'] or '')}</b>: {iface['if_oper_status'].upper()} {spd}{mon_txt}\n"
+                    text += f"{op_icon} <b>#{iface['if_index']} {html.escape(iface['if_name'] or '')}</b>: {html.escape(str(iface['if_oper_status'])).upper()} {spd}{mon_txt}\n"
 
                 text += "\n<i>(Mostrando primeras 25 interfaces. Ver inventario completo en portal web: /admin/snmp)</i>"
 
@@ -192,6 +201,10 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 return
 
             target = args[1].strip()
+            if not validate_snmp_target(target):
+                await reply(update.message, "⚠️ <b>Parámetro inválido:</b> El objetivo debe ser una dirección IPv4, ID numérico o hostname válido.")
+                return
+
             with db_cursor() as cur:
                 cur.execute("SELECT id, name, ip_address FROM snmp_devices WHERE ip_address = %s OR name = %s OR id = %s LIMIT 1", (target, target, target if target.isdigit() else 0))
                 dev = cur.fetchone()
@@ -200,12 +213,13 @@ async def handle_snmp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 await reply(update.message, f"❌ Dispositivo <code>{html.escape(target)}</code> no encontrado.")
                 return
 
-            await reply(update.message, f"⏳ <i>Ejecutando sondeo SNMP inmediato para {html.escape(dev['name'])} (<code>{dev['ip_address']}</code>)...</i>")
+            device_id = str(int(dev['id']))
+            await reply(update.message, f"⏳ <i>Ejecutando sondeo SNMP inmediato para {html.escape(dev['name'])} (<code>{html.escape(str(dev['ip_address']))}</code>)...</i>")
 
             python_bin = sys.executable or "/opt/sonar/venv/bin/python3"
             poller_script = Path(__file__).resolve().parent.parent.parent.parent / "monitor" / "snmp_poller.py"
             proc = await asyncio.create_subprocess_exec(
-                python_bin, str(poller_script), "--poll", "--device", str(dev['id']),
+                python_bin, str(poller_script), "--poll", "--device", device_id,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )

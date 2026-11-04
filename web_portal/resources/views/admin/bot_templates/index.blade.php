@@ -319,7 +319,7 @@ function updateLivePreview() {
     const impact = document.getElementById('input_impact_statement') ? document.getElementById('input_impact_statement').value : '';
     const signature = document.getElementById('input_default_signature') ? document.getElementById('input_default_signature').value : '';
     const slogan = document.getElementById('input_slogan') ? document.getElementById('input_slogan').value : '';
-    const key = '{{ $currentTemplate ? $currentTemplate->template_key : "servicios" }}';
+    const key = @json($currentTemplate ? $currentTemplate->template_key : "servicios");
 
     fetch('{{ route('admin.bot.templates.preview') }}', {
         method: 'POST',

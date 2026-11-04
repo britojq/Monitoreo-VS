@@ -296,7 +296,7 @@
                                                     @if($devAcc === 'SSH')
                                                         @if($canRemote)
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openSshTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    onclick="event.stopPropagation(); openSshTerminal(@js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name))"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-950/90 hover:bg-emerald-500 hover:text-black border border-emerald-500/50 text-emerald-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
                                                                     title="Conectar Terminal SSH ({{ $dev->ip }}:{{ $devPort }})">
                                                                 <span class="material-symbols-outlined text-[10px]">terminal</span>
@@ -304,7 +304,7 @@
                                                             </button>
                                                         @else
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openAccessModal('SSH', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    onclick="event.stopPropagation(); openAccessModal('SSH', @js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name), false)"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
                                                                     title="Debe iniciar sesión para acceder por SSH">
                                                                 <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
@@ -314,7 +314,7 @@
                                                     @elseif($devAcc === 'TELNET')
                                                         @if($canRemote)
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openTelnetTerminal('{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    onclick="event.stopPropagation(); openTelnetTerminal(@js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name))"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 hover:bg-cyan-500 hover:text-black border border-cyan-500/50 text-cyan-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
                                                                     title="Conectar Terminal Telnet ({{ $dev->ip }}:{{ $devPort }})">
                                                                 <span class="material-symbols-outlined text-[10px]">terminal</span>
@@ -322,7 +322,7 @@
                                                             </button>
                                                         @else
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openAccessModal('TELNET', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    onclick="event.stopPropagation(); openAccessModal('TELNET', @js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name), false)"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
                                                                     title="Debe iniciar sesión para acceder por Telnet">
                                                                 <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
@@ -340,7 +340,7 @@
                                                             </a>
                                                         @else
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openAccessModal('WEB', '{{ $dev->ip }}', {{ $devPort }}, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    onclick="event.stopPropagation(); openAccessModal('WEB', @js($dev->ip), {{ (int)$devPort }}, @js($dev->name), @js($site->name), false)"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
                                                                     title="Debe iniciar sesión para acceder al panel web">
                                                                 <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
@@ -350,7 +350,7 @@
                                                     @elseif($devAcc === 'VNC')
                                                         @if($canRemote)
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openVncViewer('{{ $dev->ip }}', '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}')"
+                                                                    onclick="event.stopPropagation(); openVncViewer(@js($dev->ip), @js($dev->name), @js($site->name))"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-purple-950/90 hover:bg-purple-500 hover:text-white border border-purple-500/50 text-purple-300 transition flex items-center gap-0.5 shrink-0 shadow-sm cursor-pointer"
                                                                     title="Conectar Escritorio Remoto VNC ({{ $dev->ip }}:{{ $devPort }})">
                                                                 <span class="material-symbols-outlined text-[10px]">desktop_windows</span>
@@ -358,7 +358,7 @@
                                                             </button>
                                                         @else
                                                             <button type="button"
-                                                                    onclick="event.stopPropagation(); openAccessModal('VNC', 5900, '{{ addslashes($dev->name) }}', '{{ addslashes($site->name) }}', false)"
+                                                                    onclick="event.stopPropagation(); openAccessModal('VNC', 5900, @js($dev->name), @js($site->name), false)"
                                                                     class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-obsidian-card/90 hover:bg-amber-950/40 border border-obsidian-border hover:border-amber-500/40 text-obsidian-muted hover:text-amber-300 transition flex items-center gap-0.5 shrink-0 cursor-pointer"
                                                                     title="Debe iniciar sesión para conectar por VNC">
                                                                 <span class="material-symbols-outlined text-[10px] text-amber-400/80">lock</span>
