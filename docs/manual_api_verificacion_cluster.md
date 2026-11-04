@@ -144,7 +144,7 @@ curl -s \
   },
   "runtime_parity": {
     "platform": {
-      "system_version": "v5.52.50",
+      "system_version": "v5.52.60",
       "laravel_version": "13.11.2",
       "php_version": "8.4.26",
       "hostname": "CENCARATIT"
