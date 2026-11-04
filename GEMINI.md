@@ -22,9 +22,23 @@ Para erradicar amnesias, pérdidas de contexto y truncados por tamaño:
   ```bash
   python tools/close_phase.py --task "..." --phase "..." --next "..."
   ```
-* **El Sello de Continuidad y Certificación Atómica Dual:** Toda respuesta de entrega técnica debe culminar obligatoriamente con el bloque del Sello emitido por `tools/close_phase.py`:
+* **El Sello de Continuidad y Certificación Atómica Dual:** Toda respuesta de entrega técnica debe culminar obligatoriamente con el bloque del Sello emitido por `tools/close_phase.py`, incluyendo de manera ineludible el Reporte Formal de Entrega y Sincronización de Ambos Repositorios (Privado y Público) con sus hashes completos, ramas, tags y estado verificado:
   ```markdown
   ---
+  📦 REPORTE FORMAL DE ENTREGA Y ESTADO DE REPOSITORIOS (DUAL)
+  * Repositorio Privado : https://github.com/britojq/tgbot-pyt-bashfull.git
+    - Rama              : master
+    - Commit Hash       : [full_hash] (`[hash]`)
+    - Tag Oficial       : v[version]
+    - Estado Remoto     : Sincronizado (git push origin master v[version])
+
+  * Repositorio Público : https://github.com/britojq/Monitoreo-VS.git
+    - Rama              : master
+    - Commit Hash       : [public_full_hash] (`[public_hash]`)
+    - Tag Oficial       : v[version]
+    - Sanitización      : 100% Conforme (0 credenciales, 0 tokens, IPs privadas enmascaradas)
+    - Estado Remoto     : Sincronizado y publicado en GitHub
+
   🛡️ SELLO DE CONTINUIDAD Y CERTIFICACIÓN ATÓMICA DUAL
   * Commit Oficial Privado : `[hash]` (tgbot-pyt-bashfull:master)
   * Commit Oficial Público : `[public_hash]` (Monitoreo-VS:master)
@@ -34,7 +48,7 @@ Para erradicar amnesias, pérdidas de contexto y truncados por tamaño:
   * Certificación          : tools/certify_system_integrity.py (100% Zero-Fail)
   ---
   ```
-  Si este sello con datos reales no está presente en la respuesta, **la entrega carece de validez técnica y será rechazada**.
+  Si este sello y reporte con datos reales no está presente en la respuesta, **la entrega carece de validez técnica y será rechazada**.
 
 ### 3. El Ciclo de 6 Pasos Ineludible
 * **Paso 1: Transcripción Textual:** Registrar la orden exacta en `docs/indicaciones.md`.
@@ -148,3 +162,4 @@ Antes de entregar cualquier código o respuesta al usuario, el asistente debe va
 5. **¿Se mantuvo la raíz del proyecto limpia sin archivos `.md` sueltos?**
 6. **¿Se ejecutó la certificación `tools/certify_system_integrity.py` con 100% Zero-Fail (incluyendo Fase 6 de Estado Vivo)?**
 7. **¿Se ejecutó `tools/close_phase.py` y se estampó el Sello de Continuidad y Certificación Atómica con su hash real?**
+8. **¿Se incluyó de forma proactiva y explícita el reporte formal de entrega y sincronización de AMBOS repositorios (privado y público) sin esperar a que el usuario lo solicite?**
