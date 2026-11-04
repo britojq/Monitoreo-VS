@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Services\ClusterConfigService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class ClusterVerifyApiTest extends TestCase
@@ -16,8 +17,23 @@ class ClusterVerifyApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Cache::flush();
         $clusterService = new ClusterConfigService();
         $this->clusterToken = $clusterService->getClusterToken();
+    }
+
+    protected function clusterHeaders(?string $token = null, string $payload = ''): array
+    {
+        $token = $token ?? $this->clusterToken;
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', "{$timestamp}:{$payload}", $token);
+
+        return [
+            'X-Cluster-Token' => $token,
+            'X-Cluster-Timestamp' => $timestamp,
+            'X-Cluster-Signature' => $signature,
+            'Accept' => 'application/json',
+        ];
     }
 
     /**
@@ -34,9 +50,7 @@ class ClusterVerifyApiTest extends TestCase
      */
     public function test_verify_endpoint_with_invalid_token_returns_404(): void
     {
-        $response = $this->getJson(route('api.cluster.verify'), [
-            'X-Cluster-Token' => 'token_totalmente_falso_1234567890',
-        ]);
+        $response = $this->getJson(route('api.cluster.verify'), $this->clusterHeaders('token_totalmente_falso_1234567890'));
         $response->assertStatus(404);
     }
 
@@ -45,9 +59,7 @@ class ClusterVerifyApiTest extends TestCase
      */
     public function test_verify_endpoint_with_valid_token_returns_full_health_structure(): void
     {
-        $response = $this->getJson(route('api.cluster.verify'), [
-            'X-Cluster-Token' => $this->clusterToken,
-        ]);
+        $response = $this->getJson(route('api.cluster.verify'), $this->clusterHeaders());
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -115,9 +127,7 @@ class ClusterVerifyApiTest extends TestCase
      */
     public function test_verify_endpoint_scoped_to_installers(): void
     {
-        $response = $this->getJson(route('api.cluster.verify', ['scope' => 'installers']), [
-            'X-Cluster-Token' => $this->clusterToken,
-        ]);
+        $response = $this->getJson(route('api.cluster.verify', ['scope' => 'installers']), $this->clusterHeaders());
 
         $response->assertStatus(200);
         $response->assertJsonPath('scope', 'installers');
@@ -132,9 +142,7 @@ class ClusterVerifyApiTest extends TestCase
     {
         $initialCount = AuditLog::where('event', 'cluster_api_verification')->count();
 
-        $this->getJson(route('api.cluster.verify', ['scope' => 'agents']), [
-            'X-Cluster-Token' => $this->clusterToken,
-        ]);
+        $this->getJson(route('api.cluster.verify', ['scope' => 'agents']), $this->clusterHeaders());
 
         $newCount = AuditLog::where('event', 'cluster_api_verification')->count();
         $this->assertEquals($initialCount + 1, $newCount);
@@ -150,9 +158,7 @@ class ClusterVerifyApiTest extends TestCase
      */
     public function test_audit_trail_endpoint_returns_cluster_logs(): void
     {
-        $response = $this->getJson(route('api.cluster.audit-trail', ['limit' => 10]), [
-            'X-Cluster-Token' => $this->clusterToken,
-        ]);
+        $response = $this->getJson(route('api.cluster.audit-trail', ['limit' => 10]), $this->clusterHeaders());
 
         $response->assertStatus(200);
         $response->assertJsonStructure([

@@ -410,6 +410,16 @@
     }
 
     (function() {
+        const escHtml = (str) => {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
         const typeIcons = {
             'WEB': 'language',
             'DNS': 'dns',
@@ -460,14 +470,16 @@
                         activeContainer.innerHTML = active.map(s => {
                             const type = (s.type || 'SISTEMA').toUpperCase();
                             const icon = getIcon(type);
+                            const safeName = escHtml(s.name);
+                            const safeSearch = escHtml(String(s.name || '').toLowerCase());
                             return `
                                 <div class="py-2 px-3 rounded-xl bg-[#040c17]/90 hover:bg-[#07192e] border border-obsidian-border/70 hover:border-emerald-500/40 transition flex items-center gap-2.5 group item-searchable select-none shadow-xs"
-                                     data-search="${s.name.toLowerCase()}">
+                                     data-search="${safeSearch}">
                                     <div class="w-6 h-6 rounded-md bg-emerald-950/70 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                                         <span class="material-symbols-outlined text-sm">${icon}</span>
                                     </div>
                                     <span class="text-xs font-semibold text-white group-hover:text-emerald-300 transition-colors truncate font-mono">
-                                        ${s.name}
+                                        ${safeName}
                                     </span>
                                 </div>
                             `;
@@ -517,14 +529,16 @@
                         `;
                     } else {
                         downContainer.innerHTML = down.map(s => {
+                            const safeName = escHtml(s.name);
+                            const safeSearch = escHtml(String(s.name || '').toLowerCase());
                             return `
                                 <div class="py-2 px-3 rounded-xl bg-red-950/25 hover:bg-red-950/35 border border-red-500/40 transition flex items-center gap-2.5 group item-searchable select-none shadow-xs"
-                                     data-search="${s.name.toLowerCase()}">
+                                     data-search="${safeSearch}">
                                     <div class="w-6 h-6 rounded-md bg-red-950/80 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
                                         <span class="material-symbols-outlined text-sm">cloud_off</span>
                                     </div>
                                     <span class="text-xs font-semibold text-red-200 group-hover:text-white transition-colors truncate font-mono">
-                                        ${s.name}
+                                        ${safeName}
                                     </span>
                                 </div>
                             `;

@@ -142,14 +142,20 @@ class McpOllamaOrchestratorTest extends TestCase
         ]);
 
         $clusterToken = (new \App\Services\ClusterConfigService())->getClusterToken();
-
-        $response = $this->withHeaders([
-            'X-Cluster-Token' => $clusterToken,
-        ])->postJson(route('api.ai.chat'), [
+        $timestamp = (string) time();
+        $body = [
             'message' => 'Consulta autorizada desde cluster',
             'user_name' => 'Operador NOC Telegram',
             'user_role' => 'Administrador',
-        ]);
+        ];
+        $rawPayload = json_encode($body, JSON_THROW_ON_ERROR);
+        $signature = hash_hmac('sha256', "{$timestamp}:{$rawPayload}", $clusterToken);
+
+        $response = $this->withHeaders([
+            'X-Cluster-Token' => $clusterToken,
+            'X-Cluster-Timestamp' => $timestamp,
+            'X-Cluster-Signature' => $signature,
+        ])->postJson(route('api.ai.chat'), $body);
 
         $response->assertStatus(200)
             ->assertJson([

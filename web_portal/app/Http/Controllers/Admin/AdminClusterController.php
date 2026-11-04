@@ -77,10 +77,14 @@ class AdminClusterController extends Controller
         }
 
         $start = microtime(true);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "{$timestamp}:", $token);
         try {
             $response = Http::timeout(5)
                 ->withHeaders([
                     'X-Cluster-Token' => $token,
+                    'X-Cluster-Timestamp' => (string) $timestamp,
+                    'X-Cluster-Signature' => $signature,
                     'Accept' => 'application/json',
                 ])
                 ->get("{$targetUrl}/api/cluster/ping");

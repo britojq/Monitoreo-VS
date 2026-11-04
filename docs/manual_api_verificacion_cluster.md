@@ -39,11 +39,21 @@ El módulo está diseñado bajo el estándar **SOLID** en Laravel:
 
 Todos los endpoints residen bajo el prefijo `/api/cluster/` y están protegidos por el middleware `ValidateClusterToken`.
 
-### Cabecera Obligatoria de Autenticación
+### Cabeceras Obligatorias de Autenticación y Anti-Replay (Fail-Closed F-09)
+Toda solicitud hacia los endpoints de clúster debe incluir de forma obligatoria las siguientes cabeceras:
 ```http
 X-Cluster-Token: <CLUSTER_TOKEN_SHA256>
+X-Cluster-Timestamp: <TIMESTAMP_UNIX>
+X-Cluster-Signature: <HMAC_SHA256_HEX>
 ```
-*(Alternativamente puede enviarse como parámetro query `?token=<CLUSTER_TOKEN_SHA256>`)*
+
+> [!IMPORTANT]
+> **Eliminación de Parámetros en Query String y Blindaje Anti-Replay:**
+> 1. Queda estrictamente erradicado el envío de credenciales mediante query params (`?cluster_token=...` o `?token=...`).
+> 2. `X-Cluster-Timestamp` debe encontrarse dentro de una ventana de tolerancia máxima de ±300 segundos respecto al reloj del servidor.
+> 3. `X-Cluster-Signature` es el HMAC-SHA256 calculado con la clave `X-Cluster-Token` sobre el string `"{timestamp}:{raw_payload}"` (para peticiones `GET` sin cuerpo, el payload es vacío: `"{timestamp}:"`).
+> 4. Toda firma vista es almacenada en caché volátil por 300 segundos; cualquier intento de reutilización de la misma firma (ataque de repetición / Replay Attack) es abortado con código HTTP `403 Signature Already Used`.
+> 5. Si cualquiera de las cabeceras requeridas no está presente, el middleware responde `404 Not Found` (Stealth Camouflage).
 
 ---
 
@@ -53,9 +63,16 @@ X-Cluster-Token: <CLUSTER_TOKEN_SHA256>
 - **Parámetros Opcionales:**
   - `scope`: Ámbito de inspección (`all`, `installers`, `agents`, `parity`). Por defecto: `all`.
 
-#### Ejemplo de Solicitud (cURL):
+#### Ejemplo de Solicitud (Bash / cURL):
 ```bash
-curl -s -H "X-Cluster-Token: YOUR_CLUSTER_TOKEN" \
+TIMESTAMP=$(date +%s)
+TOKEN="YOUR_CLUSTER_TOKEN"
+SIGNATURE=$(printf "%s:" "$TIMESTAMP" | openssl dgst -sha256 -hmac "$TOKEN" | awk '{print $2}')
+
+curl -s \
+  -H "X-Cluster-Token: $TOKEN" \
+  -H "X-Cluster-Timestamp: $TIMESTAMP" \
+  -H "X-Cluster-Signature: $SIGNATURE" \
   "http://192.168.1.250/api/cluster/verify?scope=all"
 ```
 
@@ -127,7 +144,7 @@ curl -s -H "X-Cluster-Token: YOUR_CLUSTER_TOKEN" \
   },
   "runtime_parity": {
     "platform": {
-      "system_version": "v5.51.40",
+      "system_version": "v5.51.50",
       "laravel_version": "13.11.2",
       "php_version": "8.4.26",
       "hostname": "CENCARATIT"

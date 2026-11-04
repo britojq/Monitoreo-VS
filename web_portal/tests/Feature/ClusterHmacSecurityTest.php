@@ -73,15 +73,50 @@ class ClusterHmacSecurityTest extends TestCase
         ]);
     }
 
-    public function test_cluster_endpoint_retains_backward_compatibility_for_legacy_token(): void
+    public function test_cluster_endpoint_rejects_missing_timestamp_or_signature(): void
     {
+        // Fail-closed (F-09): Solicitud con token válido pero sin cabeceras HMAC o Timestamp responde 404
         $response = $this->getJson(route('api.cluster.ping'), [
             'X-Cluster-Token' => $this->clusterToken,
         ]);
 
-        $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true,
+        $response->assertStatus(404);
+    }
+
+    public function test_cluster_endpoint_rejects_query_parameter_token(): void
+    {
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "{$timestamp}:", $this->clusterToken);
+
+        $response = $this->getJson(route('api.cluster.ping', ['cluster_token' => $this->clusterToken]), [
+            'X-Cluster-Timestamp' => (string) $timestamp,
+            'X-Cluster-Signature' => $signature,
+        ]);
+
+        $response->assertStatus(404);
+    }
+
+    public function test_cluster_endpoint_rejects_replayed_signature(): void
+    {
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "{$timestamp}:", $this->clusterToken);
+
+        $headers = [
+            'X-Cluster-Token' => $this->clusterToken,
+            'X-Cluster-Timestamp' => (string) $timestamp,
+            'X-Cluster-Signature' => $signature,
+            'Accept' => 'application/json',
+        ];
+
+        // Primer despacho: autorizada
+        $firstResponse = $this->get(route('api.cluster.ping'), $headers);
+        $firstResponse->assertStatus(200);
+
+        // Segundo despacho idéntico dentro de la ventana de 300s (Replay Attack): rechazada con 403
+        $replayResponse = $this->get(route('api.cluster.ping'), $headers);
+        $replayResponse->assertStatus(403);
+        $replayResponse->assertJson([
+            'message' => 'Signature Already Used',
         ]);
     }
 

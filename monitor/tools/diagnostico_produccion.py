@@ -9,6 +9,8 @@ Ubicación: /opt/sonar/monitor/tools/diagnostico_produccion.py
 ==============================================================================
 """
 
+import hashlib
+import hmac
 import json
 import sys
 import time
@@ -48,8 +50,12 @@ def main():
         target_url = sys.argv[1].rstrip("/")
 
     endpoint = f"{target_url}/api/cluster/diagnostics"
+    ts = str(int(time.time()))
+    sig = hmac.new(cluster_token.encode("utf-8"), f"{ts}:".encode("utf-8"), hashlib.sha256).hexdigest()
     headers = {
         "X-Cluster-Token": cluster_token,
+        "X-Cluster-Timestamp": ts,
+        "X-Cluster-Signature": sig,
         "Accept": "application/json",
         "User-Agent": "ATIT-ValleSeco-DiagnosticsCLI/1.0"
     }

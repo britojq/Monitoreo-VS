@@ -149,3 +149,46 @@ def test_facades_backward_compatibility():
         assert is_telegram_group_ai_enabled() is True
         mock_cfg.set_group_ai_enabled.return_value = True
         assert set_telegram_group_ai_enabled(False) is True
+
+
+def test_mcp_cluster_bridge_sends_hmac_and_timestamp():
+    """Valida que McpClusterBridge firme la petición con HMAC-SHA256 y envíe timestamp (F-09)."""
+    import hashlib
+    import hmac
+    from bot_core.services.mcp_cluster_bridge import McpClusterBridge
+
+    token = "test_cluster_secret_key"
+    bridge = McpClusterBridge(
+        api_url="http://127.0.0.1/api/v1/ai/chat",
+        cluster_token=token,
+    )
+
+    with patch("requests.post") as mock_post:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "reply": "Respuesta mock exitosa",
+        }
+        mock_post.return_value = mock_response
+
+        result = bridge.ask(message="test message", user_name="Admin", user_role="Admin")
+
+        assert result.success is True
+        assert result.reply == "Respuesta mock exitosa"
+        mock_post.assert_called_once()
+        _args, kwargs = mock_post.call_args
+        headers = kwargs["headers"]
+        data = kwargs["data"].decode("utf-8")
+
+        assert headers["X-Cluster-Token"] == token
+        assert "X-Cluster-Timestamp" in headers
+        assert "X-Cluster-Signature" in headers
+
+        timestamp = headers["X-Cluster-Timestamp"]
+        expected_sig = hmac.new(
+            token.encode("utf-8"),
+            f"{timestamp}:{data}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        assert headers["X-Cluster-Signature"] == expected_sig

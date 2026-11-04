@@ -8,7 +8,11 @@ Comunica el Bot de Telegram con el Servidor MCP / Tool Calling de Laravel.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -88,8 +92,18 @@ class McpClusterBridge:
             "user_role": user_role,
         }
 
+        timestamp = str(int(time.time()))
+        json_body = json.dumps(payload, separators=(',', ':'))
+        signature = hmac.new(
+            self._cluster_token.encode("utf-8"),
+            f"{timestamp}:{json_body}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
         headers = {
             "X-Cluster-Token": self._cluster_token,
+            "X-Cluster-Timestamp": timestamp,
+            "X-Cluster-Signature": signature,
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -98,7 +112,7 @@ class McpClusterBridge:
             logger.info("Enviando consulta al Orquestador MCP: %s", self._api_url)
             response = requests.post(
                 self._api_url,
-                json=payload,
+                data=json_body.encode("utf-8"),
                 headers=headers,
                 timeout=self._timeout,
             )
