@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['cluster.token'])->prefix('cluster')->group(function () {
+Route::middleware(['cluster.token', 'throttle:60,1'])->prefix('cluster')->group(function () {
     Route::match(['get', 'post'], 'ping', [ClusterApiController::class, 'ping'])->name('api.cluster.ping');
     Route::match(['get', 'post'], 'telemetry', [ClusterApiController::class, 'telemetry'])->name('api.cluster.telemetry');
     Route::match(['get', 'post'], 'diagnostics', [ClusterApiController::class, 'diagnostics'])->name('api.cluster.diagnostics');
@@ -29,16 +29,18 @@ Route::middleware(['cluster.token'])->prefix('cluster')->group(function () {
 | Receptor unificado para agentes GLPI (Linux y Windows) y autodescubrimiento.
 |
 */
-Route::match(['get', 'post'], 'v1/inventory/receiver/{token?}', [GlpiReceiverController::class, 'handle'])->name('api.inventory.receiver');
+Route::match(['get', 'post'], 'v1/inventory/receiver/{token?}', [GlpiReceiverController::class, 'handle'])
+    ->middleware(['throttle:120,1'])
+    ->name('api.inventory.receiver');
 
 /*
 |--------------------------------------------------------------------------
 | Rutas API de Asistente Virtual MCP / Tool Calling (Clúster y Bots)
 |--------------------------------------------------------------------------
-| Comunicación interna protegida con 'cluster.token'.
+| Comunicación interna protegida con 'cluster.token' y 'throttle:60,1'.
 |
 */
-Route::middleware(['cluster.token'])->prefix('v1/ai')->group(function () {
+Route::middleware(['cluster.token', 'throttle:60,1'])->prefix('v1/ai')->group(function () {
     Route::post('chat', [AiAssistantController::class, 'apiChat'])->name('api.ai.chat');
 });
 
