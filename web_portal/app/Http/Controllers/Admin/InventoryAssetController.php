@@ -33,6 +33,8 @@ class InventoryAssetController extends Controller
      */
     public function index(Request $request, GetInventoryIndexViewModelAction $action): View
     {
+        $this->authorize('viewAny', InventoryAsset::class);
+
         $viewModel = $action->execute($request);
         return view('admin.inventory.assets.index', $viewModel);
     }
@@ -42,6 +44,8 @@ class InventoryAssetController extends Controller
      */
     public function show(int $id, GetInventoryShowViewModelAction $action): View
     {
+        $this->authorize('view', InventoryAsset::class);
+
         $viewModel = $action->execute($id);
         return view('admin.inventory.assets.show', $viewModel);
     }
@@ -51,6 +55,8 @@ class InventoryAssetController extends Controller
      */
     public function create(): View
     {
+        $this->authorize('create', InventoryAsset::class);
+
         $sites = MonitoredSite::where('is_active', true)->orderBy('name')->get();
         return view('admin.inventory.assets.create', compact('sites'));
     }
@@ -60,6 +66,8 @@ class InventoryAssetController extends Controller
      */
     public function store(StoreInventoryAssetRequest $request, CreateInventoryAssetAction $action): RedirectResponse
     {
+        $this->authorize('create', InventoryAsset::class);
+
         $asset = $action->execute($request->toDto(), $request->all());
 
         return redirect()->route('admin.inventory.assets.index')
@@ -71,6 +79,8 @@ class InventoryAssetController extends Controller
      */
     public function edit(int $id, InventoryAssetRepositoryInterface $repository): View
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $asset = $repository->findById($id);
         if (!$asset) {
             abort(404, 'Activo no encontrado');
@@ -85,6 +95,8 @@ class InventoryAssetController extends Controller
      */
     public function update(UpdateInventoryAssetRequest $request, int $id, UpdateInventoryAssetAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $asset = $action->execute($id, $request->toDto(), $request->all());
 
         return redirect()->route('admin.inventory.assets.index')
@@ -96,6 +108,8 @@ class InventoryAssetController extends Controller
      */
     public function approve(Request $request, int $id, ApproveInventoryAssetAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $asset = $action->execute($id, $request);
 
         return redirect()->back()
@@ -107,6 +121,8 @@ class InventoryAssetController extends Controller
      */
     public function destroy(Request $request, int $id, DeleteInventoryAssetAction $action): RedirectResponse
     {
+        $this->authorize('delete', InventoryAsset::class);
+
         $name = $action->execute($id, $request);
 
         return redirect()->route('admin.inventory.assets.index')
@@ -118,6 +134,8 @@ class InventoryAssetController extends Controller
      */
     public function associatePeripheral(Request $request, int $id, AssociatePeripheralAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $action->execute($id, $request);
 
         return redirect()->back()->with('success', "Periférico guardado exitosamente.");
@@ -128,6 +146,8 @@ class InventoryAssetController extends Controller
      */
     public function disassociatePeripheral(Request $request, int $id, int $peripheralId, DisassociatePeripheralAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $action->execute($id, $peripheralId, $request);
 
         return redirect()->back()->with('success', "Periférico desvinculado correctamente.");
@@ -138,6 +158,8 @@ class InventoryAssetController extends Controller
      */
     public function bulkMaintenance(Request $request, BulkMaintenanceAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $this->normalizeBulkAssetIds($request);
         $count = $action->execute($request);
 
@@ -149,6 +171,8 @@ class InventoryAssetController extends Controller
      */
     public function bulkCompleteMaintenance(Request $request, BulkCompleteMaintenanceAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $this->normalizeBulkAssetIds($request);
         $count = $action->execute($request);
 
@@ -160,6 +184,8 @@ class InventoryAssetController extends Controller
      */
     public function bulkMobilize(Request $request, BulkMobilizeAction $action): RedirectResponse|JsonResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $this->normalizeBulkAssetIds($request);
         $assignment = $action->execute($request);
 
@@ -184,6 +210,8 @@ class InventoryAssetController extends Controller
      */
     public function uploadAssignmentScan(Request $request, int $id, UploadAssignmentScanAction $action): RedirectResponse
     {
+        $this->authorize('update', InventoryAsset::class);
+
         $assignment = $action->execute($id, $request);
 
         return redirect()->back()->with('success', "Hoja de asignación física digitalizada exitosamente. Activo marcado como ASIGNADO.");

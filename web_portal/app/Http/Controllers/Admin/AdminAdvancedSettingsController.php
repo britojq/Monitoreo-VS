@@ -26,6 +26,8 @@ class AdminAdvancedSettingsController extends Controller
 
     public function index(Request $request): View
     {
+        $this->authorize('advanced.view');
+
         $stats = [
             'users_count' => User::count(),
             'services_count' => MonitoredService::count(),
@@ -58,6 +60,8 @@ class AdminAdvancedSettingsController extends Controller
      */
     public function toggleGroupAi(Request $request)
     {
+        $this->authorize('advanced.manage');
+
         $aiService = new AiConfigService();
         $currentConfig = $aiService->getGroupAiConfig();
         $currentUser = $request->user();

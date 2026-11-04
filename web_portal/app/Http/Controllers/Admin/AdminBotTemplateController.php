@@ -22,6 +22,8 @@ class AdminBotTemplateController extends Controller
      */
     public function index(Request $request): View
     {
+        $this->authorize('viewAny', BotMessageTemplate::class);
+
         $templates = BotMessageTemplate::all()->keyBy('template_key');
 
         // Si la tabla estuviese vacía por alguna razón, correr el seeder en caliente
@@ -43,6 +45,8 @@ class AdminBotTemplateController extends Controller
      */
     public function update(Request $request, BotMessageTemplate $template): RedirectResponse|JsonResponse
     {
+        $this->authorize('update', $template);
+
         if ($this->cluster->isSlave()) {
             if ($request->wantsJson()) {
                 return response()->json([

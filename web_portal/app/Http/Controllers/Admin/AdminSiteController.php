@@ -24,6 +24,8 @@ class AdminSiteController extends Controller
 {
     public function index(): View
     {
+        $this->authorize('viewAny', MonitoredSite::class);
+
         $sites = MonitoredSite::with('devices')->orderBy('sort_order')->get();
         $networkDevices = MonitoredNetworkDevice::all()->keyBy('ip');
         $latestSnapshot = MonitoringSnapshot::latest()->first();
@@ -40,6 +42,8 @@ class AdminSiteController extends Controller
      */
     public function reorder(Request $request): JsonResponse
     {
+        $this->authorize('create', MonitoredSite::class);
+
         $validated = $request->validate([
             'order' => ['required', 'array'],
             'order.*' => ['integer', 'exists:monitored_sites,id'],
@@ -57,6 +61,8 @@ class AdminSiteController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
+        $this->authorize('create', MonitoredSite::class);
+
         $validated = $request->validate([
             'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
@@ -107,6 +113,8 @@ class AdminSiteController extends Controller
 
     public function update(Request $request, MonitoredSite $site, UpdateSiteAction $action): RedirectResponse
     {
+        $this->authorize('update', $site);
+
         $validated = $request->validate([
             'letter' => ['nullable', 'string', 'max:10'],
             'name' => ['required', 'string', 'max:255'],
@@ -133,6 +141,8 @@ class AdminSiteController extends Controller
 
     public function addDevice(Request $request, MonitoredSite $site, AttachDeviceToSiteAction $action): RedirectResponse
     {
+        $this->authorize('update', $site);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'ip' => ['required', 'string', 'max:255'],
@@ -161,6 +171,8 @@ class AdminSiteController extends Controller
 
     public function deleteDevice(MonitoredSiteDevice $device): RedirectResponse
     {
+        $this->authorize('update', MonitoredSite::class);
+
         $siteName = $device->site->name ?? 'la sede';
         $deviceName = $device->name;
         $ip = $device->ip;
@@ -182,6 +194,8 @@ class AdminSiteController extends Controller
 
     public function toggle(MonitoredSite $site): RedirectResponse
     {
+        $this->authorize('update', $site);
+
         $site->is_active = !$site->is_active;
         $site->save();
 
@@ -193,6 +207,8 @@ class AdminSiteController extends Controller
 
     public function history(Request $request, MonitoredSite $site): \Illuminate\Http\JsonResponse
     {
+        $this->authorize('view', $site);
+
         $range = (string) $request->query('range', '24h');
         $since = match ($range) {
             '6h' => now()->subHours(6),
@@ -314,6 +330,8 @@ class AdminSiteController extends Controller
 
     public function destroy(MonitoredSite $site): RedirectResponse
     {
+        $this->authorize('delete', $site);
+
         $site->delete();
 
         app(SyncController::class)->exportToConfigFiles();

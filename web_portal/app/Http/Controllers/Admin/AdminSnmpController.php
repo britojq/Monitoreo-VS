@@ -39,6 +39,8 @@ class AdminSnmpController extends Controller
      */
     public function show(int $id): JsonResponse
     {
+        $this->authorize('view', SnmpDevice::class);
+
         $device = SnmpDevice::with(['site', 'networkDevice', 'interfaces.latestMetric', 'deviceOids.oid'])
             ->findOrFail($id);
 
@@ -56,6 +58,8 @@ class AdminSnmpController extends Controller
      */
     public function interfaces(int $id): JsonResponse
     {
+        $this->authorize('view', SnmpDevice::class);
+
         $device = SnmpDevice::findOrFail($id);
         $interfaces = SnmpInterface::where('snmp_device_id', $id)
             ->with('latestMetric')
@@ -79,6 +83,8 @@ class AdminSnmpController extends Controller
      */
     public function interfaceMetrics(int $interfaceId): JsonResponse
     {
+        $this->authorize('view', SnmpDevice::class);
+
         $interface = SnmpInterface::with('device')->findOrFail($interfaceId);
 
         $metrics = SnmpInterfaceMetric::where('snmp_interface_id', $interfaceId)
@@ -139,6 +145,8 @@ class AdminSnmpController extends Controller
      */
     public function store(Request $request, ?CreateSnmpDeviceAction $action = null): RedirectResponse
     {
+        $this->authorize('create', SnmpDevice::class);
+
         $action = $action ?? app(CreateSnmpDeviceAction::class);
         $formRequest = $request instanceof StoreSnmpDeviceRequest
             ? $request
@@ -167,6 +175,8 @@ class AdminSnmpController extends Controller
      */
     public function update(Request $request, int $id, ?UpdateSnmpDeviceAction $action = null): RedirectResponse
     {
+        $this->authorize('update', SnmpDevice::class);
+
         $action = $action ?? app(UpdateSnmpDeviceAction::class);
         $formRequest = $request instanceof UpdateSnmpDeviceRequest
             ? $request
@@ -199,6 +209,8 @@ class AdminSnmpController extends Controller
      */
     public function destroy(Request $request, int $id, ?DeleteSnmpDeviceAction $action = null): RedirectResponse
     {
+        $this->authorize('delete', SnmpDevice::class);
+
         $action = $action ?? app(DeleteSnmpDeviceAction::class);
         $result = $action->execute(
             $id,
@@ -219,6 +231,7 @@ class AdminSnmpController extends Controller
      */
     public function triggerPoll(Request $request, int $id): JsonResponse
     {
+        $this->authorize('poll', SnmpDevice::class);
         $device = SnmpDevice::findOrFail($id);
 
         $python = escapeshellcmd(SonarPathService::pythonBinary());

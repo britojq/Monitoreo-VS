@@ -33,6 +33,8 @@ class AdminServiceController extends Controller
 
     public function index(): View
     {
+        $this->authorize('viewAny', MonitoredService::class);
+
         $services = $this->repository->getAllOrdered();
         $latestSnapshot = MonitoringSnapshot::latest()->first();
         $snapshotServices = collect();
@@ -53,6 +55,8 @@ class AdminServiceController extends Controller
 
     public function store(Request $request, ?CreateServiceAction $action = null): RedirectResponse
     {
+        $this->authorize('create', MonitoredService::class);
+
         $action = $action ?? app(CreateServiceAction::class);
         $formRequest = $request instanceof StoreServiceRequest
             ? $request
@@ -69,6 +73,8 @@ class AdminServiceController extends Controller
 
     public function update(Request $request, MonitoredService $service, ?UpdateServiceAction $action = null): RedirectResponse
     {
+        $this->authorize('update', $service);
+
         $action = $action ?? app(UpdateServiceAction::class);
         $formRequest = $request instanceof UpdateServiceRequest
             ? $request
@@ -85,6 +91,8 @@ class AdminServiceController extends Controller
 
     public function toggle(MonitoredService $service, ?ToggleServiceAction $action = null): RedirectResponse
     {
+        $this->authorize('update', $service);
+
         $action = $action ?? app(ToggleServiceAction::class);
         $updated = $action->execute($service->id);
         $status = $updated->is_active ? 'activado' : 'desactivado';
@@ -94,6 +102,8 @@ class AdminServiceController extends Controller
 
     public function history(Request $request, MonitoredService $service): JsonResponse
     {
+        $this->authorize('view', $service);
+
         $range = (string) $request->query('range', '24h');
         $since = match ($range) {
             '6h' => now()->subHours(6),
@@ -210,6 +220,8 @@ class AdminServiceController extends Controller
 
     public function destroy(MonitoredService $service, ?DeleteServiceAction $action = null): RedirectResponse
     {
+        $this->authorize('delete', $service);
+
         $action = $action ?? app(DeleteServiceAction::class);
         $action->execute($service->id);
 

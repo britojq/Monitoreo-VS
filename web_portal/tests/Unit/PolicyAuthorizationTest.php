@@ -5,15 +5,29 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Models\Alert;
+use App\Models\BotMessageTemplate;
 use App\Models\DiscoveredDevice;
+use App\Models\InventoryAsset;
+use App\Models\MonitoredNetworkDevice;
+use App\Models\MonitoredService;
+use App\Models\MonitoredSite;
+use App\Models\SnmpDevice;
 use App\Models\SslCertificate;
 use App\Models\UpsDevice;
 use App\Models\User;
+use App\Policies\AdminAdvancedSettingsPolicy;
 use App\Policies\AlertPolicy;
+use App\Policies\BotTemplatePolicy;
 use App\Policies\DiscoveryPolicy;
+use App\Policies\InventoryAssetPolicy;
 use App\Policies\NetRadarPolicy;
+use App\Policies\NetworkDevicePolicy;
+use App\Policies\ServicePolicy;
+use App\Policies\SitePolicy;
+use App\Policies\SnmpDevicePolicy;
 use App\Policies\SslPolicy;
 use App\Policies\UpsPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
@@ -123,6 +137,114 @@ class PolicyAuthorizationTest extends TestCase
         $this->assertFalse($policy->authorize($operator));
     }
 
+    public function test_user_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['security.users']);
+        $policy = new UserPolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+        $this->assertTrue($policy->managePermissions($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertTrue($policy->create($operator));
+        $this->assertFalse($policy->managePermissions($operator));
+    }
+
+    public function test_site_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['infra.view']);
+        $policy = new SitePolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->create($operator));
+    }
+
+    public function test_network_device_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['infra.view']);
+        $policy = new NetworkDevicePolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->create($operator));
+    }
+
+    public function test_service_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['infra.view']);
+        $policy = new ServicePolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->create($operator));
+    }
+
+    public function test_bot_template_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['telegram.dispatch']);
+        $policy = new BotTemplatePolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->update($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->update($operator));
+    }
+
+    public function test_inventory_asset_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['inventory.view']);
+        $policy = new InventoryAssetPolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->create($operator));
+    }
+
+    public function test_snmp_device_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser(['snmp.view']);
+        $policy = new SnmpDevicePolicy();
+
+        $this->assertTrue($policy->viewAny($admin));
+        $this->assertTrue($policy->create($admin));
+        $this->assertTrue($policy->poll($admin));
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertFalse($policy->create($operator));
+        $this->assertFalse($policy->poll($operator));
+    }
+
+    public function test_admin_advanced_settings_policy_authorization(): void
+    {
+        $admin = $this->createAdminUser();
+        $operator = $this->createOperatorUser();
+        $policy = new AdminAdvancedSettingsPolicy();
+
+        $this->assertTrue($policy->view($admin));
+        $this->assertTrue($policy->manage($admin));
+
+        $this->assertFalse($policy->view($operator));
+        $this->assertFalse($policy->manage($operator));
+    }
+
     public function test_gate_definitions(): void
     {
         $admin = $this->createAdminUser();
@@ -132,5 +254,8 @@ class PolicyAuthorizationTest extends TestCase
         $this->assertTrue(Gate::forUser($admin)->allows('ups.manage'));
         $this->assertTrue(Gate::forUser($admin)->allows('ssl.manage'));
         $this->assertTrue(Gate::forUser($admin)->allows('discovery.authorize'));
+        $this->assertTrue(Gate::forUser($admin)->allows('advanced.view'));
+        $this->assertTrue(Gate::forUser($admin)->allows('advanced.manage'));
+        $this->assertTrue(Gate::forUser($admin)->allows('snmp.poll'));
     }
 }

@@ -40,6 +40,8 @@ class AdminUserController extends Controller
 
     public function index(): View
     {
+        $this->authorize('viewAny', User::class);
+
         $users = $this->repository->getAllOrdered();
 
         return view('admin.users.index', compact('users'));
@@ -50,6 +52,8 @@ class AdminUserController extends Controller
      */
     public function searchLdapUsers(Request $request, SearchLdapDirectoryAction $action): JsonResponse
     {
+        $this->authorize('viewAny', User::class);
+
         $q = trim((string) $request->input('q', ''));
         $result = $action->execute($q);
 
@@ -61,6 +65,8 @@ class AdminUserController extends Controller
      */
     public function authorizeLdapUser(Request $request, ?AuthorizeLdapUserAction $action = null)
     {
+        $this->authorize('create', User::class);
+
         $action = $action ?? app(AuthorizeLdapUserAction::class);
         $formRequest = $request instanceof AuthorizeLdapUserRequest
             ? $request
@@ -96,6 +102,8 @@ class AdminUserController extends Controller
 
     public function store(Request $request, ?CreateUserAction $action = null): RedirectResponse
     {
+        $this->authorize('create', User::class);
+
         $action = $action ?? app(CreateUserAction::class);
         $formRequest = $request instanceof StoreUserRequest
             ? $request
@@ -112,6 +120,8 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user, ?UpdateUserAction $action = null): RedirectResponse
     {
+        $this->authorize('update', $user);
+
         $action = $action ?? app(UpdateUserAction::class);
         $formRequest = $request instanceof UpdateUserRequest
             ? $request
@@ -128,6 +138,8 @@ class AdminUserController extends Controller
 
     public function destroy(User $user, ?DeleteUserAction $action = null): RedirectResponse
     {
+        $this->authorize('delete', $user);
+
         $action = $action ?? app(DeleteUserAction::class);
         $result = $action->execute($user);
 
@@ -143,6 +155,8 @@ class AdminUserController extends Controller
      */
     public function getPermissions(User $user): JsonResponse
     {
+        $this->authorize('managePermissions', $user);
+
         return response()->json([
             'success' => true,
             'user' => [
@@ -166,6 +180,7 @@ class AdminUserController extends Controller
      */
     public function updatePermissions(Request $request, User $user, ?UpdateUserPermissionsAction $action = null): JsonResponse
     {
+        $this->authorize('managePermissions', $user);
         $action = $action ?? app(UpdateUserPermissionsAction::class);
         $formRequest = $request instanceof UpdateUserPermissionsRequest
             ? $request

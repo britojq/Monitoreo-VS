@@ -25,6 +25,8 @@ class AdminNetworkDeviceController extends Controller
      */
     public function index(Request $request, GetDeviceIndexViewModelAction $action): View
     {
+        $this->authorize('viewAny', MonitoredNetworkDevice::class);
+
         $viewModel = $action->execute($request);
         return view('admin.devices.index', $viewModel);
     }
@@ -34,6 +36,8 @@ class AdminNetworkDeviceController extends Controller
      */
     public function store(Request $request, ?CreateNetworkDeviceAction $action = null): RedirectResponse|JsonResponse
     {
+        $this->authorize('create', MonitoredNetworkDevice::class);
+
         $action = $action ?? app(CreateNetworkDeviceAction::class);
         $formRequest = $request instanceof StoreNetworkDeviceRequest
             ? $request
@@ -63,6 +67,8 @@ class AdminNetworkDeviceController extends Controller
      */
     public function update(Request $request, MonitoredNetworkDevice $device, ?UpdateNetworkDeviceAction $action = null): RedirectResponse
     {
+        $this->authorize('update', $device);
+
         $action = $action ?? app(UpdateNetworkDeviceAction::class);
         $formRequest = $request instanceof UpdateNetworkDeviceRequest
             ? $request
@@ -83,9 +89,7 @@ class AdminNetworkDeviceController extends Controller
      */
     public function destroy(Request $request, MonitoredNetworkDevice $device): RedirectResponse
     {
-        if (!$request->user() || !$request->user()->isAdmin()) {
-            abort(403, 'Acceso Denegado: Solo administradores pueden eliminar dispositivos.');
-        }
+        $this->authorize('delete', $device);
 
         $name = $device->name;
         $device->delete();
@@ -101,9 +105,7 @@ class AdminNetworkDeviceController extends Controller
      */
     public function toggle(Request $request, MonitoredNetworkDevice $device): RedirectResponse
     {
-        if (!$request->user() || !$request->user()->isAdmin()) {
-            abort(403, 'Acceso Denegado: Solo administradores pueden modificar el estado del dispositivo.');
-        }
+        $this->authorize('update', $device);
 
         $device->is_active = !$device->is_active;
         $device->save();
@@ -119,6 +121,8 @@ class AdminNetworkDeviceController extends Controller
      */
     public function history(Request $request, MonitoredNetworkDevice $device): JsonResponse
     {
+        $this->authorize('view', $device);
+
         $range = (string) $request->query('range', '24h');
         $since = match ($range) {
             '6h' => now()->subHours(6),
