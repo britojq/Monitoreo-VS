@@ -132,7 +132,7 @@ class HardwareAndDeployArchitectureTest extends TestCase
             ->method('resolveTargetUrl')
             ->with('dev', null)
             ->willReturn([
-                'server_url' => 'http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96',
+                'server_url' => 'http://192.168.1.220/api/v1/inventory/receiver',
                 'deploy_base_url' => 'http://192.168.1.220',
             ]);
 

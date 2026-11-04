@@ -99,7 +99,7 @@ Route::get('/deploy/win', function (\Illuminate\Http\Request $request, \App\Cont
         abort(400, 'Esquema URL de despliegue no permitido');
     }
 
-    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
+    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $targetUrl, $content);
     $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
     return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 })->name('deploy.win');
@@ -130,7 +130,7 @@ Route::get('/deploy/linux', function (\Illuminate\Http\Request $request, \App\Co
         abort(400, 'Esquema URL de despliegue no permitido');
     }
 
-    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $targetUrl, $content);
+    $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $targetUrl, $content);
     $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
     return response($content, 200, ['Content-Type' => 'text/x-sh; charset=utf-8']);
 })->name('deploy.linux');
@@ -140,8 +140,8 @@ Route::get('/deploy/switch/win', function (\Illuminate\Http\Request $request, \A
     if (!file_exists($path)) abort(404, 'Script de conmutación Windows no encontrado.');
     $content = file_get_contents($path);
     $cfg = $endpointConfig->getEndpointsConfig();
-    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['prod_url'], $content);
-    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['dev_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $cfg['prod_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $cfg['dev_url'], $content);
     return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 })->name('deploy.switch.win');
 
@@ -150,8 +150,8 @@ Route::get('/deploy/switch/linux', function (\Illuminate\Http\Request $request, 
     if (!file_exists($path)) abort(404, 'Script de conmutación Linux no encontrado.');
     $content = file_get_contents($path);
     $cfg = $endpointConfig->getEndpointsConfig();
-    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['prod_url'], $content);
-    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver/[a-zA-Z0-9_\-]+#', $cfg['dev_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.252/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $cfg['prod_url'], $content);
+    $content = preg_replace('#http://10\.20\.23\.221/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $cfg['dev_url'], $content);
     return response($content, 200, ['Content-Type' => 'text/x-sh; charset=utf-8']);
 })->name('deploy.switch.linux');
 

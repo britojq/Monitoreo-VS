@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BotSetting;
 use App\Services\GlpiInventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -37,29 +40,26 @@ class GlpiReceiverController extends Controller
         }
 
         // 2. Validación de Token Criptográfico (MariaDB SSOT con fallback a config)
-        $expectedToken = (string) (\App\Models\BotSetting::get('glpi_receiver_token') ?: config('inventory.glpi_token'));
-        if (!empty($expectedToken)) {
-            $sentToken = $request->header('X-Glpi-Agent-Token')
-                ?? $request->bearerToken()
-                ?? $request->route('token')
-                ?? $request->query('token')
-                ?? $request->header('X-Agent-Token');
+        $expectedToken = (string) (BotSetting::get('glpi_receiver_token') ?: config('inventory.glpi_token'));
+        $sentToken = (string) ($request->header('X-Glpi-Agent-Token')
+            ?: $request->bearerToken()
+            ?: $request->header('X-Agent-Token')
+            ?: '');
 
-            $legacyToken = 'ValleSeco_GLPI_Token_2026_Secure';
-            if ($sentToken !== $expectedToken && $sentToken !== $legacyToken) {
-                return response(
-                    json_encode([
-                        'status' => 'error',
-                        'message' => 'Token criptográfico de agente GLPI inválido o ausente',
-                    ]),
-                    401,
-                    ['Content-Type' => 'application/json']
-                );
-            }
+        // Fail-closed & Timing-safe (F-01 / CWE-798 / CWE-208)
+        if ($expectedToken === '' || $sentToken === '' || !hash_equals($expectedToken, $sentToken)) {
+            return response(
+                json_encode([
+                    'status' => 'error',
+                    'message' => 'Token criptográfico de agente GLPI inválido o ausente',
+                ]),
+                401,
+                ['Content-Type' => 'application/json']
+            );
         }
 
         // 3. Obtener carga cruda
-        $rawPayload = $request->getContent();
+        $rawPayload = (string) $request->getContent();
         if (empty($rawPayload)) {
             return response(
                 json_encode(['status' => 'error', 'message' => 'Carga de datos vacía']),
@@ -68,8 +68,8 @@ class GlpiReceiverController extends Controller
             );
         }
 
-        $clientIp = $request->header('X-Agent-IP')
-            ?: ($request->header('X-Forwarded-For') ? trim(explode(',', (string) $request->header('X-Forwarded-For'))[0]) : $request->ip());
+        // Fuente de verdad autoritativa para IP del cliente (mitigación de IP Spoofing F-10)
+        $clientIp = (string) $request->ip();
 
         // 4. Procesar en el servicio normalizador
         $result = $this->glpiService->processRawPayload(

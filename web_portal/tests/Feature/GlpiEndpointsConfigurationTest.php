@@ -58,8 +58,8 @@ class GlpiEndpointsConfigurationTest extends TestCase
         $admin = User::where('role', 'admin')->first() ?? User::factory()->create(['role' => 'admin', 'is_active' => true, 'terms_accepted_at' => now()]);
 
         $newToken = 'a8f94e2b6c1d73a0e5f812349b6d8c07e2a419f85c3b17d0d8f58b76e1039c94';
-        $newProdUrl = 'http://192.168.1.244/api/v1/inventory/receiver/' . $newToken;
-        $newDevUrl = 'http://192.168.1.220/api/v1/inventory/receiver/' . $newToken;
+        $newProdUrl = 'http://192.168.1.244/api/v1/inventory/receiver';
+        $newDevUrl = 'http://192.168.1.220/api/v1/inventory/receiver';
 
         $response = $this->actingAs($admin)->postJson(route('admin.inventory.deploy.endpoints'), [
             'glpi_receiver_prod_url' => $newProdUrl,

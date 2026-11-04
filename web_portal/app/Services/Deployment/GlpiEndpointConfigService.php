@@ -10,9 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
 {
-    protected const DEFAULT_TOKEN = 'd8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
-    protected const DEFAULT_PROD_URL = 'http://192.168.1.250/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
-    protected const DEFAULT_DEV_URL = 'http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96';
+    protected const DEFAULT_PROD_URL = 'http://192.168.1.250/api/v1/inventory/receiver';
+    protected const DEFAULT_DEV_URL = 'http://192.168.1.220/api/v1/inventory/receiver';
 
     /**
      * Valida si un host o IP es enrutable por clientes remotos en la red (rechaza loopback y local).
@@ -95,9 +94,8 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
     public function getCurrentHostUrl(): string
     {
         $host = $this->getCurrentHost();
-        $token = $this->getToken();
 
-        return "http://{$host}/api/v1/inventory/receiver/{$token}";
+        return "http://{$host}/api/v1/inventory/receiver";
     }
 
     /**
@@ -115,7 +113,7 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
 
         return [
             'current_host' => $currentHost,
-            'current_url' => "http://{$currentHost}/api/v1/inventory/receiver/{$token}",
+            'current_url' => "http://{$currentHost}/api/v1/inventory/receiver",
             'current_deploy_base' => "http://{$currentHost}",
             'prod_url' => $prodUrl,
             'prod_host' => $prodHost,
@@ -141,10 +139,9 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
             if (!empty($rawInput)) {
                 $cleanHost = preg_replace('#^https?://#i', '', $rawInput);
                 $cleanHost = explode('/', (string) $cleanHost)[0];
-                $token = $config['token'];
 
                 return [
-                    'server_url' => "http://{$cleanHost}/api/v1/inventory/receiver/{$token}",
+                    'server_url' => "http://{$cleanHost}/api/v1/inventory/receiver",
                     'deploy_base_url' => "http://{$cleanHost}",
                     'target_label' => "Personalizado ({$cleanHost})",
                     'target_host' => $cleanHost,
@@ -226,7 +223,13 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
      */
     protected function getToken(): string
     {
-        return (string) BotSetting::get('glpi_receiver_token', self::DEFAULT_TOKEN);
+        $token = (string) BotSetting::get('glpi_receiver_token');
+        if ($token === '') {
+            $token = bin2hex(random_bytes(32));
+            BotSetting::set('glpi_receiver_token', $token, 'glpi_deploy', 'Token Receptor GLPI', 'text');
+        }
+
+        return $token;
     }
 
     /**

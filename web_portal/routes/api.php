@@ -29,7 +29,7 @@ Route::middleware(['cluster.token', 'throttle:60,1'])->prefix('cluster')->group(
 | Receptor unificado para agentes GLPI (Linux y Windows) y autodescubrimiento.
 |
 */
-Route::match(['get', 'post'], 'v1/inventory/receiver/{token?}', [GlpiReceiverController::class, 'handle'])
+Route::match(['get', 'post'], 'v1/inventory/receiver', [GlpiReceiverController::class, 'handle'])
     ->middleware(['throttle:120,1'])
     ->name('api.inventory.receiver');
 

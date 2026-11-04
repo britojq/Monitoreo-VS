@@ -6,8 +6,8 @@ import socket
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 
-DEV_SERVER_URL = "http://192.168.1.220/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
-PROD_SERVER_URL = "http://192.168.1.250/api/v1/inventory/receiver/d8f58b76e1039c94f58a741362d2bc4a896f610e72c842b15cf4817d23a50e96"
+DEV_SERVER_URL = "http://192.168.1.220/api/v1/inventory/receiver"
+PROD_SERVER_URL = "http://192.168.1.250/api/v1/inventory/receiver"
 DEV_DEPLOY_BASE = "http://192.168.1.220"
 PROD_DEPLOY_BASE = "http://192.168.1.250"
 
