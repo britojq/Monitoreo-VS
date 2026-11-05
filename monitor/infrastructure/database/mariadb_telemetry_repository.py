@@ -53,6 +53,10 @@ class MariaDBTelemetryRepository(TelemetryRepositoryProtocol):
                 conn.commit()
         except Exception as e:
             logger.error(f"Error insertando en service_check_histories: {e}")
+            try:
+                conn.rollback()
+            except Exception as e_rb:
+                logger.warning(f"Aviso en rollback service_check_histories: {e_rb}")
         finally:
             conn.close()
 
@@ -85,6 +89,10 @@ class MariaDBTelemetryRepository(TelemetryRepositoryProtocol):
                 conn.commit()
         except Exception as e:
             logger.error(f"Error insertando en site_check_histories: {e}")
+            try:
+                conn.rollback()
+            except Exception as e_rb:
+                logger.warning(f"Aviso en rollback site_check_histories: {e_rb}")
         finally:
             conn.close()
 
@@ -110,5 +118,9 @@ class MariaDBTelemetryRepository(TelemetryRepositoryProtocol):
                 conn.commit()
         except Exception as e:
             logger.error(f"Error insertando en network_device_check_histories: {e}")
+            try:
+                conn.rollback()
+            except Exception as e_rb:
+                logger.warning(f"Aviso en rollback network_device_check_histories: {e_rb}")
         finally:
             conn.close()

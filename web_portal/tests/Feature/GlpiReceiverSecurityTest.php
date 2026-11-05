@@ -25,11 +25,8 @@ class GlpiReceiverSecurityTest extends TestCase
     {
         $response = $this->get('/api/v1/inventory/receiver');
 
-        $response->assertStatus(200);
-        $response->assertJson([
-            'status' => 'ok',
-            'service' => 'Valle Seco ITAM GLPI Receiver',
-        ]);
+        $response->assertStatus(204);
+        $this->assertEmpty($response->getContent());
     }
 
     public function test_post_without_token_returns_401(): void

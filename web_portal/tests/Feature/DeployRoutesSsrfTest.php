@@ -10,13 +10,13 @@ class DeployRoutesSsrfTest extends TestCase
 {
     public function test_deploy_routes_work_with_valid_urls(): void
     {
-        $responseWin = $this->get('/deploy/win?server_url=https://glpi.example.com/receiver&deploy_base=https://glpi.example.com/instaladores');
+        $responseWin = $this->get('/deploy/win?server_url=http://192.168.1.220/api/v1/inventory/receiver&deploy_base=http://192.168.1.220/instaladores');
         $responseWin->assertStatus(200);
-        $responseWin->assertSee('https://glpi.example.com/receiver');
+        $responseWin->assertSee('http://192.168.1.220/api/v1/inventory/receiver');
 
-        $responseLinux = $this->get('/deploy/linux?server_url=https://glpi.example.com/receiver&deploy_base=https://glpi.example.com/instaladores');
+        $responseLinux = $this->get('/deploy/linux?server_url=http://192.168.1.220/api/v1/inventory/receiver&deploy_base=http://192.168.1.220/instaladores');
         $responseLinux->assertStatus(200);
-        $responseLinux->assertSee('https://glpi.example.com/receiver');
+        $responseLinux->assertSee('http://192.168.1.220/api/v1/inventory/receiver');
     }
 
     public function test_deploy_routes_reject_invalid_server_url_with_400(): void

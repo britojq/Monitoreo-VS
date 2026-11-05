@@ -59,6 +59,12 @@ class MariaDBSnapshotRepository(SnapshotRepositoryProtocol):
                 )
                 conn.commit()
                 return cur.lastrowid or 0
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise e
         finally:
             conn.close()
 

@@ -20,6 +20,41 @@ from monitor.sync.scheduler import update_last_scan_time, SNAPSHOT_FILE
 class RunFullScanAction:
     """Acción de responsabilidad única encargada de ejecutar el escaneo NOC completo."""
 
+    _auto_healed: bool = False
+    _last_retention_purge: float = 0.0
+
+    @classmethod
+    def _heal_services_once(cls, cursor, conn) -> None:
+        """ARC-01: Auto-curación preventiva ejecutada de forma aislada y una sola vez por proceso."""
+        if cls._auto_healed:
+            return
+        cls._auto_healed = True
+        corp_domain = ".".join(["corpo" + "elec", "com", "ve"])
+        corp_name = "CORPO" + "ELEC"
+        try:
+            cursor.execute("""
+                UPDATE monitored_services 
+                SET web_url = REPLACE(web_url, 'empresa.com.ve', %s),
+                    dns_test_domain = REPLACE(dns_test_domain, 'empresa.com.ve', %s),
+                    name = REPLACE(name, 'empresa', %s)
+                WHERE web_url LIKE '%empresa.com.ve%' 
+                   OR dns_test_domain LIKE '%empresa.com.ve%' 
+                   OR name LIKE '%empresa%'
+            """, (corp_domain, corp_domain, corp_name))
+            cursor.execute("""
+                UPDATE monitored_services ms
+                JOIN monitored_proxies mp ON mp.ip_port LIKE CONCAT(ms.host_ip, ':%')
+                SET ms.credentials = mp.auth_userpass
+                WHERE ms.type = 'PROXY' AND (ms.credentials IS NULL OR ms.credentials = '' OR ms.credentials = 'USUARIO:CLAVE')
+                  AND mp.auth_userpass IS NOT NULL AND mp.auth_userpass != '' AND mp.auth_userpass != 'USUARIO:CLAVE'
+            """)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
     async def execute(self) -> Dict[str, Any]:
         """Ejecuta la acción de negocio o tarea programada de forma asíncrona."""
         start_time = time.perf_counter()
@@ -27,32 +62,8 @@ class RunFullScanAction:
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                # 0. INMUNIDAD Y AUTO-CURACIÓN PREVENTIVA EN CADA CICLO DE ESCANEO
-                corp_domain = ".".join(["corpo" + "elec", "com", "ve"])
-                corp_name = "CORPO" + "ELEC"
-                try:
-                    cursor.execute("""
-                        UPDATE monitored_services 
-                        SET web_url = REPLACE(web_url, 'empresa.com.ve', %s),
-                            dns_test_domain = REPLACE(dns_test_domain, 'empresa.com.ve', %s),
-                            name = REPLACE(name, 'empresa', %s)
-                        WHERE web_url LIKE '%empresa.com.ve%' 
-                           OR dns_test_domain LIKE '%empresa.com.ve%' 
-                           OR name LIKE '%empresa%'
-                    """, (corp_domain, corp_domain, corp_name))
-                    cursor.execute("""
-                        UPDATE monitored_services ms
-                        JOIN monitored_proxies mp ON mp.ip_port LIKE CONCAT(ms.host_ip, ':%')
-                        SET ms.credentials = mp.auth_userpass
-                        WHERE ms.type = 'PROXY' AND (ms.credentials IS NULL OR ms.credentials = '' OR ms.credentials = 'USUARIO:CLAVE')
-                          AND mp.auth_userpass IS NOT NULL AND mp.auth_userpass != '' AND mp.auth_userpass != 'USUARIO:CLAVE'
-                    """)
-                    conn.commit()
-                except Exception:
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        pass
+                # ARC-01: Auto-curación preventiva fuera del loop caliente de telemetría
+                self._heal_services_once(cursor, conn)
 
                 cursor.execute(
                     "SELECT * FROM monitored_services WHERE is_active = 1 "
@@ -213,9 +224,6 @@ class RunFullScanAction:
                 if hist_records:
                     cursor.executemany(hist_sql, hist_records)
 
-                # Mantener retención de últimos 30 días de historial de servicios
-                cursor.execute("DELETE FROM service_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
-
                 # 3. Histórico de chequeos individuales por sede
                 site_hist_sql = """
                     INSERT INTO site_check_histories 
@@ -245,9 +253,6 @@ class RunFullScanAction:
                 if site_hist_records:
                     cursor.executemany(site_hist_sql, site_hist_records)
 
-                # Mantener retención de últimos 30 días de historial de sedes
-                cursor.execute("DELETE FROM site_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
-
                 # 4. Histórico de chequeos individuales por proxy
                 proxy_hist_sql = """
                     INSERT INTO proxy_check_histories 
@@ -268,9 +273,6 @@ class RunFullScanAction:
                 if proxy_hist_records:
                     cursor.executemany(proxy_hist_sql, proxy_hist_records)
 
-                # Mantener retención de últimos 30 días de historial de proxies
-                cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
-
                 # 5. Histórico de chequeos individuales por dispositivo de red Valle Seco
                 net_hist_sql = """
                     INSERT INTO network_device_check_histories 
@@ -290,8 +292,21 @@ class RunFullScanAction:
                 if net_hist_records:
                     cursor.executemany(net_hist_sql, net_hist_records)
 
-                # Mantener retención de últimos 30 días de historial de dispositivos de red
-                cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+                # ARC-01: Retención de 30 días ejecutada espaciadamente (1 vez cada 24 horas), no en el loop en caliente
+                now_ts = time.time()
+                if now_ts - RunFullScanAction._last_retention_purge > 86400.0:
+                    RunFullScanAction._last_retention_purge = now_ts
+                    try:
+                        cursor.execute("DELETE FROM service_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+                        cursor.execute("DELETE FROM site_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+                        cursor.execute("DELETE FROM proxy_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+                        cursor.execute("DELETE FROM network_device_check_histories WHERE checked_at < NOW() - INTERVAL 30 DAY")
+                        conn.commit()
+                    except Exception:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
         finally:
             conn.close()
 
