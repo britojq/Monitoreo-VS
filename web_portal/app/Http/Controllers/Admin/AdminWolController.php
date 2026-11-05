@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Contracts\Services\ClusterConfigInterface;
 use App\Http\Controllers\Controller;
+use App\Jobs\WakeOnLanJob;
 use App\Models\AuditLog;
 use App\Models\MonitoredSite;
 use App\Models\WolDevice;
@@ -54,43 +57,30 @@ class AdminWolController extends Controller
     }
 
     /**
-     * Envía un Magic Packet de Wake-on-LAN para encender el dispositivo.
+     * Envía un Magic Packet de Wake-on-LAN para encender el dispositivo (Asíncrono vía Queue).
      */
-    public function wake(int $id): RedirectResponse
+    public function wake(int $id): JsonResponse|RedirectResponse
     {
         $device = WolDevice::findOrFail($id);
 
-        $escapedId = escapeshellarg((string) $device->id);
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('wol_sender.py'));
-        $cmd = "{$python} {$script} --wake {$escapedId} --json 2>&1";
-        $output = shell_exec($cmd);
-        $result = json_decode($output, true);
+        WakeOnLanJob::dispatch(
+            $device->id,
+            Auth::id() ? (int) Auth::id() : null,
+            request()->ip(),
+            request()->userAgent()
+        );
 
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()?->name ?? 'Sistema',
-            'user_email' => Auth::user()?->email,
-            'user_role' => Auth::user()?->role,
-            'event' => 'executed',
-            'module' => 'wol',
-            'auditable_type' => WolDevice::class,
-            'auditable_id' => $device->id,
-            'entity_name' => $device->name,
-            'entity_label' => $device->mac_address,
-            'description' => "Magic Packet Wake-on-LAN enviado a {$device->name} ({$device->mac_address})",
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        $msg = "⚡ Solicitud Wake-on-LAN transmitida al despachador en segundo plano para '{$device->name}' ({$device->mac_address}).";
 
-        if (isset($result['status']) && $result['status'] === 'ok') {
-            $device->update(['last_woken_at' => now()]);
-            return redirect()->route('admin.wol.index')
-                ->with('status', "⚡ Magic Packet transmitido con éxito hacia '{$device->name}' ({$device->mac_address}) vía {$device->broadcast_address}:9.");
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'status' => 'queued',
+                'message' => $msg,
+            ], 202);
         }
 
-        return redirect()->route('admin.wol.index')
-            ->with('error', "No se pudo transmitir el Magic Packet: " . ($result['message'] ?? 'Error desconocido'));
+        return redirect()->route('admin.wol.index')->with('status', $msg);
     }
 
     /**

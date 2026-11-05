@@ -14,3 +14,7 @@ Schedule::command('telemetry:housekeeping --force')->dailyAt('02:00');
 // Programar verificación diaria de cero datos ficticios en MariaDB (Regla de Oro #6)
 Schedule::command('audit:verify-zero-dummy-data')->dailyAt('03:00');
 
+// Procesamiento asíncrono de trabajos en cola (ARC-02: WOL, Sync, Predictivo, SNMP)
+Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
+
+

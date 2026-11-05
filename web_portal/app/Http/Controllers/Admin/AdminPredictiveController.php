@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\AnalyzeNetworkPredictiveJob;
 use App\Models\AuditLog;
 use App\Models\PredictiveAnomaly;
 use App\Services\System\SonarPathService;
@@ -60,38 +63,27 @@ class AdminPredictiveController extends Controller
     }
 
     /**
-     * Dispara un ciclo completo de análisis predictivo estadístico con el motor local de IA.
+     * Dispara un ciclo completo de análisis predictivo estadístico de forma asíncrona.
      */
-    public function runAnalysis(): RedirectResponse
+    public function runAnalysis(): JsonResponse|RedirectResponse
     {
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('predictive_analyzer.py'));
-        $cmd = "{$python} {$script} --analyze --json 2>&1";
-        $output = shell_exec($cmd);
-        $jsonStart = strpos((string) $output, '[');
-        $jsonStr = $jsonStart !== false ? substr((string) $output, $jsonStart) : (string) $output;
-        $result = json_decode($jsonStr, true);
+        AnalyzeNetworkPredictiveJob::dispatch(
+            Auth::id() ? (int) Auth::id() : null,
+            request()->ip(),
+            request()->userAgent()
+        );
 
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()?->name ?? 'Sistema',
-            'user_email' => Auth::user()?->email,
-            'user_role' => Auth::user()?->role,
-            'event' => 'executed',
-            'module' => 'predictive',
-            'auditable_type' => PredictiveAnomaly::class,
-            'auditable_id' => null,
-            'entity_name' => 'Análisis Predictivo',
-            'entity_label' => 'Motor Local de IA',
-            'description' => 'Ejecución manual del motor local de IA y análisis predictivo de telemetría.',
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        $msg = '🔮 Análisis predictivo encolado exitosamente para ejecución en segundo plano por el motor local de IA.';
 
-        $count = is_array($result) ? count($result) : 0;
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'status' => 'queued',
+                'message' => $msg,
+            ], 202);
+        }
 
-        return redirect()->route('admin.predictive.index')
-            ->with('status', "Ciclo predictivo completado con éxito por el motor local de IA. {$count} anomalías o tendencias evaluadas.");
+        return redirect()->route('admin.predictive.index')->with('status', $msg);
     }
 
     /**

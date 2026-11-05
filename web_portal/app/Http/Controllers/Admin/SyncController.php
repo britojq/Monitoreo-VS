@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\TriggerTelemetrySyncJob;
 use App\Models\MonitoredProxy;
 use App\Models\MonitoredService;
 use App\Models\MonitoredSite;
 use App\Services\System\SonarPathService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Auth;
 
 class SyncController extends Controller
 {
@@ -26,23 +29,22 @@ class SyncController extends Controller
         return back()->with('success', 'Configuración de monitoreo activa y sincronizada directamente en la base de datos central.');
     }
 
+    /**
+     * Dispara escaneo de telemetría asíncrono desacoplado (HTTP 202 Accepted).
+     */
     public function triggerScanNow(): JsonResponse
     {
-        $pythonScript = SonarPathService::monitorScript('monitor_web_sync.py');
-        $pythonBin = SonarPathService::pythonBinary();
-
-        if (file_exists($pythonScript) && file_exists($pythonBin)) {
-            $result = Process::run("{$pythonBin} {$pythonScript} --force");
-            return response()->json([
-                'success' => $result->successful(),
-                'output' => $result->output(),
-                'error' => $result->errorOutput(),
-            ]);
-        }
+        TriggerTelemetrySyncJob::dispatch(
+            Auth::id() ? (int) Auth::id() : null,
+            request()->ip(),
+            request()->userAgent()
+        );
 
         return response()->json([
-            'success' => false,
-            'message' => 'Script de escaneo Python no encontrado.',
-        ], 404);
+            'success' => true,
+            'status' => 'queued',
+            'message' => '⚡ Escaneo completo de telemetría encolado exitosamente para ejecución en segundo plano.',
+            'output' => 'Tarea asíncrona despachada al worker (HTTP 202 Accepted).',
+        ], 202);
     }
 }

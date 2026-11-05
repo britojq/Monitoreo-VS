@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Snmp\ActivateRemoteSnmpRequest;
 use App\Http\Requests\Snmp\StoreSnmpDeviceRequest;
 use App\Http\Requests\Snmp\UpdateSnmpDeviceRequest;
+use App\Jobs\SnmpDiscoveryJob;
 use App\Models\SnmpDevice;
 use App\Models\SnmpInterface;
 use App\Models\SnmpInterfaceMetric;
@@ -20,6 +21,7 @@ use App\Services\System\SonarPathService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AdminSnmpController extends Controller
 {
@@ -227,38 +229,48 @@ class AdminSnmpController extends Controller
     }
 
     /**
-     * Dispara sondeo SNMP inmediato para un dispositivo (Exclusivo Administrador).
+     * Dispara sondeo SNMP inmediato para un dispositivo de forma asíncrona (HTTP 202).
      */
     public function triggerPoll(Request $request, int $id): JsonResponse
     {
         $this->authorize('poll', SnmpDevice::class);
         $device = SnmpDevice::findOrFail($id);
 
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('snmp_poller.py'));
-        $this->launchAsyncCommand("{$python} {$script} --poll --device " . (int) $id);
+        SnmpDiscoveryJob::dispatch(
+            $device->id,
+            'poll',
+            Auth::id() ? (int) Auth::id() : null,
+            $request->ip(),
+            $request->userAgent()
+        );
 
         return response()->json([
             'success' => true,
-            'message' => "Sondeo SNMP iniciado para {$device->name} ({$device->ip_address}).",
-        ]);
+            'status' => 'queued',
+            'message' => "Sondeo SNMP encolado exitosamente para {$device->name} ({$device->ip_address}).",
+        ], 202);
     }
 
     /**
-     * Dispara descubrimiento de interfaces para un dispositivo (Exclusivo Administrador).
+     * Dispara descubrimiento de interfaces para un dispositivo de forma asíncrona (HTTP 202).
      */
     public function triggerInterfaceDiscovery(Request $request, int $id): JsonResponse
     {
         $device = SnmpDevice::findOrFail($id);
 
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('snmp_poller.py'));
-        $this->launchAsyncCommand("{$python} {$script} --interfaces " . (int) $id);
+        SnmpDiscoveryJob::dispatch(
+            $device->id,
+            'interfaces',
+            Auth::id() ? (int) Auth::id() : null,
+            $request->ip(),
+            $request->userAgent()
+        );
 
         return response()->json([
             'success' => true,
-            'message' => "Descubrimiento de interfaces iniciado para {$device->name} ({$device->ip_address}).",
-        ]);
+            'status' => 'queued',
+            'message' => "Descubrimiento de interfaces encolado exitosamente para {$device->name} ({$device->ip_address}).",
+        ], 202);
     }
 
     /**
@@ -320,17 +332,5 @@ class AdminSnmpController extends Controller
             'message' => $result['message'],
             'output' => $result['output'] ?? '',
         ]);
-    }
-
-    /**
-     * Lanza comando en segundo plano sin bloquear la solicitud HTTP.
-     */
-    protected function launchAsyncCommand(string $cmd): void
-    {
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            pclose(popen("start /B {$cmd}", 'r'));
-        } else {
-            exec("{$cmd} > /dev/null 2>&1 &");
-        }
     }
 }
