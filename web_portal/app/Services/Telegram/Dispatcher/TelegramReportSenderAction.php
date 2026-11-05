@@ -207,7 +207,10 @@ class TelegramReportSenderAction
         $targetChats = $this->resolveTargetChatIds($destination, $config);
 
         // DIRECTRIZ DE SEGURIDAD ESTRICTA (REGLA DE ORO #1)
-        $isAutomatedTest = request()->hasHeader('X-Automated-Test') || request()->hasHeader('X-Playwright-Test');
+        $isAutomatedTest = request()->hasHeader('X-Automated-Test')
+            || request()->hasHeader('X-Playwright-Test')
+            || app()->runningUnitTests()
+            || app()->environment('testing');
         if ($isAutomatedTest) {
             $targetChats = array_filter($targetChats, fn($cid) => !str_starts_with((string)$cid, '-'));
             Log::info("Envío de reporte en modo prueba automatizada: destinos de grupo descartados.");
