@@ -25,6 +25,7 @@ class ServiceConfig:
     url_test_site: str = ""
     msg_normal: str = ""
     msg_error: str = ""
+    allow_insecure_ssl: bool = False
     id: Optional[int] = None
 
 
@@ -37,6 +38,7 @@ class EquipmentConfig:
     ip_host: str
     msg_normal: str = ""
     msg_error: str = ""
+    allow_insecure_ssl: bool = False
     id: Optional[int] = None
 
 

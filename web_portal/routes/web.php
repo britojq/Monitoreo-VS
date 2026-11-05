@@ -99,6 +99,31 @@ Route::get('/deploy/win', function (\Illuminate\Http\Request $request, \App\Cont
         abort(400, 'Esquema URL de despliegue no permitido');
     }
 
+    // SEC-12 (CWE-601 / CWE-494): Lista blanca estricta de hosts autorizados del clúster
+    $allowedHosts = array_unique(array_filter([
+        $cfg['current_host'] ?? '',
+        $cfg['prod_host'] ?? '',
+        $cfg['dev_host'] ?? '',
+        parse_url($cfg['current_url'] ?? '', PHP_URL_HOST),
+        parse_url($cfg['prod_url'] ?? '', PHP_URL_HOST),
+        parse_url($cfg['dev_url'] ?? '', PHP_URL_HOST),
+        '192.168.1.220',
+        '192.168.1.250',
+        'monitoreo-vs.local',
+        'localhost',
+        '127.0.0.1',
+    ]));
+
+    $targetHost = parse_url($targetUrl, PHP_URL_HOST);
+    $deployHost = parse_url($deployBase, PHP_URL_HOST);
+
+    if (!in_array($targetHost, $allowedHosts, true)) {
+        abort(403, 'Host de servidor no autorizado en lista blanca del clúster.');
+    }
+    if (!in_array($deployHost, $allowedHosts, true)) {
+        abort(403, 'Host base de despliegue no autorizado en lista blanca del clúster.');
+    }
+
     $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $targetUrl, $content);
     $content = preg_replace('#http://[^/]+/instaladores#', $deployBase, $content);
     return response($content, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
@@ -128,6 +153,31 @@ Route::get('/deploy/linux', function (\Illuminate\Http\Request $request, \App\Co
     $parsedBase = parse_url($deployBase);
     if (!in_array($parsedBase['scheme'] ?? '', ['http', 'https'], true)) {
         abort(400, 'Esquema URL de despliegue no permitido');
+    }
+
+    // SEC-12 (CWE-601 / CWE-494): Lista blanca estricta de hosts autorizados del clúster
+    $allowedHosts = array_unique(array_filter([
+        $cfg['current_host'] ?? '',
+        $cfg['prod_host'] ?? '',
+        $cfg['dev_host'] ?? '',
+        parse_url($cfg['current_url'] ?? '', PHP_URL_HOST),
+        parse_url($cfg['prod_url'] ?? '', PHP_URL_HOST),
+        parse_url($cfg['dev_url'] ?? '', PHP_URL_HOST),
+        '192.168.1.220',
+        '192.168.1.250',
+        'monitoreo-vs.local',
+        'localhost',
+        '127.0.0.1',
+    ]));
+
+    $targetHost = parse_url($targetUrl, PHP_URL_HOST);
+    $deployHost = parse_url($deployBase, PHP_URL_HOST);
+
+    if (!in_array($targetHost, $allowedHosts, true)) {
+        abort(403, 'Host de servidor no autorizado en lista blanca del clúster.');
+    }
+    if (!in_array($deployHost, $allowedHosts, true)) {
+        abort(403, 'Host base de despliegue no autorizado en lista blanca del clúster.');
     }
 
     $content = preg_replace('#http://[^/]+/api/v1/inventory/receiver(/[a-zA-Z0-9_\-]+)?#', $targetUrl, $content);

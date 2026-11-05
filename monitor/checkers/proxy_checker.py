@@ -27,6 +27,7 @@ async def check_proxy(
     proxy_url: str,
     test_url: str = "https://core.telegram.org/bots",
     timeout: float = 4.5,
+    allow_insecure_ssl: bool = False,
 ) -> Tuple[bool, str, str]:
     """Verifica navegación a través de un proxy corporativo (Squid/pfSense) usando curl con SECLEVEL=0 y caché anti-colisión."""
     if not proxy_url:
@@ -79,9 +80,11 @@ async def check_proxy(
             os.chmod(config_file, 0o600)
             curl_args.extend(["--config", config_file])
 
+        # SEC-06 (CWE-295 / CWE-327): Verificación TLS estricta por defecto. Habilitar solo bajo excepción explícita
+        if allow_insecure_ssl:
+            curl_args.extend(["-k", "--ciphers", "DEFAULT:@SECLEVEL=0"])
+
         curl_args.extend([
-            "-k",
-            "--ciphers", "DEFAULT:@SECLEVEL=0",
             "-s",
             "-o", "/dev/null",
             "-w", "%{http_code}",
@@ -183,12 +186,19 @@ class ProxyChecker(BaseServiceChecker):
 
             # Pequeña pausa preventiva para dar respiro al connection tracking de pfSense/Squid
             await asyncio.sleep(0.8)
-            is_ok, code, detail = await check_proxy(proxy_url, target_test_url, timeout=5.0)
+            allow_insecure = getattr(svc, "allow_insecure_ssl", False)
+            if allow_insecure:
+                is_ok, code, detail = await check_proxy(proxy_url, target_test_url, timeout=5.0, allow_insecure_ssl=True)
+            else:
+                is_ok, code, detail = await check_proxy(proxy_url, target_test_url, timeout=5.0)
 
             # Fallback de seguridad: si falló con URL personalizada, reintentar con Telegram
             if not is_ok and target_test_url != "https://core.telegram.org/bots":
                 await asyncio.sleep(0.5)
-                is_ok_tg, code_tg, detail_tg = await check_proxy(proxy_url, "https://core.telegram.org/bots", timeout=5.0)
+                if allow_insecure:
+                    is_ok_tg, code_tg, detail_tg = await check_proxy(proxy_url, "https://core.telegram.org/bots", timeout=5.0, allow_insecure_ssl=True)
+                else:
+                    is_ok_tg, code_tg, detail_tg = await check_proxy(proxy_url, "https://core.telegram.org/bots", timeout=5.0)
                 if is_ok_tg:
                     is_ok, code, detail = is_ok_tg, code_tg, detail_tg
 

@@ -54,7 +54,9 @@ class GlpiPayloadDecoder
             $parsed = json_decode($trimmed, true);
         } elseif (str_starts_with($trimmed, '<')) {
             $format = 'xml';
-            $xml = @simplexml_load_string($trimmed, 'SimpleXMLElement', LIBXML_NOCDATA);
+            // SEC-10 (CWE-611): Blindaje estricto contra ataques XXE / SSRF mediante LIBXML_NONET y LIBXML_COMPACT
+            $flags = LIBXML_NOCDATA | LIBXML_NONET | LIBXML_COMPACT;
+            $xml = @simplexml_load_string($trimmed, 'SimpleXMLElement', $flags);
             if ($xml) {
                 $parsed = json_decode(json_encode($xml), true);
             }

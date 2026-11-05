@@ -25,18 +25,9 @@ class GlpiReceiverController extends Controller
      */
     public function handle(Request $request): Response
     {
-        // 1. Responder a peticiones GET de sondeo / verificación de conectividad
+        // 1. SEC-11 (CWE-200): Responder HTTP 204 No Content sin divulgar versiones ni metadatos internos
         if ($request->isMethod('get')) {
-            return response(
-                json_encode([
-                    'status' => 'ok',
-                    'service' => 'Valle Seco ITAM GLPI Receiver',
-                    'version' => '1.0.0',
-                    'timestamp' => now()->toIso8601String(),
-                ]),
-                200,
-                ['Content-Type' => 'application/json']
-            );
+            return response('', 204);
         }
 
         // 2. Validación de Token Criptográfico (MariaDB SSOT con fallback a config)

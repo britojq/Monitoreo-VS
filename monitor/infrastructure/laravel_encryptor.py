@@ -24,6 +24,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 from typing import Optional
 
 from cryptography.hazmat.primitives import padding
@@ -131,6 +132,38 @@ def get_laravel_app_key(force_reload: bool = False) -> bytes:
 
     _CACHED_APP_KEY = key_bytes
     return key_bytes
+
+
+def _parse_php_serialized_string(raw: str) -> str:
+    """Parsea de forma segura una cadena serializada de PHP: s:<length>:"<content>";
+
+    Soporta contraseñas y textos que contienen comillas dobles, puntos y comas
+    o caracteres multibyte (CWE-20 / CWE-704 / SEC-08).
+    """
+    if not (raw.startswith("s:") and ':"' in raw):
+        return raw
+
+    m = re.match(r"^s:(\d+):\"", raw)
+    if not m:
+        return raw
+
+    raw_bytes = raw.encode("utf-8")
+    m_bytes = re.match(rb"^s:(\d+):\"", raw_bytes)
+    if m_bytes:
+        b_len = int(m_bytes.group(1))
+        b_start = m_bytes.end()
+        if len(raw_bytes) >= b_start + b_len:
+            content_bytes = raw_bytes[b_start : b_start + b_len]
+            remainder = raw_bytes[b_start + b_len :]
+            if remainder in (b'";', b'"', b''):
+                return content_bytes.decode("utf-8", errors="replace")
+
+    if raw.endswith('";'):
+        return raw[m.end() : -2]
+    if raw.endswith('"'):
+        return raw[m.end() : -1]
+
+    return raw
 
 
 def decrypt_laravel_string(
@@ -241,9 +274,8 @@ def decrypt_laravel_string(
             unpadded = unpadder.update(padded) + unpadder.finalize()
             val = unpadded.decode("utf-8", errors="ignore")
 
-        # Limpiar serialización de PHP si aplica (ej: s:6:"public";)
-        if val.startswith("s:") and '"' in val:
-            val = val.split('"')[1]
+        # SEC-08 (CWE-20 / CWE-704): Deserialización formal respetando comillas dobles y multibyte
+        val = _parse_php_serialized_string(val)
 
         cache.set(cache_key, val, ttl=300.0)
         return val

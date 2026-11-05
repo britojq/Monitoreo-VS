@@ -186,3 +186,18 @@ class TestStrictModeErrorHandling:
             decrypt_laravel_string(corrupted, strict=True)
 
         assert decrypt_laravel_string(corrupted, strict=False) == ""
+
+    def test_sec_08_serialized_passwords_with_embedded_quotes_and_multibyte(self):
+        """SEC-08: Verifica que la deserialización formal de PHP preserve comillas dobles y caracteres multibyte."""
+        from monitor.infrastructure.laravel_encryptor import _parse_php_serialized_string
+
+        # Caso con comillas dobles intermedias
+        assert _parse_php_serialized_string('s:9:"p"ss"w0rd";') == 'p"ss"w0rd'
+        # Caso con multibyte UTF-8 y comillas
+        assert _parse_php_serialized_string('s:10:"p"ña"w0rd";') == 'p"ña"w0rd'
+        # Caso simple
+        assert _parse_php_serialized_string('s:6:"public";') == 'public'
+        # Cadena sin serializar
+        assert _parse_php_serialized_string('raw_password_no_php') == 'raw_password_no_php'
+        # Múltiples comillas consecutivas
+        assert _parse_php_serialized_string('s:11:"adm""in""123";') == 'adm""in""123'

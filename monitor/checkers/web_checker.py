@@ -13,28 +13,37 @@ from monitor.checkers.base import BaseServiceChecker, CheckResult
 from monitor.config_parser import ServiceConfig
 
 
-async def check_web(url: str, timeout: float = 4.0) -> Tuple[bool, str, str]:
+async def check_web(
+    url: str,
+    timeout: float = 4.0,
+    allow_insecure_ssl: bool = False,
+) -> Tuple[bool, str, str]:
     """
-    Verifica disponibilidad de una aplicación web vía HTTP/HTTPS utilizando
-    curl -k --ciphers 'DEFAULT:@SECLEVEL=0' -s -o /dev/null -w '%{http_code}'
-    para soportar servidores heredados y certificados SSL antiguos/corporativos.
+    Verifica disponibilidad de una aplicación web vía HTTP/HTTPS utilizando curl.
+    Por defecto (SEC-06 / CWE-295 / CWE-327) aplica validación TLS estricta.
+    Habilita -k y ciphers permisivos únicamente si allow_insecure_ssl es True.
     """
     if not url or url.startswith("0.0.0.0"):
         return False, "0", "URL inválida o no configurada"
 
     target_url = url if url.startswith(("http://", "https://")) else f"http://{url}"
 
+    curl_args = ["curl"]
+    if allow_insecure_ssl:
+        curl_args.extend(["-k", "--ciphers", "DEFAULT:@SECLEVEL=0"])
+
+    curl_args.extend([
+        "-s",
+        "-o", "/dev/null",
+        "-w", "%{http_code}",
+        "--connect-timeout", "3",
+        "--max-time", str(int(timeout)),
+        target_url,
+    ])
+
     try:
         proc = await asyncio.create_subprocess_exec(
-            "curl",
-            "-k",
-            "--ciphers", "DEFAULT:@SECLEVEL=0",
-            "-s",
-            "-o", "/dev/null",
-            "-w", "%{http_code}",
-            "--connect-timeout", "3",
-            "--max-time", str(int(timeout)),
-            target_url,
+            *curl_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -60,5 +69,9 @@ class WebChecker(BaseServiceChecker):
 
     async def check(self, svc: ServiceConfig) -> CheckResult:
         """Ejecuta la comprobación de estado y métricas operativas del servicio."""
-        is_ok, code, detail = await check_web(svc.web_url)
+        allow_insecure = getattr(svc, "allow_insecure_ssl", False)
+        if allow_insecure:
+            is_ok, code, detail = await check_web(svc.web_url, allow_insecure_ssl=True)
+        else:
+            is_ok, code, detail = await check_web(svc.web_url)
         return CheckResult(is_ok=is_ok, code=str(code), detail=detail)
