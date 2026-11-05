@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\System\SonarPathService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 
 /**
  * Acción de despacho y transmisión física de reportes hacia Telegram con failover de proxies.
@@ -89,16 +90,24 @@ class TelegramReportSenderAction
         }
 
         $captureMode = ($reportType === 'sedes') ? 'sedes' : 'servicios';
-        $cmd = 'export HOME=/var/www && ' .
-               'export PYTHONPATH=' . escapeshellarg($baseDir) . ' && ' .
-               'export PLAYWRIGHT_BROWSERS_PATH=/var/www/.cache/ms-playwright && ' .
-               escapeshellcmd($pythonExec) . ' -c ' . escapeshellarg(
-            "import asyncio; from monitor.web_screenshot import capture_web_dashboard; " .
-            "p = asyncio.run(capture_web_dashboard('{$captureMode}')); print(str(p) if p else '')"
-        ) . ' 2>&1';
+        $pythonCode = "import asyncio; from monitor.web_screenshot import capture_web_dashboard; " .
+                      "p = asyncio.run(capture_web_dashboard('{$captureMode}')); print(str(p) if p else '')";
 
-        $rawOutput = trim(@shell_exec($cmd) ?? '');
-        $lines = explode("\n", $rawOutput);
+        // ARC-09: Erradicar @shell_exec y ejecutar mediante Process con variables de entorno y timeout
+        $processResult = Process::timeout(60)
+            ->env([
+                'HOME' => '/var/www',
+                'PYTHONPATH' => $baseDir,
+                'PLAYWRIGHT_BROWSERS_PATH' => '/var/www/.cache/ms-playwright',
+            ])
+            ->run([
+                $pythonExec,
+                '-c',
+                $pythonCode,
+            ]);
+
+        $rawOutput = trim($processResult->output() . "\n" . $processResult->errorOutput());
+        $lines = explode("\n", trim($processResult->output()));
         $output = trim(end($lines));
 
         if (!empty($output) && file_exists($output) && filesize($output) > 1024) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DispatchTelegramReportJob;
 use App\Models\TelegramDispatch;
 use App\Services\TelegramReportDispatchService;
 use Carbon\Carbon;
@@ -68,6 +69,31 @@ class AdminTelegramDispatchController extends Controller
         // Su destino se fija de manera forzada y exclusiva al Grupo Corporativo.
         if (!$user->isAdmin()) {
             $destination = 'group';
+        }
+
+        // ARC-09: Desacoplamiento asíncrono para reportes con captura de pantalla pesada en Playwright
+        if ($request->boolean('async')) {
+            DispatchTelegramReportJob::dispatch(
+                (int) $user->id,
+                $reportType,
+                $mode,
+                $request->ip(),
+                $observations,
+                $destination,
+                $includeScreenshot
+            );
+
+            return response()->json([
+                'success' => true,
+                'status' => 'queued',
+                'message' => "Reporte oficial ({$reportType}) encolado exitosamente para despacho asíncrono en segundo plano.",
+                'operator' => $user->full_title_name,
+                'report_type' => $reportType,
+                'destination' => $destination,
+                'has_screenshot' => $includeScreenshot,
+                'has_observations' => !empty($observations),
+                'dispatched_at' => Carbon::now('America/Caracas')->format('h:i:s A'),
+            ], 202);
         }
 
         $result = $dispatchService->dispatch(

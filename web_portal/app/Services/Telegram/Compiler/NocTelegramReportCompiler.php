@@ -9,6 +9,7 @@ use App\Models\MonitoringSnapshot;
 use App\Models\User;
 use App\Services\System\SonarPathService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Process;
 
 /**
  * Compilador de textos y plantillas de reportes oficiales de Telegram para el NOC.
@@ -220,8 +221,9 @@ class NocTelegramReportCompiler
             return $this->compileSnapshotReport($reportType, $user, $observations);
         }
 
-        $cmd = escapeshellcmd($pythonExec) . ' ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($reportType) . ' --no-send';
-        $output = @shell_exec($cmd);
+        // ARC-09: Erradicación de @shell_exec adoptando Process con timeout controlado
+        $process = Process::timeout(30)->run([$pythonExec, $scriptPath, $reportType, '--no-send']);
+        $output = $process->successful() ? trim($process->output()) : null;
 
         if (empty($output)) {
             return $this->compileSnapshotReport($reportType, $user, $observations);
