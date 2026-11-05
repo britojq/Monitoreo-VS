@@ -44,11 +44,16 @@ class SshSessionController extends Controller
         $targetName = $validated['name'] ?? 'Dispositivo SSH';
         $targetSite = $validated['site'] ?? 'Red Corporativa';
 
+        // SEC-13: Generar y registrar token criptográfico con TTL de 120s
+        $token = $this->tokenService->generateToken('ssh');
+        $this->tokenService->registerToken($token, $targetIp, $targetPort, 120);
+
         $terminalUrl = route('admin.ssh.terminal', [
             'ip' => $targetIp,
             'port' => $targetPort,
             'name' => $targetName,
             'site' => $targetSite,
+            'token' => $token,
         ]);
 
         // Registrar auditoría en MariaDB SSOT
@@ -59,7 +64,7 @@ class SshSessionController extends Controller
             targetPort: $targetPort,
             targetName: $targetName,
             targetSite: $targetSite,
-            token: null,
+            token: $token,
             request: $request
         );
 
@@ -88,7 +93,14 @@ class SshSessionController extends Controller
         $port = (int) $request->query('port', 22);
         $name = (string) $request->query('name', 'Dispositivo SSH');
         $site = (string) $request->query('site', 'Red Corporativa');
+        $token = (string) $request->query('token', '');
 
-        return view('admin.ssh.terminal', compact('ip', 'port', 'name', 'site'));
+        // SEC-13: Validar token temporal o emitir uno nuevo para usuario autenticado
+        if (empty($token) || !$this->tokenService->isTokenValid($token)) {
+            $token = $this->tokenService->generateToken('ssh');
+            $this->tokenService->registerToken($token, $ip, $port, 120);
+        }
+
+        return view('admin.ssh.terminal', compact('ip', 'port', 'name', 'site', 'token'));
     }
 }

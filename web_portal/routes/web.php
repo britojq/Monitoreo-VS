@@ -99,20 +99,24 @@ Route::get('/deploy/win', function (\Illuminate\Http\Request $request, \App\Cont
         abort(400, 'Esquema URL de despliegue no permitido');
     }
 
-    // SEC-12 (CWE-601 / CWE-494): Lista blanca estricta de hosts autorizados del clúster
-    $allowedHosts = array_unique(array_filter([
-        $cfg['current_host'] ?? '',
-        $cfg['prod_host'] ?? '',
-        $cfg['dev_host'] ?? '',
-        parse_url($cfg['current_url'] ?? '', PHP_URL_HOST),
-        parse_url($cfg['prod_url'] ?? '', PHP_URL_HOST),
-        parse_url($cfg['dev_url'] ?? '', PHP_URL_HOST),
+    // SEC-12 & SEC-14: Lista blanca estricta de hosts autorizados del clúster (inmune a Host Header Poisoning)
+    $clusterCandidates = array_unique(array_filter([
         '192.168.1.220',
         '192.168.1.250',
         'monitoreo-vs.local',
         'localhost',
         '127.0.0.1',
+        $cfg['current_host'] ?? '',
+        $cfg['prod_host'] ?? '',
+        $cfg['dev_host'] ?? '',
     ]));
+    $allowedHosts = array_values(array_filter($clusterCandidates, function ($h) {
+        if (in_array($h, ['localhost', 'monitoreo-vs.local', '127.0.0.1'], true)) return true;
+        if (filter_var($h, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return str_starts_with($h, '192.168.1.') || str_starts_with($h, '127.');
+        }
+        return false;
+    }));
 
     $targetHost = parse_url($targetUrl, PHP_URL_HOST);
     $deployHost = parse_url($deployBase, PHP_URL_HOST);
@@ -155,20 +159,24 @@ Route::get('/deploy/linux', function (\Illuminate\Http\Request $request, \App\Co
         abort(400, 'Esquema URL de despliegue no permitido');
     }
 
-    // SEC-12 (CWE-601 / CWE-494): Lista blanca estricta de hosts autorizados del clúster
-    $allowedHosts = array_unique(array_filter([
-        $cfg['current_host'] ?? '',
-        $cfg['prod_host'] ?? '',
-        $cfg['dev_host'] ?? '',
-        parse_url($cfg['current_url'] ?? '', PHP_URL_HOST),
-        parse_url($cfg['prod_url'] ?? '', PHP_URL_HOST),
-        parse_url($cfg['dev_url'] ?? '', PHP_URL_HOST),
+    // SEC-12 & SEC-14: Lista blanca estricta de hosts autorizados del clúster (inmune a Host Header Poisoning)
+    $clusterCandidates = array_unique(array_filter([
         '192.168.1.220',
         '192.168.1.250',
         'monitoreo-vs.local',
         'localhost',
         '127.0.0.1',
+        $cfg['current_host'] ?? '',
+        $cfg['prod_host'] ?? '',
+        $cfg['dev_host'] ?? '',
     ]));
+    $allowedHosts = array_values(array_filter($clusterCandidates, function ($h) {
+        if (in_array($h, ['localhost', 'monitoreo-vs.local', '127.0.0.1'], true)) return true;
+        if (filter_var($h, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return str_starts_with($h, '192.168.1.') || str_starts_with($h, '127.');
+        }
+        return false;
+    }));
 
     $targetHost = parse_url($targetUrl, PHP_URL_HOST);
     $deployHost = parse_url($deployBase, PHP_URL_HOST);

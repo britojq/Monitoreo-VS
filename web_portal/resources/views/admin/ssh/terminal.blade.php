@@ -114,7 +114,7 @@
 
     <!-- AREA DE TERMINAL SSH -->
     <main id="ssh-frame-container" class="flex-1 w-full bg-black overflow-hidden relative">
-        <iframe id="ssh-frame" src="/wssh/?hostname={{ urlencode($ip) }}&port={{ urlencode($port) }}" allow="clipboard-read; clipboard-write"></iframe>
+        <iframe id="ssh-frame" src="/wssh/?hostname={{ urlencode($ip) }}&port={{ urlencode($port) }}&token={{ urlencode($token) }}" allow="clipboard-read; clipboard-write"></iframe>
     </main>
 
     <script>

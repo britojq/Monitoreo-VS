@@ -48,25 +48,21 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
      */
     public function getCurrentHost(): string
     {
-        // 1. Si existe petición HTTP y el host es enrutable (IP o dominio público/LAN)
-        if (app()->bound('request')) {
-            $host = request()->getHost();
-            if ($this->isRoutableHost($host)) {
-                return $host;
-            }
+        // SEC-14 (CWE-644 / CWE-601): Erradicar lectura de request()->getHost()
+        // para prevenir HTTP Host Header Poisoning en endpoints de despliegue.
+
+        // 1. Configuración canónica en MariaDB SSOT o config de Laravel
+        $configuredHost = config('app.canonical_host') ?: BotSetting::get('server_canonical_host');
+        if (!empty($configuredHost) && $this->isRoutableHost((string) $configuredHost)) {
+            return (string) $configuredHost;
         }
 
-        // 2. Si SERVER_ADDR del servidor web es enrutable
-        if (!empty($_SERVER['SERVER_ADDR']) && $this->isRoutableHost((string) $_SERVER['SERVER_ADDR'])) {
-            return (string) $_SERVER['SERVER_ADDR'];
-        }
-
-        // 3. Obtener la IP primaria del sistema operativo mediante hostname -I
+        // 2. Obtener la IP primaria del sistema operativo mediante hostname -I
         try {
             $output = @shell_exec('hostname -I 2>/dev/null');
             if ($output) {
                 $ips = preg_split('/\s+/', trim($output));
-                // Prioridad 1: Buscar IP en el segmento de gestión corporativo (192.168.1.X)
+                // Prioridad 1: Segmento de gestión corporativo (192.168.1.X)
                 foreach ($ips as $ip) {
                     if (str_starts_with($ip, '192.168.1.') && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                         return $ip;
@@ -83,7 +79,7 @@ class GlpiEndpointConfigService implements GlpiEndpointConfigInterface
             Log::warning('Error detectando IP local en GlpiEndpointConfigService: ' . $e->getMessage());
         }
 
-        // 4. Fallback según el rol del nodo en cluster o IP estándar de desarrollo
+        // 3. Fallback autoritativo según el rol del nodo en clúster
         $nodeRole = (string) BotSetting::get('cluster_node_role', 'dev');
         return ($nodeRole === 'master') ? '192.168.1.250' : '192.168.1.220';
     }
