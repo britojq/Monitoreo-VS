@@ -16,8 +16,9 @@ class TriggerNetRadarScanAction
         $scriptPath = SonarPathService::monitorScript('net_radar_engine.py');
 
         if (file_exists($pythonBin) && file_exists($scriptPath)) {
+            // ARC-07: Redirección limpia a /dev/null para evitar fallos de permisos en /tmp/monitor y cumplir Regla #6 (Cero archivos planos)
             $cmd = sprintf(
-                'sudo %s %s --once --cycle 10 > /tmp/monitor/net_radar_scan.log 2>&1 &',
+                'sudo %s %s --once --cycle 10 > /dev/null 2>&1 &',
                 escapeshellarg($pythonBin),
                 escapeshellarg($scriptPath)
             );

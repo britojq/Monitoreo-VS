@@ -302,25 +302,50 @@ def parse_args():
     parser.add_argument("--ip", required=True, help="Dirección IP del equipo")
     parser.add_argument("--method", choices=["ssh", "telnet", "pfsense"], default="ssh", help="Método de activación")
     parser.add_argument("--user", required=True, help="Usuario SSH/Telnet o pfSense Key")
-    parser.add_argument("--password", required=True, help="Contraseña SSH/Telnet o pfSense Secret")
+    parser.add_argument("--password", default=None, help="Contraseña SSH/Telnet o pfSense Secret (Opcional si usa --stdin-auth)")
     parser.add_argument("--secret", default=None, help="Cisco Enable secret")
-    parser.add_argument("--community", required=True, help="Comunidad SNMP a configurar")
+    parser.add_argument("--community", default=None, help="Comunidad SNMP a configurar")
     parser.add_argument("--port", type=int, default=None, help="Puerto SSH/Telnet/API")
     parser.add_argument("--user-id", type=int, default=None, help="ID de usuario que ejecuta la acción")
+    parser.add_argument("--stdin-auth", action="store_true", help="Lee contraseñas y secretos desde stdin en JSON (SEC-15)")
     return parser.parse_args()
 
 
 def main() -> None:
     """Punto de entrada principal para ejecución por línea de comandos."""
     args = parse_args()
+
+    # SEC-15: Lectura segura de credenciales vía stdin para evitar fugas en /proc/*/cmdline
+    password = args.password
+    secret = args.secret
+    community = args.community or "public"
+
+    if args.stdin_auth:
+        try:
+            raw_input = sys.stdin.read().strip()
+            if raw_input:
+                auth_data = json.loads(raw_input)
+                password = auth_data.get("password") or password
+                secret = auth_data.get("secret") or secret
+                community = auth_data.get("community") or community
+        except Exception as e:
+            logger.error(f"Error decodificando payload de autenticación desde stdin: {e}")
+            print(json.dumps({"status": "failed", "error": f"Fallo en decodificación stdin: {e}"}))
+            sys.exit(1)
+
+    if not password:
+        logger.error("Contraseña requerida pero no suministrada vía CLI ni stdin.")
+        print(json.dumps({"status": "failed", "error": "Contraseña de activación requerida."}))
+        sys.exit(1)
+
     if args.method == "ssh":
         port = args.port or 22
         res = asyncio.run(activate_cisco_snmp(
             ip=args.ip,
             username=args.user,
-            password=args.password,
-            community=args.community,
-            secret=args.secret,
+            password=password,
+            community=community,
+            secret=secret,
             port=port,
             user_id=args.user_id
         ))
@@ -329,9 +354,9 @@ def main() -> None:
         res = asyncio.run(activate_cisco_snmp_telnet(
             ip=args.ip,
             username=args.user,
-            password=args.password,
-            community=args.community,
-            secret=args.secret,
+            password=password,
+            community=community,
+            secret=secret,
             port=port,
             user_id=args.user_id
         ))
@@ -340,8 +365,8 @@ def main() -> None:
         res = asyncio.run(activate_pfsense_snmp(
             ip=args.ip,
             api_key=args.user,
-            api_secret=args.password,
-            community=args.community,
+            api_secret=password,
+            community=community,
             port=port,
             user_id=args.user_id
         ))

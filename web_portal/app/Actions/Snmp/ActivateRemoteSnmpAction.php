@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Models\SnmpDevice;
 use App\Services\System\SonarPathService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Process;
 
 readonly class ActivateRemoteSnmpAction
 {
@@ -26,29 +27,45 @@ readonly class ActivateRemoteSnmpAction
             ];
         }
 
-        $targetIp = escapeshellarg((string) $validated['ip_address']);
-        $method = escapeshellarg((string) $validated['method']);
-        $user = escapeshellarg((string) $validated['username']);
-        $pass = escapeshellarg((string) $validated['password']);
-        $comm = escapeshellarg((string) $validated['community']);
         $userId = Auth::id() ?: 1;
+        $python = SonarPathService::pythonBinary();
+        $script = SonarPathService::monitorScript('snmp_activator.py');
 
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('snmp_activator.py'));
-        $cmd = "{$python} {$script}"
-             . " --ip {$targetIp} --method {$method} --user {$user} --password {$pass} --community {$comm} --user-id {$userId}";
+        // SEC-15: Erradicación de contraseñas y secretos en /proc/<pid>/cmdline pasando credenciales por stdin
+        $cmd = [
+            $python,
+            $script,
+            '--ip', (string) $validated['ip_address'],
+            '--method', (string) $validated['method'],
+            '--user', (string) $validated['username'],
+            '--user-id', (string) $userId,
+            '--stdin-auth',
+        ];
 
-        if (!empty($validated['secret'])) {
-            $cmd .= ' --secret ' . escapeshellarg((string) $validated['secret']);
-        }
         if (!empty($validated['port'])) {
-            $cmd .= ' --port ' . (int) $validated['port'];
+            $cmd[] = '--port';
+            $cmd[] = (string) $validated['port'];
         }
 
-        exec($cmd . ' 2>&1', $outputLines, $returnVar);
-        $outputStr = implode("\n", $outputLines);
+        $authPayload = json_encode([
+            'password' => (string) ($validated['password'] ?? ''),
+            'secret' => (string) ($validated['secret'] ?? ''),
+            'community' => (string) ($validated['community'] ?? 'public'),
+        ], JSON_THROW_ON_ERROR);
 
-        $resultJson = json_decode($outputStr, true);
+        $processResult = Process::timeout(45)
+            ->input($authPayload)
+            ->run($cmd);
+
+        $rawOutput = trim($processResult->output());
+        $outputStr = $rawOutput !== '' ? $rawOutput : trim($processResult->errorOutput());
+        $returnVar = $processResult->exitCode();
+
+        $resultJson = json_decode($rawOutput, true);
+        if (!is_array($resultJson) && preg_match('/\{[\s\S]*\}/', $rawOutput, $matches)) {
+            $resultJson = json_decode($matches[0], true);
+        }
+
         $status = $resultJson['status'] ?? ($returnVar === 0 ? 'success' : 'failed');
         $error = $resultJson['error'] ?? null;
 
