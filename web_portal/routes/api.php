@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['cluster.token', 'throttle:60,1'])->prefix('cluster')->group(function () {
     Route::match(['get', 'post'], 'ping', [ClusterApiController::class, 'ping'])->name('api.cluster.ping');
+    Route::match(['get', 'post'], 'metrics', [ClusterApiController::class, 'metrics'])->name('api.cluster.metrics');
     Route::match(['get', 'post'], 'telemetry', [ClusterApiController::class, 'telemetry'])->name('api.cluster.telemetry');
     Route::match(['get', 'post'], 'diagnostics', [ClusterApiController::class, 'diagnostics'])->name('api.cluster.diagnostics');
     Route::match(['get', 'post'], 'verify', [ClusterApiController::class, 'verify'])->name('api.cluster.verify');

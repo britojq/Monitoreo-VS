@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Cluster\ProvideClusterDiagnosticsAction;
+use App\Actions\Cluster\ProvideClusterMetricsAction;
 use App\Actions\Cluster\ProvideClusterTelemetryAction;
 use App\Actions\Cluster\VerifyClusterAction;
 use App\Contracts\ClusterAuditLoggerInterface;
@@ -35,6 +36,11 @@ class ClusterApiController extends Controller
     }
 
     public function telemetry(Request $request, ProvideClusterTelemetryAction $action): Response
+    {
+        return $action->execute($request);
+    }
+
+    public function metrics(Request $request, ProvideClusterMetricsAction $action): Response
     {
         return $action->execute($request);
     }
