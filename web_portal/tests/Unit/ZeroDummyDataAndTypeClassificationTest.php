@@ -24,6 +24,7 @@ class ZeroDummyDataAndTypeClassificationTest extends TestCase
     {
         $admin = User::where('role', 'admin')->first();
         $this->assertNotNull($admin);
+        $this->actingAs($admin);
 
         $site = MonitoredSite::first();
         $this->assertNotNull($site);
@@ -60,6 +61,7 @@ class ZeroDummyDataAndTypeClassificationTest extends TestCase
     {
         $admin = User::where('role', 'admin')->first();
         $this->assertNotNull($admin);
+        $this->actingAs($admin);
 
         $site = MonitoredSite::first();
         $this->assertNotNull($site);

@@ -90,6 +90,16 @@
                 <span class="text-[9px] uppercase font-bold text-obsidian-cyan">({{ Auth::user()->role }})</span>
             </div>
 
+            @if(!empty($vncPassword))
+            <!-- Botón Copiar Clave VNC (SEC-03: Sin exponer en URL GET) -->
+            <button onclick="copyVncPassword()" 
+                    class="px-2.5 py-1 rounded-lg bg-obsidian-panel hover:bg-obsidian-panel/80 border border-obsidian-border hover:border-purple-500/40 text-purple-300 text-xs font-mono transition flex items-center gap-1 cursor-pointer"
+                    title="Copiar contraseña VNC al portapapeles para autenticación">
+                <span class="material-symbols-outlined text-sm text-purple-400">key</span>
+                <span class="hidden sm:inline text-[11px]" id="copy-btn-text">Copiar Clave</span>
+            </button>
+            @endif
+
             <!-- Botón de Reconexión -->
             <button onclick="reconnectIframe()" 
                     class="px-2.5 py-1 rounded-lg bg-obsidian-panel hover:bg-obsidian-panel/80 border border-obsidian-border hover:border-cyan-500/40 text-obsidian-muted hover:text-cyan-300 text-xs font-mono transition flex items-center gap-1 cursor-pointer"
@@ -159,6 +169,21 @@
                 window.location.href = "{{ route('home') }}";
             }
         }
+
+        @if(!empty($vncPassword))
+        function copyVncPassword() {
+            navigator.clipboard.writeText(@json($vncPassword)).then(() => {
+                const btnText = document.getElementById('copy-btn-text');
+                if (btnText) {
+                    const original = btnText.innerText;
+                    btnText.innerText = '¡Copiada!';
+                    setTimeout(() => { btnText.innerText = original; }, 2000);
+                }
+            }).catch(() => {
+                prompt('Contraseña VNC:', @json($vncPassword));
+            });
+        }
+        @endif
     </script>
 </body>
 </html>

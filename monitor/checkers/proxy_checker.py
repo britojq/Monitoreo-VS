@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import tempfile
 import time
 from typing import Tuple
 import urllib.parse
@@ -35,20 +37,49 @@ async def check_proxy(
     # 1. Comprobar caché de corto plazo (180s) en memoria RAM compartida (/dev/shm)
     cached = get_cached_proxy_result(proxy_url, target, max_age_seconds=180.0)
     if cached:
-        return cached["is_ok"], cached["code_str"], cached["detail"]
+        is_ok = bool(cached.get("is_ok", False))
+        code_str = "200" if is_ok else "0"
+        detail = str(cached.get("error") or ("Proxy operativo (caché)" if is_ok else "Proxy no responde"))
+        return is_ok, code_str, detail
 
     # 2. Candado In-Flight: Si otro proceso ya está chequeando este proxy en este instante, esperar su resultado
     guard = ProxyInflightGuard(proxy_url, target)
     waited_cached = await guard.acquire_or_wait(timeout=timeout)
     if waited_cached:
-        return waited_cached["is_ok"], waited_cached["code_str"], waited_cached["detail"]
+        is_ok = bool(waited_cached.get("is_ok", False))
+        code_str = "200" if is_ok else "0"
+        detail = str(waited_cached.get("error") or ("Proxy operativo (caché)" if is_ok else "Proxy no responde"))
+        return is_ok, code_str, detail
 
-    # 3. Realizar chequeo físico con curl
+    # 3. Realizar chequeo físico con curl protegiendo credenciales contra fugas en /proc (SEC-05)
     t0 = time.perf_counter()
+    config_file: str | None = None
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "curl",
-            "-x", proxy_url,
+        curl_args = ["curl"]
+
+        # Parsear host, puerto y credenciales
+        proxy_spec = proxy_url if "://" in proxy_url else f"http://{proxy_url}"
+        parsed = urllib.parse.urlsplit(proxy_spec)
+        host = parsed.hostname or ""
+        port = f":{parsed.port}" if parsed.port else ""
+        clean_proxy = f"{parsed.scheme or 'http'}://{host}{port}"
+
+        curl_args.extend(["-x", clean_proxy])
+
+        # Si el proxy requiere autenticación, aislar credenciales en archivo efímero en /dev/shm (0600)
+        if parsed.username or parsed.password:
+            user = urllib.parse.unquote(parsed.username or "")
+            pwd = urllib.parse.unquote(parsed.password or "")
+            shm_dir = "/dev/shm" if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.W_OK) else None
+            with tempfile.NamedTemporaryFile("w", dir=shm_dir, prefix="sonar_curl_pcfg_", delete=False) as tf:
+                config_file = tf.name
+                safe_auth = f"{user}:{pwd}".replace('"', '\\"')
+                tf.write(f'proxy-user = "{safe_auth}"\n')
+
+            os.chmod(config_file, 0o600)
+            curl_args.extend(["--config", config_file])
+
+        curl_args.extend([
             "-k",
             "--ciphers", "DEFAULT:@SECLEVEL=0",
             "-s",
@@ -57,6 +88,10 @@ async def check_proxy(
             "--connect-timeout", "3",
             "--max-time", str(int(timeout)),
             target,
+        ])
+
+        proc = await asyncio.create_subprocess_exec(
+            *curl_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -74,17 +109,22 @@ async def check_proxy(
                 detail = f"Proxy respondió HTTP {code_str}"
 
         # Guardar en memoria compartida para reutilización inmediata por otros procesos
-        save_cached_proxy_result(proxy_url, target, is_ok, code_str, detail, elapsed_ms, source="curl")
+        save_cached_proxy_result(proxy_url, target, is_ok, elapsed_ms, detail)
         return is_ok, code_str, detail
     except asyncio.TimeoutError:
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
-        save_cached_proxy_result(proxy_url, target, False, "0", "Timeout al probar proxy", elapsed_ms, source="curl")
+        save_cached_proxy_result(proxy_url, target, False, elapsed_ms, "Timeout al probar proxy")
         return False, "0", "Timeout al probar proxy"
     except Exception as e:
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         return False, "0", f"Fallo al probar proxy: {e}"
     finally:
         guard.release()
+        if config_file and os.path.exists(config_file):
+            try:
+                os.unlink(config_file)
+            except OSError:
+                pass
 
 
 class ProxyChecker(BaseServiceChecker):

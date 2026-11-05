@@ -51,9 +51,12 @@ class VncSessionController extends Controller
         // Generar un token aleatorio criptográficamente seguro
         $token = $this->tokenService->generateToken('vnc');
 
-        // Registrar el token en el archivo de configuración de websockify
+        // Registrar el token en el archivo de configuración de websockify con TTL estricto (120s)
         try {
-            $this->tokenService->registerToken($token, $targetIp, $targetPort);
+            $this->tokenService->registerToken($token, $targetIp, $targetPort, 120);
+            if ($asset && !empty($asset->vnc_password_encrypted)) {
+                $this->tokenService->registerSessionSecret($token, (string) $asset->vnc_password_encrypted, 120);
+            }
         } catch (\Throwable $e) {
             Log::error('Error registrando token VNC en websockify: ' . $e->getMessage());
             return response()->json([
@@ -82,8 +85,8 @@ class VncSessionController extends Controller
         ]);
 
         $novncPath = 'websockify?token=' . $token;
-        $passwordParam = ($asset && !empty($asset->vnc_password_encrypted)) ? ('&password=' . urlencode($asset->vnc_password_encrypted)) : '';
-        $novncDirectUrl = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode($novncPath) . $passwordParam;
+        // SEC-03 (CWE-598 / CWE-522): Erradicar la contraseña en texto plano de la URL GET directa
+        $novncDirectUrl = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode($novncPath);
 
         return response()->json([
             'success' => true,
@@ -117,10 +120,10 @@ class VncSessionController extends Controller
             abort(404, 'El token de conexión VNC ha expirado o no es válido. Genere una nueva sesión desde el panel de monitoreo.');
         }
 
-        $asset = InventoryAsset::where('ip_address', $ip)->first();
-        $passwordParam = ($asset && !empty($asset->vnc_password_encrypted)) ? ('&password=' . urlencode($asset->vnc_password_encrypted)) : '';
-        $novncSrc = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode('websockify?token=' . $token) . $passwordParam;
+        $vncPassword = $this->tokenService->getSessionSecret($token);
+        // SEC-03 (CWE-598 / CWE-522): Erradicar la contraseña de la URL GET del iframe noVNC
+        $novncSrc = '/novnc/vnc.html?autoconnect=true&resize=scale&reconnect=true&path=' . urlencode('websockify?token=' . $token);
 
-        return view('admin.vnc.viewer', compact('token', 'ip', 'name', 'site', 'novncSrc'));
+        return view('admin.vnc.viewer', compact('token', 'ip', 'name', 'site', 'novncSrc', 'vncPassword'));
     }
 }
