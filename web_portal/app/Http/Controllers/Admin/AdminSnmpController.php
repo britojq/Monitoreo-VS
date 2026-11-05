@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Snmp\ActivateRemoteSnmpRequest;
 use App\Http\Requests\Snmp\StoreSnmpDeviceRequest;
 use App\Http\Requests\Snmp\UpdateSnmpDeviceRequest;
+use App\Jobs\ActivateRemoteSnmpJob;
 use App\Jobs\SnmpDiscoveryJob;
 use App\Models\SnmpDevice;
 use App\Models\SnmpInterface;
@@ -308,6 +309,21 @@ class AdminSnmpController extends Controller
 
         if (!$request instanceof ActivateRemoteSnmpRequest) {
             $formRequest->setContainer(app())->validateResolved();
+        }
+
+        // ARC-06: Desacoplamiento asíncrono para prevenir bloqueos del worker HTTP de PHP-FPM
+        if ($request->boolean('async')) {
+            ActivateRemoteSnmpJob::dispatch(
+                $formRequest->validated(),
+                $request->ip(),
+                $request->userAgent()
+            );
+
+            return response()->json([
+                'success' => true,
+                'status' => 'queued',
+                'message' => "Activación remota para {$formRequest->input('ip_address')} encolada en segundo plano exitosamente.",
+            ], 202);
         }
 
         $result = $action->execute(

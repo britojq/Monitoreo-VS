@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Snmp;
 
 use App\Contracts\Services\ClusterConfigInterface;
+use App\Jobs\SnmpDiscoveryJob;
 use App\Models\AuditLog;
 use App\Models\SnmpDevice;
 use App\Services\System\SonarPathService;
@@ -57,14 +58,8 @@ readonly class CreateSnmpDeviceAction
             'user_agent' => $userAgent,
         ]);
 
-        $python = escapeshellcmd(SonarPathService::pythonBinary());
-        $script = escapeshellarg(SonarPathService::monitorScript('snmp_poller.py'));
-        $cmd = "{$python} {$script} --interfaces " . (int) $device->id;
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            pclose(popen("start /B {$cmd}", 'r'));
-        } else {
-            exec("{$cmd} > /dev/null 2>&1 &");
-        }
+        // ARC-06: Erradicación de exec() residual migrando al Job formal asíncrono
+        SnmpDiscoveryJob::dispatch((int) $device->id, 'interfaces', Auth::id(), $ip, $userAgent);
 
         return [
             'success' => true,
