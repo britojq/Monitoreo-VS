@@ -33,6 +33,18 @@ class SecurityHeadersMiddleware
         // Restricción de APIs del navegador no requeridas en el portal
         $response->headers->set('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=()');
 
+        // SEC-16: Política de Seguridad de Contenido (CSP) estricta y autosuficiente (Pilar #1: 100% local, cero CDNs externos)
+        $csp = "default-src 'self'; " .
+               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
+               "style-src 'self' 'unsafe-inline'; " .
+               "font-src 'self' data:; " .
+               "img-src 'self' data: blob:; " .
+               "connect-src 'self' ws: wss:; " .
+               "frame-src 'self'; " .
+               "object-src 'none'; " .
+               "base-uri 'self';";
+        $response->headers->set('Content-Security-Policy', $csp);
+
         // HSTS solo si se habilita explícitamente en .env para dominios con SSL público
         if (env('ENABLE_HSTS', false) && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
