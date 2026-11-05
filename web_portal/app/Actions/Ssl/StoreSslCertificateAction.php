@@ -26,7 +26,16 @@ class StoreSslCertificateAction
 
         $python = SonarPathService::pythonBinary();
         $script = SonarPathService::monitorScript('ssl_checker.py');
-        Process::run("{$python} {$script} --check {$cert->domain} --port {$cert->port}");
+
+        // F-SEC-01: Ejecución estructurada mediante argv array. CERO concatenación shell.
+        Process::run([
+            $python,
+            $script,
+            '--check',
+            $cert->domain,
+            '--port',
+            (string) $cert->port,
+        ]);
 
         AuditLog::create([
             'user_id' => $user?->id,
