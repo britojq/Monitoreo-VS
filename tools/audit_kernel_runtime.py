@@ -19,6 +19,7 @@ from pathlib import Path
 
 DAEMON_SERVICES = [
     "tg-admin-bot.service",
+    "sonar-queue-worker.service",
     "ups-monitor.service",
     "tg-push-telemetry.service",
     "tg-thermal-guard.service",
@@ -140,6 +141,23 @@ def run_kernel_runtime_audit() -> bool:
                     for fd_name, t in legacy_fds:
                         print(f"      FD {fd_name} -> {t}")
                     all_passed = False
+
+            # Inspección de inodos eliminados o desactualizados en memoria RAM (/proc/<pid>/maps)
+            maps_file = proc_path / "maps"
+            if maps_file.exists():
+                try:
+                    maps_text = maps_file.read_text(encoding="utf-8", errors="ignore")
+                    deleted_sonar_maps = [
+                        line.strip() for line in maps_text.splitlines()
+                        if "/opt/sonar" in line and "(deleted)" in line
+                    ]
+                    if deleted_sonar_maps:
+                        print(f"❌ [FAIL] {svc} (PID {pid}) ejecuta módulos eliminados en RAM (Memory Drift):")
+                        for dmap in deleted_sonar_maps[:5]:
+                            print(f"      MAP -> {dmap}")
+                        all_passed = False
+                except PermissionError:
+                    pass
         except Exception as e:
             print(f"⚠️ Aviso al inspeccionar PID {pid} ({svc}): {e}")
 
