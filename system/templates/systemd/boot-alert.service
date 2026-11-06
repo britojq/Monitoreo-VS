@@ -1,0 +1,21 @@
+[Unit]
+Description=Notificacion de Arranque y Apagado de Servidor a Telegram
+Wants=network-online.target
+After=network-online.target NetworkManager.service systemd-resolved.service networking.service
+Before=shutdown.target reboot.target halt.target poweroff.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Slice=system.slice
+User=root
+Group=root
+WorkingDirectory=/opt/sonar
+ExecStart=/opt/sonar/venv/bin/python /opt/sonar/monitor/alerts/boot_alert.py start
+ExecStop=/opt/sonar/venv/bin/python /opt/sonar/monitor/alerts/boot_alert.py stop
+TimeoutStartSec=180
+TimeoutStopSec=30
+SuccessExitStatus=0 1 2 15 SIGTERM SIGKILL
+
+[Install]
+WantedBy=multi-user.target

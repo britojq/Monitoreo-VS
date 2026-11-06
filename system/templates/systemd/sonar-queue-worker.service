@@ -1,0 +1,19 @@
+[Unit]
+Description=S.O.N.A.R. Laravel Queue Worker (Tiempo Real)
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+MemoryMax=512M
+MemoryHigh=400M
+WorkingDirectory=/opt/sonar/web_portal
+ExecStart=/usr/bin/php /opt/sonar/web_portal/artisan queue:work --sleep=1 --tries=3 --timeout=120
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

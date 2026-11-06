@@ -1,0 +1,27 @@
+# ==============================================================================
+# REGLAS AUDITADAS DE PRIVILEGIO MÍNIMO PARA SERVICIOS WEB (S.O.N.A.R.)
+# Cumplimiento CWE-250 / CWE-269: Eliminados comodines abiertos de Python y kill
+# ==============================================================================
+
+# 1. Scripts específicos de radar, captura y descubrimiento (rutas canónicas fijas, sin comodines globales de python)
+www-data ALL=(root) NOPASSWD: /opt/sonar/venv/bin/python /opt/sonar/monitor/net_radar_engine.py *
+www-data ALL=(root) NOPASSWD: /opt/sonar/venv/bin/python /opt/sonar/monitor/radar_runner.py *
+www-data ALL=(root) NOPASSWD: /opt/sonar/venv/bin/python /opt/sonar/monitor/discovery_runner.py *
+
+# 2. Comandos de red y captura estrictamente acotados
+www-data ALL=(root) NOPASSWD: /usr/bin/tcpdump -i * -s * -c * -w * -nn -p
+www-data ALL=(root) NOPASSWD: /usr/bin/tcpdump -r * -nn
+www-data ALL=(root) NOPASSWD: /usr/bin/tcpdump -i * -w /opt/sonar/storage/captures/*
+www-data ALL=(root) NOPASSWD: /usr/bin/tshark -r *
+www-data ALL=(root) NOPASSWD: /bin/kill -2 [0-9]*, /usr/bin/kill -2 [0-9]*
+
+# 3. Control de servicios específicos (recargas y reinicios sin escalada a shell)
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart tg-admin-bot
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl reload apache2
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.4-fpm, /usr/bin/systemctl reload php8.2-fpm
+
+# 4. Administración de Fail2ban (comandos específicos de baneo/desbaneo)
+www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status *
+www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client set * unbanip *
+www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client set * banip *
+www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client reload

@@ -1,0 +1,2 @@
+# /etc/cron.d/sonar_laravel_schedule - Tareas Programadas de Laravel (Housekeeping y Auditoria)
+* * * * * britojab /usr/bin/php /opt/sonar/web_portal/artisan schedule:run > /dev/null 2>&1

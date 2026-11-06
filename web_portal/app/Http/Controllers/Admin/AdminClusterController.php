@@ -1,0 +1,139 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Contracts\Services\ClusterConfigInterface;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class AdminClusterController extends Controller
+{
+    public function __construct(
+        protected ClusterConfigInterface $clusterService,
+    ) {}
+
+    /**
+     * Actualiza la configuración de rol Master/Slave y conexión.
+     */
+    public function update(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'node_role' => ['required', 'in:master,slave,dev'],
+            'cluster_token' => ['required', 'string', 'min:16'],
+            'master_api_url' => ['nullable', 'url'],
+            'slave_sync_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
+        ], [
+            'node_role.required' => 'Debe seleccionar un rol para el servidor (Master, Slave o Dev).',
+            'node_role.in' => 'El rol seleccionado no es válido.',
+            'cluster_token.required' => 'El token de clúster es obligatorio.',
+            'cluster_token.min' => 'El token de clúster debe tener al menos 16 caracteres.',
+            'master_api_url.url' => 'La URL del servidor Master debe ser válida (ej: http://192.168.1.250).',
+            'slave_sync_interval_minutes.integer' => 'El intervalo de sincronización debe ser un número entero.',
+            'slave_sync_interval_minutes.min' => 'El intervalo de sincronización debe ser de al menos 1 minuto.',
+            'slave_sync_interval_minutes.max' => 'El intervalo de sincronización no puede superar 1440 minutos.',
+        ]);
+
+        if (in_array($validated['node_role'], ['slave', 'dev'], true) && empty($validated['master_api_url'])) {
+            return back()->with('error', 'Para operar en modo Esclavo (Slave) o Desarrollo (Dev) debe especificar la URL del servidor Master.');
+        }
+
+        $ok = $this->clusterService->updateConfig([
+            'node_role' => $validated['node_role'],
+            'cluster_token' => $validated['cluster_token'],
+            'master_api_url' => $validated['master_api_url'] ?? 'http://192.168.1.250',
+            'slave_sync_interval_minutes' => $validated['slave_sync_interval_minutes'] ?? 2,
+            'cluster_last_sync_status' => $validated['node_role'] === 'master' ? 'master_active' : 'configured',
+        ]);
+
+        if ($ok) {
+            $roleLabel = match ($validated['node_role']) {
+                'master' => 'MASTER (Servidor Principal)',
+                'dev' => 'DESARROLLO (Sandbox & Réplica)',
+                default => 'SLAVE (Nodo Réplica)',
+            };
+            return back()->with('success', "Rol del servidor configurado exitosamente como {$roleLabel}.");
+        }
+
+        return back()->with('error', 'Error al guardar la configuración del clúster.');
+    }
+
+    /**
+     * Comprueba en tiempo real la conectividad con el servidor Master vía API.
+     */
+    public function testConnection(Request $request): JsonResponse
+    {
+        $targetUrl = rtrim($request->input('master_api_url') ?: $this->clusterService->getMasterApiUrl(), '/');
+        $token = $request->input('cluster_token') ?: $this->clusterService->getClusterToken();
+
+        if (empty($targetUrl) || empty($token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe indicar la URL del Master y el Token de Clúster.',
+            ], 422);
+        }
+
+        $start = microtime(true);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', "{$timestamp}:", $token);
+        try {
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'X-Cluster-Token' => $token,
+                    'X-Cluster-Timestamp' => (string) $timestamp,
+                    'X-Cluster-Signature' => $signature,
+                    'Accept' => 'application/json',
+                ])
+                ->get("{$targetUrl}/api/cluster/ping");
+
+            $latency = round((microtime(true) - $start) * 1000, 1);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return response()->json([
+                    'success' => true,
+                    'latency_ms' => $latency,
+                    'message' => "¡Conexión exitosa con el Master! ({$latency} ms). Servidor remoto verificado.",
+                    'data' => $data,
+                ]);
+            }
+
+            if ($response->status() === 404) {
+                return response()->json([
+                    'success' => false,
+                    'latency_ms' => $latency,
+                    'message' => 'El servidor Master respondió pero el Token de Clúster es inválido o no coincide.',
+                ], 401);
+            }
+
+            return response()->json([
+                'success' => false,
+                'latency_ms' => $latency,
+                'message' => "Respuesta inesperada del Master (Código HTTP: {$response->status()}).",
+            ], $response->status());
+
+        } catch (\Throwable $e) {
+            $latency = round((microtime(true) - $start) * 1000, 1);
+            return response()->json([
+                'success' => false,
+                'latency_ms' => $latency,
+                'message' => "Fallo de conexión hacia {$targetUrl}: {$e->getMessage()}",
+            ], 500);
+        }
+    }
+
+    /**
+     * Genera un nuevo token criptográfico de alta entropía.
+     */
+    public function generateToken(): JsonResponse
+    {
+        $newToken = bin2hex(random_bytes(32));
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+        ]);
+    }
+}

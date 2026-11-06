@@ -1,0 +1,121 @@
+"""
+# ==============================================================================
+# 🌐 GITHUB NETWORK EVALUATOR & PROXY FAILOVER: git_network.py
+# Determina la mejor ruta de salida a Internet (Directa vs Proxies Corporativos)
+# para operaciones Git (fetch, pull, clone) en @IA_ValleSeco_bot.
+# ==============================================================================
+"""
+
+import asyncio
+import logging
+import os
+import sys
+import urllib.parse
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import httpx
+
+logger = logging.getLogger("monitor.git_network")
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+GITHUB_TEST_URL = "https://github.com"
+
+
+def load_corporate_proxies() -> List[Dict[str, str]]:
+    """Lee y decodifica la lista de proxies configurados directamente desde MariaDB (SSOT)."""
+    proxies = []
+
+    # 1. Cargar desde MariaDB (SSOT)
+    try:
+        from monitor.infrastructure.monitor_db import get_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT letter, name, ip_port, auth_userpass, is_active "
+                    "FROM monitored_proxies WHERE is_active = 1 ORDER BY letter"
+                )
+                for r in cur.fetchall():
+                    ip_port = (r.get("ip_port") or "").strip()
+                    if not ip_port:
+                        continue
+                    name = (r.get("name") or f"Proxy {r.get('letter', '')}").strip()
+                    auth = (r.get("auth_userpass") or "").strip()
+                    if auth and ":" in auth and auth != "USUARIO:CLAVE":
+                        user, pwd = auth.split(":", 1)
+                        user_enc = urllib.parse.quote(user)
+                        pwd_enc = urllib.parse.quote(pwd)
+                        url = f"http://{user_enc}:{pwd_enc}@{ip_port}"
+                    else:
+                        url = f"http://{ip_port}"
+                    proxies.append({
+                        "name": name,
+                        "url": url
+                    })
+                if proxies:
+                    return proxies
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"Error consultando proxies desde MariaDB: {e}")
+
+    return proxies
+
+
+async def evaluate_github_connectivity(timeout: float = 4.0) -> Tuple[Optional[str], str, bool]:
+    """
+    Evalúa la salida a GitHub en tiempo real probando en orden de prioridad:
+    1. Conexión directa a Internet.
+    2. Proxies corporativos configurados (Squid Carabobo, Valle Seco, pfSense).
+    Retorna: (proxy_url_o_none, etiqueta_ruta, es_funcional)
+    """
+    # 1. Probar conexión directa
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            r = await client.get(GITHUB_TEST_URL)
+            if r.status_code in (200, 301, 302):
+                logger.info("🌐 Salida DIRECTA a GitHub verificada exitosamente.")
+                return None, "Conexión Directa a Internet", True
+    except Exception as e:
+        logger.info(f"Conexión directa a GitHub no disponible ({e}). Evaluando proxies...")
+
+    # 2. Probar proxies corporativos
+    proxies = load_corporate_proxies()
+    for p in proxies:
+        p_name = p["name"]
+        p_url = p["url"]
+        try:
+            async with httpx.AsyncClient(proxy=p_url, timeout=timeout + 1.0, follow_redirects=True) as client:
+                r = await client.get(GITHUB_TEST_URL)
+                if r.status_code in (200, 301, 302):
+                    logger.info(f"🔄 Salida a GitHub exitosa vía [{p_name}]: {p_url}")
+                    return p_url, f"Proxy Corporativo ({p_name})", True
+        except Exception as e:
+            logger.debug(f"Proxy [{p_name}] sin salida a GitHub: {e}")
+
+    logger.warning("❌ No se encontró salida a GitHub ni por conexión directa ni por proxies.")
+    return None, "Sin Conexión a GitHub", False
+
+
+def get_git_proxy_args(proxy_url: Optional[str]) -> List[str]:
+    """Retorna los argumentos '-c' requeridos por el comando Git si se requiere proxy."""
+    if not proxy_url:
+        return []
+    return [
+        "-c", f"http.proxy={proxy_url}",
+        "-c", f"https.proxy={proxy_url}"
+    ]
+
+
+if __name__ == "__main__":
+    # Prueba interactiva desde terminal
+    async def _test():
+        """Ejecuta la función _test conforme a la especificación técnica."""
+        print("🔍 Evaluando conectividad de Git hacia GitHub...")
+        url, label, ok = await evaluate_github_connectivity()
+        print(f"Resultado: {label}")
+        print(f"Proxy URL: {url}")
+        print(f"Funcional: {ok}")
+        print(f"Git Args: {get_git_proxy_args(url)}")
+    asyncio.run(_test())

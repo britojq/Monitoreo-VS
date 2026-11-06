@@ -1,0 +1,14 @@
+[Unit]
+Description=WebSSH Proxy Service for Terminal SSH
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+ExecStart=/opt/sonar/venv/bin/wssh --address=127.0.0.1 --port=6082 --policy=autoadd --hostfile=/etc/websockify/known_hosts --fbidhttp=False --xsrf=False --origin=same --tdstream=127.0.0.1 --xheaders=True
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+# ==============================================================================
+# 📦 DEPENDENCIAS DEL ECOSISTEMA S.O.N.A.R. / MONITOREO-VS
+# Cumplimiento OWASP A06:2021 (SEC-005) - Control Estricto de Versiones (Pinning Bounded)
+# Python: 3.13+
+# ==============================================================================
+
+python-telegram-bot>=22.8,<23.0.0
+requests>=2.34.2,<3.0.0
+PyMySQL>=1.2.0,<2.0.0
+cryptography>=50.0.0,<51.0.0
+pysnmp>=7.1.29,<7.2.0
+paramiko>=4.0.0,<5.0.0
+netmiko>=4.7.0,<5.0.0
+psutil>=7.2.2,<8.0.0
+networkx>=3.7,<4.0.0

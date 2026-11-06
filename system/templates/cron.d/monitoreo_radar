@@ -1,0 +1,2 @@
+# /etc/cron.d/monitoreo_radar - Captura pasiva periodica de trafico y actualizaciones (NET Radar)
+*/5 * * * * root /opt/sonar/venv/bin/python /opt/sonar/monitor/net_radar_engine.py --once --cycle 10 >/dev/null 2>&1

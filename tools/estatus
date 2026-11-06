@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# 🚀 CLI Y WRAPPER DE MONITOREO: estatus (@IA_ValleSeco_bot)
+# Ubicación: /opt/sonar/tools/estatus
+# Sistema Objetivo: Debian 12 / 13 GNU/Linux (amd64) o Ubuntu Server
+# License: GNU Affero General Public License v3.0 
+# Author: Operador ATIT (@britojab:@britojq), https://britojab.com
+# Copyright (c) 2026 Operador ATIT
+# ==============================================================================
+
+REAL_SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_DIR="$(cd "$(dirname "$REAL_SCRIPT")/.." && pwd)"
+PROJECT_DIR="${PROJECT_DIR:-/opt/sonar}"
+PYTHON_EXEC="$PROJECT_DIR/venv/bin/python"
+ENGINE_SCRIPT="$PROJECT_DIR/monitor/monitor_engine.py"
+
+if [ ! -f "$PYTHON_EXEC" ] || [ ! -f "$ENGINE_SCRIPT" ]; then
+    echo "[ERROR] Entorno de ejecución no encontrado en $PROJECT_DIR." >&2
+    exit 1
+fi
+
+# Soporte para subcomandos directos de resiliencia y sincronización web
+if [ "${1:-}" = "rollback" ]; then
+    shift
+    exec "$PROJECT_DIR/tools/rollback" "$@"
+elif [ "${1:-}" = "checkpoint" ]; then
+    shift
+    exec "$PROJECT_DIR/tools/checkpoint" "$@"
+elif [ "${1:-}" = "activar" ]; then
+    shift
+    exec "$PROJECT_DIR/tools/activar" "$@"
+elif [ "${1:-}" = "web" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/monitor_web_sync.py" "$@"
+elif [ "${1:-}" = "cron" ] || [ "${1:-}" = "cron-runner" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/daemons/cron_runner.py" "$@"
+elif [ "${1:-}" = "recursos" ] || [ "${1:-}" = "optimizar" ] || [ "${1:-}" = "memoria" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/tools/system_optimizer.py" "$@"
+elif [ "${1:-}" = "temperatura" ] || [ "${1:-}" = "temp" ] || [ "${1:-}" = "termal" ]; then
+    shift
+    exec "$PROJECT_DIR/tools/temperatura" "$@"
+elif [ "${1:-}" = "discovery" ] || [ "${1:-}" = "descubrimiento" ] || [ "${1:-}" = "scan" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/checkers/discovery/discovery_cli.py" "$@"
+elif [ "${1:-}" = "radar" ] || [ "${1:-}" = "netradar" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/checkers/radar/radar_cli.py" "$@"
+elif [ "${1:-}" = "snmp" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/cli/snmp_cli.py" "$@"
+elif [ "${1:-}" = "ssl" ] || [ "${1:-}" = "certificados" ] || [ "${1:-}" = "certs" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/checkers/ssl/ssl_cli.py" "$@"
+elif [ "${1:-}" = "alertas" ] || [ "${1:-}" = "alert" ] || [ "${1:-}" = "alerta" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/alert_engine.py" "$@"
+elif [ "${1:-}" = "configs" ] || [ "${1:-}" = "config" ] || [ "${1:-}" = "respaldos" ] || [ "${1:-}" = "backup" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/checkers/backup/backup_cli.py" "$@"
+elif [ "${1:-}" = "traps" ] || [ "${1:-}" = "trap" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/daemons/snmp_trap_receiver.py" "$@"
+elif [ "${1:-}" = "syslog" ] || [ "${1:-}" = "syslogs" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/daemons/syslog_receiver.py" "$@"
+elif [ "${1:-}" = "netflow" ] || [ "${1:-}" = "flows" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/daemons/netflow_collector.py" "$@"
+elif [ "${1:-}" = "push" ] || [ "${1:-}" = "telemetria" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/daemons/push_telemetry_daemon.py" "$@"
+elif [ "${1:-}" = "topologia" ] || [ "${1:-}" = "topology" ] || [ "${1:-}" = "grafo" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/tools/topology_builder.py" "$@"
+elif [ "${1:-}" = "wol" ] || [ "${1:-}" = "wake" ] || [ "${1:-}" = "encender" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/tools/wol_sender.py" "$@"
+elif [ "${1:-}" = "predicciones" ] || [ "${1:-}" = "predictivo" ] || [ "${1:-}" = "capacidad" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/tools/predictive_analyzer.py" "$@"
+elif [ "${1:-}" = "inventario" ] || [ "${1:-}" = "ciclovida" ] || [ "${1:-}" = "garantias" ] || [ "${1:-}" = "lifecycle" ]; then
+    shift
+    exec "$PYTHON_EXEC" "$PROJECT_DIR/monitor/tools/lifecycle_manager.py" "$@"
+elif [ "${1:-}" = "cluster" ] || [ "${1:-}" = "nodo" ] || [ "${1:-}" = "rol" ]; then
+    shift
+    exec "$PYTHON_EXEC" -c "
+import sys
+sys.path.insert(0, '$PROJECT_DIR')
+from bot_core.services.config_manager import load_config
+try:
+    cfg = load_config()
+    print('=====================================================')
+    print('       ARQUITECTURA DE CLÚSTER (MASTER / SLAVE)       ')
+    print('=====================================================')
+    print(f' Rol del Nodo:       {cfg.get(\"node_role\", \"master\").upper()}')
+    print(f' Servidor Master:    {cfg.get(\"master_api_url\", \"http://192.168.1.250\")}')
+    print(f' Estado de Enlace:   {cfg.get(\"cluster_last_sync_status\", \"N/A\")}')
+    print(f' Última Sincronía:   {cfg.get(\"cluster_last_sync_at\", \"N/A\")}')
+    print('-----------------------------------------------------')
+    print(' Token de Clúster (X-Cluster-Token):')
+    print(f' {cfg.get(\"cluster_token\", \"N/A\")}')
+    print('=====================================================')
+except Exception as e:
+    print(f'Error al consultar MariaDB bot_settings: {e}')
+" "$@"
+fi
+
+# Pasar todos los argumentos al motor de Python
+exec "$PYTHON_EXEC" "$ENGINE_SCRIPT" "$@"

@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Admin Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=britojab
+Group=britojab
+WorkingDirectory=/opt/sonar
+ExecStartPre=/opt/sonar/tools/rollback --pre-start-check
+ExecStart=/opt/sonar/venv/bin/python /opt/sonar/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

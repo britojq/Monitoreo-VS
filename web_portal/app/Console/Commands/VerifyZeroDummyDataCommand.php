@@ -1,0 +1,413 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+class VerifyZeroDummyDataCommand extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'audit:verify-zero-dummy-data {--purge : Purgar automáticamente cualquier registro residual detectado}';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Verifica exhaustivamente que todas las tablas de MariaDB (SSOT) tengan cero registros ficticios, datos dummy o de pruebas';
+
+    /**
+     * Patrones de datos ficticios o de prueba prohibidos por la Regla de Oro #6.
+     */
+    protected array $forbiddenPatterns = [
+        '%TEST-%',
+        '%TEST\_%',
+        '%TEST DUAL%',
+        '%TEST-DUAL%',
+        '%DUMMY%',
+        '%10.20.99.%',
+    ];
+
+    /**
+     * Ejecuta la verificación en todas las tablas del esquema.
+     */
+    public function handle(): int
+    {
+        $this->info('Iniciando auditoría global de datos ficticios en MariaDB (SSOT)...');
+
+        $tables = DB::select('SHOW TABLES');
+        $dbName = DB::getDatabaseName();
+        $colName = 'Tables_in_' . $dbName;
+
+        $violations = [];
+
+        foreach ($tables as $tableObj) {
+            $table = $tableObj->$colName;
+
+            // Omitir tablas del framework, migraciones o telemetría masiva en crudo (JSON)
+            if (in_array($table, ['migrations', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'monitoring_snapshots'], true)) {
+                continue;
+            }
+
+            $columns = Schema::getColumnListing($table);
+
+            foreach ($columns as $col) {
+                try {
+                    $colType = Schema::getColumnType($table, $col);
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if (!in_array($colType, ['string', 'text', 'mediumtext', 'longtext'], true)) {
+                    continue;
+                }
+
+                foreach ($this->forbiddenPatterns as $pattern) {
+                    try {
+                        $query = DB::table($table)->where($col, 'like', $pattern);
+
+                        // Excepciones legítimas documentadas (RFCs o infraestructura oficial)
+                        if ($table === 'snmp_oids' && $col === 'description') {
+                            $query->where('description', 'not like', '%3=testing%');
+                        }
+                        if ($table === 'glpi_inventory_logs' && $col === 'raw_payload') {
+                            $query->where('raw_payload', 'not like', '%speech-dispatcher%');
+                        }
+
+                        $matches = $query->get();
+
+                        foreach ($matches as $row) {
+                            $rowId = $row->id ?? ($row->uuid ?? 'N/A');
+                            $val = (string) ($row->$col ?? '');
+                            $snippet = mb_substr($val, 0, 100);
+
+                            $violations[] = [
+                                'table' => $table,
+                                'column' => $col,
+                                'pattern' => $pattern,
+                                'id' => $rowId,
+                                'snippet' => $snippet,
+                            ];
+                        }
+                    } catch (\Throwable) {
+                        // Ignorar errores de columnas virtuales o no compatibles
+                    }
+                }
+            }
+        }
+
+        // Chequeo de seriales y puertos sintéticos en inventario y red (Regla de Oro #6)
+        try {
+            $invalidSerials = DB::table('monitored_network_devices')
+                ->where('serial', '00000000')
+                ->orWhere(function ($q) {
+                    $q->where('serial', 'like', 'SN-NET-%')
+                      ->where('id', '!=', 1); // Router principal legítimo
+                })
+                ->get(['id', 'name', 'serial']);
+
+            foreach ($invalidSerials as $s) {
+                $violations[] = [
+                    'table' => 'monitored_network_devices',
+                    'column' => 'serial',
+                    'pattern' => '00000000 o SN-NET-% sintético',
+                    'id' => $s->id,
+                    'snippet' => "Dispositivo [{$s->name}] Serial: {$s->serial}",
+                ];
+            }
+
+            $invalidPorts = DB::table('monitored_network_devices')
+                ->where('ports', '1x GE')
+                ->get(['id', 'name', 'ports']);
+
+            foreach ($invalidPorts as $p) {
+                $violations[] = [
+                    'table' => 'monitored_network_devices',
+                    'column' => 'ports',
+                    'pattern' => '1x GE (puerto ficticio)',
+                    'id' => $p->id,
+                    'snippet' => "Dispositivo [{$p->name}] Ports: {$p->ports}",
+                ];
+            }
+        } catch (\Throwable) {
+            // Ignorar si la tabla no existe en alguna ejecución
+        }
+
+        // Chequeo de duplicidad de direcciones IP en inventario de red (Reglas #6, #7 y #8)
+        try {
+            $duplicateIps = DB::table('inventory_assets')
+                ->select('ip_address', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'), DB::raw('GROUP_CONCAT(name) as names'))
+                ->whereNotNull('ip_address')
+                ->where('ip_address', '!=', '')
+                ->where('ip_address', '!=', '0.0.0.0')
+                ->groupBy('ip_address')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateIps as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'ip_address',
+                    'pattern' => 'IP DUPLICADA EN CENSO (Regla #6 / #7)',
+                    'id' => $dup->ids,
+                    'snippet' => "IP {$dup->ip_address} repetida {$dup->count} veces en equipos: [{$dup->names}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de duplicidad de posiciones (device_number) por sede (Regla #7)
+        try {
+            $duplicateSlots = DB::table('inventory_assets')
+                ->select('monitored_site_id', 'device_number', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'), DB::raw('GROUP_CONCAT(name) as names'))
+                ->whereNotNull('monitored_site_id')
+                ->whereNotNull('device_number')
+                ->groupBy('monitored_site_id', 'device_number')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateSlots as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'device_number',
+                    'pattern' => 'POSICIÓN DUPLICADA POR SEDE (device_number)',
+                    'id' => $dup->ids,
+                    'snippet' => "Sede {$dup->monitored_site_id} Posición #{$dup->device_number} repetida {$dup->count} veces en: [{$dup->names}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de duplicidad de nombres operativos por sede (Regla #7)
+        try {
+            $duplicateNames = DB::table('inventory_assets')
+                ->select('monitored_site_id', 'name', DB::raw('count(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'))
+                ->whereNotNull('monitored_site_id')
+                ->whereNotNull('name')
+                ->groupBy('monitored_site_id', 'name')
+                ->having('count', '>', 1)
+                ->get();
+
+            foreach ($duplicateNames as $dup) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'name',
+                    'pattern' => 'NOMBRE OPERATIVO DUPLICADO EN SEDE',
+                    'id' => $dup->ids,
+                    'snippet' => "Sede {$dup->monitored_site_id} Nombre '{$dup->name}' repetido {$dup->count} veces en IDs: [{$dup->ids}]",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de integridad de activos troncales (Router Principal ID 1 y Servidor Desarrollo ID 11519)
+        try {
+            $router = DB::table('inventory_assets')->where('id', 1)->first();
+            if (!$router || $router->name !== 'ROUTER PRINCIPAL' || $router->ip_address !== '192.168.1.1' || $router->access_type !== 'TELNET' || (int) $router->access_port !== 23) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'id=1 (ROUTER PRINCIPAL)',
+                    'pattern' => 'CORRUPCIÓN DE ACTIVO CRÍTICO (Error #8)',
+                    'id' => '1',
+                    'snippet' => 'Router Principal no tiene los parámetros legítimos (TELNET:23, 192.168.1.1, tipo router)',
+                ];
+            }
+
+            $devServer = DB::table('inventory_assets')->where('id', 11519)->first();
+            if (!$devServer || $devServer->ip_address !== '192.168.1.220' || !str_contains($devServer->name, 'CENCARATIT')) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'id=11519 (CENCARATIT)',
+                    'pattern' => 'CORRUPCIÓN DE SERVIDOR DE DESARROLLO',
+                    'id' => '11519',
+                    'snippet' => 'Servidor de desarrollo 11519 no tiene IP 192.168.1.220 o nombre CENCARATIT',
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Chequeo de integridad de direcciones IP en activos asignados o de cómputo/red (Regla Anti-Regresión ITAM)
+        try {
+            $unIpDevices = DB::table('inventory_assets')
+                ->where('is_active', 1)
+                ->where(function ($q) {
+                    $q->where('status', 'assigned')
+                      ->orWhereIn('type', ['desktop', 'workstation', 'laptop', 'server', 'router', 'switch']);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('ip_address')
+                      ->orWhere('ip_address', '')
+                      ->orWhere('ip_address', '0.0.0.0');
+                })
+                ->get(['id', 'name', 'type', 'status', 'ip_address']);
+
+            foreach ($unIpDevices as $dev) {
+                $violations[] = [
+                    'table' => 'inventory_assets',
+                    'column' => 'ip_address',
+                    'pattern' => 'EQUIPO ACTIVO/ASIGNADO SIN DIRECCIÓN IP (ANOMALÍA ITAM)',
+                    'id' => $dev->id,
+                    'snippet' => "Dispositivo [{$dev->name}] Tipo [{$dev->type}] Estado [{$dev->status}] sin IP válida",
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
+        // Regla de Oro #6: Prohibición absoluta de directorio y archivos planos de configuración en disco
+        $configDir = base_path('../config');
+        if (is_dir($configDir)) {
+            $violations[] = [
+                'table' => 'FILESYSTEM',
+                'column' => 'CONFIG_DIR_PROHIBITED',
+                'id' => 'Regla #6',
+                'pattern' => 'DIRECTORIO DE CONFIGURACIÓN OBSOLETO DETECTADO EN DISCO',
+                'snippet' => "Se detectó la carpeta {$configDir}. Toda configuración debe residir 100% en MariaDB bot_settings.",
+            ];
+        }
+
+        $prohibitedFlatFiles = [
+            base_path('../config/config.json'),
+            base_path('../config/.backup_golden'),
+            base_path('config/config.json'),
+        ];
+        foreach ($prohibitedFlatFiles as $flatPath) {
+            if (file_exists($flatPath)) {
+                $violations[] = [
+                    'table' => 'FILESYSTEM',
+                    'column' => 'FLAT_CONFIG_FILE_PROHIBITED',
+                    'id' => 'Regla #6',
+                    'pattern' => 'ARCHIVO PLANO DE CONFIGURACIÓN DETECTADO EN DISCO',
+                    'snippet' => "Se detectó el archivo prohibido {$flatPath}. Toda configuración debe residir 100% en MariaDB bot_settings.",
+                ];
+            }
+        }
+
+        // Regla de Oro #6: Prohibición absoluta de archivos planos de auditoría en disco (/opt/sonar/audit)
+        $auditDir = base_path('../audit');
+        if (is_dir($auditDir)) {
+            $flatAuditFiles = glob($auditDir . '/*.{log,json,txt,tmp,pcap}', GLOB_BRACE) ?: [];
+            if (!empty($flatAuditFiles)) {
+                foreach ($flatAuditFiles as $faf) {
+                    $violations[] = [
+                        'table' => 'FILESYSTEM',
+                        'column' => 'FLAT_AUDIT_FILE_PROHIBITED',
+                        'id' => 'Regla #6',
+                        'pattern' => 'ARCHIVO PLANO DE AUDITORÍA DETECTADO EN DISCO',
+                        'snippet' => "Se detectó archivo plano prohibido: {$faf}. La auditoría debe residir 100% en MariaDB audit_logs.",
+                    ];
+                }
+            }
+        }
+
+        // Regla de Oro #6 y #7: Prohibición absoluta de directorio y archivos planos de logs en disco (/opt/sonar/logs)
+        $logsDir = base_path('../logs');
+        if (is_dir($logsDir)) {
+            $violations[] = [
+                'table' => 'FILESYSTEM',
+                'column' => 'LOGS_DIR_PROHIBITED',
+                'id' => 'Regla #6/#7',
+                'pattern' => 'DIRECTORIO DE LOGS OBSOLETO DETECTADO EN DISCO',
+                'snippet' => "Se detectó la carpeta {$logsDir}. Todos los logs deben gestionarse vía systemd-journald o MariaDB audit_logs.",
+            ];
+        }
+
+        $prohibitedFlatLogs = [
+            base_path('../logs/bot.log'),
+            base_path('../logs/deploy_pipeline.log'),
+            base_path('../logs/thermal_guard.log'),
+            base_path('../logs/sentinel.log'),
+            base_path('../logs/last_deploy_audit.log'),
+            base_path('../logs/deploy_history.log'),
+        ];
+        foreach ($prohibitedFlatLogs as $flatLog) {
+            if (file_exists($flatLog)) {
+                $violations[] = [
+                    'table' => 'FILESYSTEM',
+                    'column' => 'FLAT_LOG_FILE_PROHIBITED',
+                    'id' => 'Regla #6/#7',
+                    'pattern' => 'ARCHIVO PLANO DE LOG DETECTADO EN DISCO',
+                    'snippet' => "Se detectó archivo plano prohibido: {$flatLog}. Debe gestionarse exclusivamente vía systemd-journald o MariaDB audit_logs.",
+                ];
+            }
+        }
+
+        // Auditar que MariaDB audit_logs sea el único sumidero de auditoría del sistema
+        try {
+            if (!Schema::hasTable('audit_logs')) {
+                $violations[] = [
+                    'table' => 'audit_logs',
+                    'column' => 'TABLE_MISSING',
+                    'id' => 'Regla #6/#7',
+                    'pattern' => 'SUMIDERO SSOT INEXISTENTE',
+                    'snippet' => 'La tabla requerida audit_logs no existe en MariaDB.',
+                ];
+            } else {
+                $requiredCols = ['id', 'event', 'module', 'description', 'created_at'];
+                $existingCols = Schema::getColumnListing('audit_logs');
+                foreach ($requiredCols as $rc) {
+                    if (!in_array($rc, $existingCols, true)) {
+                        $violations[] = [
+                            'table' => 'audit_logs',
+                            'column' => "COLUMN_MISSING_{$rc}",
+                            'id' => 'Regla #6/#7',
+                            'pattern' => 'ESQUEMA INCOMPLETO EN AUDIT_LOGS',
+                            'snippet' => "La columna requerida {$rc} no existe en audit_logs.",
+                        ];
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $violations[] = [
+                'table' => 'audit_logs',
+                'column' => 'SCHEMA_CHECK_ERROR',
+                'id' => 'Regla #6/#7',
+                'pattern' => 'ERROR INSPECCIONANDO SUMIDERO SSOT',
+                'snippet' => $e->getMessage(),
+            ];
+        }
+
+        if (empty($violations)) {
+            $this->info('================================================================');
+            $this->info('[OK] VERIFICACIÓN EXITOSA: Cero datos ficticios, cero duplicados y 100% integridad en MariaDB.');
+            $this->info('Todas las tablas del sistema cumplen al 100% con la Regla de Oro #6 y #7.');
+            $this->info('================================================================');
+            return Command::SUCCESS;
+        }
+
+        $this->error('================================================================');
+        $this->error('[FALLO CRÍTICO] Se detectaron violaciones de integridad o registros ficticios en MariaDB:');
+        $this->error('================================================================');
+
+        $headers = ['Tabla', 'Columna', 'ID', 'Patrón', 'Muestra del Valor'];
+        $rows = [];
+        foreach ($violations as $v) {
+            $rows[] = [$v['table'], $v['column'], $v['id'], $v['pattern'], $v['snippet']];
+        }
+        $this->table($headers, $rows);
+
+        if ($this->option('purge')) {
+            $this->warn('Ejecutando purga automática de violaciones de texto residual detectadas...');
+            foreach ($violations as $v) {
+                if (str_contains($v['pattern'], 'DUPLICADA') || str_contains($v['pattern'], 'CORRUPCIÓN') || str_contains($v['pattern'], 'SIN DIRECCIÓN IP')) {
+                    $this->error("La violación en {$v['table']} ({$v['pattern']}) requiere saneamiento relacional y no puede ser purgada automáticamente con --purge.");
+                    continue;
+                }
+                if ($v['id'] !== 'N/A' && !empty($v['table']) && is_numeric($v['id'])) {
+                    DB::table($v['table'])->where('id', $v['id'])->delete();
+                }
+            }
+            $this->info('Purga completada. Re-verificando...');
+            return $this->handle();
+        }
+
+        return Command::FAILURE;
+    }
+}
