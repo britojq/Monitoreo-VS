@@ -774,7 +774,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $syncService = app(\App\Services\Glpi\GlpiAssetSyncService::class);
 
         // Caso Linux
-        $linuxIp = '10.20.99.' . rand(10, 250);
+        $linuxIp = '10.240.1.' . rand(10, 250);
         $normLinux = $normalizer->normalize([
             'hardware' => ['name' => 'TEST-LINUX-' . uniqid(), 'osname' => 'Ubuntu 22.04 LTS (x86_64)'],
             'bios' => ['ssn' => 'SN-LINUX-' . uniqid()],
@@ -788,7 +788,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals(5900, $linuxAsset->vnc_port);
 
         // Caso Windows
-        $winIp = '10.20.99.' . rand(10, 250);
+        $winIp = '10.240.2.' . rand(10, 250);
         $normWin = $normalizer->normalize([
             'hardware' => ['name' => 'TEST-WIN-' . uniqid(), 'osname' => 'Microsoft Windows 7 Ultimate'],
             'bios' => ['ssn' => 'SN-WIN-' . uniqid()],
@@ -801,7 +801,7 @@ class AdminDeviceModalInventoryTest extends TestCase
         $this->assertEquals(5900, $winAsset->vnc_port);
 
         // Caso Impresora
-        $printerIp = '10.20.99.' . rand(10, 250);
+        $printerIp = '10.240.3.' . rand(10, 250);
         $normPrinter = $normalizer->normalize([
             'hardware' => ['name' => 'TEST-PRINTER-' . uniqid()],
             'type' => 'printer',
