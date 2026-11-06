@@ -17,7 +17,7 @@ from monitor.application.dtos.check_result_dto import (
     EquipmentCheckResultDTO,
     SiteCheckResultDTO,
 )
-from monitor.checker_base import check_ping
+from monitor.checkers.ping_checker import check_ping
 from monitor.domain.entities.site import EquipmentEntity, SiteEntity
 from monitor.domain.protocols.database_protocol import (
     SiteRepositoryProtocol,

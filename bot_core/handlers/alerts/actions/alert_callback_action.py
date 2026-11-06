@@ -52,7 +52,7 @@ async def handle_alert_action_callback(update: Update, context: ContextTypes.DEF
         await query.answer("⛔ No tienes permisos para gestionar incidentes de infraestructura.", show_alert=True)
         return
 
-    from monitor.alert_engine import AlertEngine
+    from monitor.alerts import AlertEngine
     engine = AlertEngine()
 
     if action == "ack":

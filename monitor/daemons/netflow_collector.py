@@ -30,7 +30,7 @@ if str(BASE_DIR) not in sys.path:
 import pymysql
 
 try:
-    from monitor.monitor_web_sync import get_db_connection
+    from monitor.infrastructure.monitor_db import get_db_connection
 except ImportError:
     def get_db_connection():
         """Establece y retorna una conexión activa con MariaDB SSOT."""

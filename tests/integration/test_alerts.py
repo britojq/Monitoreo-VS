@@ -21,11 +21,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.alert_engine import (
+from monitor.alerts import (
     AlertEngine,
-    get_db_connection,
     compute_fingerprint,
 )
+from monitor.infrastructure.monitor_db import get_db_connection
 
 
 class TestAlertsIntegration(unittest.TestCase):

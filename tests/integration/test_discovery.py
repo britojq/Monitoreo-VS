@@ -18,8 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_web_sync import get_db_connection
-from monitor.network_discovery import (
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.checkers.discovery import (
     lookup_oui_vendor,
     infer_device_type,
     get_kernel_arp_table,

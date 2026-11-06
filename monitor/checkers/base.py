@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from monitor.config_parser import ServiceConfig
+    from monitor.parsers import ServiceConfig
 
 
 @dataclass(frozen=True)

@@ -10,7 +10,7 @@ import asyncio
 from typing import Tuple
 
 from monitor.checkers.base import BaseServiceChecker, CheckResult
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 
 
 async def check_web(

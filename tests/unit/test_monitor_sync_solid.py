@@ -9,9 +9,10 @@ from monitor.sync.dtos import (
     ProxyEvaluationResult,
     NetworkDeviceEvaluationResult,
 )
+from pathlib import Path
 from monitor.sync.cluster import clean_mysql_dt, MasterClusterClient
 from monitor.sync.probes import create_permissive_ssl_context
-import monitor.monitor_web_sync as facade
+import monitor.sync as sync_package
 
 def test_wan_quality_result_dto():
     dto = WanQualityResult(
@@ -47,14 +48,13 @@ def test_master_cluster_client_init():
     assert client.master_url == "http://192.168.1.250"
     assert client.cluster_token == "test_token"
 
-def test_facade_reexports():
+def test_sync_package_exports():
     expected_attrs = [
         "get_last_scan_time",
         "update_last_scan_time",
         "should_run_web_scan",
         "create_permissive_ssl_context",
         "SSL_PERMISSIVE_CTX",
-        "get_db_connection",
         "check_ping",
         "check_wan_quality",
         "check_tcp_port",
@@ -65,11 +65,10 @@ def test_facade_reexports():
         "evaluate_site",
         "evaluate_proxy",
         "evaluate_network_device",
-        "sync_conf_to_db",
         "run_full_scan",
-        "_clean_mysql_dt",
+        "clean_mysql_dt",
         "sync_from_master",
-        "_update_cluster_status",
     ]
     for attr in expected_attrs:
-        assert hasattr(facade, attr), f"Falta el atributo re-exportado '{attr}' en monitor_web_sync"
+        assert hasattr(sync_package, attr), f"Falta el atributo canónico '{attr}' en monitor.sync"
+

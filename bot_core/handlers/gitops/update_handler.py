@@ -112,11 +112,11 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text("⛔ Comando exclusivo del Administrador en chat privado.")
         return
 
-    from monitor.system_updater import (
+    from bot_core.utils.telegram_helpers import safe_deliver_update_result
+    from monitor.gitops import (
         build_update_dashboard,
         execute_git_update,
         restart_service_delayed,
-        safe_deliver_update_result,
     )
 
     if context.args:
@@ -171,14 +171,14 @@ async def handle_update_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("⛔ Solo el creador y administrador del bot puede gestionar actualizaciones.", show_alert=True)
         return
 
-    from monitor.system_updater import (
+    from bot_core.utils.telegram_helpers import safe_deliver_update_result
+    from monitor.gitops import (
         build_deployment_dashboard,
         build_update_dashboard,
         clear_update_lock,
         execute_git_update,
         execute_rollback,
         restart_service_delayed,
-        safe_deliver_update_result,
     )
 
     payload = UpdateActionPayload.from_callback_data(query.data)
@@ -317,7 +317,7 @@ async def cmd_estado_deploy(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text("⛔ Comando exclusivo del Administrador en chat privado.")
         return
 
-    from monitor.system_updater import build_deployment_dashboard
+    from monitor.gitops import build_deployment_dashboard
 
     wait_msg = await update.message.reply_text(
         "⏳ <i>Consultando estado técnico del pipeline y enlaces de red...</i>",

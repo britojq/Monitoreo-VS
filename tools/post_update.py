@@ -474,7 +474,7 @@ def ensure_ups_service():
 
         # Auto-curación de identidad corporativa legítima del UPS (Reglas de Oro #6, #7 y #8)
         try:
-            from monitor.monitor_db import get_db_connection
+            from monitor.infrastructure.monitor_db import get_db_connection
             conn = get_db_connection()
             with conn.cursor() as cur:
                 cur.execute("""
@@ -535,7 +535,7 @@ def check_drm_anchor_health():
         subprocess.run(cmd_prefix + ["chmod", "0640", str(anchor_file)], check=False)
         subprocess.run(cmd_prefix + ["chown", "britojab:www-data", str(anchor_file)], check=False)
         try:
-            from monitor.core_shield import is_core_operational
+            from monitor.shield import is_core_operational
             if is_core_operational():
                 log("🔒 [DRM] Bóveda criptográfica y anclaje de hardware validados (OPERATIONAL).")
                 return True

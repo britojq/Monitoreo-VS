@@ -7,7 +7,7 @@ construcción de comandos y validación en base de datos.
 from unittest.mock import MagicMock, patch
 import pytest
 
-from monitor.agent_deployer import (
+from monitor.deployment.agent_deployer import (
     get_target_url,
     deploy_linux_ssh,
     deploy_windows_winrm,
@@ -149,7 +149,7 @@ class TestAgentDeployer:
         assert res["db_verification"]["verified"] is True
 
     def test_deploy_windows_rpc_webclient_command(self):
-        from monitor.agent_deployer import deploy_windows_rpc
+        from monitor.deployment.agent_deployer import deploy_windows_rpc
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = "[*] SMBv2.1 dialect used\r\n[+] Instalacion finalizada"
@@ -176,7 +176,7 @@ class TestAgentDeployer:
         assert "irm " not in cmd_str
 
     def test_deploy_windows_rpc_decoding_warning_not_fatal(self):
-        from monitor.agent_deployer import deploy_windows_rpc
+        from monitor.deployment.agent_deployer import deploy_windows_rpc
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = "[*] SMBv2.1 dialect used\r\n[-] Decoding error detected, consider running chcp.com\r\n[+] OK"

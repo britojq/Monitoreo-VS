@@ -6,7 +6,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch
 
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 from monitor.checkers.base import BaseServiceChecker, CheckResult
 from monitor.checkers.registry import CheckerRegistry
 from monitor.checkers.web_checker import WebChecker

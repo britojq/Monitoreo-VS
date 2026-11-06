@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-from monitor.config_parser import get_formatted_datetime
+from monitor.parsers import get_formatted_datetime
 
 logger = logging.getLogger("monitor.infrastructure.log_writer")
 

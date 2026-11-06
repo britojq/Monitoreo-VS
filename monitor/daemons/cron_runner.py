@@ -25,7 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_engine import execute_monitoring, get_default_telegram_chats
+from monitor.application import execute_monitoring
+from monitor.cli.monitor_cli import get_default_telegram_chats
 from monitor.alerts.telegram_dispatcher import TelegramDispatcher
 from monitor.tools.web_screenshot import capture_web_dashboard
 

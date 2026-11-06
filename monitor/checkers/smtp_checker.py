@@ -10,7 +10,7 @@ import asyncio
 from typing import Tuple
 
 from monitor.checkers.base import BaseServiceChecker, CheckResult
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 
 
 async def check_smtp(ip: str, port: str = "25", timeout: float = 4.0) -> Tuple[bool, str, str]:

@@ -54,8 +54,6 @@ from monitor.infrastructure.laravel_encryptor import (
     get_laravel_app_key,
 )
 from monitor.infrastructure.shm_cache import ShmCache
-import monitor.monitor_engine as monitor_engine
-import monitor.snmp_poller as snmp_poller
 
 
 class TestLockManager:
@@ -222,23 +220,24 @@ class TestLaravelEncryptor:
         assert decrypt_laravel_string("") == ""
 
 
-class TestFacadesAndOrchestrator:
-    """Valida la integridad de las fachadas y la ejecución del orquestador."""
+class TestApplicationAndOrchestrator:
+    """Valida los contratos canónicos del módulo application y orquestador."""
 
-    def test_monitor_engine_facade_exports(self) -> None:
-        assert hasattr(monitor_engine, "execute_monitoring")
-        assert hasattr(monitor_engine, "get_latest_snapshot")
-        assert hasattr(monitor_engine, "compile_services_from_snapshot")
-        assert hasattr(monitor_engine, "compile_sedes_from_snapshot")
-        assert hasattr(monitor_engine, "main")
+    def test_application_canonical_exports(self) -> None:
+        import monitor.application as app_pkg
+        assert hasattr(app_pkg, "execute_monitoring")
+        assert hasattr(app_pkg, "get_latest_snapshot")
+        assert hasattr(app_pkg, "MonitoringOrchestrator")
 
-    def test_snmp_poller_facade_exports(self) -> None:
-        assert hasattr(snmp_poller, "decrypt_laravel_string")
-        assert hasattr(snmp_poller, "poll_device_oids")
-        assert hasattr(snmp_poller, "discover_interfaces")
-        assert hasattr(snmp_poller, "poll_interface_metrics")
-        assert hasattr(snmp_poller, "run_snmp_poll")
-        assert hasattr(snmp_poller, "main")
+    def test_snmp_orchestrator_canonical_exports(self) -> None:
+        import monitor.application.snmp_orchestrator as snmp_orch
+        import monitor.cli.snmp_cli as snmp_cli
+        assert hasattr(snmp_orch, "poll_device_oids")
+        assert hasattr(snmp_orch, "discover_interfaces")
+        assert hasattr(snmp_orch, "poll_interface_metrics")
+        assert hasattr(snmp_orch, "run_snmp_poll")
+        assert hasattr(snmp_orch, "print_status")
+        assert hasattr(snmp_cli, "main")
 
     def test_orchestrator_skips_when_locked(self, tmp_path: Path) -> None:
         import asyncio

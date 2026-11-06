@@ -139,7 +139,7 @@ async def handle_start() -> int:
             # Ejecutar chequeo concurrente de servicios corporativos y enviar reporte técnico limpio
             try:
                 logger.info("🔍 Ejecutando chequeo automático de servicios corporativos post-recuperación...")
-                from monitor.monitor_engine import run_services_check
+                from monitor.monitor_servicios import run_services_check
 
                 _, vars_s, _, _ = await run_services_check(debug_mode=False)
                 corp_services = (vars_s.get("SERVICIOS_CORPORATIVOS") or "").strip()

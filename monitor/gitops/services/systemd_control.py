@@ -20,7 +20,7 @@ class SystemdController:
     ) -> None:
         """Asienta un evento inmutable en MariaDB audit_logs antes de despachar comandos a systemd."""
         try:
-            from monitor.monitor_web_sync import get_db_connection
+            from monitor.infrastructure.monitor_db import get_db_connection
 
             conn = get_db_connection()
             try:

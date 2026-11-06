@@ -23,7 +23,7 @@ from monitor.shield.ssh_alert.ssh_alert_dispatcher import (
     log_event_to_database,
     send_telegram_alert,
 )
-from monitor.terminal_shield import is_protected_process
+from monitor.shield import is_protected_process
 
 logger = logging.getLogger("monitor.shield.ssh_alert.processor")
 

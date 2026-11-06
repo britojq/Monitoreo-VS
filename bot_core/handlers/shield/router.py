@@ -68,7 +68,7 @@ async def cmd_lockdown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text("⛔ Acceso denegado: Comando exclusivo del Administrador.")
         return
 
-    from monitor.terminal_shield import execute_lockdown
+    from monitor.shield import execute_lockdown
     execute_lockdown(target_user=user.username or "admin")
     hostname = socket.gethostname()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -99,7 +99,7 @@ async def cmd_unlock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             await update.message.reply_text("⛔ Acceso denegado: Comando exclusivo del Administrador.")
         return
 
-    from monitor.terminal_shield import execute_unlock
+    from monitor.shield import execute_unlock
     execute_unlock()
     hostname = socket.gethostname()
 
@@ -133,7 +133,7 @@ async def cmd_autorizar_consola(update: Update, context: ContextTypes.DEFAULT_TY
         except ValueError:
             pass
 
-    from monitor.terminal_shield import execute_auth
+    from monitor.shield import execute_auth
     res = execute_auth(minutes)
     hostname = socket.gethostname()
 

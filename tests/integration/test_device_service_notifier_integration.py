@@ -20,8 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_db import get_db_connection
-from monitor.device_service_notifier import (
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.alerts.device_service_notifier import (
     get_notification_target,
     process_service_notifications,
     process_device_notifications,

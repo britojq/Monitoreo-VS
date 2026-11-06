@@ -24,7 +24,10 @@ from monitor.tools.system_cleaner import (
     execute_clean_task,
     run_cmd_async,
 )
-from monitor.checker_base import check_cups, check_dhcp, check_dns, check_ping
+from monitor.checkers.cups_checker import check_cups
+from monitor.checkers.dhcp_checker import check_dhcp
+from monitor.checkers.dns_checker import check_dns
+from monitor.checkers.ping_checker import check_ping
 
 
 class TestPhase2InputSanitization(unittest.TestCase):

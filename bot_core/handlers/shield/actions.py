@@ -31,7 +31,7 @@ class AuthorizeTerminalAction(ShieldActionProtocol):
             return
 
         await query.answer("✅ Sesión autorizada por 30 minutos.")
-        from monitor.terminal_shield import execute_auth
+        from monitor.shield import execute_auth
 
         target_pid = payload.target_pid
         target_ppid = payload.target_ppid
@@ -67,7 +67,7 @@ class KillTerminalAction(ShieldActionProtocol):
             return
 
         await query.answer("🚫 Neutralizando terminal...")
-        from monitor.terminal_shield import execute_kill
+        from monitor.shield import execute_kill
 
         target_pid = payload.target_pid
         target_ppid = payload.target_ppid
@@ -118,7 +118,7 @@ class LockdownAction(ShieldActionProtocol):
             return
 
         await query.answer("🔒 ACTIVANDO REINICIO DE SEGURIDAD...", show_alert=True)
-        from monitor.terminal_shield import execute_lockdown
+        from monitor.shield import execute_lockdown
 
         target_pid = payload.target_pid
         target_ppid = payload.target_ppid
@@ -151,7 +151,7 @@ class UnlockAction(ShieldActionProtocol):
             return
 
         await query.answer("🔓 Desactivando estado de emergencia...")
-        from monitor.terminal_shield import execute_unlock
+        from monitor.shield import execute_unlock
 
         target_server = payload.target_server or socket.gethostname()
         execute_unlock()
@@ -197,7 +197,7 @@ class SoyYoAction:
             return
 
         try:
-            from monitor.terminal_shield import execute_auth
+            from monitor.shield import execute_auth
             res = execute_auth(30)
             hostname = socket.gethostname()
             expiry_time = res.get("expiry", "30 minutos")

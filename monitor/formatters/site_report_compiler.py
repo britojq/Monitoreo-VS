@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from monitor.config_parser import (
+from monitor.parsers import (
     MonitorConfigLoader,
     get_formatted_datetime,
     render_template,

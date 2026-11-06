@@ -10,7 +10,7 @@ import asyncio
 from typing import Tuple
 
 from monitor.checkers.base import BaseServiceChecker, CheckResult
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 
 
 async def check_ldap(ip: str, port: str = "389", timeout: float = 3.5) -> Tuple[bool, str, str]:

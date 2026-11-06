@@ -18,12 +18,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.snmp_poller import (
+from monitor.infrastructure.laravel_encryptor import (
     decrypt_laravel_string,
-    poll_device_oids,
+    encrypt_laravel_string as encrypt_laravel_value,
 )
-from monitor.snmp_activator import (
-    encrypt_laravel_value,
+from monitor.checkers.snmp.snmp_engine import (
+    poll_device_oids,
 )
 
 

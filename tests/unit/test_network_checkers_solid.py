@@ -58,9 +58,9 @@ class TestNetworkAnalyzerModular:
         assert "192.168.1.1" in summary
 
     def test_analyzer_facade_exports(self):
-        import monitor.network_analyzer as facade
-        assert hasattr(facade, "execute_network_analysis")
-        assert hasattr(facade, "run_full_network_analysis")
+        import monitor.checkers.analyzer as mod
+        assert hasattr(mod, "execute_network_analysis")
+        assert hasattr(mod, "run_full_network_analysis")
 
 
 class TestCoreShieldModular:
@@ -77,11 +77,11 @@ class TestCoreShieldModular:
         assert is_core_operational() in (True, False)
 
     def test_shield_facade_exports(self):
-        import monitor.core_shield as facade
-        assert hasattr(facade, "SecureCore")
-        assert hasattr(facade, "is_core_operational")
-        assert hasattr(facade, "IMMUTABLE_OWNER_ID")
-        assert facade.IMMUTABLE_OWNER_ID == 38914901
+        import monitor.shield as mod
+        assert hasattr(mod, "SecureCore")
+        assert hasattr(mod, "is_core_operational")
+        assert hasattr(mod, "IMMUTABLE_OWNER_ID")
+        assert mod.IMMUTABLE_OWNER_ID == 38914901
 
 
 class TestConfigBackupModular:
@@ -112,9 +112,9 @@ class TestConfigBackupModular:
         assert "hostname TEST-RTR" in sim
 
     def test_backup_facade_exports(self):
-        import monitor.config_backup as facade
-        assert hasattr(facade, "ConfigBackupManager")
-        assert hasattr(facade, "backup_target_device")
+        import monitor.checkers.backup as mod
+        assert hasattr(mod, "ConfigBackupManager")
+        assert hasattr(mod, "backup_target_device")
 
 
 class TestNetRadarModular:
@@ -137,9 +137,9 @@ class TestNetRadarModular:
         assert none_type == ""
 
     def test_radar_facade_exports(self):
-        import monitor.net_radar_engine as facade
-        assert hasattr(facade, "run_radar_cycle")
-        assert hasattr(facade, "main_daemon")
+        import monitor.checkers.radar as mod
+        assert hasattr(mod, "run_radar_cycle")
+        assert hasattr(mod, "main_daemon")
 
 
 class TestSslCheckerModular:
@@ -152,9 +152,9 @@ class TestSslCheckerModular:
         assert match_hostname("other.domain.com", ["*.example.com"], None) is False
 
     def test_ssl_facade_exports(self):
-        import monitor.ssl_checker as facade
-        assert hasattr(facade, "check_and_update_certificate")
-        assert hasattr(facade, "run_all_ssl_checks")
+        import monitor.checkers.ssl as mod
+        assert hasattr(mod, "check_and_update_certificate")
+        assert hasattr(mod, "run_all_ssl_checks")
 
 
 class TestDiscoveryModular:
@@ -167,9 +167,9 @@ class TestDiscoveryModular:
         assert infer_device_type("HP", "printer-laserjet-01") == "printer"
 
     def test_discovery_facade_exports(self):
-        import monitor.network_discovery as facade
-        assert hasattr(facade, "scan_subnet")
-        assert hasattr(facade, "scan_all_active_subnets")
+        import monitor.checkers.discovery as mod
+        assert hasattr(mod, "scan_subnet")
+        assert hasattr(mod, "scan_all_active_subnets")
 
 
 class TestThermalModular:
@@ -181,9 +181,9 @@ class TestThermalModular:
         assert AI_SERVICE_UNIT == "ollama.service"
 
     def test_thermal_facade_exports(self):
-        import monitor.thermal_guard as facade
-        assert hasattr(facade, "ThermalGuardian")
-        assert hasattr(facade, "get_cpu_temperatures")
+        import monitor.checkers.thermal as mod
+        assert hasattr(mod, "ThermalGuardian")
+        assert hasattr(mod, "get_cpu_temperatures")
 
 
 class TestSshAlertModular:
@@ -203,5 +203,5 @@ class TestSshAlertModular:
         assert sanitize_session_token("root", "pts/0") == "root_pts_0.ts"
 
     def test_ssh_alert_facade_exports(self):
-        import monitor.ssh_alert as facade
-        assert hasattr(facade, "process_pam_event")
+        import monitor.shield.ssh_alert as mod
+        assert hasattr(mod, "process_pam_event")

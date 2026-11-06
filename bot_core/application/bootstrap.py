@@ -255,7 +255,7 @@ class BotApplicationBootstrapper:
 
         async def on_post_init(app: Application) -> None:
             """Inicia tareas en segundo plano del bot (Watchdog de red, actualizaciones y auto-rollback)."""
-            from monitor.system_updater import auto_update_worker
+            from monitor.gitops import auto_update_worker
 
             # 1. Centinela de Conmutación Dinámica en Caliente (Watchdog)
             if self.config.get("auto_proxy_failover", True):

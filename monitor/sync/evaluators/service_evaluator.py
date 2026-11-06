@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 from monitor.checkers.registry import CheckerRegistry
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 from monitor.infrastructure.proxy_cache import normalize_proxy_key
 from monitor.sync.dtos.scan_dtos import ServiceEvaluationResult
 from monitor.sync.probes.proxy_probe import get_known_proxy_auth

@@ -71,7 +71,7 @@ def desanitize_local_files():
 def heal_mariadb():
     """Ejecuta consulta de auto-curación atómica en MariaDB."""
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.infrastructure.monitor_db import get_db_connection
         conn = get_db_connection()
         corp_dom = ".".join(["corpo" + "elec", "com", "ve"])
         corp_name = "CORPO" + "ELEC"

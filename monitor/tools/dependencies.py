@@ -197,3 +197,51 @@ def get_process_ups_telemetry_use_case(
     return ProcessUpsTelemetryUseCase(
         notifier=notifier or get_telegram_notifier(),
     )
+
+
+class ServiceProvider:
+    """Adaptador de compatibilidad orientado a objetos sobre las fábricas de dependencies."""
+
+    @property
+    def site_repository(self) -> SiteRepositoryProtocol:
+        return get_site_repository()
+
+    @property
+    def service_repository(self) -> ServiceRepositoryProtocol:
+        return get_service_repository()
+
+    @property
+    def network_device_repository(self) -> NetworkDeviceRepositoryProtocol:
+        return get_network_device_repository()
+
+    @property
+    def snapshot_repository(self) -> SnapshotRepositoryProtocol:
+        return get_snapshot_repository()
+
+    @property
+    def telemetry_repository(self) -> TelemetryRepositoryProtocol:
+        return get_telemetry_repository()
+
+    @property
+    def telegram_notifier(self) -> TelegramNotifierProtocol:
+        return get_telegram_notifier()
+
+    @property
+    def screenshot_generator(self) -> ScreenshotGeneratorProtocol:
+        return get_screenshot_generator()
+
+    def get_check_all_sites_use_case(self) -> CheckAllSitesUseCase:
+        return get_check_all_sites_use_case()
+
+    def get_check_all_services_use_case(self) -> CheckAllServicesUseCase:
+        return get_check_all_services_use_case()
+
+    def get_sync_telemetry_snapshot_use_case(self) -> SyncTelemetrySnapshotUseCase:
+        return get_sync_telemetry_snapshot_use_case()
+
+    def get_process_ups_telemetry_use_case(self) -> ProcessUpsTelemetryUseCase:
+        return get_process_ups_telemetry_use_case()
+
+
+system_services = ServiceProvider()
+

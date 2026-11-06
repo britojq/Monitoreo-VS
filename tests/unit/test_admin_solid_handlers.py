@@ -55,7 +55,7 @@ def test_authorize_terminal_action_executes_without_name_error():
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
 
-        with patch("monitor.terminal_shield.execute_auth") as mock_auth:
+        with patch("monitor.shield.execute_auth") as mock_auth:
             mock_auth.return_value = {"tty": "pts/2", "expiry": "18:00:00"}
             await action.execute(payload, update, context)
 
@@ -87,7 +87,7 @@ def test_kill_terminal_action_executes_correctly():
 
         context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
 
-        with patch("monitor.terminal_shield.execute_kill") as mock_kill:
+        with patch("monitor.shield.execute_kill") as mock_kill:
             mock_kill.return_value = {"killed": ["bash (PID 1234)"], "infractions": 1, "reboot_triggered": False}
             await action.execute(payload, update, context)
 
@@ -99,8 +99,8 @@ def test_kill_terminal_action_executes_correctly():
 
 
 def test_thermal_dashboard_formatting():
-    with patch("monitor.thermal_guard.get_cpu_temperatures") as mock_temp, \
-         patch("monitor.thermal_guard.is_ai_service_active", return_value=False):
+    with patch("monitor.checkers.thermal.get_cpu_temperatures") as mock_temp, \
+         patch("monitor.checkers.thermal.is_ai_service_active", return_value=False):
         mock_temp.return_value = {
             "badge": "🟢",
             "level": "NORMAL",
@@ -116,7 +116,7 @@ def test_thermal_dashboard_formatting():
 
 
 def test_ai_control_panel_formatting():
-    with patch("monitor.thermal_guard.is_ai_service_active", return_value=False):
+    with patch("monitor.checkers.thermal.is_ai_service_active", return_value=False):
         text, markup = format_ai_control_panel_html()
         assert "CONTROL Y ADMINISTRACIÓN DEL ASISTENTE CORPORATIVO" in text
         assert "ollama" not in text.lower(), "Regla #2: No mencionar la tecnología de IA subyacente"

@@ -50,7 +50,7 @@ from monitor.application.use_cases import (
     SyncTelemetrySnapshotUseCase,
     ProcessUpsTelemetryUseCase,
 )
-from monitor.service_provider import ServiceProvider
+from monitor.tools.dependencies import ServiceProvider
 
 
 class TestCleanArchitectureDomainEntities:
@@ -269,7 +269,7 @@ class TestCleanArchitectureUseCases:
         assert app_services.get_check_all_sites_use_case() is not None
 
     def test_functional_dependency_factories(self):
-        from monitor.dependencies import (
+        from monitor.tools.dependencies import (
             get_site_repository,
             get_service_repository,
             get_network_device_repository,

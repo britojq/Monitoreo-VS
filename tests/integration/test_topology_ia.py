@@ -17,10 +17,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_web_sync import get_db_connection
-from monitor.wol_sender import normalize_mac, create_magic_packet
-from monitor.predictive_analyzer import calculate_linear_regression, calculate_stats
-from monitor.topology_builder import TopologyBuilder
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.tools.wol_sender import normalize_mac, create_magic_packet
+from monitor.tools.predictive_analyzer import calculate_linear_regression, calculate_stats
+from monitor.tools.topology_builder import TopologyBuilder
 
 
 class TestTopologyAndPredictiveIntegration(unittest.TestCase):

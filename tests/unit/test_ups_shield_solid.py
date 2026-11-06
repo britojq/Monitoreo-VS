@@ -161,12 +161,12 @@ class TestTerminalShieldSolidArchitecture:
         assert is_protected_process(1) is False
         assert get_process_name(-1) == "desconocido"
 
-    def test_facades_symbol_parity(self):
-        """Verifica que las fachadas delegadoras expongan el 100% de la API esperada."""
-        import monitor.terminal_shield as shield_facade
-        import monitor.ups_service as ups_facade
+    def test_packages_symbol_parity(self):
+        """Verifica que los paquetes canónicos expongan el 100% de la API esperada."""
+        import monitor.shield as shield_pkg
+        import monitor.ups as ups_pkg
 
-        # Verificación de símbolos en ups_service
+        # Verificación de símbolos en ups
         expected_ups_symbols = [
             "calculate_battery_percentage",
             "format_duration",
@@ -186,9 +186,9 @@ class TestTerminalShieldSolidArchitecture:
             "run_ups_daemon",
         ]
         for s in expected_ups_symbols:
-            assert hasattr(ups_facade, s), f"Falta símbolo {s} en monitor.ups_service"
+            assert hasattr(ups_pkg, s), f"Falta símbolo {s} en monitor.ups"
 
-        # Verificación de símbolos en terminal_shield
+        # Verificación de símbolos en shield
         expected_shield_symbols = [
             "log_event_to_database",
             "load_configured_proxies",
@@ -215,4 +215,4 @@ class TestTerminalShieldSolidArchitecture:
             "process_terminal_open",
         ]
         for s in expected_shield_symbols:
-            assert hasattr(shield_facade, s), f"Falta símbolo {s} en monitor.terminal_shield"
+            assert hasattr(shield_pkg, s), f"Falta símbolo {s} en monitor.shield"

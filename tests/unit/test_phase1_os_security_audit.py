@@ -78,7 +78,7 @@ async def test_sec_006_stop_service_delayed_records_audit_and_calls_exec():
 
     with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep, \
          patch("asyncio.create_subprocess_exec", new_callable=AsyncMock, return_value=mock_proc) as mock_exec, \
-         patch("monitor.monitor_web_sync.get_db_connection", return_value=mock_conn):
+         patch("monitor.infrastructure.monitor_db.get_db_connection", return_value=mock_conn):
 
         result = await SystemdController.stop_service_delayed(
             delay_seconds=0.01,

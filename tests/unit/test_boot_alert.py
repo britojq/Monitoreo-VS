@@ -11,7 +11,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-import monitor.boot_alert as ba
+import monitor.alerts.boot_alert as ba
 
 
 class TestBootAlert:
@@ -76,8 +76,8 @@ class TestBootAlert:
                     with patch.object(ba, "set_bot_setting", mock_set_setting):
                         with patch.object(ba, "wait_for_network_and_telegram", return_value=True):
                             with patch.object(ba, "send_telegram_alert", mock_send):
-                                with patch("monitor.monitor_engine.run_services_check", mock_run_services):
-                                    with patch("monitor.monitor_db.get_db_connection", return_value=mock_conn):
+                                with patch("monitor.monitor_servicios.run_services_check", mock_run_services):
+                                    with patch("monitor.infrastructure.monitor_db.get_db_connection", return_value=mock_conn):
                                         with patch("subprocess.Popen") as mock_popen:
                                             with patch.dict(os.environ, {"TESTING": "0", "APP_ENV": "production", "POST_BOOT_STABILIZATION_SECONDS": "0"}):
                                                 ret = await ba.handle_start()

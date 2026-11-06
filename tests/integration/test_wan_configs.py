@@ -20,8 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_web_sync import check_wan_quality, get_db_connection
-from monitor.config_backup import ConfigBackupManager
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.sync.probes.network_probes import check_wan_quality
+from monitor.checkers.backup import ConfigBackupManager
 
 
 class TestWanQualityAndConfigsIntegration(unittest.TestCase):

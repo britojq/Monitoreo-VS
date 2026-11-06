@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
-from monitor.checker_base import get_active_network_interface
+from monitor.infrastructure.network_utils import get_active_network_interface
 from monitor.checkers.radar.flow_sniffer import (
     capture_and_analyze_flows,
     get_interface_ip_and_mask,

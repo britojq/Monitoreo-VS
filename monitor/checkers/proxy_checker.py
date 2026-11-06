@@ -15,7 +15,7 @@ from typing import Tuple
 import urllib.parse
 
 from monitor.checkers.base import BaseServiceChecker, CheckResult
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 from monitor.infrastructure.proxy_cache import (
     ProxyInflightGuard,
     get_cached_proxy_result,

@@ -30,7 +30,7 @@ from monitor.infrastructure.laravel_encryptor import (
     get_laravel_app_key,
     encrypt_laravel_string as encrypt_laravel_value,
 )
-from monitor.monitor_web_sync import get_db_connection
+from monitor.infrastructure.monitor_db import get_db_connection
 
 logger = logging.getLogger("snmp.activator")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s")

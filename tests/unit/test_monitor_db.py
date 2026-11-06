@@ -6,7 +6,7 @@ import os
 from unittest.mock import MagicMock, patch
 import pytest
 
-from monitor.monitor_db import (
+from monitor.infrastructure.monitor_db import (
     get_db_connection,
     load_env_db_config,
     test_db_connection as check_db_connection,

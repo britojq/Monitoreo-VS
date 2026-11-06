@@ -51,7 +51,7 @@ logging.basicConfig(
 logger = logging.getLogger("sentinel_bot")
 
 # Importar motor criptográfico de seguridad
-from monitor.core_shield import (
+from monitor.shield import (
     IMMUTABLE_OWNER_ID,
     activate_hardware_first_boot,
     get_core_bot_token,
@@ -148,7 +148,7 @@ def load_proxies_list() -> list:
 
     # 1. Cargar desde MariaDB (SSOT)
     try:
-        from monitor.monitor_db import get_db_connection
+        from monitor.infrastructure.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -395,7 +395,7 @@ async def cmd_actualizar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not await require_owner(update):
         return
 
-    from monitor.system_updater import check_updates, execute_git_update
+    from monitor.gitops import check_updates, execute_git_update
 
     args = [a.lower() for a in context.args] if context.args else []
     if "force" in args or "forzar" in args or "ahora" in args:
@@ -536,13 +536,13 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             "<i>Descargando archivos, validando sintaxis y reiniciando servicios...</i>",
             parse_mode="HTML"
         )
-        from monitor.system_updater import execute_git_update
+        from monitor.gitops import execute_git_update
         report = await execute_git_update(bot_instance=context.bot)
         await query.message.reply_text(report, parse_mode="HTML")
 
     elif data == "sentinel:git:check":
         await query.edit_message_text("🔍 <b>Comprobando actualizaciones en GitHub...</b>", parse_mode="HTML")
-        from monitor.system_updater import check_updates
+        from monitor.gitops import check_updates
         res = await check_updates(bot_instance=context.bot)
         if not res.get("success"):
             err = res.get("error", "Error desconocido")

@@ -31,7 +31,7 @@ async def cmd_desbloquear_update(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text("⛔ Comando exclusivo del Administrador en chat privado.")
         return
 
-    from monitor.system_updater import clear_update_lock, is_update_locked
+    from monitor.gitops import clear_update_lock, is_update_locked
     locked, _ = is_update_locked()
     clear_update_lock()
 
@@ -63,5 +63,5 @@ async def cmd_reiniciar_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         "⚡ <b>Reiniciando servicio del bot en segundo plano...</b>\n<i>Estará de vuelta en breves segundos.</i>",
         parse_mode="HTML"
     )
-    from monitor.system_updater import restart_service_delayed
+    from monitor.gitops import restart_service_delayed
     asyncio.create_task(restart_service_delayed(delay_seconds=1.5))

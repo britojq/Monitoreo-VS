@@ -18,7 +18,7 @@ from typing import Optional, Tuple
 
 import httpx
 
-from monitor.config_parser import MonitorConfigLoader
+from monitor.parsers import MonitorConfigLoader
 from monitor.shield.secure_core import get_core_bot_token
 
 logger = logging.getLogger("monitor.dispatcher")
@@ -103,7 +103,7 @@ class TelegramDispatcher:
             return False, "Token de Telegram no configurado"
 
         import json
-        from monitor.checker_base import markdown_to_telegram_html
+        from monitor.formatters.telegram_formatter import markdown_to_telegram_html
 
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
         final_text = markdown_to_telegram_html(text) if parse_mode == "HTML" else text

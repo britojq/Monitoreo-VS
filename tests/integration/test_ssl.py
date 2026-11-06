@@ -28,7 +28,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtensionOID, NameOID
 
-from monitor.ssl_checker import (
+from monitor.checkers.ssl import (
     extract_cert_info,
     match_hostname,
     get_db_connection,

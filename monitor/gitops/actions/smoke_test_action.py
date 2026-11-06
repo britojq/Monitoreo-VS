@@ -112,7 +112,7 @@ class SmokeTestAction:
                 pass
 
         if census.get("topology_links", 0) == 0:
-            top_script = BASE_DIR / "monitor" / "topology_builder.py"
+            top_script = BASE_DIR / "monitor" / "tools" / "topology_builder.py"
             py_bin = BASE_DIR / "venv" / "bin" / "python"
             py_exec = str(py_bin) if py_bin.exists() else sys.executable
             if top_script.exists():

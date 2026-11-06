@@ -53,7 +53,7 @@ async def run_and_send_monitoring_report(
         )
 
     try:
-        from monitor.monitor_engine import execute_monitoring
+        from monitor.application import execute_monitoring
         from monitor.tools.web_screenshot import capture_web_dashboard
 
         if val.is_ondemand:

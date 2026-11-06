@@ -51,7 +51,7 @@ async def handle_ack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     notes = " ".join(args[1:]) if len(args) > 1 else "Reconocido desde Telegram"
 
     try:
-        from monitor.alert_engine import AlertEngine
+        from monitor.alerts import AlertEngine
         engine = AlertEngine()
         u_id = update.effective_user.id if update.effective_user else 1
         ok = engine.acknowledge_alert(aid, user_id=u_id, notes=notes)
@@ -93,7 +93,7 @@ async def handle_resolver(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     notes = " ".join(args[1:]) if len(args) > 1 else "Cerrado manualmente por Administrador vía Telegram"
 
     try:
-        from monitor.alert_engine import AlertEngine
+        from monitor.alerts import AlertEngine
         engine = AlertEngine()
         ok = engine.resolve_alert(aid, notes=notes)
         if ok:
@@ -133,7 +133,7 @@ async def handle_silenciar(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     notes = " ".join(args[2:]) if len(args) > 2 else f"Silenciada por {minutes}m desde Telegram"
 
     try:
-        from monitor.alert_engine import AlertEngine
+        from monitor.alerts import AlertEngine
         engine = AlertEngine()
         ok = engine.silence_alert(aid, minutes=minutes, user_id=user_id, notes=notes)
         if ok:

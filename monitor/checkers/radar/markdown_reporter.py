@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Tuple
 
 from monitor.checkers.radar.constants import format_bytes_human
-from monitor.config_parser import get_formatted_datetime
+from monitor.parsers import get_formatted_datetime
 from monitor.infrastructure.db_context import db_cursor
 
 logger = logging.getLogger("monitor.checkers.radar.reporter")

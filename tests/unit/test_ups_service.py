@@ -11,7 +11,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from monitor.ups_service import (
+from monitor.ups import (
     calculate_battery_percentage,
     format_duration,
     get_notification_target,
@@ -336,7 +336,7 @@ class TestUpsService:
     @pytest.mark.anyio
     async def test_cmd_ups(self):
         import bot
-        from monitor.core_shield import IMMUTABLE_OWNER_ID
+        from monitor.shield import IMMUTABLE_OWNER_ID
         mock_update = MagicMock()
         mock_context = MagicMock()
         mock_update.effective_user.id = IMMUTABLE_OWNER_ID
@@ -385,7 +385,7 @@ class TestUpsService:
         assert "8%" in replies[0]
 
     def test_query_ups_info_parsing(self):
-        from monitor.ups_service import query_ups_info
+        from monitor.ups import query_ups_info
         mock_ser = MagicMock()
         mock_ser.read.return_value = b"#ZTG LV6KL R1.01.55\r"
 
@@ -398,7 +398,7 @@ class TestUpsService:
                 assert res["firmware_version"] == "R1.01.55"
 
     def test_query_ups_rating_parsing(self):
-        from monitor.ups_service import query_ups_rating
+        from monitor.ups import query_ups_rating
         mock_ser = MagicMock()
         mock_ser.read.return_value = b"#208.0 028 192.0 60.0\r"
 
@@ -412,7 +412,7 @@ class TestUpsService:
                 assert res["rating_frequency"] == 60.0
 
     def test_query_ups_serial_clean_and_noise_sanitization(self):
-        from monitor.ups_service import query_ups_serial
+        from monitor.ups import query_ups_serial
         mock_ser = MagicMock()
         # Simula trama con delimitador $ por ruido RS-232 y \r al final
         mock_ser.read_until.return_value = b"(225.0$000.0 208.0 008 59.8 2.25 41.0 00000001\r"
@@ -426,7 +426,7 @@ class TestUpsService:
                 assert res["is_on_battery"] is False
 
     def test_query_ups_serial_physical_consistency_filter(self):
-        from monitor.ups_service import query_ups_serial
+        from monitor.ups import query_ups_serial
         mock_ser = MagicMock()
         # Simula bit de batería invertido a '1' por ruido mientras entrada comercial es 224.8V
         mock_ser.read_until.return_value = b"(224.8 000.0 208.0 008 59.8 2.25 41.0 10000001\r"
@@ -440,7 +440,7 @@ class TestUpsService:
                 assert res["is_on_battery"] is False
 
     def test_query_ups_serial_discard_anomalous_voltages(self):
-        from monitor.ups_service import query_ups_serial
+        from monitor.ups import query_ups_serial
         mock_ser = MagicMock()
         # Simula trama con voltaje corrupto 2251.0V
         mock_ser.read_until.return_value = b"(2251.0 000.0 208.0 008 59.8 2.25 41.0 00000001\r"

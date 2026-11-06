@@ -8,8 +8,8 @@ from monitor.gitops.dtos import (
 from monitor.gitops.services import UpdateLockService
 from monitor.alerts.services.storm_suppressor import compute_fingerprint
 from monitor.alerts.cli_formatter import format_table
-import monitor.system_updater as updater_facade
-import monitor.alert_engine as alert_facade
+import monitor.gitops as gitops_pkg
+import monitor.alerts as alerts_pkg
 
 def test_gitops_dtos():
     dto = UpdateCheckResultDto(
@@ -36,12 +36,11 @@ def test_format_table_empty():
     res = format_table([])
     assert "No hay alertas activas" in res
 
-def test_system_updater_facade_reexports():
+def test_gitops_package_exports():
     expected_attrs = [
         "is_update_locked",
         "set_update_lock",
         "clear_update_lock",
-        "_run_git_command",
         "notify_owner_git_failure",
         "check_updates",
         "build_update_dashboard",
@@ -55,14 +54,12 @@ def test_system_updater_facade_reexports():
         "get_deployment_status",
         "build_deployment_dashboard",
         "restart_service_delayed",
-        "_restart_service_delayed",
         "auto_update_worker",
-        "safe_deliver_update_result",
     ]
     for attr in expected_attrs:
-        assert hasattr(updater_facade, attr), f"Falta el atributo re-exportado '{attr}' en system_updater"
+        assert hasattr(gitops_pkg, attr), f"Falta el atributo canónico '{attr}' en monitor.gitops"
 
-def test_alert_engine_facade_reexports():
+def test_alerts_package_exports():
     expected_attrs = [
         "compute_fingerprint",
         "AlertEngine",
@@ -70,4 +67,4 @@ def test_alert_engine_facade_reexports():
         "main_cli",
     ]
     for attr in expected_attrs:
-        assert hasattr(alert_facade, attr), f"Falta el atributo re-exportado '{attr}' en alert_engine"
+        assert hasattr(alerts_pkg, attr), f"Falta el atributo canónico '{attr}' en monitor.alerts"

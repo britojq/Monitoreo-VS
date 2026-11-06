@@ -107,7 +107,7 @@ def log_security_audit_event(
 
     # Registro en Base de Datos MariaDB (audit_logs)
     try:
-        from monitor.monitor_web_sync import get_db_connection
+        from monitor.infrastructure.monitor_db import get_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:

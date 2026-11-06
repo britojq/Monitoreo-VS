@@ -18,7 +18,7 @@ from monitor.application.strategies.contracts import (
     MonitoringResultDto,
     MonitoringStrategyProtocol,
 )
-from monitor.config_parser import get_formatted_datetime
+from monitor.parsers import get_formatted_datetime
 from monitor.formatters.service_report_compiler import compile_services_from_snapshot
 from monitor.formatters.site_report_compiler import compile_sedes_from_snapshot
 from monitor.monitor_sedes import run_sedes_check

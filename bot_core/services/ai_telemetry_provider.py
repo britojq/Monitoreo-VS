@@ -28,7 +28,7 @@ class MariaDbAiTelemetryProvider(AiTelemetryProviderProtocol):
         """Obtiene el consolidado en vivo de servicios caídos desde MariaDB."""
         # Intento 1: Snapshot en memoria si está disponible
         try:
-            from monitor.monitor_engine import get_latest_snapshot
+            from monitor.application import get_latest_snapshot
             payload, _ = get_latest_snapshot()
             if payload:
                 summary = payload.get("summary", {})

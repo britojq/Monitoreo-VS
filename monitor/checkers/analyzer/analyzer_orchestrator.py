@@ -28,8 +28,8 @@ from monitor.checkers.analyzer.text_report_builder import (
     generate_markdown_report,
     generate_telegram_summary,
 )
-from monitor.checker_base import get_active_network_interface
-from monitor.config_parser import get_formatted_datetime
+from monitor.infrastructure.network_utils import get_active_network_interface
+from monitor.parsers import get_formatted_datetime
 from monitor.infrastructure.db_context import db_cursor
 
 logger = logging.getLogger("monitor.checkers.analyzer.orchestrator")

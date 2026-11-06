@@ -73,5 +73,5 @@ class TestPlaywrightSolidScreenshot:
 
     def test_dynamic_facade_import_via_pep562(self) -> None:
         """Verifica la compatibilidad histórica de importación mediante monitor.__init__."""
-        from monitor.web_screenshot import capture_web_dashboard as imported_facade
+        from monitor.tools.web_screenshot import capture_web_dashboard as imported_facade
         assert callable(imported_facade)

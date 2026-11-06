@@ -20,7 +20,7 @@ def get_config() -> Dict[str, Any]:
     bot_mod = sys.modules.get("bot")
     if bot_mod and hasattr(bot_mod, "CONFIG"):
         return getattr(bot_mod, "CONFIG")
-    from monitor.config_parser import MonitorConfigLoader
+    from monitor.parsers import MonitorConfigLoader
     return MonitorConfigLoader().raw_bot
 
 

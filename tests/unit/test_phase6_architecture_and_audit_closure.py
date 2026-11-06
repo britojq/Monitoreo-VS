@@ -19,10 +19,10 @@ import pytest
 import bot
 from bot_core.application.bootstrap import BotApplicationBootstrapper, handle_bot_error
 from bot_core.contracts.security_provider import SecurityProviderProtocol
-from monitor import checker_base
+import monitor.checkers as checkers
 from monitor.checkers.base import BaseServiceChecker, CheckResult
 from monitor.checkers.registry import CheckerRegistry
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 
 
 class TestArc001BotApplicationDecoupling:
@@ -99,30 +99,18 @@ class TestArc001BotApplicationDecoupling:
 
 
 class TestArc002CheckerBaseCompositionRoot:
-    """Verifica que checker_base.py sea un Composition Root y Facade sin subprocess directo (ARC-002)."""
+    """Verifica que el paquete monitor/checkers sea el Composition Root limpio."""
 
-    def test_checker_base_ast_has_zero_subprocess_calls(self) -> None:
-        """Verifica que checker_base.py no contenga llamadas directas a create_subprocess_exec ni subprocess."""
-        checker_file = Path("/opt/sonar/monitor/checker_base.py")
-        tree = ast.parse(checker_file.read_text(encoding="utf-8"))
+    def test_checker_base_canonical_package_clean(self) -> None:
+        """Verifica que el paquete canónico monitor/checkers esté operativo sin delegaciones planas."""
+        assert checkers.execute_service_check is not None
 
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                func = node.func
-                # Revisar llamadas de atributo como asyncio.create_subprocess_exec o subprocess.run
-                if isinstance(func, ast.Attribute):
-                    assert func.attr not in ("create_subprocess_exec", "create_subprocess_shell"), (
-                        f"checker_base.py no debe ejecutar subprocesos directamente ({func.attr}). "
-                        "Toda ejecución debe estar encapsulada en monitor/checkers/"
-                    )
-
-    def test_checker_base_facade_exports(self) -> None:
-        """Verifica que checker_base mantenga paridad total en su API pública."""
+    def test_checkers_package_exports(self) -> None:
+        """Verifica que monitor.checkers mantenga paridad total en su API pública."""
         required_exports = (
             "CheckerRegistry",
             "BaseServiceChecker",
             "CheckResult",
-            "get_active_network_interface",
             "check_ping",
             "check_web",
             "check_dns",
@@ -131,11 +119,10 @@ class TestArc002CheckerBaseCompositionRoot:
             "check_cups",
             "check_ldap",
             "check_proxy",
-            "markdown_to_telegram_html",
             "execute_service_check",
         )
         for name in required_exports:
-            assert hasattr(checker_base, name), f"checker_base debe re-exportar '{name}' para compatibilidad"
+            assert hasattr(checkers, name), f"monitor.checkers debe exportar '{name}'"
 
     def test_checker_registry_resolution(self) -> None:
         """Comprueba que CheckerRegistry devuelva las estrategias tipadas esperadas."""
@@ -159,7 +146,7 @@ class TestArc002CheckerBaseCompositionRoot:
 
         with patch("monitor.checkers.web_checker.check_web", new_callable=AsyncMock) as mock_web:
             mock_web.return_value = (True, "200", "HTTP 200 OK")
-            result = await checker_base.execute_service_check(svc)
+            result = await checkers.execute_service_check(svc)
 
             assert isinstance(result, CheckResult)
             assert result.is_ok is True

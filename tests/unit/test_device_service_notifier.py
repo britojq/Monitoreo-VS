@@ -10,7 +10,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from monitor.device_service_notifier import (
+from monitor.alerts.device_service_notifier import (
     get_notification_target,
     format_duration,
     build_service_alert_message,

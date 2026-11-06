@@ -32,7 +32,8 @@ async def cmd_rollback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text("⛔ Comando exclusivo del Administrador en chat privado.")
         return
 
-    from monitor.system_updater import execute_rollback, restart_service_delayed, safe_deliver_update_result
+    from bot_core.utils.telegram_helpers import safe_deliver_update_result
+    from monitor.gitops import execute_rollback, restart_service_delayed
 
     if context.args:
         arg = context.args[0].lower()

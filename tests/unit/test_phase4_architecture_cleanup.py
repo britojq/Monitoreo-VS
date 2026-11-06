@@ -13,7 +13,6 @@ import pytest
 import bot
 import bot_core.services.proxy_cache as core_proxy
 import monitor.infrastructure.proxy_cache as infra_proxy
-import monitor.proxy_cache as monitor_proxy
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -80,9 +79,6 @@ class TestPhase4ArchitectureCleanup:
         # monitor.infrastructure.proxy_cache debe delegar directamente
         assert infra_proxy.ProxyInflightGuard is core_proxy.ProxyInflightGuard
         assert infra_proxy.get_cached_proxy_result is core_proxy.get_cached_proxy_result
-
-        # Fachada en monitor.proxy_cache debe ser idéntica
-        assert monitor_proxy.ProxyInflightGuard is core_proxy.ProxyInflightGuard
 
     def test_proxy_inflight_guard_instantiation_and_normalization(self) -> None:
         """Verifica el funcionamiento operativo de ProxyInflightGuard en bot_core."""

@@ -20,10 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_web_sync import get_db_connection
-from monitor.netflow_collector import FlowBuffer, NETFLOW_V5_HEADER_FMT, NETFLOW_V5_RECORD_FMT
-from monitor.syslog_receiver import parse_syslog_message, OWNER_PRIVATE_CHAT_ID as SYSLOG_OWNER
-from monitor.snmp_trap_receiver import resolve_trap_info, TRAP_DICTIONARY
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.daemons.netflow_collector import FlowBuffer, NETFLOW_V5_HEADER_FMT, NETFLOW_V5_RECORD_FMT
+from monitor.daemons.syslog_receiver import parse_syslog_message, OWNER_PRIVATE_CHAT_ID as SYSLOG_OWNER
+from monitor.daemons.snmp_trap_receiver import resolve_trap_info, TRAP_DICTIONARY
 
 
 class TestTelemetryPushIntegration(unittest.TestCase):

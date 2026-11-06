@@ -15,7 +15,7 @@ from typing import List, Tuple
 
 from monitor.application.dtos.check_result_dto import ServiceCheckResultDTO
 from monitor.checkers import CheckerRegistry
-from monitor.config_parser import ServiceConfig
+from monitor.parsers import ServiceConfig
 from monitor.domain.entities.service import ServiceEntity
 from monitor.domain.protocols.database_protocol import (
     ServiceRepositoryProtocol,

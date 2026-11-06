@@ -3,8 +3,8 @@ Pruebas unitarias para utilidades criptográficas y filtros de seguridad en moni
 """
 
 import pytest
-from monitor.alert_engine import compute_fingerprint
-from monitor.terminal_shield import is_protected_process
+from monitor.alerts import compute_fingerprint
+from monitor.shield import is_protected_process
 
 
 class TestSecurityShield:

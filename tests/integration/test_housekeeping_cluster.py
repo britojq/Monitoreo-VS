@@ -18,8 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from monitor.monitor_web_sync import get_db_connection
-from monitor.self_heal_environment import PROTECTED_TABLES
+from monitor.infrastructure.monitor_db import get_db_connection
+from monitor.tools.self_heal_environment import PROTECTED_TABLES
 
 
 class TestHousekeepingAndClusterIntegration(unittest.TestCase):

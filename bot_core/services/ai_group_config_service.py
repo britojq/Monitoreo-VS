@@ -23,7 +23,7 @@ class MariaDbAiGroupConfigService(AiGroupConfigProtocol):
     def is_group_ai_enabled(self) -> bool:
         """Consulta en MariaDB SSOT si la Línea 2 de IA está habilitada para el grupo corporativo."""
         try:
-            from monitor.monitor_web_sync import get_db_connection
+            from monitor.infrastructure.monitor_db import get_db_connection
             conn = get_db_connection()
             try:
                 with conn.cursor() as cur:
@@ -43,7 +43,7 @@ class MariaDbAiGroupConfigService(AiGroupConfigProtocol):
     def set_group_ai_enabled(self, enabled: bool, updated_by: str = "Owner [Telegram]") -> bool:
         """Actualiza y persiste el estado de activación de la IA en Grupo en MariaDB SSOT."""
         try:
-            from monitor.monitor_web_sync import get_db_connection
+            from monitor.infrastructure.monitor_db import get_db_connection
             conn = get_db_connection()
             try:
                 with conn.cursor() as cur:
