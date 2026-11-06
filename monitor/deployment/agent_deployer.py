@@ -11,7 +11,12 @@ import json
 import logging
 import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.deployment.asset_verifier import verify_asset_in_db
 from monitor.deployment.linux_deployer import deploy_linux_ssh

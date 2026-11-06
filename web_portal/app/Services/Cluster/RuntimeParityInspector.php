@@ -50,7 +50,7 @@ class RuntimeParityInspector
         }
 
         return [
-            'system_version' => 'v5.55.10',
+            'system_version' => 'v5.55.20',
             'laravel_version' => app()->version(),
             'php_version' => PHP_VERSION,
             'python_version' => $pythonVersion,

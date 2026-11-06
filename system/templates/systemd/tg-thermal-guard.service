@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=/opt/sonar
-ExecStart=/opt/sonar/venv/bin/python /opt/sonar/monitor/thermal_guard.py --daemon
+ExecStart=/opt/sonar/venv/bin/python /opt/sonar/monitor/checkers/thermal/thermal_cli.py --daemon
 Restart=always
 RestartSec=5
 

@@ -4,6 +4,11 @@ CLI y punto de entrada para NET Radar.
 import argparse
 import asyncio
 import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.checkers.radar.markdown_reporter import generate_markdown_report_from_db
 from monitor.checkers.radar.radar_orchestrator import main_daemon, run_radar_cycle

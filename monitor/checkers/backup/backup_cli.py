@@ -4,6 +4,11 @@ CLI y punto de entrada para el gestor de respaldos de configuraciones.
 import argparse
 import json
 import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.checkers.backup.backup_manager import ConfigBackupManager
 

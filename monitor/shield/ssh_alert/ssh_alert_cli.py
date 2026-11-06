@@ -6,6 +6,11 @@ import asyncio
 import logging
 import os
 import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.shield.ssh_alert.pam_processor import process_pam_event
 

@@ -2,6 +2,12 @@
 CLI y punto de entrada para Auto-Discovery de Red.
 """
 import argparse
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from monitor.checkers.discovery.subnet_orchestrator import (
     scan_all_active_subnets,

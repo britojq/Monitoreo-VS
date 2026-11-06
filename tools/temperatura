@@ -11,4 +11,4 @@ if [ ! -f "$PYTHON_BIN" ]; then
     PYTHON_BIN="python3"
 fi
 
-exec "$PYTHON_BIN" "$DIR/monitor/thermal_guard.py" "${@:---status}"
+exec "$PYTHON_BIN" "$DIR/monitor/checkers/thermal/thermal_cli.py" "${@:---status}"

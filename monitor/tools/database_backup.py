@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -19,6 +20,8 @@ from typing import Dict, List, Optional, Tuple
 logger = logging.getLogger("monitor.database_backup")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 BACKUPS_DIR = BASE_DIR / "database" / "backups"
 MAX_BACKUPS_TO_KEEP = 15
 
