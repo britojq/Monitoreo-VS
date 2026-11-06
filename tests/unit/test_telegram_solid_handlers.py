@@ -14,13 +14,20 @@ from telegram import Chat, Message, Update, User
 from telegram.ext import Application, CommandHandler
 
 
+from pathlib import Path
+
+
 # ---------------------------------------------------------------------------
-# 1. TEST DE FACHADAS Y RETROCOMPATIBILIDAD BIT A BIT
+# 1. TEST DE PAQUETES CANÓNICOS Y CERO FACHADAS EN BOT_CORE/HANDLERS
 # ---------------------------------------------------------------------------
 
-def test_network_handlers_facade_integrity():
-    """Valida que la fachada network_handlers.py re-exporte todos los comandos requeridos."""
-    import bot_core.handlers.network_handlers as nh
+def test_network_handlers_package_integrity():
+    """Valida que el paquete bot_core.handlers.network provea todos los comandos y la fachada física no exista."""
+    import bot_core.handlers.network as nh
+
+    assert not Path("/opt/sonar/bot_core/handlers/network_handlers.py").exists(), (
+        "La fachada network_handlers.py debe ser eliminada permanentemente."
+    )
 
     expected_symbols = [
         "cmd_analisis_red",
@@ -36,13 +43,17 @@ def test_network_handlers_facade_integrity():
         "register_network_routes",
     ]
     for sym in expected_symbols:
-        assert hasattr(nh, sym), f"Falta símbolo {sym} en network_handlers"
+        assert hasattr(nh, sym), f"Falta símbolo {sym} en bot_core.handlers.network"
         assert getattr(nh, sym) is not None
 
 
-def test_service_handlers_facade_integrity():
-    """Valida que la fachada service_handlers.py re-exporte todos los comandos requeridos."""
-    import bot_core.handlers.service_handlers as sh
+def test_service_handlers_package_integrity():
+    """Valida que el paquete bot_core.handlers.services provea todos los comandos y la fachada física no exista."""
+    import bot_core.handlers.services as sh
+
+    assert not Path("/opt/sonar/bot_core/handlers/service_handlers.py").exists(), (
+        "La fachada service_handlers.py debe ser eliminada permanentemente."
+    )
 
     expected_symbols = [
         "cmd_reporte_servicios",
@@ -59,13 +70,17 @@ def test_service_handlers_facade_integrity():
         "_run_and_send_monitoring_report",
     ]
     for sym in expected_symbols:
-        assert hasattr(sh, sym), f"Falta símbolo {sym} en service_handlers"
+        assert hasattr(sh, sym), f"Falta símbolo {sym} en bot_core.handlers.services"
         assert getattr(sh, sym) is not None
 
 
-def test_alert_handlers_facade_integrity():
-    """Valida que la fachada alert_handlers.py re-exporte todos los comandos y callbacks requeridos."""
-    import bot_core.handlers.alert_handlers as ah
+def test_alert_handlers_package_integrity():
+    """Valida que el paquete bot_core.handlers.alerts provea todos los comandos y la fachada física no exista."""
+    import bot_core.handlers.alerts as ah
+
+    assert not Path("/opt/sonar/bot_core/handlers/alert_handlers.py").exists(), (
+        "La fachada alert_handlers.py debe ser eliminada permanentemente."
+    )
 
     expected_symbols = [
         "cmd_alertas",
@@ -79,7 +94,7 @@ def test_alert_handlers_facade_integrity():
         "_get_portal_alerts_url",
     ]
     for sym in expected_symbols:
-        assert hasattr(ah, sym), f"Falta símbolo {sym} en alert_handlers"
+        assert hasattr(ah, sym), f"Falta símbolo {sym} en bot_core.handlers.alerts"
         assert getattr(ah, sym) is not None
 
 

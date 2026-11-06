@@ -206,7 +206,7 @@ def test_cmd_itam_handlers_execution_no_modulenotfound(mock_telegram_env):
 def test_cmd_network_handlers_execution_no_modulenotfound(mock_telegram_env):
     """Valida que los handlers de red (/snmp, /discovery, /cluster, /topologia, /analisis_red) ejecuten sin error."""
     update, context = mock_telegram_env
-    from bot_core.handlers.network_handlers import (
+    from bot_core.handlers.network import (
         cmd_analisis_red,
         cmd_cluster,
         cmd_discovery,

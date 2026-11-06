@@ -40,24 +40,8 @@ def register_itam_routes(application: Application) -> None:
 
 def register_alert_routes(application: Application) -> None:
     """Registra los comandos y callbacks del sistema de alertas e incidentes."""
-    from bot_core.handlers.alert_handlers import (
-        cmd_ack,
-        cmd_alertas,
-        cmd_mantenimiento,
-        cmd_reglas,
-        cmd_resolver,
-        cmd_silenciar,
-        handle_alert_action_callback,
-    )
-
-    application.add_handler(CommandHandler(["alertas", "alerta", "alerts"], cmd_alertas))
-    application.add_handler(CommandHandler(["ack", "reconocer"], cmd_ack))
-    application.add_handler(CommandHandler(["resolver", "resolve"], cmd_resolver))
-    application.add_handler(CommandHandler(["silenciar", "silence", "mute"], cmd_silenciar))
-    application.add_handler(CommandHandler(["mantenimiento", "maint"], cmd_mantenimiento))
-    application.add_handler(CommandHandler(["reglas", "rules"], cmd_reglas))
-    application.add_handler(CallbackQueryHandler(handle_alert_action_callback, pattern=r"^alert_act:"))
-    logger.info("Rutas de Alertas e Incidentes registradas exitosamente.")
+    from bot_core.handlers.alerts.router import register_alert_routes as _register_alerts
+    _register_alerts(application)
 
 
 def register_all_handlers(
@@ -78,18 +62,19 @@ def register_all_handlers(
     register_admin_routes(application)
 
     # 3. Rutas de servicios y monitoreo
-    from bot_core.handlers.service_handlers import register_service_routes
+    from bot_core.handlers.services.router import register_service_routes
     register_service_routes(application)
 
     # 4. Rutas de red, topología y diagnóstico
-    from bot_core.handlers.network_handlers import register_network_routes
+    from bot_core.handlers.network.router import register_network_routes
     register_network_routes(application)
 
     # 5. Rutas de ITAM, inventario y energía
     register_itam_routes(application)
 
     # 6. Rutas de alertas e incidentes
-    register_alert_routes(application)
+    from bot_core.handlers.alerts.router import register_alert_routes as _reg_alerts
+    _reg_alerts(application)
 
     # 7. Rutas de IA
     from bot_core.services.ai_chat_service import (

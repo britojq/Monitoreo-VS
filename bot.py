@@ -102,7 +102,7 @@ from bot_core.handlers.base_handlers import (
     start,
     unknown_cmd,
 )
-from bot_core.handlers.service_handlers import (
+from bot_core.handlers.services import (
     _run_and_send_monitoring_report,
     cmd_captura_web,
     cmd_debug_completo,
@@ -116,7 +116,7 @@ from bot_core.handlers.service_handlers import (
     cmd_ssl,
     register_service_routes,
 )
-from bot_core.handlers.network_handlers import (
+from bot_core.handlers.network import (
     cmd_analisis_red,
     cmd_cluster,
     cmd_discovery,
@@ -136,7 +136,7 @@ from bot_core.handlers.itam_handlers import (
     cmd_ups,
     register_itam_routes,
 )
-from bot_core.handlers.alert_handlers import (
+from bot_core.handlers.alerts import (
     cmd_ack,
     cmd_alertas,
     cmd_mantenimiento,
